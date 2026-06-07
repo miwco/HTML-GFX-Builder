@@ -43,22 +43,33 @@ function htmlIds(html: string): Set<string> {
   return ids;
 }
 
-/** Find external (http/https) and absolute-root asset references in HTML. */
-function externalAndAbsoluteRefs(html: string): { external: string[]; absolute: string[] } {
+/** Collect every URL reference in the HTML (src/href) and CSS (url(...)). */
+function collectRefs(html: string, css: string): string[] {
+  const refs: string[] = [];
+  const htmlRe = /\b(?:src|href)=["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = htmlRe.exec(html))) refs.push(m[1]);
+  const cssRe = /url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
+  while ((m = cssRe.exec(css))) refs.push(m[1]);
+  return refs;
+}
+
+/** Classify URL references from HTML + CSS into external, absolute-root, and relative buckets. */
+function classifyRefs(html: string, css: string): { external: string[]; absolute: string[]; relative: string[] } {
   const external: string[] = [];
   const absolute: string[] = [];
-  const re = /\b(?:src|href)=["']([^"']+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html))) {
-    const url = m[1];
+  const relative: string[] = [];
+  for (const url of collectRefs(html, css)) {
+    if (/^data:/i.test(url)) continue; // inline data URLs are self-contained
     if (/^https?:\/\//i.test(url) || url.startsWith('//')) {
-      const allowed = ALLOWED_EXTERNAL.some((d) => url.includes(d));
-      if (!allowed) external.push(url);
+      if (!ALLOWED_EXTERNAL.some((d) => url.includes(d))) external.push(url);
     } else if (url.startsWith('/')) {
       absolute.push(url);
+    } else {
+      relative.push(url);
     }
   }
-  return { external, absolute };
+  return { external, absolute, relative };
 }
 
 /** Check the template JS compiles (catches obvious syntax errors). */
@@ -80,6 +91,11 @@ export interface ValidateOptions {
 export function validateTemplate(template: SpxTemplate, options: ValidateOptions = {}): ValidationResult {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
+
+  // 0. The three code files must exist.
+  if (!template.html.trim()) errors.push({ rule: 'files', message: 'The HTML is empty.' });
+  if (!template.js.trim()) errors.push({ rule: 'files', message: 'The JavaScript is empty (needs play()/stop()/update()).' });
+  if (!template.css.trim()) warnings.push({ rule: 'files', message: 'The CSS is empty.' });
 
   // 1. Runtime entry points.
   const runtime = hasRuntimeEntryPoints(template.js);
@@ -116,8 +132,9 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
     }
   }
 
-  // 4. Asset paths: external deps (warn) and absolute-root paths (error).
-  const { external, absolute } = externalAndAbsoluteRefs(template.html);
+  // 4. Asset paths (HTML + CSS): absolute-root (error), external deps (warn),
+  //    and relative assets/ references that won't be in the exported package (warn).
+  const { external, absolute, relative } = classifyRefs(template.html, template.css);
   for (const url of absolute) {
     errors.push({
       rule: 'absolute-path',
@@ -129,6 +146,18 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
       rule: 'external-dependency',
       message: `External dependency "${url}". Bundle it locally for reliable offline playout.`,
     });
+  }
+  // Relative assets/ references must correspond to an uploaded asset (the exporter only
+  // writes template.assets[] into assets/). js/ and css/ are provided by the exporter itself.
+  const assetPaths = new Set(template.assets.map((a) => a.path));
+  for (const url of relative) {
+    const normalized = url.replace(/^\.\//, '');
+    if (/^assets\//i.test(normalized) && !assetPaths.has(normalized)) {
+      warnings.push({
+        rule: 'missing-asset',
+        message: `"${url}" is referenced but not in the package. Upload it in the Brand panel or fix the path.`,
+      });
+    }
   }
 
   // 5. JS syntax.

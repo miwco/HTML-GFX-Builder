@@ -1,5 +1,6 @@
-import Editor from '@monaco-editor/react';
+import Editor, { type OnMount } from '@monaco-editor/react';
 import { useTemplateStore, type EditorTab } from '../store/templateStore';
+import { tokenAt } from '../teach/explain';
 
 const TABS: { id: EditorTab; label: string; language: string }[] = [
   { id: 'html', label: 'HTML', language: 'html' },
@@ -16,6 +17,8 @@ export default function CodeEditor() {
   const setCss = useTemplateStore((s) => s.setCss);
   const setJs = useTemplateStore((s) => s.setJs);
 
+  const setEditorContext = useTemplateStore((s) => s.setEditorContext);
+
   const current = TABS.find((t) => t.id === activeTab)!;
   const value = activeTab === 'html' ? template.html : activeTab === 'css' ? template.css : template.js;
 
@@ -24,6 +27,21 @@ export default function CodeEditor() {
     if (activeTab === 'html') setHtml(v);
     else if (activeTab === 'css') setCss(v);
     else setJs(v);
+  };
+
+  // Report the token under the cursor to the store so the Learn panel can explain it.
+  const onMount: OnMount = (editor) => {
+    const report = () => {
+      const model = editor.getModel();
+      const pos = editor.getPosition();
+      if (!model || !pos) return;
+      const line = model.getLineContent(pos.lineNumber);
+      const token = tokenAt(line, pos.column - 1);
+      const tab = useTemplateStore.getState().activeTab;
+      setEditorContext({ tab, token, line });
+    };
+    editor.onDidChangeCursorPosition(report);
+    editor.onDidFocusEditorText(report);
   };
 
   return (
@@ -49,6 +67,7 @@ export default function CodeEditor() {
           path={`template.${activeTab}`}
           value={value}
           onChange={onChange}
+          onMount={onMount}
           options={{
             fontSize: 13,
             minimap: { enabled: false },

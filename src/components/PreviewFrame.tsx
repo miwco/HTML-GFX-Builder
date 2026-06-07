@@ -6,13 +6,12 @@ interface Props {
   iframeRef: RefObject<HTMLIFrameElement>;
 }
 
-const STAGE_W = 1920;
-const STAGE_H = 1080;
 const RELOAD_DEBOUNCE_MS = 350;
 
 /**
  * Live preview: renders the composed template in a sandboxed iframe scaled to fit the stage.
  * Reloads (debounced) when the code changes, and reports runtime errors back to the store.
+ * The iframe is scaled from the template's native resolution (e.g. 1920×1080) to fit the pane.
  */
 export default function PreviewFrame({ iframeRef }: Props) {
   const template = useTemplateStore((s) => s.template);
@@ -23,19 +22,22 @@ export default function PreviewFrame({ iframeRef }: Props) {
   const stageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
 
-  // Scale the 1920x1080 iframe to fit the stage.
+  const { width: stageW, height: stageH } = template.resolution;
+
+  // Scale the template iframe (stageW × stageH) to fit the stage pane.
+  // Re-runs when the stage is resized OR when the template resolution changes.
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
     const fit = () => {
       const { width, height } = stage.getBoundingClientRect();
-      setScale(Math.min(width / STAGE_W, height / STAGE_H));
+      setScale(Math.min(width / stageW, height / stageH));
     };
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(stage);
     return () => ro.disconnect();
-  }, []);
+  }, [stageW, stageH]);
 
   // Listen for runtime errors posted from the preview document.
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function PreviewFrame({ iframeRef }: Props) {
     return () => window.removeEventListener('message', onMessage);
   }, [setPreviewError]);
 
-  // Rebuild the iframe document when code changes (debounced).
+  // Rebuild the iframe document when code or resolution changes (debounced).
   useEffect(() => {
     const handle = setTimeout(() => {
       const iframe = iframeRef.current;
@@ -66,7 +68,11 @@ export default function PreviewFrame({ iframeRef }: Props) {
         className="preview-frame"
         title="SPX live preview"
         sandbox="allow-scripts allow-same-origin"
-        style={{ transform: `translate(-50%, -50%) scale(${scale})` }}
+        style={{
+          width: stageW,
+          height: stageH,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+        }}
       />
       <div className="bg-switch" style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4 }}>
         {(['checkerboard', 'black', 'video'] as const).map((bg) => (

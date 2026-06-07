@@ -3,6 +3,7 @@
 
 import type JSZip from 'jszip';
 import gsapSource from '../assets/gsap.min.js?raw';
+import { parseDataUrl } from '../assets/assetUtils';
 import type { SpxTemplate } from '../model/types';
 
 /** Slug suitable for a folder/zip name. */
@@ -20,7 +21,19 @@ export function slug(name: string): string {
 export async function addSharedAssets(zip: JSZip, template: SpxTemplate): Promise<void> {
   zip.file('js/gsap.min.js', gsapSource);
   for (const asset of template.assets) {
-    zip.file(asset.path, asset.data as Blob | string);
+    if (typeof asset.data === 'string') {
+      const parsed = parseDataUrl(asset.data);
+      if (parsed) {
+        // Decode the base64 data URL back into a real binary file.
+        zip.file(asset.path, parsed.base64, { base64: true });
+      } else {
+        // Plain text asset (e.g. a stylesheet or SVG source).
+        zip.file(asset.path, asset.data);
+      }
+    } else {
+      // A Blob.
+      zip.file(asset.path, asset.data);
+    }
   }
 }
 

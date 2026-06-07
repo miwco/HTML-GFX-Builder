@@ -4,6 +4,7 @@ import CodeEditor from './CodeEditor';
 import PreviewFrame from './PreviewFrame';
 import PlayoutSimulator from './PlayoutSimulator';
 import SidePanel from './SidePanel';
+import TemplateGallery from './TemplateGallery';
 
 /**
  * Three-pane workspace: code editor (left), live preview + playout simulator (center),
@@ -13,18 +14,21 @@ import SidePanel from './SidePanel';
 export default function AppShell() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const template = useTemplateStore((s) => s.template);
-  const resetToDefault = useTemplateStore((s) => s.resetToDefault);
+  const openGallery = useTemplateStore((s) => s.openGallery);
 
   return (
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          SPX HTML GFX Builder <span className="dot">●</span>
+          SPX GFX Builder
         </div>
         <span className="tpl-name">{template.name}</span>
+        <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>
+          {template.resolution.width}×{template.resolution.height} · {template.fps}&thinsp;fps
+        </span>
         <div className="spacer" />
-        <button onClick={resetToDefault} title="Reload the default lower-third template">
-          Reset template
+        <button onClick={openGallery} title="Start a new project from a template">
+          + New project
         </button>
       </header>
 
@@ -44,6 +48,9 @@ export default function AppShell() {
           <SidePanel />
         </section>
       </div>
+
+      {/* Template gallery overlay — shown on startup and via "New project". */}
+      <TemplateGallery />
     </div>
   );
 }

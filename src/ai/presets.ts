@@ -2,7 +2,7 @@
 // A "blank" SPX-valid template (clean runtime + empty definition) that blocks build upon.
 
 import { replaceDefinitionInHtml } from '../model/spxDefinition';
-import { DEFAULT_SETTINGS, type SpxField, type SpxSettings, type SpxTemplate } from '../model/types';
+import { DEFAULT_SETTINGS, RESOLUTIONS, type SpxField, type SpxSettings, type SpxTemplate } from '../model/types';
 
 const BLANK_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -97,5 +97,17 @@ export function blankTemplate(name = 'SPX graphic', description = 'SPX graphic')
   const settings: SpxSettings = { ...DEFAULT_SETTINGS, description };
   const fields: SpxField[] = [];
   const html = replaceDefinitionInHtml(BLANK_HTML, settings, fields);
-  return { name, html, css: BLANK_CSS, js: BLANK_JS, fields, settings, assets: [] };
+  return {
+    name,
+    type: 'blank',
+    resolution: RESOLUTIONS[0],
+    fps: 25,
+    html,
+    css: BLANK_CSS,
+    js: BLANK_JS,
+    fields,
+    settings,
+    assets: [],
+    layers: [],
+  };
 }

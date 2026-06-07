@@ -4,13 +4,20 @@
 import { create } from 'zustand';
 import { createDefaultTemplate } from '../model/defaultTemplate';
 import { parseDefinition } from '../model/spxDefinition';
-import type { SpxTemplate } from '../model/types';
+import type { AssetFile, SpxTemplate } from '../model/types';
 import { DATA_FTYPES } from '../model/types';
 import type { ValidationResult } from '../validation/validateTemplate';
 
 export type EditorTab = 'html' | 'css' | 'js';
 export type PreviewBg = 'checkerboard' | 'black' | 'video';
-export type SidePanel = 'data' | 'blocks' | 'ai' | 'validate' | 'export';
+export type SidePanel = 'data' | 'blocks' | 'brand' | 'learn' | 'ai' | 'validate' | 'export';
+
+/** What the cursor is currently on in the code editor (drives the Learn panel). */
+export interface EditorContext {
+  tab: EditorTab;
+  token: string;
+  line: string;
+}
 
 interface TemplateState {
   template: SpxTemplate;
@@ -22,6 +29,10 @@ interface TemplateState {
   validation: ValidationResult | null;
   /** Latest runtime error reported by the live preview iframe, if any. */
   previewError: string | null;
+  /** What the code-editor cursor is currently on (drives the Learn panel). */
+  editorContext: EditorContext | null;
+  /** Whether the template gallery / new-project screen is open. */
+  galleryOpen: boolean;
 
   setActiveTab: (tab: EditorTab) => void;
   setPreviewBg: (bg: PreviewBg) => void;
@@ -31,15 +42,24 @@ interface TemplateState {
   setCss: (css: string) => void;
   setJs: (js: string) => void;
 
-  /** Replace the whole template (used by building blocks and AI). */
+  /** Replace the whole template (used by building blocks, AI, and template gallery). */
   applyTemplate: (template: SpxTemplate, summary?: string) => void;
   resetToDefault: () => void;
 
   setSampleValue: (field: string, value: string) => void;
   resetSampleData: () => void;
 
+  /** Add an uploaded asset (image/font) to the template. */
+  addAsset: (asset: AssetFile) => void;
+  /** Remove an asset by its relative path. */
+  removeAsset: (path: string) => void;
+
   setValidation: (result: ValidationResult | null) => void;
   setPreviewError: (error: string | null) => void;
+  setEditorContext: (ctx: EditorContext | null) => void;
+
+  openGallery: () => void;
+  closeGallery: () => void;
 }
 
 /** Build the sample-data map from a template's fields, preserving existing edited values. */
@@ -69,6 +89,8 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   sampleData: syncSampleData(initialTemplate, {}),
   validation: null,
   previewError: null,
+  editorContext: null,
+  galleryOpen: true, // Show the template chooser on first load.
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
@@ -85,7 +107,12 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   applyTemplate: (template) =>
     set((s) => {
       const synced = withParsedFields(template);
-      return { template: synced, sampleData: syncSampleData(synced, s.sampleData), validation: null };
+      return {
+        template: synced,
+        sampleData: syncSampleData(synced, s.sampleData),
+        validation: null,
+        galleryOpen: false,
+      };
     }),
 
   resetToDefault: () =>
@@ -97,6 +124,22 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   setSampleValue: (field, value) => set((s) => ({ sampleData: { ...s.sampleData, [field]: value } })),
   resetSampleData: () => set((s) => ({ sampleData: syncSampleData(s.template, {}) })),
 
+  addAsset: (asset) =>
+    set((s) => ({
+      template: {
+        ...s.template,
+        assets: [...s.template.assets.filter((a) => a.path !== asset.path), asset],
+      },
+    })),
+  removeAsset: (path) =>
+    set((s) => ({
+      template: { ...s.template, assets: s.template.assets.filter((a) => a.path !== path) },
+    })),
+
   setValidation: (validation) => set({ validation }),
   setPreviewError: (previewError) => set({ previewError }),
+  setEditorContext: (editorContext) => set({ editorContext }),
+
+  openGallery: () => set({ galleryOpen: true }),
+  closeGallery: () => set({ galleryOpen: false }),
 }));

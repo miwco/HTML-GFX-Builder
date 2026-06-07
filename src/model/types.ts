@@ -5,6 +5,60 @@
 // lives inside the HTML (see model/spxDefinition.ts). Exporters transform this clean
 // template into a packaged SPX zip without changing how the graphic behaves.
 
+// ── Project metadata ────────────────────────────────────────────────────────
+
+/** High-level graphic category, used for gallery grouping and future visual tools. */
+export type TemplateType =
+  | 'lower-third'
+  | 'fullscreen'
+  | 'bug'
+  | 'countdown'
+  | 'scoreboard'
+  | 'info-box'
+  | 'starting-soon'
+  | 'blank';
+
+/** Canvas resolution (1920×1080, 4K, 720p…). Drives the preview scale and base CSS. */
+export interface Resolution {
+  width: number;
+  height: number;
+  label: string;
+}
+
+export const RESOLUTIONS: Resolution[] = [
+  { width: 1920, height: 1080, label: '1080p (1920×1080)' },
+  { width: 3840, height: 2160, label: '4K (3840×2160)' },
+  { width: 1280, height: 720,  label: '720p (1280×720)' },
+];
+
+export const FPS_OPTIONS = [25, 30, 50, 60] as const;
+
+// ── Layer model (structural foundation for future visual editing) ─────────────
+//
+// Layers describe the visual elements in structured form so building blocks and
+// AI can reason about the template without parsing the HTML string. The code
+// editor remains the primary editing interface; these are metadata only.
+
+export type LayerType = 'text' | 'image' | 'container' | 'rect';
+
+export interface TemplateLayer {
+  /** Matches the HTML element id (e.g. "f0_gfx", "logo"). */
+  id: string;
+  type: LayerType;
+  /** Human-readable label shown in future visual tools ("Name field", "Logo"). */
+  label: string;
+  /** Links to SpxField.field when the element displays a data field value. */
+  fieldId?: string;
+  /** Initial / static text content (for text layers). */
+  text?: string;
+  /** Key CSS properties as a plain object (for seeding future inspector panels). */
+  styles: Record<string, string>;
+  animIn?: 'fade' | 'slide' | 'none';
+  animOut?: 'fade' | 'slide' | 'none';
+}
+
+// ── SPX field model ──────────────────────────────────────────────────────────
+
 /** All SPX DataField types ("ftype"). Verified against docs.spxgraphics.com. */
 export type Ftype =
   | 'textfield'
@@ -71,15 +125,22 @@ export interface AssetFile {
   data: Blob | string; // bytes, or a data URL / text
 }
 
+// ── Main template type ───────────────────────────────────────────────────────
+
 /** The full template — the source of truth edited in the app. */
 export interface SpxTemplate {
   name: string;
+  type: TemplateType;
+  resolution: Resolution;
+  fps: number;
   html: string; // body structure + <script id="spx-template-definition"> block
   css: string;
   js: string; // clean play(), stop(), update(data), runTemplateUpdate()
   fields: SpxField[]; // parsed view of the definition (source of truth = the code)
   settings: SpxSettings;
   assets: AssetFile[];
+  /** Structured element descriptions — metadata for building blocks and future visual tools. */
+  layers: TemplateLayer[];
 }
 
 /** A proposed change to the template (from AI or building blocks). */

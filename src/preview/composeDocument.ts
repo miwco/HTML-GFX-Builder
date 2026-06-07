@@ -6,6 +6,7 @@
 // package keeps the external references (the files are written to disk by the exporter).
 
 import gsapSource from '../assets/gsap.min.js?raw';
+import { inlineAssetRefs } from '../assets/assetUtils';
 import type { SpxTemplate } from '../model/types';
 
 /** Remove <link>/<script> tags that point at local template files we will inline instead. */
@@ -19,9 +20,18 @@ function stripLocalAssetTags(html: string): string {
 
 /** Inject inline <style>, GSAP, and the template JS into the document <head>/<body>. */
 export function composeDocument(template: SpxTemplate): string {
-  let html = stripLocalAssetTags(template.html);
+  // Inline uploaded assets (assets/foo.png -> data URL) so the preview renders media
+  // without a server. The exported package keeps the relative paths + real files.
+  let html = stripLocalAssetTags(inlineAssetRefs(template.html, template.assets));
+  const css = inlineAssetRefs(template.css, template.assets);
 
-  const styleTag = `<style id="spx-inline-css">\n${template.css}\n</style>`;
+  const { width, height } = template.resolution;
+
+  // Base style: ensure the canvas is always exactly the right resolution even if the
+  // template CSS doesn't set it (e.g. the blank template). Template CSS can override.
+  const baseStyle = `html, body { width: ${width}px; height: ${height}px; overflow: hidden; }`;
+
+  const styleTag = `<style id="spx-base-style">\n${baseStyle}\n</style>\n<style id="spx-inline-css">\n${css}\n</style>`;
   const gsapTag = `<script id="spx-gsap">\n${gsapSource}\n</script>`;
   const jsTag = `<script id="spx-template-js">\n${template.js}\n</script>`;
 
