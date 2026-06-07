@@ -1,6 +1,9 @@
 // Building-block registry. Each block is a pure, deterministic transform that edits the
 // visible HTML/CSS/JS so the user learns from the result. Blocks also append structured
 // layer metadata to the template model (see edit.ts#addLayer). Blocks are grouped by category.
+//
+// Field convention: each data field "fN" maps to one element with id="fN" — SPX writes the
+// field value straight into it. No hidden holders, no "_gfx" suffix.
 
 import {
   addFieldToDefinition,
@@ -8,7 +11,6 @@ import {
   appendCss,
   appendJs,
   insertGraphicHtml,
-  insertHiddenHolder,
   nextFieldId,
 } from './edit';
 import type { SpxField, SpxTemplate } from '../model/types';
@@ -21,7 +23,7 @@ export interface BuildingBlock {
   apply: (template: SpxTemplate) => SpxTemplate;
 }
 
-/** Add a text data field: definition entry + hidden holder + visible element + layer. */
+/** Add a text data field: definition entry + visible element (id="fN") + layer. */
 function addTextField(template: SpxTemplate): SpxTemplate {
   const id = nextFieldId(template.fields);
   let next = addFieldToDefinition(template, {
@@ -30,12 +32,12 @@ function addTextField(template: SpxTemplate): SpxTemplate {
     title: `Text ${id}`,
     value: `Sample ${id}`,
   });
-  const visible = `  <!-- Text field ${id} -->
-  <div class="text-block" id="${id}_gfx">Sample ${id}</div>`;
-  next = { ...next, html: insertHiddenHolder(insertGraphicHtml(next.html, visible), id) };
-  next = { ...next, css: appendCss(next.css, `Text field ${id}`, `#${id}_gfx {\n  color: #ffffff;\n  font-size: 32px;\n}`) };
+  const visible = `  <!-- Text field ${id} (SPX writes field ${id} into id="${id}") -->
+  <div class="text-block" id="${id}">Sample ${id}</div>`;
+  next = { ...next, html: insertGraphicHtml(next.html, visible) };
+  next = { ...next, css: appendCss(next.css, `Text field ${id}`, `#${id} {\n  color: #ffffff;\n  font-size: 32px;\n}`) };
   next = addLayer(next, {
-    id: `${id}_gfx`,
+    id,
     type: 'text',
     label: `Text ${id}`,
     fieldId: id,
@@ -45,7 +47,7 @@ function addTextField(template: SpxTemplate): SpxTemplate {
   return next;
 }
 
-/** Add a numeric data field: definition entry + hidden holder + visible element + layer. */
+/** Add a numeric data field: definition entry + visible element (id="fN") + layer. */
 function addNumberField(template: SpxTemplate): SpxTemplate {
   const id = nextFieldId(template.fields);
   let next = addFieldToDefinition(template, {
@@ -54,12 +56,12 @@ function addNumberField(template: SpxTemplate): SpxTemplate {
     title: `Number ${id}`,
     value: '0',
   });
-  const visible = `  <!-- Number field ${id} -->
-  <div class="number-block" id="${id}_gfx">0</div>`;
-  next = { ...next, html: insertHiddenHolder(insertGraphicHtml(next.html, visible), id) };
-  next = { ...next, css: appendCss(next.css, `Number field ${id}`, `#${id}_gfx {\n  color: #ffffff;\n  font-size: 40px;\n  font-weight: 700;\n  font-variant-numeric: tabular-nums;\n}`) };
+  const visible = `  <!-- Number field ${id} (SPX writes field ${id} into id="${id}") -->
+  <div class="number-block" id="${id}">0</div>`;
+  next = { ...next, html: insertGraphicHtml(next.html, visible) };
+  next = { ...next, css: appendCss(next.css, `Number field ${id}`, `#${id} {\n  color: #ffffff;\n  font-size: 40px;\n  font-weight: 700;\n  font-variant-numeric: tabular-nums;\n}`) };
   next = addLayer(next, {
-    id: `${id}_gfx`,
+    id,
     type: 'text',
     label: `Number ${id}`,
     fieldId: id,
@@ -84,12 +86,12 @@ function addDropdownField(template: SpxTemplate): SpxTemplate {
     ],
   };
   let next = addFieldToDefinition(template, field);
-  const visible = `  <!-- Dropdown field ${id} (operator picks from a list) -->
-  <div class="choice-block" id="${id}_gfx">one</div>`;
-  next = { ...next, html: insertHiddenHolder(insertGraphicHtml(next.html, visible), id) };
-  next = { ...next, css: appendCss(next.css, `Dropdown field ${id}`, `#${id}_gfx {\n  color: #ffffff;\n  font-size: 28px;\n}`) };
+  const visible = `  <!-- Dropdown field ${id} (operator picks from a list; value goes into id="${id}") -->
+  <div class="choice-block" id="${id}">one</div>`;
+  next = { ...next, html: insertGraphicHtml(next.html, visible) };
+  next = { ...next, css: appendCss(next.css, `Dropdown field ${id}`, `#${id} {\n  color: #ffffff;\n  font-size: 28px;\n}`) };
   next = addLayer(next, {
-    id: `${id}_gfx`,
+    id,
     type: 'text',
     label: `Choice ${id}`,
     fieldId: id,
@@ -111,14 +113,14 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
       let next = addFieldToDefinition(t, { field: id0, ftype: 'textfield', title: 'Name', value: 'Firstname Lastname' });
       const id1 = nextFieldId(next.fields);
       next = addFieldToDefinition(next, { field: id1, ftype: 'textfield', title: 'Title', value: 'Title / role' });
-      const html = `  <!-- Lower third -->
+      const html = `  <!-- Lower third (SPX writes ${id0}/${id1} into the matching ids) -->
   <div class="lower-third-2" id="lt2">
     <div class="lt2-bar">
-      <div class="lt2-name" id="${id0}_gfx">Firstname Lastname</div>
-      <div class="lt2-title" id="${id1}_gfx">Title / role</div>
+      <div class="lt2-name" id="${id0}">Firstname Lastname</div>
+      <div class="lt2-title" id="${id1}">Title / role</div>
     </div>
   </div>`;
-      next = { ...next, html: insertHiddenHolder(insertHiddenHolder(insertGraphicHtml(next.html, html), id0), id1) };
+      next = { ...next, html: insertGraphicHtml(next.html, html) };
       next = {
         ...next,
         css: appendCss(
@@ -131,8 +133,8 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
         ),
       };
       next = addLayer(next, { id: 'lt2', type: 'container', label: 'Lower third', styles: { position: 'absolute', left: '120px', bottom: '260px' } });
-      next = addLayer(next, { id: `${id0}_gfx`, type: 'text', label: 'Name', fieldId: id0, text: 'Firstname Lastname', styles: { color: '#fff', fontSize: '40px', fontWeight: '700' } });
-      next = addLayer(next, { id: `${id1}_gfx`, type: 'text', label: 'Title', fieldId: id1, text: 'Title / role', styles: { color: '#9fc6ff', fontSize: '22px' } });
+      next = addLayer(next, { id: id0, type: 'text', label: 'Name', fieldId: id0, text: 'Firstname Lastname', styles: { color: '#fff', fontSize: '40px', fontWeight: '700' } });
+      next = addLayer(next, { id: id1, type: 'text', label: 'Title', fieldId: id1, text: 'Title / role', styles: { color: '#9fc6ff', fontSize: '22px' } });
       return next;
     },
   },
@@ -146,9 +148,9 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
       let next = addFieldToDefinition(t, { field: id, ftype: 'textfield', title: 'Headline', value: 'Fullscreen title' });
       const html = `  <!-- Fullscreen layout -->
   <div class="fullscreen" id="fs">
-    <h1 class="fs-headline" id="${id}_gfx">Fullscreen title</h1>
+    <h1 class="fs-headline" id="${id}">Fullscreen title</h1>
   </div>`;
-      next = { ...next, html: insertHiddenHolder(insertGraphicHtml(next.html, html), id) };
+      next = { ...next, html: insertGraphicHtml(next.html, html) };
       next = {
         ...next,
         css: appendCss(
@@ -159,7 +161,7 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
         ),
       };
       next = addLayer(next, { id: 'fs', type: 'container', label: 'Fullscreen', styles: { position: 'absolute', inset: '0' } });
-      next = addLayer(next, { id: `${id}_gfx`, type: 'text', label: 'Headline', fieldId: id, text: 'Fullscreen title', styles: { color: '#fff', fontSize: '96px', fontWeight: '800' } });
+      next = addLayer(next, { id, type: 'text', label: 'Headline', fieldId: id, text: 'Fullscreen title', styles: { color: '#fff', fontSize: '96px', fontWeight: '800' } });
       return next;
     },
   },
@@ -171,9 +173,11 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
     apply: (t) => {
       const id = nextFieldId(t.fields);
       let next = addFieldToDefinition(t, { field: id, ftype: 'number', title: 'Duration (seconds)', value: '300' });
-      const html = `  <!-- Countdown display (updated by startCountdown). -->
-  <div class="countdown-block" id="countdown-display">5:00</div>`;
-      next = { ...next, html: insertHiddenHolder(insertGraphicHtml(next.html, html), id) };
+      const html = `  <!-- Countdown display (driven by startCountdown). -->
+  <div class="countdown-block" id="countdown-display">5:00</div>
+  <!-- Duration (${id}) is input-only. SPX writes it here; the timer reads it. -->
+  <div id="${id}" style="display:none">300</div>`;
+      next = { ...next, html: insertGraphicHtml(next.html, html) };
       next = {
         ...next,
         css: appendCss(
@@ -198,8 +202,8 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
           `Countdown helper. Reads duration from field ${id}, counts down in #countdown-display.\n// To use: call startCountdown() inside play(), and clearInterval(_cdInterval) in stop().`,
           `var _cdInterval = null;
 function startCountdown() {
-  var holder = document.getElementById('${id}');
-  var total = holder ? (parseInt(holder.innerHTML, 10) || 300) : 300;
+  var durEl = document.getElementById('${id}');
+  var total = durEl ? (parseInt(durEl.innerHTML, 10) || 300) : 300;
   var el = document.getElementById('countdown-display');
   function fmt(s) {
     s = Math.max(0, Math.floor(s));
@@ -279,18 +283,15 @@ function startCountdown() {
       next = addFieldToDefinition(next, { field: idB, ftype: 'textfield', title: 'Team B name', value: 'TEAM B' });
       const idBS = nextFieldId(next.fields);
       next = addFieldToDefinition(next, { field: idBS, ftype: 'number', title: 'Team B score', value: '0' });
-      const html = `  <!-- Score row -->
+      const html = `  <!-- Score row (SPX writes each field into the matching id) -->
   <div class="score-row" id="score-row">
-    <span class="sr-name" id="${idA}_gfx">TEAM A</span>
-    <span class="sr-score" id="${idAS}_gfx">0</span>
+    <span class="sr-name" id="${idA}">TEAM A</span>
+    <span class="sr-score" id="${idAS}">0</span>
     <span class="sr-sep">:</span>
-    <span class="sr-score" id="${idBS}_gfx">0</span>
-    <span class="sr-name" id="${idB}_gfx">TEAM B</span>
+    <span class="sr-score" id="${idBS}">0</span>
+    <span class="sr-name" id="${idB}">TEAM B</span>
   </div>`;
-      next = {
-        ...next,
-        html: [idA, idAS, idB, idBS].reduce((h, id) => insertHiddenHolder(h, id), insertGraphicHtml(next.html, html)),
-      };
+      next = { ...next, html: insertGraphicHtml(next.html, html) };
       next = {
         ...next,
         css: appendCss(
@@ -313,10 +314,10 @@ function startCountdown() {
         ),
       };
       next = addLayer(next, { id: 'score-row', type: 'container', label: 'Score row', styles: { position: 'absolute', left: '50%', top: '60px' } });
-      next = addLayer(next, { id: `${idA}_gfx`, type: 'text', label: 'Team A name', fieldId: idA, text: 'TEAM A', styles: { color: '#fff', fontSize: '28px' } });
-      next = addLayer(next, { id: `${idAS}_gfx`, type: 'text', label: 'Team A score', fieldId: idAS, text: '0', styles: { color: '#fff', fontSize: '40px', fontWeight: '800' } });
-      next = addLayer(next, { id: `${idBS}_gfx`, type: 'text', label: 'Team B score', fieldId: idBS, text: '0', styles: { color: '#fff', fontSize: '40px', fontWeight: '800' } });
-      next = addLayer(next, { id: `${idB}_gfx`, type: 'text', label: 'Team B name', fieldId: idB, text: 'TEAM B', styles: { color: '#fff', fontSize: '28px' } });
+      next = addLayer(next, { id: idA, type: 'text', label: 'Team A name', fieldId: idA, text: 'TEAM A', styles: { color: '#fff', fontSize: '28px' } });
+      next = addLayer(next, { id: idAS, type: 'text', label: 'Team A score', fieldId: idAS, text: '0', styles: { color: '#fff', fontSize: '40px', fontWeight: '800' } });
+      next = addLayer(next, { id: idBS, type: 'text', label: 'Team B score', fieldId: idBS, text: '0', styles: { color: '#fff', fontSize: '40px', fontWeight: '800' } });
+      next = addLayer(next, { id: idB, type: 'text', label: 'Team B name', fieldId: idB, text: 'TEAM B', styles: { color: '#fff', fontSize: '28px' } });
       return next;
     },
   },
@@ -326,7 +327,7 @@ function startCountdown() {
     id: 'text-field',
     label: 'Text data field',
     category: 'Fields',
-    description: 'Add a new f# text field: definition entry, hidden holder, visible element.',
+    description: 'Add a new f# text field: a definition entry and a visible element (id="fN").',
     apply: addTextField,
   },
   {

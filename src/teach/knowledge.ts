@@ -77,7 +77,7 @@ export const TOKEN_KNOWLEDGE: Record<string, Explanation> = {
   runtemplateupdate: {
     title: 'runTemplateUpdate()',
     category: 'JS',
-    body: 'Helper that copies each hidden .spx-data value into its matching visible element (id f0 → f0_gfx).',
+    body: 'Older "split" style helper: copies a hidden #fN holder’s value into a separate display element #fN_gfx. The simpler convention writes straight into id="fN".',
   },
 
   // ---------- CSS ----------
@@ -142,20 +142,20 @@ export interface PatternRule {
 
 export const PATTERN_KNOWLEDGE: PatternRule[] = [
   {
-    test: /f\d+_gfx/i,
+    test: /\bf\d+\b/i,
     explain: {
-      title: 'fN_gfx (visible field element)',
+      title: 'fN (data field element)',
       category: 'SPX',
-      body: 'A visible element bound to data field fN. update() copies the operator’s input for fN into this element’s text.',
+      body: 'An element with id="fN" is bound to data field fN. update() writes the operator’s input for fN straight into this element.',
       affects: 'Its on-screen text comes from the matching SPX field.',
     },
   },
   {
-    test: /spx-data/i,
+    test: /spx-data|_gfx/i,
     explain: {
-      title: '.spx-data (hidden data holder)',
+      title: 'Split style (#fN → #fN_gfx)',
       category: 'SPX',
-      body: 'Hidden holders SPX writes incoming field values into. Convention: holder id f0 → visible element f0_gfx.',
+      body: 'An older pattern: SPX writes into a hidden #fN holder, then runTemplateUpdate() copies it into a separate #fN_gfx display element. The simpler convention used here gives the visible element id="fN" directly.',
     },
   },
   {
@@ -180,7 +180,7 @@ export const PATTERN_KNOWLEDGE: PatternRule[] = [
     explain: {
       title: 'getElementById()',
       category: 'JS',
-      body: 'Finds the element with a given id so you can read or change it — e.g. write a field value into f0_gfx.',
+      body: 'Finds the element with a given id so you can read or change it — e.g. write a field value into the element with id="f0".',
     },
   },
   {
@@ -188,7 +188,7 @@ export const PATTERN_KNOWLEDGE: PatternRule[] = [
     explain: {
       title: 'querySelector / querySelectorAll',
       category: 'JS',
-      body: 'Finds elements by CSS selector. querySelectorAll(".spx-data") returns every hidden data holder.',
+      body: 'Finds elements by CSS selector. querySelectorAll(".item") returns every element with class "item".',
     },
   },
   {

@@ -33,10 +33,9 @@ export function createBlankTemplate(res: Resolution = RESOLUTIONS[0], fps = 25):
 <body>
   <!--
     Add your graphic elements here.
-    Convention: visible elements use id="fN_gfx", hidden data holders use id="fN".
-    Example:
-      <div id="f0_gfx">Sample text</div>
-      <div class="spx-data" id="f0"></div>
+    Convention: each data field "fN" maps to one element with id="fN". SPX writes the
+    field value straight into it. Example:
+      <div id="f0">Sample text</div>
   -->
 
 </body>
@@ -54,9 +53,6 @@ html, body {
   font-family: "Open Sans", Arial, sans-serif;
 }
 
-/* Hidden data holders never show on screen. */
-.spx-data { display: none; }
-
 /* Add your styles below. */
 `;
 
@@ -64,30 +60,17 @@ html, body {
 // Add your HTML elements above, style them in the CSS tab, and animate them here.
 
 // update(data): SPX sends field values as JSON, e.g. {"f0":"Hello"}.
-// Update your DOM elements here, then call runTemplateUpdate() to sync the display.
-function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
+// Each value is written into the element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 // play(): show / animate in your graphic.
 function play() {
-  runTemplateUpdate();
   // Example: gsap.fromTo('#graphic', { opacity: 0 }, { opacity: 1, duration: 0.5 });
 }
 

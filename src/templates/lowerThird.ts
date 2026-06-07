@@ -35,17 +35,15 @@ export function createLowerThirdTemplate(res: Resolution = RESOLUTIONS[0], fps =
   </script>
 </head>
 <body>
-  <!-- The visible graphic. It starts hidden and is revealed by play(). -->
+  <!-- The visible graphic. It starts hidden and is revealed by play().
+       SPX writes each field value into the element whose id matches the field name
+       (field "f0" -> id="f0"). -->
   <div class="lower-third" id="graphic">
     <div class="lt-bar">
-      <div class="lt-name" id="f0_gfx">Firstname Lastname</div>
-      <div class="lt-title" id="f1_gfx">Title / role</div>
+      <div class="lt-name" id="f0">Firstname Lastname</div>
+      <div class="lt-title" id="f1">Title / role</div>
     </div>
   </div>
-
-  <!-- Hidden data holders. SPX writes incoming field values into these (ids match f0, f1...). -->
-  <div class="spx-data" id="f0"></div>
-  <div class="spx-data" id="f1"></div>
 </body>
 </html>
 `;
@@ -60,9 +58,6 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-/* Hidden data holders never show on screen. */
-.spx-data { display: none; }
 
 /* The graphic block — starts invisible, animated in by play(). */
 .lower-third {
@@ -96,32 +91,18 @@ html, body {
 
   const js = `// SPX calls these functions to control the graphic. Keep them simple and readable.
 
-// Copy each hidden data value into its matching visible element.
-// Convention: hidden holder id "f0" -> visible element id "f0_gfx".
-function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
 // update(data): SPX sends field values as JSON, e.g. {"f0":"Ada","f1":"Engineer"}.
+// Each value is written into the element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 // play(): reveal and animate the graphic in.
 function play() {
-  runTemplateUpdate();
   gsap.killTweensOf('#graphic');
   gsap.fromTo('#graphic',
     { y: 60, opacity: 0 },
@@ -152,7 +133,7 @@ function next() {}
     assets: [],
     layers: [
       {
-        id: 'f0_gfx',
+        id: 'f0',
         type: 'text',
         label: 'Name',
         fieldId: 'f0',
@@ -162,7 +143,7 @@ function next() {}
         animOut: 'slide',
       },
       {
-        id: 'f1_gfx',
+        id: 'f1',
         type: 'text',
         label: 'Title / role',
         fieldId: 'f1',

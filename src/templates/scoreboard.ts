@@ -33,23 +33,19 @@ export function createScoreboardTemplate(res: Resolution = RESOLUTIONS[0], fps =
   </script>
 </head>
 <body>
-  <!-- Scoreboard bar — slide in from top. -->
+  <!-- Scoreboard bar — slide in from top.
+       SPX writes each field (f0..f3) into the element whose id matches. -->
   <div class="scoreboard" id="graphic">
     <div class="sb-team sb-left">
-      <span class="sb-name" id="f0_gfx">TEAM A</span>
-      <span class="sb-score" id="f1_gfx">0</span>
+      <span class="sb-name" id="f0">TEAM A</span>
+      <span class="sb-score" id="f1">0</span>
     </div>
     <div class="sb-divider">—</div>
     <div class="sb-team sb-right">
-      <span class="sb-score" id="f3_gfx">0</span>
-      <span class="sb-name" id="f2_gfx">TEAM B</span>
+      <span class="sb-score" id="f3">0</span>
+      <span class="sb-name" id="f2">TEAM B</span>
     </div>
   </div>
-
-  <div class="spx-data" id="f0"></div>
-  <div class="spx-data" id="f1"></div>
-  <div class="spx-data" id="f2"></div>
-  <div class="spx-data" id="f3"></div>
 </body>
 </html>
 `;
@@ -63,8 +59,6 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-.spx-data { display: none; }
 
 /* Scoreboard bar — top-center, slides down from above. */
 .scoreboard {
@@ -120,29 +114,18 @@ html, body {
 }
 `;
 
-  const js = `function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
+  const js = `// update(data): SPX sends field values as JSON. Each value is written into the
+// element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 // play(): slide the scoreboard down from the top edge.
 function play() {
-  runTemplateUpdate();
   gsap.killTweensOf('#graphic');
   gsap.fromTo('#graphic',
     { y: -120, opacity: 0 },
@@ -171,10 +154,10 @@ function next() {}
     settings: parsed?.settings ?? { ...DEFAULT_SETTINGS, description: 'Scoreboard' },
     assets: [],
     layers: [
-      { id: 'f0_gfx', type: 'text', label: 'Team A name',  fieldId: 'f0', text: 'TEAM A', styles: { color: 'rgba(255,255,255,0.85)', fontSize: '30px' } },
-      { id: 'f1_gfx', type: 'text', label: 'Team A score', fieldId: 'f1', text: '0',       styles: { color: '#ffffff', fontSize: '48px', fontWeight: '800' } },
-      { id: 'f2_gfx', type: 'text', label: 'Team B name',  fieldId: 'f2', text: 'TEAM B', styles: { color: 'rgba(255,255,255,0.85)', fontSize: '30px' } },
-      { id: 'f3_gfx', type: 'text', label: 'Team B score', fieldId: 'f3', text: '0',       styles: { color: '#ffffff', fontSize: '48px', fontWeight: '800' } },
+      { id: 'f0', type: 'text', label: 'Team A name',  fieldId: 'f0', text: 'TEAM A', styles: { color: 'rgba(255,255,255,0.85)', fontSize: '30px' } },
+      { id: 'f1', type: 'text', label: 'Team A score', fieldId: 'f1', text: '0',       styles: { color: '#ffffff', fontSize: '48px', fontWeight: '800' } },
+      { id: 'f2', type: 'text', label: 'Team B name',  fieldId: 'f2', text: 'TEAM B', styles: { color: 'rgba(255,255,255,0.85)', fontSize: '30px' } },
+      { id: 'f3', type: 'text', label: 'Team B score', fieldId: 'f3', text: '0',       styles: { color: '#ffffff', fontSize: '48px', fontWeight: '800' } },
     ],
   };
 }

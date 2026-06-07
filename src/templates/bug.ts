@@ -37,11 +37,10 @@ export function createBugTemplate(res: Resolution = RESOLUTIONS[0], fps = 25): S
   -->
   <div class="bug" id="graphic">
     <div class="bug-badge">
-      <span class="bug-channel" id="f0_gfx">CHANNEL</span>
+      <!-- SPX writes field f0 straight into this element (id matches the field). -->
+      <span class="bug-channel" id="f0">CHANNEL</span>
     </div>
   </div>
-
-  <div class="spx-data" id="f0"></div>
 </body>
 </html>
 `;
@@ -55,8 +54,6 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-.spx-data { display: none; }
 
 /* Bug positioned top-right. Starts invisible; fades in on play(). */
 .bug {
@@ -85,29 +82,18 @@ html, body {
 }
 `;
 
-  const js = `function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
+  const js = `// update(data): SPX sends field values as JSON. Each value is written into the
+// element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 // play(): fade in the corner bug.
 function play() {
-  runTemplateUpdate();
   gsap.killTweensOf('#graphic');
   gsap.fromTo('#graphic',
     { opacity: 0 },
@@ -137,7 +123,7 @@ function next() {}
     assets: [],
     layers: [
       {
-        id: 'f0_gfx',
+        id: 'f0',
         type: 'text',
         label: 'Channel name',
         fieldId: 'f0',

@@ -14,7 +14,7 @@ const CAT_COLOR: Record<ExplainCategory, string> = {
 const GLOSSARY: { term: string; what: string }[] = [
   { term: 'play() / stop()', what: 'SPX takes the graphic on/off air.' },
   { term: 'update(data)', what: 'SPX sends the operator’s field values as JSON.' },
-  { term: 'fN → fN_gfx', what: 'Field f0 fills the element with id f0_gfx.' },
+  { term: 'fN → id="fN"', what: 'Field f0 fills the element with id="f0".' },
   { term: 'SPXGCTemplateDefinition', what: 'Declares the data fields the operator sees.' },
   { term: 'position / left / top', what: 'Place elements on the 1920×1080 canvas.' },
 ];

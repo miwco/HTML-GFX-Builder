@@ -31,16 +31,14 @@ export function createFullscreenTemplate(res: Resolution = RESOLUTIONS[0], fps =
   </script>
 </head>
 <body>
-  <!-- Full-frame overlay. Starts invisible, fades in on play(). -->
+  <!-- Full-frame overlay. Starts invisible, fades in on play().
+       SPX writes field f0 / f1 into the element whose id matches. -->
   <div class="fullscreen" id="graphic">
     <div class="fs-content">
-      <h1 class="fs-headline" id="f0_gfx">Fullscreen Title</h1>
-      <p  class="fs-subtitle"  id="f1_gfx">Supporting line</p>
+      <h1 class="fs-headline" id="f0">Fullscreen Title</h1>
+      <p  class="fs-subtitle"  id="f1">Supporting line</p>
     </div>
   </div>
-
-  <div class="spx-data" id="f0"></div>
-  <div class="spx-data" id="f1"></div>
 </body>
 </html>
 `;
@@ -54,8 +52,6 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-.spx-data { display: none; }
 
 /* Dark semi-transparent overlay covering the full frame. */
 .fullscreen {
@@ -89,28 +85,17 @@ html, body {
 }
 `;
 
-  const js = `function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
+  const js = `// update(data): SPX sends field values as JSON. Each value is written into the
+// element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 function play() {
-  runTemplateUpdate();
   gsap.killTweensOf('#graphic');
   gsap.fromTo('#graphic',
     { opacity: 0 },
@@ -143,7 +128,7 @@ function next() {}
     assets: [],
     layers: [
       {
-        id: 'f0_gfx',
+        id: 'f0',
         type: 'text',
         label: 'Headline',
         fieldId: 'f0',
@@ -153,7 +138,7 @@ function next() {}
         animOut: 'fade',
       },
       {
-        id: 'f1_gfx',
+        id: 'f1',
         type: 'text',
         label: 'Subtitle',
         fieldId: 'f1',

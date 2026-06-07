@@ -14,25 +14,12 @@ export function nextFieldId(fields: SpxField[]): string {
   return `f${max + 1}`;
 }
 
-/** Insert an HTML snippet just before the hidden-data block (or before </body>). */
+/** Insert an HTML snippet just before </body>. */
 export function insertGraphicHtml(html: string, snippet: string): string {
-  const marker = /<!-- Hidden data holders/i;
-  if (marker.test(html)) {
-    return html.replace(marker, `${snippet}\n\n  <!-- Hidden data holders`);
-  }
   if (/<\/body>/i.test(html)) {
     return html.replace(/<\/body>/i, `${snippet}\n</body>`);
   }
   return html + snippet;
-}
-
-/** Insert a hidden data holder element just before </body>. */
-export function insertHiddenHolder(html: string, id: string): string {
-  const holder = `  <div class="spx-data" id="${id}"></div>`;
-  if (/<\/body>/i.test(html)) {
-    return html.replace(/<\/body>/i, `${holder}\n</body>`);
-  }
-  return html + '\n' + holder;
 }
 
 /** Append a CSS block (with a comment header) to the stylesheet. */

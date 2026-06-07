@@ -36,13 +36,11 @@ export function createStartingSoonTemplate(res: Resolution = RESOLUTIONS[0], fps
     <div class="ss-bg"></div>
     <div class="ss-content">
       <div class="ss-pre-label">STARTING SOON</div>
-      <h1 class="ss-event-name" id="f0_gfx">Live Event</h1>
-      <p  class="ss-start-time"  id="f1_gfx">Starts at 20:00</p>
+      <!-- SPX writes field f0 / f1 into the element whose id matches. -->
+      <h1 class="ss-event-name" id="f0">Live Event</h1>
+      <p  class="ss-start-time"  id="f1">Starts at 20:00</p>
     </div>
   </div>
-
-  <div class="spx-data" id="f0"></div>
-  <div class="spx-data" id="f1"></div>
 </body>
 </html>
 `;
@@ -56,8 +54,6 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-.spx-data { display: none; }
 
 .starting-soon {
   position: absolute;
@@ -108,28 +104,17 @@ html, body {
 }
 `;
 
-  const js = `function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
+  const js = `// update(data): SPX sends field values as JSON. Each value is written into the
+// element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 function play() {
-  runTemplateUpdate();
   gsap.killTweensOf(['#graphic', '.ss-content']);
   // Background fades in.
   gsap.fromTo('#graphic',
@@ -164,7 +149,7 @@ function next() {}
     assets: [],
     layers: [
       {
-        id: 'f0_gfx',
+        id: 'f0',
         type: 'text',
         label: 'Event name',
         fieldId: 'f0',
@@ -174,7 +159,7 @@ function next() {}
         animOut: 'fade',
       },
       {
-        id: 'f1_gfx',
+        id: 'f1',
         type: 'text',
         label: 'Start time',
         fieldId: 'f1',

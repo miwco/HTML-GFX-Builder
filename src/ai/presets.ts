@@ -35,7 +35,7 @@ const BLANK_HTML = `<!DOCTYPE html>
 </head>
 <body>
 
-  <!-- Hidden data holders. SPX writes incoming field values here. -->
+  <!-- Add graphic elements here. Each field "fN" maps to one element id="fN". -->
 </body>
 </html>
 `;
@@ -50,37 +50,22 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-.spx-data { display: none; }
 `;
 
 const BLANK_JS = `// SPX calls these functions to control the graphic.
 
-// Copy each hidden data value into its matching visible element ("f0" -> "f0_gfx").
-function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
-// update(data): SPX sends field values as a JSON string.
+// update(data): SPX sends field values as a JSON string, e.g. {"f0":"Hello"}.
+// Each value is written into the element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 // play(): reveal/animate the graphic in.
 function play() {
-  runTemplateUpdate();
   gsap.fromTo('body', { opacity: 0 }, { opacity: 1, duration: 0.4 });
 }
 

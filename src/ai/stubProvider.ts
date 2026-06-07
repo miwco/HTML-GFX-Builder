@@ -3,7 +3,7 @@
 // Claude-backed provider implementing AIProvider can replace this later.
 
 import { BUILDING_BLOCKS } from '../blocks/registry';
-import { addFieldToDefinition, insertGraphicHtml, insertHiddenHolder, nextFieldId } from '../blocks/edit';
+import { addFieldToDefinition, insertGraphicHtml, nextFieldId } from '../blocks/edit';
 import { createDefaultTemplate } from '../model/defaultTemplate';
 import { parseDefinition, replaceDefinitionInHtml } from '../model/spxDefinition';
 import type { SpxTemplate, TemplateChange } from '../model/types';
@@ -20,17 +20,17 @@ function comingUpTemplate(): SpxTemplate {
   t = addFieldToDefinition(t, { field: id1, ftype: 'textfield', title: 'Item 1', value: 'First item' });
   const id2 = nextFieldId(t.fields);
   t = addFieldToDefinition(t, { field: id2, ftype: 'textfield', title: 'Item 2', value: 'Second item' });
-  const html = `  <!-- Coming up -->
+  const html = `  <!-- Coming up (SPX writes each field into the matching id) -->
   <div class="coming-up" id="cu">
-    <div class="cu-heading" id="${idH}_gfx">Coming up</div>
+    <div class="cu-heading" id="${idH}">Coming up</div>
     <ul class="cu-list">
-      <li id="${id1}_gfx">First item</li>
-      <li id="${id2}_gfx">Second item</li>
+      <li id="${id1}">First item</li>
+      <li id="${id2}">Second item</li>
     </ul>
   </div>`;
   t = {
     ...t,
-    html: insertHiddenHolder(insertHiddenHolder(insertHiddenHolder(insertGraphicHtml(t.html, html), idH), id1), id2),
+    html: insertGraphicHtml(t.html, html),
     css:
       t.css +
       `\n/* Coming up */\n.coming-up { position: absolute; left: 140px; bottom: 160px; }
@@ -109,7 +109,7 @@ export class StubAIProvider implements AIProvider {
     if (/function\s+play\s*\(/.test(code)) lines.push('• play(): reveals and animates the graphic in.');
     if (/function\s+stop\s*\(/.test(code)) lines.push('• stop(): animates the graphic out.');
     if (/function\s+next\s*\(/.test(code)) lines.push('• next(): advances multi-step templates.');
-    if (/runTemplateUpdate/.test(code)) lines.push('• runTemplateUpdate(): copies hidden data holders into the visible elements.');
+    if (/runTemplateUpdate/.test(code)) lines.push('• runTemplateUpdate(): copies hidden data holders into separate display elements (older split style).');
     if (/gsap\./.test(code)) lines.push('• Uses GSAP for animation (gsap.to / gsap.fromTo timelines).');
     if (/SPXGCTemplateDefinition/.test(code))
       lines.push('• SPXGCTemplateDefinition: declares the data fields SPX shows the operator and the playout settings.');

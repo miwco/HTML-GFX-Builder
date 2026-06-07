@@ -31,17 +31,15 @@ export function createInfoBoxTemplate(res: Resolution = RESOLUTIONS[0], fps = 25
   </script>
 </head>
 <body>
-  <!-- Info box — lower-right, slides in on play(). -->
+  <!-- Info box — lower-right, slides in on play().
+       SPX writes field f0 / f1 into the element whose id matches. -->
   <div class="info-box" id="graphic">
     <div class="ib-accent"></div>
     <div class="ib-content">
-      <h2 class="ib-headline" id="f0_gfx">Headline text</h2>
-      <p  class="ib-body"     id="f1_gfx">Supporting details go here.</p>
+      <h2 class="ib-headline" id="f0">Headline text</h2>
+      <p  class="ib-body"     id="f1">Supporting details go here.</p>
     </div>
   </div>
-
-  <div class="spx-data" id="f0"></div>
-  <div class="spx-data" id="f1"></div>
 </body>
 </html>
 `;
@@ -55,8 +53,6 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-.spx-data { display: none; }
 
 /* Info box — lower-right area. */
 .info-box {
@@ -98,28 +94,17 @@ html, body {
 }
 `;
 
-  const js = `function runTemplateUpdate() {
-  document.querySelectorAll('.spx-data').forEach(function (holder) {
-    var target = document.getElementById(holder.id + '_gfx');
-    if (target) target.innerHTML = holder.innerHTML;
-  });
-}
-
+  const js = `// update(data): SPX sends field values as JSON. Each value is written into the
+// element whose id matches the field name (f0 -> id="f0").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
 }
 
 function play() {
-  runTemplateUpdate();
   gsap.killTweensOf('#graphic');
   gsap.fromTo('#graphic',
     { x: 60, opacity: 0 },
@@ -148,7 +133,7 @@ function next() {}
     assets: [],
     layers: [
       {
-        id: 'f0_gfx',
+        id: 'f0',
         type: 'text',
         label: 'Headline',
         fieldId: 'f0',
@@ -158,7 +143,7 @@ function next() {}
         animOut: 'slide',
       },
       {
-        id: 'f1_gfx',
+        id: 'f1',
         type: 'text',
         label: 'Body',
         fieldId: 'f1',

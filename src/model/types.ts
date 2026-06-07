@@ -42,7 +42,7 @@ export const FPS_OPTIONS = [25, 30, 50, 60] as const;
 export type LayerType = 'text' | 'image' | 'container' | 'rect';
 
 export interface TemplateLayer {
-  /** Matches the HTML element id (e.g. "f0_gfx", "logo"). */
+  /** Matches the HTML element id (e.g. "f0", "logo"). */
   id: string;
   type: LayerType;
   /** Human-readable label shown in future visual tools ("Name field", "Logo"). */
@@ -135,7 +135,7 @@ export interface SpxTemplate {
   fps: number;
   html: string; // body structure + <script id="spx-template-definition"> block
   css: string;
-  js: string; // clean play(), stop(), update(data), runTemplateUpdate()
+  js: string; // clean play(), stop(), update(data), next()
   fields: SpxField[]; // parsed view of the definition (source of truth = the code)
   settings: SpxSettings;
   assets: AssetFile[];

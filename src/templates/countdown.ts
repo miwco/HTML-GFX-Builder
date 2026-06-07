@@ -36,14 +36,14 @@ export function createCountdownTemplate(res: Resolution = RESOLUTIONS[0], fps = 
     The timer counts down from the duration and stops at 0:00.
   -->
   <div class="countdown" id="graphic">
-    <div class="cd-label" id="f0_gfx">STARTING IN</div>
-    <!-- countdown-display is updated by JS, not by the data-binding convention. -->
+    <!-- SPX writes the label (f0) straight into this element. -->
+    <div class="cd-label" id="f0">STARTING IN</div>
+    <!-- countdown-display is driven by the timer logic, not directly by a field. -->
     <div class="cd-timer" id="countdown-display">5:00</div>
   </div>
 
-  <!-- Hidden data holders for SPX field values. -->
-  <div class="spx-data" id="f0"></div>
-  <div class="spx-data" id="f1"></div>
+  <!-- Duration (f1) is an input value, not shown directly. SPX writes it here; the timer reads it. -->
+  <div id="f1" style="display:none">300</div>
 </body>
 </html>
 `;
@@ -57,8 +57,6 @@ html, body {
   background: transparent;
   font-family: "Open Sans", Arial, sans-serif;
 }
-
-.spx-data { display: none; }
 
 /* Centered countdown block. */
 .countdown {
@@ -110,36 +108,26 @@ function updateDisplay(seconds) {
   if (el) el.textContent = formatTime(seconds);
 }
 
-function runTemplateUpdate() {
-  // Update label (f0) from hidden holder.
-  var labelHolder = document.getElementById('f0');
-  var labelEl     = document.getElementById('f0_gfx');
-  if (labelHolder && labelEl) labelEl.innerHTML = labelHolder.innerHTML;
-
-  // Read duration (f1) from hidden holder.
-  var durHolder = document.getElementById('f1');
-  if (durHolder && durHolder.innerHTML.trim()) {
-    _cdTotal = parseInt(durHolder.innerHTML, 10) || 300;
-  }
+// Read the duration (f1) the timer counts down from.
+function readDuration() {
+  var dur = document.getElementById('f1');
+  if (dur && dur.innerHTML.trim()) _cdTotal = parseInt(dur.innerHTML, 10) || 300;
 }
 
+// update(data): SPX sends field values as JSON. Each value is written into the element
+// whose id matches the field name (label f0 -> id="f0", duration f1 -> hidden id="f1").
 function update(data) {
-  try {
-    var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-    for (var key in fields) {
-      var holder = document.getElementById(key);
-      if (holder) holder.innerHTML = fields[key];
-    }
-    if (fields.f1 !== undefined) _cdTotal = parseInt(fields.f1, 10) || 300;
-  } catch (e) {
-    console.warn('update() could not parse data:', e);
+  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
+  for (var key in fields) {
+    var el = document.getElementById(key);
+    if (el) el.innerHTML = fields[key];
   }
-  runTemplateUpdate();
+  readDuration();
   updateDisplay(_cdTotal);
 }
 
 function play() {
-  runTemplateUpdate();
+  readDuration();
   clearInterval(_cdTimer);
   var remaining = _cdTotal;
   updateDisplay(remaining);
@@ -184,7 +172,7 @@ function next() {}
     assets: [],
     layers: [
       {
-        id: 'f0_gfx',
+        id: 'f0',
         type: 'text',
         label: 'Label',
         fieldId: 'f0',
