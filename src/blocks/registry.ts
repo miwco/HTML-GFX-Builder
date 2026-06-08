@@ -8,9 +8,12 @@
 import {
   addFieldToDefinition,
   addLayer,
+  animationSelector,
   appendCss,
   appendJs,
+  applyAnimationClass,
   insertGraphicHtml,
+  insertIntoFunction,
   nextFieldId,
   positionForNewElement,
   textCssRule,
@@ -566,67 +569,149 @@ function startCountdown() {
     apply: addDropdownField,
   },
 
-  // ----- Animation -----
+  // ----- Animation › CSS (learn CSS @keyframes; applied to your most recent element) -----
   {
     id: 'css-fade',
-    label: 'CSS fade-in',
+    label: 'Fade in',
     category: 'Animation',
-    description: 'A reusable .fade-in keyframe class you can add to any element.',
-    apply: (t) => ({
-      ...t,
-      css: appendCss(
-        t.css,
-        'Fade-in animation (add class="fade-in" to an element)',
-        `@keyframes spxFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    path: ['Animation', 'CSS'],
+    primaryTab: 'css',
+    keywords: ['fade', 'css', 'keyframes', 'opacity', 'animation'],
+    description: 'CSS fade-in keyframe, applied to your most recent element (runs on load).',
+    apply: (t) => {
+      let next = {
+        ...t,
+        css: appendCss(
+          t.css,
+          'Fade in (CSS) — runs when the page loads',
+          `@keyframes spxFadeIn {
+  from { opacity: 0; }         /* start invisible */
+  to   { opacity: 1; }         /* end fully visible */
+}
+/* Add class="fade-in" to any element to fade it in. */
 .fade-in { animation: spxFadeIn 0.6s ease both; }`,
-      ),
-    }),
+        ),
+      };
+      next = { ...next, html: applyAnimationClass(next.html, 'fade-in') };
+      return next;
+    },
   },
   {
     id: 'css-slide',
-    label: 'CSS slide-in',
+    label: 'Slide in',
     category: 'Animation',
-    description: 'A reusable .slide-in keyframe class (slides up into place).',
-    apply: (t) => ({
-      ...t,
-      css: appendCss(
-        t.css,
-        'Slide-in animation (add class="slide-in" to an element)',
-        `@keyframes spxSlideIn { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    path: ['Animation', 'CSS'],
+    primaryTab: 'css',
+    keywords: ['slide', 'css', 'keyframes', 'transform', 'animation'],
+    description: 'CSS slide-up keyframe, applied to your most recent element.',
+    apply: (t) => {
+      let next = {
+        ...t,
+        css: appendCss(
+          t.css,
+          'Slide in (CSS) — runs when the page loads',
+          `@keyframes spxSlideIn {
+  from { transform: translateY(40px); opacity: 0; }  /* start lower + invisible */
+  to   { transform: translateY(0);    opacity: 1; }  /* settle into place */
+}
+/* Add class="slide-in" to any element to slide it up. */
 .slide-in { animation: spxSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }`,
-      ),
-    }),
+        ),
+      };
+      next = { ...next, html: applyAnimationClass(next.html, 'slide-in') };
+      return next;
+    },
   },
   {
     id: 'css-scale',
-    label: 'CSS scale-in',
+    label: 'Scale in',
     category: 'Animation',
-    description: 'A reusable .scale-in keyframe class (pops in from 92%).',
-    apply: (t) => ({
-      ...t,
-      css: appendCss(
-        t.css,
-        'Scale-in animation (add class="scale-in" to an element)',
-        `@keyframes spxScaleIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    path: ['Animation', 'CSS'],
+    primaryTab: 'css',
+    keywords: ['scale', 'pop', 'css', 'keyframes', 'animation'],
+    description: 'CSS scale/pop-in keyframe, applied to your most recent element.',
+    apply: (t) => {
+      let next = {
+        ...t,
+        css: appendCss(
+          t.css,
+          'Scale in (CSS) — runs when the page loads',
+          `@keyframes spxScaleIn {
+  from { transform: scale(0.92); opacity: 0; }  /* start slightly smaller + invisible */
+  to   { transform: scale(1);    opacity: 1; }  /* pop to full size */
+}
+/* Add class="scale-in" to any element to pop it in. */
 .scale-in { animation: spxScaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }`,
-      ),
-    }),
+        ),
+      };
+      next = { ...next, html: applyAnimationClass(next.html, 'scale-in') };
+      return next;
+    },
+  },
+
+  // ----- Animation › GSAP (learn GSAP; tweens run on play()/stop()) -----
+  {
+    id: 'gsap-fade',
+    label: 'Fade in/out',
+    category: 'Animation',
+    path: ['Animation', 'GSAP'],
+    primaryTab: 'js',
+    keywords: ['fade', 'gsap', 'opacity', 'play', 'stop'],
+    description: 'GSAP fade: in on play(), out on stop() (targets your most recent element).',
+    apply: (t) => {
+      const sel = animationSelector(t.html);
+      let js = insertIntoFunction(t.js, 'play', `gsap.from('${sel}', { opacity: 0, duration: 0.5, ease: 'power2.out' });`);
+      js = insertIntoFunction(js, 'stop', `gsap.to('${sel}', { opacity: 0, duration: 0.4, ease: 'power2.in' });`);
+      return { ...t, js };
+    },
+  },
+  {
+    id: 'gsap-slide',
+    label: 'Slide in/out',
+    category: 'Animation',
+    path: ['Animation', 'GSAP'],
+    primaryTab: 'js',
+    keywords: ['slide', 'gsap', 'y', 'play', 'stop'],
+    description: 'GSAP slide: up on play(), down on stop() (targets your most recent element).',
+    apply: (t) => {
+      const sel = animationSelector(t.html);
+      let js = insertIntoFunction(t.js, 'play', `gsap.from('${sel}', { y: 40, opacity: 0, duration: 0.5, ease: 'power3.out' });`);
+      js = insertIntoFunction(js, 'stop', `gsap.to('${sel}', { y: 40, opacity: 0, duration: 0.4, ease: 'power2.in' });`);
+      return { ...t, js };
+    },
+  },
+  {
+    id: 'gsap-scale',
+    label: 'Scale in/out',
+    category: 'Animation',
+    path: ['Animation', 'GSAP'],
+    primaryTab: 'js',
+    keywords: ['scale', 'pop', 'gsap', 'play', 'stop'],
+    description: 'GSAP scale: pop in on play(), shrink out on stop() (targets your most recent element).',
+    apply: (t) => {
+      const sel = animationSelector(t.html);
+      let js = insertIntoFunction(t.js, 'play', `gsap.from('${sel}', { scale: 0.9, opacity: 0, duration: 0.5, ease: 'back.out(1.6)' });`);
+      js = insertIntoFunction(js, 'stop', `gsap.to('${sel}', { scale: 0.9, opacity: 0, duration: 0.4, ease: 'power2.in' });`);
+      return { ...t, js };
+    },
   },
   {
     id: 'gsap-pulse',
-    label: 'GSAP pulse helper',
+    label: 'Pulse',
     category: 'Animation',
-    description: 'Adds a pulse(selector) JS helper using GSAP.',
-    apply: (t) => ({
-      ...t,
-      js: appendJs(
+    path: ['Animation', 'GSAP'],
+    primaryTab: 'js',
+    keywords: ['pulse', 'attention', 'gsap', 'yoyo'],
+    description: 'GSAP attention pulse on play() (targets your most recent element).',
+    apply: (t) => {
+      const sel = animationSelector(t.html);
+      const js = insertIntoFunction(
         t.js,
-        'pulse(selector): a quick attention pulse using GSAP',
-        `function pulse(selector) {
-  gsap.fromTo(selector, { scale: 1 }, { scale: 1.08, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' });
-}`,
-      ),
-    }),
+        'play',
+        `gsap.to('${sel}', { scale: 1.06, duration: 0.18, yoyo: true, repeat: 1, ease: 'power1.inOut' });`,
+      );
+      return { ...t, js };
+    },
   },
 ];
 

@@ -54,6 +54,60 @@ export function gfxCount(html: string): number {
   return (html.match(/data-gfx/g) || []).length;
 }
 
+/** Last opening tag matching `re` (with its source index), or null. */
+function lastTagMatch(html: string, re: RegExp): { text: string; index: number } | null {
+  const g = new RegExp(re.source, 'g');
+  let m: RegExpExecArray | null;
+  let last: { text: string; index: number } | null = null;
+  while ((m = g.exec(html))) last = { text: m[0], index: m.index };
+  return last;
+}
+
+const GFX_TAG = /<[a-zA-Z][^>]*\bdata-gfx\b[^>]*>/;
+const GRAPHIC_TAG = /<[a-zA-Z][^>]*\bid=["']graphic["'][^>]*>/;
+
+/**
+ * The element an animation block should target: the most recently inserted block element
+ * (tagged data-gfx), else the template root (#graphic). Returns a CSS selector.
+ */
+export function animationSelector(html: string): string {
+  const tag = lastTagMatch(html, GFX_TAG) ?? lastTagMatch(html, GRAPHIC_TAG);
+  if (tag) {
+    const idM = /\bid=["']([^"']+)["']/.exec(tag.text);
+    if (idM) return `#${idM[1]}`;
+    const clM = /\bclass=["']([^"']+)["']/.exec(tag.text);
+    if (clM) return `.${clM[1].trim().split(/\s+/)[0]}`;
+  }
+  return '#graphic';
+}
+
+/** Add a class to a single opening tag string (extends class="" or inserts it). */
+function addClassToTag(tag: string, className: string): string {
+  if (/\bclass=["'][^"']*["']/.test(tag)) {
+    return tag.replace(/\bclass=["']([^"']*)["']/, (_m, c) => `class="${c} ${className}"`);
+  }
+  const selfClose = /\/>\s*$/.test(tag);
+  const inner = tag.replace(/\s*\/?>\s*$/, '');
+  return `${inner} class="${className}"${selfClose ? ' />' : '>'}`;
+}
+
+/**
+ * Apply a CSS class to the element an animation should run on (last data-gfx element, else
+ * #graphic), so a CSS @keyframes animation actually runs. Returns html unchanged if no target.
+ */
+export function applyAnimationClass(html: string, className: string): string {
+  const tag = lastTagMatch(html, GFX_TAG) ?? lastTagMatch(html, GRAPHIC_TAG);
+  if (!tag) return html;
+  return html.slice(0, tag.index) + addClassToTag(tag.text, className) + html.slice(tag.index + tag.text.length);
+}
+
+/** Insert a line of code right after the opening brace of `function <name>(...) {`. */
+export function insertIntoFunction(js: string, fnName: string, line: string): string {
+  const re = new RegExp(`(function\\s+${fnName}\\s*\\([^)]*\\)\\s*\\{)`);
+  if (!re.test(js)) return js;
+  return js.replace(re, `$1\n  ${line}`);
+}
+
 /**
  * A sensible lower-left, action-safe position for a newly inserted element. Staggers upward
  * (raising `bottom`) when other inserted elements exist so they don't pile up or overlap.
