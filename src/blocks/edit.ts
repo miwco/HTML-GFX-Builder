@@ -48,3 +48,51 @@ export function addFieldToDefinition(template: SpxTemplate, field: SpxField): Sp
 export function addLayer(template: SpxTemplate, layer: TemplateLayer): SpxTemplate {
   return { ...template, layers: [...template.layers, layer] };
 }
+
+/** How many block-inserted elements already exist (tagged data-gfx), used to stagger new ones. */
+export function gfxCount(html: string): number {
+  return (html.match(/data-gfx/g) || []).length;
+}
+
+/**
+ * A sensible lower-left, action-safe position for a newly inserted element. Staggers upward
+ * (raising `bottom`) when other inserted elements exist so they don't pile up or overlap.
+ * Returns template px for the current resolution.
+ */
+export function positionForNewElement(template: SpxTemplate): { left: number; bottom: number } {
+  const { width, height } = template.resolution;
+  const left = Math.round(width * 0.062); // ~action-safe inset from the left
+  const baseBottom = Math.round(height * 0.13); // lower-third band
+  const step = Math.round(height * 0.11);
+  const bottom = baseBottom + gfxCount(template.html) * step;
+  return { left, bottom: Math.min(bottom, height - 120) };
+}
+
+/**
+ * Rich, commented CSS for a broadcast text element. Includes the genuinely useful properties
+ * (position, color, font, line-height, letter-spacing, white-space, text-shadow) each briefly
+ * commented so the generated code teaches. `extra` adds block-specific lines.
+ */
+export function textCssRule(
+  selector: string,
+  opts: { left: number; bottom?: number; top?: number; fontSize: number; fontWeight?: number; color?: string; extra?: string },
+): string {
+  const { left, bottom, top, fontSize, fontWeight = 700, color = '#ffffff', extra } = opts;
+  const vertical =
+    bottom != null
+      ? `  bottom: ${bottom}px;             /* distance from the bottom edge of frame */`
+      : `  top: ${top ?? 80}px;             /* distance from the top edge of frame */`;
+  return `${selector} {
+  position: absolute;          /* place freely on the canvas */
+  left: ${left}px;             /* distance from the left edge */
+${vertical}
+  color: ${color};             /* text colour */
+  font-family: "Open Sans", Arial, sans-serif;  /* swap in a brand font via the Brand tab */
+  font-size: ${fontSize}px;    /* large enough to read on screen */
+  font-weight: ${fontWeight};  /* 400 normal · 700 bold · up to 900 */
+  line-height: 1.15;           /* spacing between wrapped lines */
+  letter-spacing: 0.01em;      /* subtle tracking */
+  white-space: nowrap;         /* keep a lower third on one line */
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);  /* legibility over video */${extra ? '\n' + extra : ''}
+}`;
+}

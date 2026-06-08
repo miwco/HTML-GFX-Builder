@@ -12,8 +12,10 @@ import {
   appendJs,
   insertGraphicHtml,
   nextFieldId,
+  positionForNewElement,
+  textCssRule,
 } from './edit';
-import type { SpxField, SpxTemplate } from '../model/types';
+import type { Ftype, SpxField, SpxTemplate } from '../model/types';
 
 import type { EditorTab } from '../store/templateStore';
 
@@ -32,57 +34,56 @@ export interface BuildingBlock {
   apply: (template: SpxTemplate) => SpxTemplate;
 }
 
-/** Add a text data field: definition entry + visible element (id="fN") + layer. */
-function addTextField(template: SpxTemplate): SpxTemplate {
+/**
+ * Add a data field bound to a single visible element (id="fN"), positioned in the lower-left
+ * action-safe area and styled with the rich, commented broadcast-text CSS. Shared by the
+ * Text/Name/Title/Number blocks so every inserted field lands somewhere sensible, fully styled.
+ */
+function addStyledTextField(
+  template: SpxTemplate,
+  opts: { title: string; value: string; fontSize: number; fontWeight?: number; color?: string; ftype?: Ftype; cssExtra?: string },
+): SpxTemplate {
   const id = nextFieldId(template.fields);
+  const pos = positionForNewElement(template);
   let next = addFieldToDefinition(template, {
     field: id,
-    ftype: 'textfield',
-    title: `Text ${id}`,
-    value: `Sample ${id}`,
+    ftype: opts.ftype ?? 'textfield',
+    title: opts.title,
+    value: opts.value,
   });
-  const visible = `  <!-- Text field ${id} (SPX writes field ${id} into id="${id}") -->
-  <div class="text-block" id="${id}">Sample ${id}</div>`;
+  const visible = `  <!-- ${opts.title} (${id}) — SPX writes field ${id} into this element. -->
+  <div id="${id}" data-gfx>${opts.value}</div>`;
   next = { ...next, html: insertGraphicHtml(next.html, visible) };
-  next = { ...next, css: appendCss(next.css, `Text field ${id}`, `#${id} {\n  color: #ffffff;\n  font-size: 32px;\n}`) };
+  next = {
+    ...next,
+    css: appendCss(
+      next.css,
+      `${opts.title} (${id})`,
+      textCssRule(`#${id}`, {
+        left: pos.left,
+        bottom: pos.bottom,
+        fontSize: opts.fontSize,
+        fontWeight: opts.fontWeight,
+        color: opts.color,
+        extra: opts.cssExtra,
+      }),
+    ),
+  };
   next = addLayer(next, {
     id,
     type: 'text',
-    label: `Text ${id}`,
+    label: opts.title,
     fieldId: id,
-    text: `Sample ${id}`,
-    styles: { color: '#ffffff', fontSize: '32px' },
+    text: opts.value,
+    styles: { color: opts.color ?? '#ffffff', fontSize: `${opts.fontSize}px` },
   });
   return next;
 }
 
-/** Add a numeric data field: definition entry + visible element (id="fN") + layer. */
-function addNumberField(template: SpxTemplate): SpxTemplate {
-  const id = nextFieldId(template.fields);
-  let next = addFieldToDefinition(template, {
-    field: id,
-    ftype: 'number',
-    title: `Number ${id}`,
-    value: '0',
-  });
-  const visible = `  <!-- Number field ${id} (SPX writes field ${id} into id="${id}") -->
-  <div class="number-block" id="${id}">0</div>`;
-  next = { ...next, html: insertGraphicHtml(next.html, visible) };
-  next = { ...next, css: appendCss(next.css, `Number field ${id}`, `#${id} {\n  color: #ffffff;\n  font-size: 40px;\n  font-weight: 700;\n  font-variant-numeric: tabular-nums;\n}`) };
-  next = addLayer(next, {
-    id,
-    type: 'text',
-    label: `Number ${id}`,
-    fieldId: id,
-    text: '0',
-    styles: { color: '#ffffff', fontSize: '40px', fontWeight: '700' },
-  });
-  return next;
-}
-
-/** Add a dropdown data field with a few starter options. */
+/** Add a dropdown data field (operator picks from a list) bound to a positioned element. */
 function addDropdownField(template: SpxTemplate): SpxTemplate {
   const id = nextFieldId(template.fields);
+  const pos = positionForNewElement(template);
   const field: SpxField = {
     field: id,
     ftype: 'dropdown',
@@ -96,37 +97,33 @@ function addDropdownField(template: SpxTemplate): SpxTemplate {
   };
   let next = addFieldToDefinition(template, field);
   const visible = `  <!-- Dropdown field ${id} (operator picks from a list; value goes into id="${id}") -->
-  <div class="choice-block" id="${id}">one</div>`;
+  <div id="${id}" data-gfx>one</div>`;
   next = { ...next, html: insertGraphicHtml(next.html, visible) };
-  next = { ...next, css: appendCss(next.css, `Dropdown field ${id}`, `#${id} {\n  color: #ffffff;\n  font-size: 28px;\n}`) };
-  next = addLayer(next, {
-    id,
-    type: 'text',
-    label: `Choice ${id}`,
-    fieldId: id,
-    text: 'one',
-    styles: { color: '#ffffff', fontSize: '28px' },
-  });
+  next = { ...next, css: appendCss(next.css, `Dropdown field ${id}`, textCssRule(`#${id}`, { left: pos.left, bottom: pos.bottom, fontSize: 32 })) };
+  next = addLayer(next, { id, type: 'text', label: `Choice ${id}`, fieldId: id, text: 'one', styles: { color: '#ffffff', fontSize: '32px' } });
   return next;
 }
 
 export const BUILDING_BLOCKS: BuildingBlock[] = [
-  // ----- Structure -----
+  // ----- Lower third (the most common starting point) -----
   {
-    id: 'lower-third',
-    label: 'Lower third',
+    id: 'lt-name-title',
+    label: 'Name + title',
     category: 'Structure',
-    description: 'Name + title bar in the lower-left, with two text fields.',
+    path: ['Lower third'],
+    primaryTab: 'css',
+    keywords: ['lower third', 'name', 'title', 'strap', 'nameplate'],
+    description: 'A complete lower third: name + title with a bar and accent strip.',
     apply: (t) => {
-      const id0 = nextFieldId(t.fields);
-      let next = addFieldToDefinition(t, { field: id0, ftype: 'textfield', title: 'Name', value: 'Firstname Lastname' });
-      const id1 = nextFieldId(next.fields);
-      next = addFieldToDefinition(next, { field: id1, ftype: 'textfield', title: 'Title', value: 'Title / role' });
-      const html = `  <!-- Lower third (SPX writes ${id0}/${id1} into the matching ids) -->
-  <div class="lower-third-2" id="lt2">
-    <div class="lt2-bar">
-      <div class="lt2-name" id="${id0}">Firstname Lastname</div>
-      <div class="lt2-title" id="${id1}">Title / role</div>
+      const idName = nextFieldId(t.fields);
+      let next = addFieldToDefinition(t, { field: idName, ftype: 'textfield', title: 'Name', value: 'Firstname Lastname' });
+      const idTitle = nextFieldId(next.fields);
+      next = addFieldToDefinition(next, { field: idTitle, ftype: 'textfield', title: 'Title', value: 'Title / role' });
+      const html = `  <!-- Lower third — name + title. SPX writes ${idName}/${idTitle} into the matching ids. -->
+  <div class="lower3" data-gfx>
+    <div class="lower3-bar">
+      <div id="${idName}" class="lower3-name">Firstname Lastname</div>
+      <div id="${idTitle}" class="lower3-title">Title / role</div>
     </div>
   </div>`;
       next = { ...next, html: insertGraphicHtml(next.html, html) };
@@ -135,22 +132,76 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
         css: appendCss(
           next.css,
           'Lower third (block)',
-          `.lower-third-2 { position: absolute; left: 120px; bottom: 260px; }
-.lt2-bar { display: inline-block; padding: 12px 24px; background: #11151c; border-left: 6px solid #3aa0ff; }
-.lt2-name { color: #fff; font-size: 40px; font-weight: 700; }
-.lt2-title { color: #9fc6ff; font-size: 22px; }`,
+          `/* Lower third — positioned in the lower-left action-safe area. */
+.lower3 {
+  position: absolute;          /* place freely on the canvas */
+  left: 120px;                 /* inset from the left edge */
+  bottom: 160px;               /* inset from the bottom edge */
+}
+/* The bar behind the text. */
+.lower3-bar {
+  display: inline-block;       /* shrink the bar to fit its text */
+  padding: 14px 28px;          /* space inside the bar */
+  background: linear-gradient(90deg, #0a3d62, #1e6fb8);  /* bar colour (try a solid colour or a brand var) */
+  border-left: 8px solid #ffd32a;            /* accent strip — your brand colour */
+  border-radius: 2px;          /* slightly rounded corners */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);  /* lift the bar off the video */
+}
+/* Name — the headline line. */
+.lower3-name {
+  color: #ffffff;              /* text colour */
+  font-family: "Open Sans", Arial, sans-serif;
+  font-size: 46px;             /* large, readable */
+  font-weight: 700;            /* bold */
+  line-height: 1.1;            /* line spacing */
+  white-space: nowrap;         /* keep on one line */
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);  /* legibility over video */
+}
+/* Title — the supporting line. */
+.lower3-title {
+  color: #cfe3ff;              /* slightly dimmer than the name */
+  font-family: "Open Sans", Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 400;            /* normal weight */
+  letter-spacing: 0.02em;      /* subtle tracking */
+  margin-top: 4px;             /* gap under the name */
+}`,
         ),
       };
-      next = addLayer(next, { id: 'lt2', type: 'container', label: 'Lower third', styles: { position: 'absolute', left: '120px', bottom: '260px' } });
-      next = addLayer(next, { id: id0, type: 'text', label: 'Name', fieldId: id0, text: 'Firstname Lastname', styles: { color: '#fff', fontSize: '40px', fontWeight: '700' } });
-      next = addLayer(next, { id: id1, type: 'text', label: 'Title', fieldId: id1, text: 'Title / role', styles: { color: '#9fc6ff', fontSize: '22px' } });
+      next = addLayer(next, { id: 'lower3', type: 'container', label: 'Lower third', styles: { position: 'absolute', left: '120px', bottom: '160px' } });
+      next = addLayer(next, { id: idName, type: 'text', label: 'Name', fieldId: idName, text: 'Firstname Lastname', styles: { color: '#ffffff', fontSize: '46px', fontWeight: '700' } });
+      next = addLayer(next, { id: idTitle, type: 'text', label: 'Title', fieldId: idTitle, text: 'Title / role', styles: { color: '#cfe3ff', fontSize: '26px' } });
       return next;
     },
   },
   {
+    id: 'lt-name',
+    label: 'Name field',
+    category: 'Structure',
+    path: ['Lower third'],
+    primaryTab: 'css',
+    keywords: ['name', 'headline', 'person'],
+    description: 'A bold name line, positioned and fully styled.',
+    apply: (t) => addStyledTextField(t, { title: 'Name', value: 'Firstname Lastname', fontSize: 46, fontWeight: 700 }),
+  },
+  {
+    id: 'lt-title',
+    label: 'Title field',
+    category: 'Structure',
+    path: ['Lower third'],
+    primaryTab: 'css',
+    keywords: ['title', 'role', 'subtitle'],
+    description: 'A lighter subtitle / role line, positioned and styled.',
+    apply: (t) => addStyledTextField(t, { title: 'Title', value: 'Title / role', fontSize: 26, fontWeight: 400, color: '#cfe3ff' }),
+  },
+
+  // ----- Layouts -----
+  {
     id: 'fullscreen',
     label: 'Fullscreen layout',
     category: 'Structure',
+    path: ['Layouts'],
+    primaryTab: 'css',
     description: 'Centered full-frame container for titles or fullscreen graphics.',
     apply: (t) => {
       const id = nextFieldId(t.fields);
@@ -178,6 +229,9 @@ export const BUILDING_BLOCKS: BuildingBlock[] = [
     id: 'countdown',
     label: 'Countdown timer',
     category: 'Structure',
+    path: ['Layouts'],
+    primaryTab: 'js',
+    keywords: ['timer', 'countdown', 'clock'],
     description: 'A timer display + a startCountdown() helper. Call it from play().',
     apply: (t) => {
       const id = nextFieldId(t.fields);
@@ -336,21 +390,38 @@ function startCountdown() {
     id: 'text-field',
     label: 'Text data field',
     category: 'Fields',
-    description: 'Add a new f# text field: a definition entry and a visible element (id="fN").',
-    apply: addTextField,
+    path: ['Text & data'],
+    primaryTab: 'css',
+    keywords: ['text', 'field', 'data'],
+    description: 'A new f# text field, positioned and fully styled (id="fN").',
+    apply: (t) => addStyledTextField(t, { title: 'Text', value: 'Sample text', fontSize: 40 }),
   },
   {
     id: 'number-field',
     label: 'Number data field',
     category: 'Fields',
-    description: 'Add a new f# number field (e.g. a score or counter).',
-    apply: addNumberField,
+    path: ['Text & data'],
+    primaryTab: 'css',
+    keywords: ['number', 'score', 'counter'],
+    description: 'A new f# number field (e.g. a score or counter), big tabular digits.',
+    apply: (t) =>
+      addStyledTextField(t, {
+        title: 'Number',
+        value: '0',
+        fontSize: 64,
+        fontWeight: 800,
+        ftype: 'number',
+        cssExtra: '  font-variant-numeric: tabular-nums;  /* equal-width digits so they don\'t jiggle */',
+      }),
   },
   {
     id: 'dropdown-field',
     label: 'Dropdown data field',
     category: 'Fields',
-    description: 'Add a new f# dropdown field with selectable options.',
+    path: ['Text & data'],
+    primaryTab: 'css',
+    keywords: ['dropdown', 'select', 'choice', 'options'],
+    description: 'A new f# dropdown field with selectable options.',
     apply: addDropdownField,
   },
 
