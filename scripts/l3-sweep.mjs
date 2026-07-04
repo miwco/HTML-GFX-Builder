@@ -48,7 +48,15 @@ const results = await page.evaluate(async (CATEGORY) => {
     row.checks.fontFace = tpl.css.includes('@font-face');
     const isCredits = CATEGORY === 'end-credits';
     const isTicker = CATEGORY === 'ticker';
-    row.checks.masks = isCredits ? tpl.html.includes('credits-track') : isTicker ? tpl.html.includes('ticker-track') : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
+    // Clock categories share the countdown engine; their prefix differs.
+    const clockPrefix = { 'starting-soon': 'ss', 'game-timer': 'gt' }[CATEGORY] || null;
+    const isScoreboard = CATEGORY === 'scoreboard';
+    const isInfographic = CATEGORY === 'infographic';
+    const isQuiz = CATEGORY === 'quiz';
+    row.checks.masks = isCredits ? tpl.html.includes('credits-track')
+      : isTicker ? tpl.html.includes('ticker-track')
+      : clockPrefix ? tpl.html.includes(`${clockPrefix}-clock`)
+      : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
 
     const rt = await runInFrame(tpl, async (w, d) => {
       w.update(JSON.stringify({ f0: 'Test Person', f1: 'Test Title' }));
@@ -78,7 +86,7 @@ const results = await page.evaluate(async (CATEGORY) => {
     }
     row.checks.allPresets = presetOk;
 
-    if (!isCredits && !isTicker && v.maxLines >= 2) {
+    if (['lower-third', 'info-card'].includes(CATEGORY) && v.maxLines >= 2) {
       const t3 = v.create({ animation: { steps: true } });
       row.checks.stepsDecl = Number(t3.settings.steps) >= 2;
       const r3 = await runInFrame(t3, async (w) => {
@@ -89,6 +97,71 @@ const results = await page.evaluate(async (CATEGORY) => {
       if (r3.fatal || r3.errs.length) row.issues.push('steps: ' + (r3.fatal || r3.errs[0]));
     }
 
+    if (clockPrefix) {
+      // Clock categories: after play() the clock must render M:SS and actually tick down.
+      const r7 = await runInFrame(tpl, async (w, d) => {
+        w.play();
+        const clock = d.querySelector(`.${clockPrefix}-clock`);
+        const first = clock.textContent;
+        // startClock() fires after the entrance timeline, so the first tick can land ~1.7 s in.
+        await new Promise((r) => setTimeout(r, 3000));
+        return { first, later: clock.textContent, format: /^\d+:\d{2}$/.test(clock.textContent) };
+      });
+      row.checks.autoFit = !r7.fatal && r7.errs.length === 0 && r7.format && r7.later !== r7.first;
+      if (!row.checks.autoFit) row.issues.push('clock: ' + JSON.stringify(r7));
+      out.push(row);
+      continue;
+    }
+    if (isScoreboard) {
+      // Scoreboards: all four fields (teams + scores) bind through update().
+      const r8 = await runInFrame(tpl, async (w, d) => {
+        w.update(JSON.stringify({ f0: 'HOME', f1: '12', f2: 'AWAY', f3: '8' }));
+        return {
+          teams: d.getElementById('f0')?.textContent === 'HOME' && d.getElementById('f2')?.textContent === 'AWAY',
+          scores: d.getElementById('f1')?.textContent === '12' && d.getElementById('f3')?.textContent === '8',
+        };
+      });
+      row.checks.autoFit = !r8.fatal && r8.errs.length === 0 && !!r8.teams && !!r8.scores;
+      if (!row.checks.autoFit) row.issues.push('scoreboard: ' + JSON.stringify(r8));
+      out.push(row);
+      continue;
+    }
+    if (isInfographic) {
+      // Bar designs rebuild from the textarea; stat designs count the number up during play.
+      const r9 = await runInFrame(tpl, async (w, d) => {
+        if (d.getElementById('ig-bars')) {
+          w.update(JSON.stringify({ f0: 'Alpha | 80\nBeta | 55\nGamma | 30', f1: 'Results' }));
+          return { bars: d.getElementById('ig-bars').children.length };
+        }
+        w.play();
+        const el = d.getElementById('f0');
+        const first = el.textContent;
+        await new Promise((r) => setTimeout(r, 500));
+        return { counting: el.textContent !== first || first === '0' };
+      });
+      row.checks.autoFit = !r9.fatal && r9.errs.length === 0 && (r9.bars >= 3 || !!r9.counting);
+      if (!row.checks.autoFit) row.issues.push('infographic: ' + JSON.stringify(r9));
+      out.push(row);
+      continue;
+    }
+    if (isQuiz) {
+      // Quiz: options bind, and next() reveals the correct answer highlight.
+      const r10 = await runInFrame(tpl, async (w, d) => {
+        w.update(JSON.stringify({ f0: 'Which planet is red?', f1: 'Venus', f2: 'Mars', f3: 'Pluto', f4: 'Titan', f5: 'B' }));
+        w.play();
+        await new Promise((r) => setTimeout(r, 900));
+        w.next();
+        await new Promise((r) => setTimeout(r, 500));
+        return {
+          bound: d.getElementById('f2')?.textContent === 'Mars',
+          revealed: !!d.querySelector('.qz-correct'),
+        };
+      });
+      row.checks.autoFit = !r10.fatal && r10.errs.length === 0 && !!r10.bound && !!r10.revealed;
+      if (!row.checks.autoFit) row.issues.push('quiz: ' + JSON.stringify(r10));
+      out.push(row);
+      continue;
+    }
     if (isTicker) {
       const r6 = await runInFrame(tpl, async (w, d) => {
         w.update(JSON.stringify({ f0: 'Item one\nItem two\nItem three', f1: 'LIVE' }));
@@ -160,6 +233,11 @@ for (const id of ids) {
     w.play();
   }, [id, CATEGORY]);
   await page.waitForTimeout(['end-credits', 'ticker'].includes(CATEGORY) ? 4500 : 1600); // continuous motion needs longer
+  if (CATEGORY === 'quiz') {
+    // Show the answer reveal in the taste shot.
+    await page.evaluate(() => document.getElementById('shot').contentWindow.next());
+    await page.waitForTimeout(800);
+  }
   await page.screenshot({ path: `${OUT}/${id}.png` });
   console.log('shot:', id);
 }

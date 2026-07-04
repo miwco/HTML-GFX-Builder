@@ -36,8 +36,8 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 10, available: true,  description: 'Names, titles, and straps over the action.' },
   { id: 'info-card',     name: 'Info cards',              plannedCount: 3,  available: true,  description: 'Full / half / custom screen information cards.' },
   { id: 'end-credits',   name: 'End credits',             plannedCount: 4,  available: true , description: 'Rolling and card-based credit sequences.' },
-  { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: false, description: 'Pre-show holding loops with a timer.' },
-  { id: 'game-timer',    name: 'Game show timer',         plannedCount: 2,  available: false, description: 'Countdowns and clocks for game formats.' },
+  { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: true , description: 'Pre-show holding loops with a timer.' },
+  { id: 'game-timer',    name: 'Game show timer',         plannedCount: 2,  available: true , description: 'Countdowns and clocks for game formats.' },
   { id: 'scoreboard',    name: 'Scoreboards',             plannedCount: 2,  available: false, description: 'Two-team scores and match status.' },
   { id: 'ticker',        name: 'Tickers',                 plannedCount: 3,  available: true , description: 'Scrolling news and info strips.' },
   { id: 'infographic',   name: 'Infographics',            plannedCount: 2,  available: false, description: 'Charts, stats, and data callouts.' },
@@ -92,7 +92,16 @@ export type AnimPresetId =
   | 'credits-crawl'
   // Ticker motion formats (templates/tickers/tickerPresets.ts):
   | 'ticker-marquee'
-  | 'ticker-flip';
+  | 'ticker-flip'
+  // Countdown-clock formats (templates/startingSoon + templates/gameTimers):
+  | 'hold-loop'
+  | 'timer-run'
+  | 'timer-line-reveal'
+  // Infographic motion formats (templates/infographics/igPresets.ts):
+  | 'count-up'
+  | 'bars-grow'
+  // Quiz format (templates/quiz/quizPresets.ts) — next() reveals the correct answer:
+  | 'quiz-reveal';
 
 export type AnimSpeed = 0.75 | 1 | 1.5;
 

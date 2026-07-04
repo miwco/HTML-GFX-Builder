@@ -19,6 +19,8 @@ export type TemplateType =
   | 'scoreboard'
   | 'info-box'
   | 'starting-soon'
+  | 'infographic'
+  | 'quiz'
   | 'blank';
 
 /** Canvas resolution (1920×1080, 4K, 720p…). Drives the preview scale and base CSS. */
