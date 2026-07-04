@@ -1,0 +1,75 @@
+// lt01 "Hairline" — the most restrained lower third in the set. No panel at all: pure
+// typography beside a single thin vertical accent line. Whitespace does all the work.
+
+import { paletteById, type TemplateVariant } from '../../model/wizard';
+import { defineVariant, lineMasks } from './shared';
+
+export const lt01: TemplateVariant = defineVariant(
+  {
+    id: 'lt01',
+    category: 'lower-third',
+    name: 'Hairline',
+    styleTag: 'minimal',
+    description: 'Pure typography beside one thin vertical line - no panel, whitespace does the work.',
+    maxLines: 2,
+    suggestedLines: [
+      { title: 'Name', sample: 'Alexandra Riva' },
+      { title: 'Title', sample: 'Chief Correspondent' },
+    ],
+    hasLogoSlot: false,
+    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe'],
+    defaultPalette: paletteById('ivory'),
+    defaultFontId: 'inter',
+    defaultZone: 'bottom-left',
+  },
+  {
+    name: 'Hairline',
+    description:
+      'The quietest design of the set: no panel behind the text, just confident type and a ' +
+      'single 3 px vertical hairline standing beside it. Best over calm, well-lit footage.',
+    uicolor: '1',
+  },
+  (o) => ({
+    html: `    <!-- Hairline structure: [vertical accent line] | [transparent text block]. -->
+    <div class="l3-accent"></div>
+    <div class="l3-box">
+${lineMasks(o)}
+    </div>`,
+    css: `/* The hairline — a thin vertical line spanning the full height of the text block.
+   It is the design's only non-text element; presets grow it in via transform. */
+.l3-accent {
+  position: absolute;               /* pinned inside the positioned .l3 root */
+  left: 0;                          /* sits at the block's left edge */
+  top: 0;                           /* stretches from the very top… */
+  bottom: 0;                        /* …to the very bottom of the text block */
+  width: calc(3px * var(--scale));  /* a true hairline — just visible at 1080p */
+  background: var(--accent);        /* the one small, sharp dose of accent color */
+  will-change: transform;           /* hint the browser: presets animate this line */
+}
+
+/* The text block — deliberately transparent: no panel, whitespace does the work. */
+.l3-box {
+  padding-left: calc(27px * var(--scale));  /* room for the 3px line + a generous 24px gap */
+}
+
+/* Name line — big and confident; the only heavy element in the design. */
+.l3-name {
+  font-size: calc(54px * var(--scale));  /* headline size (values are 1080p reference) */
+  font-weight: 700;                 /* bold enough to carry the design on its own */
+  line-height: 1.08;                /* big text sits tight */
+  letter-spacing: -0.01em;          /* large sizes tighten slightly */
+  color: var(--text-color);         /* primary text color */
+}
+
+/* Title line (and any extra line) — quiet on purpose: smaller, lighter, dimmed. */
+.l3-title,
+.l3-extra {
+  font-size: calc(24px * var(--scale));  /* ≈2.2:1 below the name — clear hierarchy */
+  font-weight: 400;                 /* regular weight; contrast comes from the name */
+  line-height: 1.3;                 /* secondary text gets room to breathe */
+  color: var(--text-dim);           /* dimmed — never pure white twice */
+  margin-top: calc(6px * var(--scale));  /* small gap: name + title read as one unit */
+}`,
+    hasAccent: true,
+  }),
+);
