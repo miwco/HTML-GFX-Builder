@@ -1,0 +1,84 @@
+import type { ExtraFieldSpec, TemplateVariant } from '../../../model/wizard';
+import type { DraftPatch, WizardDraft } from '../draft';
+
+interface Props {
+  variant: TemplateVariant;
+  draft: WizardDraft;
+  onDraft: (patch: DraftPatch) => void;
+}
+
+const EXTRA_FTYPES: ExtraFieldSpec['ftype'][] = ['textfield', 'number', 'checkbox', 'color', 'dropdown'];
+
+/** Step 3 — the data fields: 1–3 visible text lines (the design adapts) + optional extras. */
+export default function FieldsStep({ variant, draft, onDraft }: Props) {
+  const lines = draft.lines;
+
+  const setLine = (i: number, key: 'title' | 'sample', value: string) => {
+    const next = lines.map((l, k) => (k === i ? { ...l, [key]: value } : l));
+    onDraft({ lines: next });
+  };
+
+  const setExtra = (i: number, patch: Partial<ExtraFieldSpec>) => {
+    const next = draft.extraFields.map((f, k) => (k === i ? { ...f, ...patch } : f));
+    onDraft({ extraFields: next });
+  };
+
+  return (
+    <div>
+      <div className="panel-section">
+        <h3>Text lines <span className="muted">(the design adapts — {variant.maxLines} max for {variant.name})</span></h3>
+        {lines.map((line, i) => (
+          <div className="wz-line-row" key={i}>
+            <span className="wz-fid">f{i}</span>
+            <input
+              placeholder="Label shown to the operator"
+              value={line.title}
+              onChange={(e) => setLine(i, 'title', e.target.value)}
+            />
+            <input
+              placeholder="Sample text shown in the design"
+              value={line.sample}
+              onChange={(e) => setLine(i, 'sample', e.target.value)}
+            />
+            <button
+              disabled={lines.length <= 1}
+              title="Remove this line"
+              onClick={() => onDraft({ lines: lines.filter((_, k) => k !== i) })}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        {lines.length < variant.maxLines && (
+          <button onClick={() => onDraft({ lines: [...lines, { title: `Line ${lines.length + 1}`, sample: 'More text' }] })}>
+            + Add a line
+          </button>
+        )}
+      </div>
+
+      <div className="panel-section">
+        <h3>Extra fields <span className="muted">(added to the SPX form, not shown in the design)</span></h3>
+        {draft.extraFields.map((f, i) => (
+          <div className="wz-line-row" key={i}>
+            <span className="wz-fid">f{lines.length + i}</span>
+            <input placeholder="Label" value={f.title} onChange={(e) => setExtra(i, { title: e.target.value })} />
+            <select value={f.ftype} onChange={(e) => setExtra(i, { ftype: e.target.value as ExtraFieldSpec['ftype'] })}>
+              {EXTRA_FTYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <input placeholder="Default value" value={f.value} onChange={(e) => setExtra(i, { value: e.target.value })} />
+            <button title="Remove" onClick={() => onDraft({ extraFields: draft.extraFields.filter((_, k) => k !== i) })}>✕</button>
+          </div>
+        ))}
+        <button onClick={() => onDraft({ extraFields: [...draft.extraFields, { title: 'Extra', ftype: 'textfield', value: '' }] })}>
+          + Add an extra field
+        </button>
+        <p className="hint" style={{ marginTop: 8 }}>
+          Extras land in the template definition for you to wire up in code — a good first exercise.
+          You can add more later in the Data panel.
+        </p>
+      </div>
+    </div>
+  );
+}

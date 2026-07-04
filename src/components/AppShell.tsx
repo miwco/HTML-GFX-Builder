@@ -4,7 +4,7 @@ import CodeEditor from './CodeEditor';
 import PreviewFrame from './PreviewFrame';
 import PlayoutSimulator from './PlayoutSimulator';
 import SidePanel from './SidePanel';
-import TemplateGallery from './TemplateGallery';
+import CreationWizard from './wizard/CreationWizard';
 
 /**
  * Three-pane workspace: code editor (left), live preview + playout simulator (center),
@@ -72,8 +72,8 @@ export default function AppShell() {
         </section>
       </div>
 
-      {/* Template gallery overlay — shown on startup and via "New project". */}
-      <TemplateGallery />
+      {/* Creation wizard overlay — shown on startup and via "New project". */}
+      <CreationWizard />
     </div>
   );
 }

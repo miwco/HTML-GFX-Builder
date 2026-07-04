@@ -295,6 +295,154 @@ kbd {
 .ref-prop-desc { font-size: 12px; color: var(--text-dim); margin: 3px 0; line-height: 1.4; }
 .ref-prop-eg { font-size: 11px; color: #4ec9b0; }
 
+/* ---------- Bundled template fonts (for honest wizard font previews) ---------- */
+@font-face { font-family: 'Inter'; src: url('/fonts/inter.woff2') format('woff2'); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: 'Space Grotesk'; src: url('/fonts/space-grotesk.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'Manrope'; src: url('/fonts/manrope.woff2') format('woff2'); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: 'Archivo'; src: url('/fonts/archivo.woff2') format('woff2'); font-weight: 400 900; font-display: swap; }
+@font-face { font-family: 'Oswald'; src: url('/fonts/oswald.woff2') format('woff2'); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: 'Bebas Neue'; src: url('/fonts/bebas-neue.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+
+/* ---------- Creation wizard ---------- */
+.wz-modal {
+  width: min(1240px, 94vw);
+  height: min(820px, 92vh);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.wz-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.wz-header h2 { margin: 0; font-size: 18px; }
+.wz-dots { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.wz-dot {
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+}
+.wz-dot span { opacity: 0.65; margin-right: 2px; }
+.wz-dot.done { color: var(--text); }
+.wz-dot.active { border-color: var(--accent); color: var(--text); background: rgba(58, 160, 255, 0.08); }
+.wz-dot:disabled { opacity: 0.45; cursor: default; }
+
+.wz-body { flex: 1; display: flex; min-height: 0; }
+.wz-step { flex: 1; overflow: auto; padding: 20px; min-width: 0; }
+.wz-side {
+  flex: 0 0 44%;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.wz-footer {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+/* Live preview */
+.wz-preview { display: flex; flex-direction: column; height: 100%; }
+.wz-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #20262e;
+  background-image:
+    linear-gradient(45deg, #2c333d 25%, transparent 25%),
+    linear-gradient(-45deg, #2c333d 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2c333d 75%),
+    linear-gradient(-45deg, transparent 75%, #2c333d 75%);
+  background-size: 24px 24px;
+  background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+}
+.wz-stage iframe { position: absolute; top: 50%; left: 50%; border: 0; background: transparent; box-shadow: 0 10px 50px rgba(0,0,0,0.55); }
+.wz-preview-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* Step 0: entry cards */
+.wz-entry { display: flex; gap: 14px; padding: 40px 10px; justify-content: center; flex-wrap: wrap; }
+.wz-entry-card {
+  width: 280px;
+  padding: 26px 22px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 10px;
+  line-height: 1.4;
+}
+.wz-entry-card .wz-entry-icon { font-size: 22px; color: var(--accent); }
+.wz-entry-card strong { font-size: 15px; }
+.wz-entry-card:disabled { opacity: 0.55; cursor: default; }
+
+/* Step 1: categories */
+.wz-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.wz-cat { text-align: left; padding: 14px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+.wz-cat.selected { border-color: var(--accent); }
+.wz-cat:disabled { opacity: 0.5; cursor: default; }
+.wz-cat-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wz-count { font-size: 11px; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 8px; }
+.wz-soon { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+
+/* Step 2: format + variants */
+.wz-format { gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.wz-format label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
+.wz-variant-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.wz-variant { padding: 0; overflow: hidden; border-radius: 8px; text-align: left; }
+.wz-variant.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.wz-mini { aspect-ratio: 16 / 9; overflow: hidden; position: relative; background: #14181f; pointer-events: none; }
+.wz-mini iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: top left; transform: scale(0.128); }
+.wz-variant-cap { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; }
+.wz-style-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+.wz-style-tag[data-style='minimal'] { color: #e8c547; }
+.wz-style-tag[data-style='sport'] { color: #c8f31d; }
+.wz-style-tag[data-style='glass'] { color: #7dd3fc; }
+
+/* Step 3: field rows */
+.wz-line-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.wz-line-row input { flex: 1; }
+.wz-fid { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent); width: 24px; flex: none; }
+
+/* Step 4: style pickers */
+.wz-palettes { display: flex; flex-wrap: wrap; gap: 8px; }
+.wz-palette { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; border-radius: 8px; }
+.wz-palette.selected { border-color: var(--accent); }
+.wz-swatch { width: 58px; height: 34px; border-radius: 5px; position: relative; display: block; border: 1px solid rgba(255,255,255,0.12); }
+.wz-swatch-accent { position: absolute; left: 6px; top: 6px; bottom: 6px; width: 8px; border-radius: 2px; }
+.wz-palette-name { font-size: 11px; color: var(--text-dim); }
+.wz-fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wz-font { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 12px; border-radius: 8px; }
+.wz-font.selected { border-color: var(--accent); }
+.wz-font-sample { font-size: 26px; line-height: 1; width: 40px; text-align: center; flex: none; }
+.wz-font .hint { display: block; }
+.wz-zones { display: grid; grid-template-columns: repeat(3, 30px); gap: 4px; }
+.wz-zone { width: 30px; height: 22px; border-radius: 4px; padding: 0; }
+.wz-zone.selected { border-color: var(--accent); background: rgba(58, 160, 255, 0.25); }
+.wz-nudge { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
+.wz-nudge input { width: 80px; }
+
+/* Step 5: animation */
+.wz-anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.wz-anim { text-align: left; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
+.wz-anim.selected { border-color: var(--accent); }
+
 .issue { padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; line-height: 1.35; border: 1px solid var(--border); }
 .issue.error { background: rgba(255, 107, 107, 0.08); border-color: rgba(255, 107, 107, 0.4); }
 .issue.warn { background: rgba(255, 180, 84, 0.08); border-color: rgba(255, 180, 84, 0.4); }
