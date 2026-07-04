@@ -70,12 +70,15 @@ source of truth, and always exports to a working SPX package.
 - [x] Full/half/custom screen info cards (3) — *first wave*
 - [x] End credits (4) — *first wave*
 - [x] Tickers (3) — *first wave*
-- [ ] Starting-soon loop with timer (3)
-- [ ] Game show countdown/timer (2)
-- [ ] Scoreboards (2)
-- [ ] Infographics (2)
-- [ ] Corner bug / picture placeholder (1)
-- [ ] Game-show quiz graphics with options (1)
+- [x] Starting-soon loop with timer (3) — *wave 2* (shared countdown engine, hold-loop preset)
+- [x] Game show countdown/timer (2) — *wave 2* (timer-run pop + timer-line-reveal)
+- [x] Scoreboards (2) — *wave 2* (4-field contract, score-pop on update)
+- [x] Infographics (2) — *wave 2* (count-up stat + bars-grow engines)
+- [x] Corner bug / picture placeholder (1) — *wave 2* (logo slot on the standard assembler)
+- [x] Game-show quiz graphics with options (1) — *wave 2* (next() reveals the correct answer)
+
+**The catalog is complete: 31 designs across all 10 categories, every one family-consistent
+with its lower-third siblings (§8), swept per category, and covered by an E2E spec.**
 
 ### Later (explicitly deferred)
 - [ ] Full package manager (named, saved packages; apply-to-all; share as a file) — the
@@ -98,7 +101,8 @@ source of truth, and always exports to a working SPX package.
 - [x] Playwright E2E for core UI flows
 - [x] Every new user-facing flow ships with a Playwright spec (wizard suite: 9 specs; package
       suite: 6 specs — custom colors, font import + export, brand match, one create+play spec
-      per new category, ticker loop sanity)
+      per new category, ticker loop sanity; wave-2 suite: 6 specs — clock ticks, score update,
+      corner bug, count-up, quiz reveal)
 - [x] Lower thirds ship with a harness sweep (`scripts/l3-sweep.mjs <shots-dir> <category>`:
       validate + runtime × preset × easing + auto-fit/track checks + taste screenshots);
       category-aware — run for every category (`lower-third`, `info-card`, `end-credits`,

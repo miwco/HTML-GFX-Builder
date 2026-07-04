@@ -24,12 +24,15 @@ npm run build    # typecheck + production build to dist/
   and its export**, size, 9-zone safe-area position) → **Animation** (signature GSAP presets,
   speed, **12 easing presets**, multi-step reveal), with a persistent live preview (Play/Stop) at
   every step. Aspect ratio (16:9 / 9:16 / 1:1), resolution, and fps chosen along the way.
-- **Template catalog (20 designs)** — **10 lower thirds** (4 minimal · 3 sport · 3 glass),
-  **3 info cards**, **4 end-credit formats** (stacked roll, two-column roll, one-pager swap,
-  horizontal crawl — each ending with a logo + year block, all driven by a simple
-  `Role | Name` text field), and **3 tickers** (seamless marquees + an item flip). Every category
-  ships one design per style family, tuned to read as a **sibling** of its lower-third
-  counterpart.
+- **Template catalog (31 designs, 10 categories)** — **10 lower thirds** (4 minimal · 3 sport ·
+  3 glass), **3 info cards**, **4 end-credit formats** (stacked roll, two-column roll, one-pager
+  swap, horizontal crawl — each ending with a logo + year block, all driven by a simple
+  `Role | Name` text field), **3 tickers** (seamless marquees + an item flip), **3 starting-soon
+  holds** with a live countdown, **2 game-show timers**, **2 scoreboards** (scores pop when they
+  change on air), **2 infographics** (a count-up stat and animated bars), a **corner bug** with
+  a logo slot, and a **quiz card** whose correct answer is revealed on Next/Continue. Every
+  category ships designs tuned to read as **siblings** of their lower-third counterparts, so a
+  project's graphics form one package.
 - **Broadcast packages** — the app remembers your project's **brand** (style family, palette
   including custom colors, font including imported ones); the wizard's "Match current project"
   toggle applies it to every new graphic, so everything you make in a project belongs to one
@@ -77,10 +80,11 @@ src/
   model/        types, SPXGCTemplateDefinition parse/serialize, wizard data model (categories,
                 variants, palettes), bundled-fonts registry + font import, project brand,
                 easing presets
-  templates/    blank + the catalog (resolved via catalog.ts): shared/ (generic assembler),
-                lowerThirds/ (lt01…lt10 + the GSAP animation presets with the marked-region
-                contract), infoCards/ (card01…card03), endCredits/ (cr01…cr04 + roll/pager/crawl
-                engines), tickers/ (tk01…tk03 + marquee/flip engines)
+  templates/    blank + the catalog (resolved via catalog.ts): shared/ (generic assembler +
+                countdown-clock engine), lowerThirds/ (lt01…lt10 + the GSAP animation presets
+                with the marked-region contract), infoCards/, endCredits/ (roll/pager/crawl
+                engines), tickers/ (marquee/flip engines), startingSoon/, gameTimers/,
+                scoreboards/, cornerBug/, infographics/ (count-up/bars engines), quiz/
   store/        zustand store (template + UI state, undo history)
   preview/      composeDocument (inline CSS + GSAP + JS + assets into the iframe)
   blocks/       hierarchical building-block registry + deterministic edit helpers + :root CSS
@@ -106,6 +110,5 @@ exporters can be added later without touching the UI.
 
 - The Monaco editor loads from a CDN in dev; self-hosting it would make the builder fully offline.
 - AI is a deterministic stub — wiring a real Claude-backed `AIProvider` is a drop-in replacement.
-- Possible next steps: more graphic types (starting-soon loop, game-show timer, scoreboard,
-  infographic, corner bug, quiz), CasparCG + OGraf exporters, and lightweight visual editing on
-  top of the code.
+- Possible next steps: CasparCG + OGraf exporters, the Claude-backed AI mode, a full package
+  manager, and lightweight visual editing on top of the code.

@@ -72,13 +72,13 @@ export default function CreationWizard() {
   const patch = (p: DraftPatch) => setDraft((d) => mergeDraft(d, p));
 
   const startBlank = () => {
-    applyTemplate(createBlankTemplate(draftResolution(draft), draft.fps));
+    applyTemplate(createBlankTemplate(draftResolution(draft), draft.fps), { resetSampleData: true });
     setActiveTab('html');
   };
 
   const create = () => {
     if (!previewTemplate || !variant) return;
-    applyTemplate(previewTemplate);
+    applyTemplate(previewTemplate, { resetSampleData: true });
     setActiveTab('html');
     // Remember this look as the project brand so the next graphic matches it.
     saveBrand({

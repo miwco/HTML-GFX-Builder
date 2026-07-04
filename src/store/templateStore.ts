@@ -49,7 +49,7 @@ interface TemplateState {
   setJs: (js: string) => void;
 
   /** Replace the whole template (used by building blocks, AI, and template gallery). */
-  applyTemplate: (template: SpxTemplate, summary?: string) => void;
+  applyTemplate: (template: SpxTemplate, opts?: { resetSampleData?: boolean }) => void;
   /** Restore the template from before the last apply. No-op when history is empty. */
   undo: () => void;
   /** Record what the last block touched (for the suggestion chips). */
@@ -118,12 +118,14 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   setCss: (css) => set((s) => ({ template: { ...s.template, css }, validation: null })),
   setJs: (js) => set((s) => ({ template: { ...s.template, js }, validation: null })),
 
-  applyTemplate: (template) =>
+  applyTemplate: (template, opts) =>
     set((s) => {
       const synced = withParsedFields(template);
       return {
         template: synced,
-        sampleData: syncSampleData(synced, s.sampleData),
+        // In-place edits (blocks, panels, AI) keep typed sample values; creating a NEW
+        // project must not leak the previous template's values into matching field ids.
+        sampleData: syncSampleData(synced, opts?.resetSampleData ? {} : s.sampleData),
         validation: null,
         galleryOpen: false,
         // Snapshot the pre-apply template so the action can be undone.

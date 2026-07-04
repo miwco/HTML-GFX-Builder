@@ -77,7 +77,9 @@ src/
                 variantsFor/variantById):
                   shared/       base.ts (generic assembler pieces: :root vars, zones, auto-fit,
                                 runtime scaffold) + standard.ts (CategorySpec, assembleStandard,
-                                makeDefineVariant) — every category builds on these
+                                makeDefineVariant) + clock.ts (countdown engine: hidden minutes
+                                field → M:SS + {prefix}-done at zero; DOM-ready-safe) — every
+                                category builds on these
                   lowerThirds/  lt01…lt10 on shared.ts (prefix 'l3') + animPresets.ts (6
                                 marked-region GSAP presets, prefix-parameterized — they animate
                                 any category's .{prefix}-box structure)
@@ -90,6 +92,21 @@ src/
                                 ticker-flip); data-driven: #f0 lines → #ticker-track items;
                                 marquee = items rendered twice, slide one set width, linear
                                 repeat:-1 (seamless loop)
+                  startingSoon/ ss01…ss03 (prefix 'ss', hold-loop preset: entrance + calm
+                                .ss-pulse breathing + clock via shared/clock.ts, minutes in f2)
+                  gameTimers/   gt01…gt02 (prefix 'gt', type 'countdown'; timer-run pop +
+                                timer-line-reveal; minutes in f1; .gt-done styles time-up)
+                  scoreboards/  sb01…sb02 (prefix 'sb'; fixed 4-field contract f0-f3 as
+                                sb-masks so the standard presets drive them; update() pops a
+                                score's mask when it changes on air)
+                  cornerBug/    bug01 (prefix 'bug', standard assembler, logo slot +
+                                placeholder mark)
+                  infographics/ ig01…ig02 (prefix 'ig'; design owns fields + runtimeExtraJs;
+                                igPresets: count-up — suffix-preserving number tween — and
+                                bars-grow over #ig-bars .ig-bar-fill[data-value])
+                  quiz/         qz01 (prefix 'qz'; f0 question, f1-f4 options, hidden f5
+                                correct-answer dropdown; next() → revealAnswer() adds
+                                .qz-correct/.qz-dim, update() clears the reveal)
   store/        templateStore.ts — zustand; template + UI state; undo history; lastInserted
   preview/      composeDocument.ts — inlines CSS + GSAP + JS + assets into the iframe srcdoc
   blocks/       registry.ts (hierarchical BuildingBlock[]), edit.ts, cssVars.ts (:root vars),
@@ -128,7 +145,17 @@ keep working via deterministic patches:
   (`animSpeed`, `easeIn`, `easeOut`). Presets are per-category (`blocks/animPatch.ts
   presetsForType`); the root prefix is detected from `class="(\w+)-box"`. Preset/steps swaps
   re-emit the region (undoable); user code outside the markers is never modified. The steps
-  toggle is hidden for end-credits/tickers (continuous formats).
+  toggle only shows for line-based categories (lower thirds, info cards, scoreboards, corner
+  bug) — continuous, clock, and data-driven formats hide it.
+
+**Sample data on create:** `applyTemplate(template, { resetSampleData: true })` is used by the
+wizard so a new project starts from ITS field defaults — plain `applyTemplate` (blocks, panels,
+AI) intentionally preserves typed sample values for matching field ids. Don't drop the flag from
+the wizard path: the old template's values would leak into the new graphic's fields.
+
+**Template runtime rule:** generated template.js loads in `<head>` in exported packages — any
+load-time DOM work (initial rebuild/paint) must use the DOM-ready guard pattern (see
+shared/clock.ts or the rebuild calls in credits/tickers/infographics runtimes).
 
 **Easing doctrine** lives in `model/easings.ts` + DESIGN_LANGUAGE §4: entrances use Out-direction
 curves, exits use In-direction and run faster; Back Out for pops; Bounce/Elastic playful-only;
