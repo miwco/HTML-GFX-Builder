@@ -35,11 +35,20 @@ export default function FieldsStep({ variant, draft, onDraft }: Props) {
               value={line.title}
               onChange={(e) => setLine(i, 'title', e.target.value)}
             />
-            <input
-              placeholder="Sample text shown in the design"
-              value={line.sample}
-              onChange={(e) => setLine(i, 'sample', e.target.value)}
-            />
+            {variant.suggestedLines[i]?.sample.includes('\n') ? (
+              <textarea
+                rows={5}
+                placeholder="One entry per line — e.g.  Role | Name"
+                value={line.sample}
+                onChange={(e) => setLine(i, 'sample', e.target.value)}
+              />
+            ) : (
+              <input
+                placeholder="Sample text shown in the design"
+                value={line.sample}
+                onChange={(e) => setLine(i, 'sample', e.target.value)}
+              />
+            )}
             <button
               disabled={lines.length <= 1}
               title="Remove this line"

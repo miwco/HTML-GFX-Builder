@@ -4,10 +4,12 @@
 import type { TemplateCategory, TemplateVariant } from '../model/wizard';
 import { LOWER_THIRDS } from './lowerThirds';
 import { INFO_CARDS } from './infoCards';
+import { END_CREDITS } from './endCredits';
 
 export const CATALOG: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
   'lower-third': LOWER_THIRDS,
   'info-card': INFO_CARDS,
+  'end-credits': END_CREDITS,
 };
 
 export function variantsFor(category: TemplateCategory | null): TemplateVariant[] {

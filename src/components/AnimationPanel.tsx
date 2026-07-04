@@ -1,7 +1,7 @@
 import { useTemplateStore } from '../store/templateStore';
-import { ANIM_PRESETS, presetById } from '../templates/lowerThirds/animPresets';
+import { presetConfigFromTemplate, presetsForType, readAnimationInfo, setAnimKnob, swapAnimationPreset } from '../blocks/animPatch';
 import { EASINGS, resolveEasing, type EasingId } from '../model/easings';
-import { presetConfigFromTemplate, readAnimationInfo, setAnimKnob, swapAnimationPreset } from '../blocks/animPatch';
+import type { AnimPresetId } from '../model/wizard';
 import { replaceDefinitionInHtml } from '../model/spxDefinition';
 
 const SPEEDS = [
@@ -35,8 +35,10 @@ export default function AnimationPanel() {
     );
   }
 
-  const swapPreset = (presetId: (typeof ANIM_PRESETS)[number]['id']) => {
-    const preset = presetById(presetId);
+  const categoryPresets = presetsForType(template.type);
+
+  const swapPreset = (presetId: AnimPresetId) => {
+    const preset = categoryPresets.find((p) => p.id === presetId) ?? categoryPresets[0];
     // A new preset brings its own designed feel: reset the eases to its auto pair.
     const cfg = {
       ...presetConfigFromTemplate(template, info.steps),
@@ -50,7 +52,9 @@ export default function AnimationPanel() {
   const setSpeed = (value: number) => setJs(setAnimKnob(template.js, 'animSpeed', String(value)));
 
   const setEasing = (easing: EasingId) => {
-    const auto = info.presetId ? presetById(info.presetId).autoEase : { easeIn: 'power2.out', easeOut: 'power2.in' };
+    const auto =
+      (info.presetId && categoryPresets.find((p) => p.id === info.presetId)?.autoEase) ||
+      { easeIn: 'power2.out', easeOut: 'power2.in' };
     const pair = resolveEasing(easing, auto);
     let js = setAnimKnob(template.js, 'easeIn', pair.easeIn);
     js = setAnimKnob(js, 'easeOut', pair.easeOut);
@@ -77,7 +81,7 @@ export default function AnimationPanel() {
       <div className="panel-section">
         <h3>Preset <span className="muted">(rewrites only the marked region — undo with Ctrl+Z)</span></h3>
         <div className="wz-anim-grid" style={{ gridTemplateColumns: '1fr' }}>
-          {ANIM_PRESETS.map((p) => (
+          {categoryPresets.map((p) => (
             <button
               key={p.id}
               className={`wz-anim ${info.presetId === p.id ? 'selected' : ''}`}
@@ -130,6 +134,7 @@ export default function AnimationPanel() {
         </p>
       </div>
 
+      {template.type !== 'end-credits' && (
       <div className="panel-section">
         <label className="row" style={{ gap: 8, alignItems: 'center', cursor: 'pointer' }}>
           <input
@@ -146,6 +151,7 @@ export default function AnimationPanel() {
           </span>
         </label>
       </div>
+      )}
     </div>
   );
 }

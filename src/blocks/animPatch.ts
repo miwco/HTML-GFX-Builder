@@ -3,9 +3,23 @@
 // easeOut) and (b) the region between the markers when swapping presets. Everything the
 // user wrote outside the markers is never modified.
 
-import { ANIMATION_MARK_CLOSE, ANIMATION_MARK_OPEN, ANIM_PRESETS, presetById, type PresetConfig } from '../templates/lowerThirds/animPresets';
+import { ANIMATION_MARK_CLOSE, ANIMATION_MARK_OPEN, ANIM_PRESETS, type AnimPreset, type PresetConfig } from '../templates/lowerThirds/animPresets';
+import { CREDITS_PRESETS } from '../templates/endCredits/creditsPresets';
 import type { AnimPresetId } from '../model/wizard';
 import type { SpxTemplate } from '../model/types';
+
+/** The presets that apply to a template, by its category. */
+export function presetsForType(type: SpxTemplate['type']): AnimPreset[] {
+  return type === 'end-credits' ? CREDITS_PRESETS : ANIM_PRESETS;
+}
+
+const ALL_PRESETS = [...ANIM_PRESETS, ...CREDITS_PRESETS];
+
+function anyPresetById(id: AnimPresetId): AnimPreset {
+  const p = ALL_PRESETS.find((x) => x.id === id);
+  if (!p) throw new Error(`Unknown animation preset: ${id}`);
+  return p;
+}
 
 export interface AnimationInfo {
   /** True when the js contains the managed markers (wizard-generated templates). */
@@ -22,7 +36,7 @@ export interface AnimationInfo {
 export function readAnimationInfo(js: string): AnimationInfo {
   const hasRegion = js.includes(ANIMATION_MARK_OPEN) && js.includes(ANIMATION_MARK_CLOSE);
   const presetName = (js.match(/\/\/ Preset: ([^—\n]+)/) || [])[1]?.trim() ?? null;
-  const preset = ANIM_PRESETS.find((p) => p.name === presetName);
+  const preset = ALL_PRESETS.find((p) => p.name === presetName);
   return {
     hasRegion,
     presetId: preset?.id ?? null,
@@ -49,7 +63,7 @@ export function presetConfigFromTemplate(template: SpxTemplate, steps: boolean):
   const prefix = (template.html.match(/class="(\w+)-box"/) || [])[1] ?? 'l3';
   // Visible text lines are the id="fN" elements wrapped in the standard line masks.
   const lineCount = Math.max(1, (template.html.match(/id="f\d+"[^>]*class="\w+-/g) || []).length);
-  const preset = info.presetId ? presetById(info.presetId) : ANIM_PRESETS[0];
+  const preset = info.presetId ? anyPresetById(info.presetId) : ANIM_PRESETS[0];
   return {
     prefix,
     lineCount,
@@ -66,7 +80,7 @@ export function swapAnimationPreset(js: string, presetId: AnimPresetId, cfg: Pre
   const start = js.indexOf(ANIMATION_MARK_OPEN);
   const end = js.indexOf(ANIMATION_MARK_CLOSE);
   if (start === -1 || end === -1) return js;
-  const preset = presetById(presetId);
+  const preset = anyPresetById(presetId);
   const block = preset.emit(cfg);
   return js.slice(0, start) + block + js.slice(end + ANIMATION_MARK_CLOSE.length);
 }

@@ -35,7 +35,7 @@ export type TemplateCategory =
 export const CATEGORIES: CategoryInfo[] = [
   { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 10, available: true,  description: 'Names, titles, and straps over the action.' },
   { id: 'info-card',     name: 'Info cards',              plannedCount: 3,  available: true,  description: 'Full / half / custom screen information cards.' },
-  { id: 'end-credits',   name: 'End credits',             plannedCount: 3,  available: false, description: 'Rolling and card-based credit sequences.' },
+  { id: 'end-credits',   name: 'End credits',             plannedCount: 4,  available: true , description: 'Rolling and card-based credit sequences.' },
   { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: false, description: 'Pre-show holding loops with a timer.' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 2,  available: false, description: 'Countdowns and clocks for game formats.' },
   { id: 'scoreboard',    name: 'Scoreboards',             plannedCount: 2,  available: false, description: 'Two-team scores and match status.' },
@@ -85,7 +85,11 @@ export type AnimPresetId =
   | 'mask-wipe'
   | 'pop-spring'
   | 'snap-stinger'
-  | 'blur-in';
+  | 'blur-in'
+  // End-credits motion formats (templates/endCredits/creditsPresets.ts):
+  | 'credits-roll'
+  | 'credits-pages'
+  | 'credits-crawl';
 
 export type AnimSpeed = 0.75 | 1 | 1.5;
 

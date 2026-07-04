@@ -46,7 +46,8 @@ const results = await page.evaluate(async (CATEGORY) => {
     row.checks.rootVars = tpl.css.includes('--accent:') && tpl.css.includes('--scale:');
     row.checks.markers = tpl.js.includes('== ANIMATION') && tpl.js.includes('== END ANIMATION ==');
     row.checks.fontFace = tpl.css.includes('@font-face');
-    row.checks.masks = /-mask/.test(tpl.html) && tpl.html.includes('id="f0"');
+    const isCredits = CATEGORY === 'end-credits';
+    row.checks.masks = isCredits ? tpl.html.includes('credits-track') : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
 
     const rt = await runInFrame(tpl, async (w, d) => {
       w.update(JSON.stringify({ f0: 'Test Person', f1: 'Test Title' }));
@@ -76,7 +77,7 @@ const results = await page.evaluate(async (CATEGORY) => {
     }
     row.checks.allPresets = presetOk;
 
-    if (v.maxLines >= 2) {
+    if (!isCredits && v.maxLines >= 2) {
       const t3 = v.create({ animation: { steps: true } });
       row.checks.stepsDecl = Number(t3.settings.steps) >= 2;
       const r3 = await runInFrame(t3, async (w) => {
@@ -87,6 +88,17 @@ const results = await page.evaluate(async (CATEGORY) => {
       if (r3.fatal || r3.errs.length) row.issues.push('steps: ' + (r3.fatal || r3.errs[0]));
     }
 
+    if (isCredits) {
+      const r5 = await runInFrame(tpl, async (w, d) => {
+        w.update(JSON.stringify({ f0: 'CREW\nDirector | Ada Lovelace\nProducer | Grace Hopper', f1: '(c) 2026 Test' }));
+        const track = d.getElementById('credits-track');
+        return { rows: track.children.length, hasEnd: !!track.querySelector('.credits-end') };
+      });
+      row.checks.autoFit = !r5.fatal && r5.errs.length === 0 && r5.rows >= 2 && r5.hasEnd;
+      if (!row.checks.autoFit) row.issues.push('credits-track: ' + JSON.stringify(r5));
+      out.push(row);
+      continue;
+    }
     const t4 = v.create({ lines: [{ title: 'Name', sample: 'X' }, { title: 'Title', sample: 'T' }] });
     const r4 = await runInFrame(t4, async (w, d) => {
       const long = 'Alexandrina Konstantinopolous-Vanderberg Featherstonehaugh III';
@@ -135,7 +147,7 @@ for (const id of ids) {
     w.update(JSON.stringify({ f0: v.suggestedLines[0]?.sample || 'Name', f1: v.suggestedLines[1]?.sample || '' }));
     w.play();
   }, [id, CATEGORY]);
-  await page.waitForTimeout(1600); // let the entrance settle
+  await page.waitForTimeout(CATEGORY === 'end-credits' ? 4500 : 1600); // continuous motion needs longer
   await page.screenshot({ path: `${OUT}/${id}.png` });
   console.log('shot:', id);
 }
