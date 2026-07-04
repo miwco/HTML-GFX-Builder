@@ -1,11 +1,12 @@
 import { ANIM_PRESETS } from '../../../templates/lowerThirds/animPresets';
 import { CREDITS_PRESETS } from '../../../templates/endCredits/creditsPresets';
+import { TICKER_PRESETS } from '../../../templates/tickers/tickerPresets';
 import { EASINGS, type EasingId } from '../../../model/easings';
 import type { AnimSpeed, TemplateVariant } from '../../../model/wizard';
 import type { DraftPatch, WizardDraft } from '../draft';
 
 /** Every preset across categories (a variant lists which ones suit it). */
-const ALL_PRESETS = [...ANIM_PRESETS, ...CREDITS_PRESETS];
+const ALL_PRESETS = [...ANIM_PRESETS, ...CREDITS_PRESETS, ...TICKER_PRESETS];
 
 interface Props {
   variant: TemplateVariant;
@@ -26,7 +27,7 @@ export default function AnimationStep({ variant, draft, onDraft, onReplay }: Pro
   const presets = ALL_PRESETS.filter((p) => variant.animationPresets.includes(p.id));
   const active = draft.animation.presetId ?? variant.animationPresets[0];
   // Credits have no line-reveal steps (their content is the credit list itself).
-  const stepsApply = draft.lines.length > 1 && variant.category !== 'end-credits';
+  const stepsApply = draft.lines.length > 1 && !['end-credits', 'ticker'].includes(variant.category);
 
   const standard = EASINGS.filter((e) => e.tag === 'standard');
   const playful = EASINGS.filter((e) => e.tag === 'playful');

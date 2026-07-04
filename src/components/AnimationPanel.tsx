@@ -134,7 +134,7 @@ export default function AnimationPanel() {
         </p>
       </div>
 
-      {template.type !== 'end-credits' && (
+      {!['end-credits', 'ticker'].includes(template.type) && (
       <div className="panel-section">
         <label className="row" style={{ gap: 8, alignItems: 'center', cursor: 'pointer' }}>
           <input

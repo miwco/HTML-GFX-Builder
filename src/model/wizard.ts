@@ -39,7 +39,7 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: false, description: 'Pre-show holding loops with a timer.' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 2,  available: false, description: 'Countdowns and clocks for game formats.' },
   { id: 'scoreboard',    name: 'Scoreboards',             plannedCount: 2,  available: false, description: 'Two-team scores and match status.' },
-  { id: 'ticker',        name: 'Tickers',                 plannedCount: 3,  available: false, description: 'Scrolling news and info strips.' },
+  { id: 'ticker',        name: 'Tickers',                 plannedCount: 3,  available: true , description: 'Scrolling news and info strips.' },
   { id: 'infographic',   name: 'Infographics',            plannedCount: 2,  available: false, description: 'Charts, stats, and data callouts.' },
   { id: 'corner-bug',    name: 'Corner bug',              plannedCount: 1,  available: false, description: 'A persistent corner logo (image placeholder).' },
   { id: 'quiz',          name: 'Quiz graphics',           plannedCount: 1,  available: false, description: 'Game-show questions with answer options.' },
@@ -89,7 +89,10 @@ export type AnimPresetId =
   // End-credits motion formats (templates/endCredits/creditsPresets.ts):
   | 'credits-roll'
   | 'credits-pages'
-  | 'credits-crawl';
+  | 'credits-crawl'
+  // Ticker motion formats (templates/tickers/tickerPresets.ts):
+  | 'ticker-marquee'
+  | 'ticker-flip';
 
 export type AnimSpeed = 0.75 | 1 | 1.5;
 

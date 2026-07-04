@@ -5,15 +5,18 @@
 
 import { ANIMATION_MARK_CLOSE, ANIMATION_MARK_OPEN, ANIM_PRESETS, type AnimPreset, type PresetConfig } from '../templates/lowerThirds/animPresets';
 import { CREDITS_PRESETS } from '../templates/endCredits/creditsPresets';
+import { TICKER_PRESETS } from '../templates/tickers/tickerPresets';
 import type { AnimPresetId } from '../model/wizard';
 import type { SpxTemplate } from '../model/types';
 
 /** The presets that apply to a template, by its category. */
 export function presetsForType(type: SpxTemplate['type']): AnimPreset[] {
-  return type === 'end-credits' ? CREDITS_PRESETS : ANIM_PRESETS;
+  if (type === 'end-credits') return CREDITS_PRESETS;
+  if (type === 'ticker') return TICKER_PRESETS;
+  return ANIM_PRESETS;
 }
 
-const ALL_PRESETS = [...ANIM_PRESETS, ...CREDITS_PRESETS];
+const ALL_PRESETS = [...ANIM_PRESETS, ...CREDITS_PRESETS, ...TICKER_PRESETS];
 
 function anyPresetById(id: AnimPresetId): AnimPreset {
   const p = ALL_PRESETS.find((x) => x.id === id);

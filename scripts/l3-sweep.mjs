@@ -47,7 +47,8 @@ const results = await page.evaluate(async (CATEGORY) => {
     row.checks.markers = tpl.js.includes('== ANIMATION') && tpl.js.includes('== END ANIMATION ==');
     row.checks.fontFace = tpl.css.includes('@font-face');
     const isCredits = CATEGORY === 'end-credits';
-    row.checks.masks = isCredits ? tpl.html.includes('credits-track') : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
+    const isTicker = CATEGORY === 'ticker';
+    row.checks.masks = isCredits ? tpl.html.includes('credits-track') : isTicker ? tpl.html.includes('ticker-track') : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
 
     const rt = await runInFrame(tpl, async (w, d) => {
       w.update(JSON.stringify({ f0: 'Test Person', f1: 'Test Title' }));
@@ -77,7 +78,7 @@ const results = await page.evaluate(async (CATEGORY) => {
     }
     row.checks.allPresets = presetOk;
 
-    if (!isCredits && v.maxLines >= 2) {
+    if (!isCredits && !isTicker && v.maxLines >= 2) {
       const t3 = v.create({ animation: { steps: true } });
       row.checks.stepsDecl = Number(t3.settings.steps) >= 2;
       const r3 = await runInFrame(t3, async (w) => {
@@ -88,6 +89,17 @@ const results = await page.evaluate(async (CATEGORY) => {
       if (r3.fatal || r3.errs.length) row.issues.push('steps: ' + (r3.fatal || r3.errs[0]));
     }
 
+    if (isTicker) {
+      const r6 = await runInFrame(tpl, async (w, d) => {
+        w.update(JSON.stringify({ f0: 'Item one\nItem two\nItem three', f1: 'LIVE' }));
+        const track = d.getElementById('ticker-track');
+        return { items: track.children.length, label: d.getElementById('f1')?.textContent };
+      });
+      row.checks.autoFit = !r6.fatal && r6.errs.length === 0 && r6.items >= 3 && r6.label === 'LIVE';
+      if (!row.checks.autoFit) row.issues.push('ticker-track: ' + JSON.stringify(r6));
+      out.push(row);
+      continue;
+    }
     if (isCredits) {
       const r5 = await runInFrame(tpl, async (w, d) => {
         w.update(JSON.stringify({ f0: 'CREW\nDirector | Ada Lovelace\nProducer | Grace Hopper', f1: '(c) 2026 Test' }));
@@ -147,7 +159,7 @@ for (const id of ids) {
     w.update(JSON.stringify({ f0: v.suggestedLines[0]?.sample || 'Name', f1: v.suggestedLines[1]?.sample || '' }));
     w.play();
   }, [id, CATEGORY]);
-  await page.waitForTimeout(CATEGORY === 'end-credits' ? 4500 : 1600); // continuous motion needs longer
+  await page.waitForTimeout(['end-credits', 'ticker'].includes(CATEGORY) ? 4500 : 1600); // continuous motion needs longer
   await page.screenshot({ path: `${OUT}/${id}.png` });
   console.log('shot:', id);
 }
