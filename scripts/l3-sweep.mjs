@@ -57,10 +57,20 @@ const results = await page.evaluate(async () => {
     if (rt.fatal || rt.errs.length) row.issues.push('runtime: ' + (rt.fatal || rt.errs[0]));
 
     let presetOk = true;
+    // Rotate easing presets so every animation preset gets runtime coverage with several easings.
+    const EASINGS = ['auto', 'easy-ease', 'ease-out', 'back', 'bounce', 'elastic', 'expo', 'sine', 'circ', 'linear', 'cubic', 'ease-in', 'ease-in-out'];
+    let e = 0;
     for (const p of v.animationPresets) {
-      const t2 = v.create({ animation: { presetId: p } });
-      const r2 = await runInFrame(t2, async (w) => { w.play(); await new Promise((r) => setTimeout(r, 40)); w.stop(); return {}; });
-      if (r2.fatal || r2.errs.length) { presetOk = false; row.issues.push('preset ' + p + ': ' + (r2.fatal || r2.errs[0])); break; }
+      for (let k = 0; k < 3 && presetOk; k++) {
+        const easing = EASINGS[e++ % EASINGS.length];
+        const t2 = v.create({ animation: { presetId: p, easing } });
+        if (!t2.js.includes("var easeIn = '") || !t2.js.includes("var easeOut = '")) {
+          presetOk = false; row.issues.push('easing vars missing for ' + p + '/' + easing); break;
+        }
+        const r2 = await runInFrame(t2, async (w) => { w.play(); await new Promise((r) => setTimeout(r, 40)); w.stop(); return {}; });
+        if (r2.fatal || r2.errs.length) { presetOk = false; row.issues.push('preset ' + p + '/' + easing + ': ' + (r2.fatal || r2.errs[0])); }
+      }
+      if (!presetOk) break;
     }
     row.checks.allPresets = presetOk;
 

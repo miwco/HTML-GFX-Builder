@@ -6,9 +6,12 @@
 //   .l3 (root, opacity:0 until play) → .l3-accent? → .l3-box → .l3-mask > #fN line elements
 // Because the structure is standard, ANY preset can be applied to ANY variant.
 //
-// Motion rules (docs/DESIGN_LANGUAGE.md): transforms/opacity/clip-path only; ins 0.5–0.9 s with
-// power3/expo/back eases; outs 30–40 % faster with power2/power3.in; staggered line reveals;
-// all durations divided by `animSpeed`.
+// Easing contract (docs/DESIGN_LANGUAGE.md §4): the emitted block declares `easeIn` and
+// `easeOut` variables that every tween references — one obvious place to change the feel.
+// Entrances default to Out-direction curves (arrive fast, settle smooth); exits default to
+// In-direction curves (start naturally, leave quickly) and run 30–40 % faster than entrances.
+// Each preset carries a hand-tuned `autoEase` pair; the wizard's easing presets
+// (model/easings.ts) can override it.
 
 import type { AnimPresetId } from '../../model/wizard';
 
@@ -21,12 +24,18 @@ export interface PresetConfig {
   steps: boolean;
   /** Initial animSpeed value (0.75 slower · 1 normal · 1.5 faster). */
   speed: number;
+  /** GSAP ease string for entrance tweens (e.g. 'power3.out', 'back.out(1.6)'). */
+  easeIn: string;
+  /** GSAP ease string for exit tweens (e.g. 'power2.in'). */
+  easeOut: string;
 }
 
 export interface AnimPreset {
   id: AnimPresetId;
   name: string;
   description: string;
+  /** The preset's hand-tuned ease pair, used when the easing choice is 'auto'. */
+  autoEase: { easeIn: string; easeOut: string };
   /** Emit the full marked ANIMATION block for template.js. */
   emit(cfg: PresetConfig): string;
 }
@@ -42,6 +51,16 @@ function lineList(count: number): string {
 /** In steps mode only line 1 enters with the in-timeline; the rest wait for next(). */
 function linesInIntro(cfg: PresetConfig): string {
   return cfg.steps ? lineList(1) : lineList(cfg.lineCount);
+}
+
+/**
+ * Shared header of the marked block: the three knobs every tween reads.
+ * Change these to retime or re-ease the whole graphic.
+ */
+function knobs(cfg: PresetConfig): string {
+  return `var animSpeed = ${cfg.speed};${' '.repeat(Math.max(1, 21 - String(cfg.speed).length))}// 1 = normal · 0.75 = slower · 1.5 = faster
+var easeIn = '${cfg.easeIn}';${' '.repeat(Math.max(1, 18 - cfg.easeIn.length))}// entrance ease — arrives fast, settles smooth
+var easeOut = '${cfg.easeOut}';${' '.repeat(Math.max(1, 17 - cfg.easeOut.length))}// exit ease — starts naturally, leaves quickly`;
 }
 
 /** The multi-step block: reveals one further line per next() call (SPX Continue). */
@@ -60,14 +79,9 @@ function revealNextStep() {
   currentStep += 1;
   gsap.fromTo(line,
     { yPercent: 110 },
-    { yPercent: 0, duration: 0.45 / animSpeed, ease: 'power3.out' }
+    { yPercent: 0, duration: 0.45 / animSpeed, ease: easeIn }
   );
 }`;
-}
-
-/** Shared header: the speed knob every tween divides its duration by. */
-function speedVar(cfg: PresetConfig): string {
-  return `var animSpeed = ${cfg.speed};  // 1 = normal · 0.75 = slower · 1.5 = faster`;
 }
 
 /** In steps mode, hide the not-yet-revealed lines at the start of the in-timeline. */
@@ -82,13 +96,14 @@ export const ANIM_PRESETS: AnimPreset[] = [
     id: 'slide-fade',
     name: 'Slide + fade',
     description: 'The graphic rises into place while lines fade up in sequence. Quiet and universal.',
+    autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Slide + fade — the whole graphic rises in; text lines follow in sequence.
-${speedVar(cfg)}
+${knobs(cfg)}
 
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
   tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
   tl.fromTo('.l3-box',
     { y: 26, opacity: 0 },
@@ -104,7 +119,7 @@ function buildInTimeline() {
 
 // buildOutTimeline(): the exit — always faster than the entrance.
 function buildOutTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power2.in' } });
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to('.l3-box', { y: 18, opacity: 0, duration: 0.35 / animSpeed });
   tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
@@ -116,13 +131,14 @@ ${MARK_CLOSE}`,
     id: 'line-reveal',
     name: 'Line reveal',
     description: 'The accent line draws in first, then text slides up from behind an invisible mask. Elegant.',
+    autoEase: { easeIn: 'expo.out', easeOut: 'power3.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Line reveal — the accent draws in, then text slides up from behind its mask.
-${speedVar(cfg)}
+${knobs(cfg)}
 
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
   tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}${
     cfg.hasAccent
       ? `
@@ -143,7 +159,7 @@ function buildInTimeline() {
 
 // buildOutTimeline(): the exit — text drops back behind the mask, accent retracts.
 function buildOutTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power3.in' } });
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to([${lineList(cfg.lineCount)}], { yPercent: 110, duration: 0.35 / animSpeed, stagger: 0.05 / animSpeed });${
     cfg.hasAccent
       ? `
@@ -160,13 +176,14 @@ ${MARK_CLOSE}`,
     id: 'mask-wipe',
     name: 'Mask wipe',
     description: 'The panel wipes open left-to-right like a curtain; text settles right behind it.',
+    autoEase: { easeIn: 'expo.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Mask wipe — the panel reveals via a clip-path wipe; text follows just behind.
-${speedVar(cfg)}
+${knobs(cfg)}
 
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'expo.out' } });
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
   tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
   tl.fromTo('.l3-box',
     { clipPath: 'inset(0 100% 0 0)' },               // fully clipped from the right…
@@ -182,7 +199,7 @@ function buildInTimeline() {
 
 // buildOutTimeline(): the exit — wipes closed the way it came, a touch faster.
 function buildOutTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power2.in' } });
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to([${lineList(cfg.lineCount)}], { opacity: 0, duration: 0.2 / animSpeed });
   tl.to('.l3-box', { clipPath: 'inset(0 0 0 100%)', duration: 0.4 / animSpeed }, '-=0.1');
   tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
@@ -195,21 +212,22 @@ ${MARK_CLOSE}`,
     id: 'pop-spring',
     name: 'Pop spring',
     description: 'Scales up with a springy overshoot — friendly, social-stream energy.',
+    autoEase: { easeIn: 'back.out(1.6)', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
-// Preset: Pop spring — the card pops in with a springy overshoot (back.out ease).
-${speedVar(cfg)}
+// Preset: Pop spring — the card pops in with a springy overshoot (Back Out ease).
+${knobs(cfg)}
 
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
-  var tl = gsap.timeline();
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
   tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
   tl.fromTo('.l3-box',
     { scale: 0.9, y: 24, opacity: 0 },
-    { scale: 1, y: 0, opacity: 1, duration: 0.6 / animSpeed, ease: 'back.out(1.6)' }
+    { scale: 1, y: 0, opacity: 1, duration: 0.6 / animSpeed }
   );
   tl.fromTo([${linesInIntro(cfg)}],
     { y: 14, opacity: 0 },
-    { y: 0, opacity: 1, duration: 0.4 / animSpeed, stagger: 0.07 / animSpeed, ease: 'power3.out' },
+    { y: 0, opacity: 1, duration: 0.4 / animSpeed, stagger: 0.07 / animSpeed },
     '-=0.25'
   );
   return tl;
@@ -217,7 +235,7 @@ function buildInTimeline() {
 
 // buildOutTimeline(): the exit — shrinks away quickly, no bounce on the way out.
 function buildOutTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power2.in' } });
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to('.l3-box', { scale: 0.94, y: 14, opacity: 0, duration: 0.35 / animSpeed });
   tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
@@ -229,13 +247,14 @@ ${MARK_CLOSE}`,
     id: 'snap-stinger',
     name: 'Snap stinger',
     description: 'Slams in from the side and settles in under half a second. Sport-fast.',
+    autoEase: { easeIn: 'power4.out', easeOut: 'power3.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Snap stinger — slams in from the left with a skew that settles. Fast by design.
-${speedVar(cfg)}
+${knobs(cfg)}
 
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
   tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
   tl.fromTo('.l3-box',
     { x: -90, skewX: -10, opacity: 0 },              // arrives fast with a lean…
@@ -251,7 +270,7 @@ function buildInTimeline() {
 
 // buildOutTimeline(): the exit — snaps out the opposite way, even faster.
 function buildOutTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power3.in' } });
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to('.l3-box', { x: 70, skewX: 6, opacity: 0, duration: 0.28 / animSpeed });
   tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
@@ -263,13 +282,14 @@ ${MARK_CLOSE}`,
     id: 'blur-in',
     name: 'Blur in',
     description: 'Materialises out of a blur — soft, premium, glassy.',
+    autoEase: { easeIn: 'power2.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Blur in — the card materialises out of a blur (filter animates on the box only).
-${speedVar(cfg)}
+${knobs(cfg)}
 
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
   tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
   tl.fromTo('.l3-box',
     { opacity: 0, filter: 'blur(14px)', y: 12 },
@@ -277,7 +297,7 @@ function buildInTimeline() {
   );
   tl.fromTo([${linesInIntro(cfg)}],
     { y: 10, opacity: 0 },
-    { y: 0, opacity: 1, duration: 0.4 / animSpeed, stagger: 0.08 / animSpeed, ease: 'power3.out' },
+    { y: 0, opacity: 1, duration: 0.4 / animSpeed, stagger: 0.08 / animSpeed },
     '-=0.3'
   );
   return tl;
@@ -285,7 +305,7 @@ function buildInTimeline() {
 
 // buildOutTimeline(): the exit — dissolves back into the blur, faster.
 function buildOutTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: 'power2.in' } });
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to('.l3-box', { opacity: 0, filter: 'blur(10px)', duration: 0.35 / animSpeed });
   tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;

@@ -6,6 +6,7 @@
 import type { Resolution, SpxField, SpxTemplate, AssetFile } from './types';
 import { RESOLUTIONS } from './types';
 import type { StyleTag } from './fonts';
+import type { EasingId } from './easings';
 
 // ── Categories (the full catalog; only lower-third is implemented so far) ────
 
@@ -92,6 +93,8 @@ export interface AnimationChoice {
   presetId: AnimPresetId;
   /** Multiplier on animSpeed: 0.75 slower · 1 normal · 1.5 faster. */
   speed: AnimSpeed;
+  /** Easing preset ('auto' = the animation preset's hand-tuned pair). See model/easings.ts. */
+  easing: EasingId;
   /** SPX multi-step: line 1 first, further lines revealed on Continue / next(). */
   steps: boolean;
 }
@@ -197,6 +200,7 @@ export function resolveOptions(variant: TemplateVariant, options: WizardOptions 
     animation: {
       presetId: options.animation?.presetId ?? variant.animationPresets[0],
       speed: options.animation?.speed ?? 1,
+      easing: options.animation?.easing ?? 'auto',
       steps: options.animation?.steps ?? false,
     },
     importedImages: options.importedImages ?? [],

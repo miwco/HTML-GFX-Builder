@@ -57,9 +57,20 @@ The animation **is** the taste. Rules:
 
 - **Animate only** `transform` (x/y/scale/skew), `opacity`, and `clip-path`. Never `left/top/
   width/height/margin` (layout thrash = jank).
-- **Ease vocabulary:** ins use `power3.out` or `expo.out`; springy pops use `back.out(1.4–1.8)`;
-  outs use `power2.in` or `power3.in` and are **30–40 % faster than ins**. Never `linear`, never
-  default ease.
+- **Easing doctrine** (the selectable presets live in `src/model/easings.ts`; generated code
+  exposes them as the `easeIn` / `easeOut` variables in the marked ANIMATION block):
+  - Movement must feel **responsive but polished** — smooth and snappy, never mechanical.
+    Default to Easy Ease / ease-in-out-family curves; **avoid linear motion**.
+  - **Entrances (in):** prefer **Ease Out** or **Back Out** — the object enters quickly and
+    settles smoothly. Back Out (`back.out(1.4–1.8)`) is the pick for snappy pop-ins with a small
+    overshoot.
+  - **Exits (out):** prefer **Ease In** (`power2.in` / `power3.in`) — the object starts naturally
+    and exits quickly. Exits run **30–40 % faster than entrances**.
+  - **Bounce and Elastic are playful options only** — offered in the picker, never defaults.
+  - **Linear is never a default** — reserve it for continuous motion: tickers, timers,
+    progress bars, seamless loops.
+  - The full preset list: Linear, Easy Ease, Ease In, Ease Out, Ease In-Out, Back, Bounce,
+    Elastic, Expo, Cubic, Sine, Circ — each mapped to direction-correct GSAP curves per phase.
 - **Durations:** in = 0.5–0.9 s total; out = 0.3–0.5 s. Respect `animSpeed` (divide durations).
 - **Choreograph, don't blob:** elements enter in sequence with 0.06–0.15 s staggers — accent
   first, then name, then title. One `gsap.timeline()` per direction (`buildInTimeline()`,
