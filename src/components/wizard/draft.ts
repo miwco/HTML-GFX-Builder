@@ -2,7 +2,7 @@
 // null means "use the variant's tasteful default" — draftToOptions() maps the draft onto
 // WizardOptions, and resolveOptions() (model/wizard.ts) fills the rest.
 
-import { ASPECTS, type Resolution } from '../../model/types';
+import { ASPECTS, type AssetFile, type Resolution } from '../../model/types';
 import type {
   AnimPresetId,
   AnimSpeed,
@@ -35,6 +35,10 @@ export interface WizardDraft {
     easing: EasingId;
     steps: boolean;
   };
+  /** Images dropped in via the "Import graphics" entry (stored as data-URL assets). */
+  importedImages: AssetFile[];
+  /** Which imported image goes into the variant's logo slot (relative assets/ path). */
+  logoAssetPath: string | null;
 }
 
 /** A draft update: top-level fields replace; `animation` and `nudge` deep-merge. */
@@ -68,6 +72,8 @@ export function initialDraft(): WizardDraft {
     zone: null,
     nudge: { x: 0, y: 0 },
     animation: { presetId: null, speed: 1, easing: 'auto', steps: false },
+    importedImages: [],
+    logoAssetPath: null,
   };
 }
 
@@ -94,5 +100,7 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
       easing: draft.animation.easing,
       steps: draft.animation.steps,
     },
+    importedImages: draft.importedImages.length > 0 ? draft.importedImages : undefined,
+    logoAssetPath: variant.hasLogoSlot ? draft.logoAssetPath ?? undefined : undefined,
   };
 }

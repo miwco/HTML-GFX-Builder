@@ -5,6 +5,7 @@ import { createBlankTemplate } from '../../templates/blank';
 import { draftResolution, draftToOptions, initialDraft, mergeDraft, type DraftPatch, type WizardDraft } from './draft';
 import WizardPreview from './WizardPreview';
 import EntryStep from './steps/EntryStep';
+import ImportStep from './steps/ImportStep';
 import CategoryStep from './steps/CategoryStep';
 import TemplateStep from './steps/TemplateStep';
 import FieldsStep from './steps/FieldsStep';
@@ -12,6 +13,7 @@ import StyleStep from './steps/StyleStep';
 import AnimationStep from './steps/AnimationStep';
 
 const STEP_TITLES = ['Start', 'Category', 'Template', 'Fields', 'Style', 'Animation'];
+const STEP_TITLES_IMPORT = ['Start', 'Import', 'Template', 'Fields', 'Style', 'Animation'];
 
 /**
  * The choose-first creation wizard (replaces the old template gallery). Six steps —
@@ -26,6 +28,7 @@ export default function CreationWizard() {
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
 
   const [step, setStep] = useState(0);
+  const [mode, setMode] = useState<'template' | 'import'>('template');
   const [draft, setDraft] = useState<WizardDraft>(initialDraft);
   const [replayKey, setReplayKey] = useState(0);
 
@@ -33,6 +36,7 @@ export default function CreationWizard() {
   useEffect(() => {
     if (open) {
       setStep(0);
+      setMode('template');
       setDraft(initialDraft());
     }
   }, [open]);
@@ -71,10 +75,17 @@ export default function CreationWizard() {
   };
 
   const nextDisabled =
-    (step === 1 && !draft.category) ||
+    (step === 1 && (mode === 'import' ? draft.importedImages.length === 0 || !draft.category : !draft.category)) ||
     (step === 2 && !draft.variantId);
 
   const showPreview = step >= 2 && !!previewTemplate;
+  const stepTitles = mode === 'import' ? STEP_TITLES_IMPORT : STEP_TITLES;
+
+  // With imported images, designs that have a logo slot come first.
+  const orderedVariants =
+    draft.importedImages.length > 0
+      ? [...LOWER_THIRDS].sort((a, b) => Number(b.hasLogoSlot) - Number(a.hasLogoSlot))
+      : LOWER_THIRDS;
 
   return (
     <div className="gallery-backdrop" onClick={(e) => { if (e.target === e.currentTarget) closeGallery(); }}>
@@ -86,7 +97,7 @@ export default function CreationWizard() {
             <p className="hint">Build it by choosing — then read, learn, and edit the code it writes.</p>
           </div>
           <div className="wz-dots">
-            {STEP_TITLES.map((t, i) => (
+            {stepTitles.map((t, i) => (
               <button
                 key={t}
                 className={`wz-dot ${i === step ? 'active' : ''} ${i < step ? 'done' : ''}`}
@@ -105,9 +116,25 @@ export default function CreationWizard() {
         <div className={`wz-body ${showPreview ? 'with-preview' : ''}`}>
           <div className="wz-step">
             {step === 0 && (
-              <EntryStep onTemplates={() => setStep(1)} onBlank={startBlank} />
+              <EntryStep
+                onTemplates={() => { setMode('template'); setStep(1); }}
+                onImport={() => { setMode('import'); setStep(1); }}
+                onBlank={startBlank}
+              />
             )}
-            {step === 1 && (
+            {step === 1 && mode === 'import' && (
+              <ImportStep
+                images={draft.importedImages}
+                onImages={(importedImages) =>
+                  patch({ importedImages, logoAssetPath: importedImages[0]?.path ?? null })
+                }
+                onContinue={(category) => {
+                  patch({ category });
+                  setStep(2);
+                }}
+              />
+            )}
+            {step === 1 && mode === 'template' && (
               <CategoryStep
                 selected={draft.category}
                 onSelect={(category) => {
@@ -118,7 +145,7 @@ export default function CreationWizard() {
             )}
             {step === 2 && (
               <TemplateStep
-                variants={LOWER_THIRDS}
+                variants={orderedVariants}
                 draft={draft}
                 onDraft={patch}
                 onPickVariant={(v) =>
