@@ -34,7 +34,7 @@ export type TemplateCategory =
 
 export const CATEGORIES: CategoryInfo[] = [
   { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 10, available: true,  description: 'Names, titles, and straps over the action.' },
-  { id: 'info-card',     name: 'Info cards',              plannedCount: 3,  available: false, description: 'Full / half / custom screen information cards.' },
+  { id: 'info-card',     name: 'Info cards',              plannedCount: 3,  available: true,  description: 'Full / half / custom screen information cards.' },
   { id: 'end-credits',   name: 'End credits',             plannedCount: 3,  available: false, description: 'Rolling and card-based credit sequences.' },
   { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: false, description: 'Pre-show holding loops with a timer.' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 2,  available: false, description: 'Countdowns and clocks for game formats.' },

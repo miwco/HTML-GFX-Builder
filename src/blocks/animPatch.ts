@@ -45,12 +45,15 @@ export function setAnimKnob(js: string, knob: 'animSpeed' | 'easeIn' | 'easeOut'
 /** Derive the PresetConfig for re-emitting the region from the current template code. */
 export function presetConfigFromTemplate(template: SpxTemplate, steps: boolean): PresetConfig {
   const info = readAnimationInfo(template.js);
+  // Every category uses the same structure contract with its own class prefix.
+  const prefix = (template.html.match(/class="(\w+)-box"/) || [])[1] ?? 'l3';
   // Visible text lines are the id="fN" elements wrapped in the standard line masks.
-  const lineCount = Math.max(1, (template.html.match(/id="f\d+"[^>]*class="l3-/g) || []).length);
+  const lineCount = Math.max(1, (template.html.match(/id="f\d+"[^>]*class="\w+-/g) || []).length);
   const preset = info.presetId ? presetById(info.presetId) : ANIM_PRESETS[0];
   return {
+    prefix,
     lineCount,
-    hasAccent: template.html.includes('l3-accent'),
+    hasAccent: template.html.includes(`${prefix}-accent`),
     steps: steps && lineCount > 1,
     speed: info.speed,
     easeIn: info.easeIn ?? preset.autoEase.easeIn,

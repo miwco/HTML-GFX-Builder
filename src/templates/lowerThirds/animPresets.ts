@@ -2,9 +2,10 @@
 // "ANIMATION" block of template.js — the marked region the Animation panel is allowed to
 // rewrite. Everything outside the markers (play/stop/update/next scaffolding) never changes.
 //
-// Presets rely on the standard lower-third structure contract (see shared.ts):
-//   .l3 (root, opacity:0 until play) → .l3-accent? → .l3-box → .l3-mask > #fN line elements
-// Because the structure is standard, ANY preset can be applied to ANY variant.
+// Presets rely on the standard structure contract, parameterized by a class PREFIX so every
+// category shares this library (lower thirds use "l3", info cards "card", …):
+//   .<p> (root, opacity:0 until play) → .<p>-accent? → .<p>-box → .<p>-mask > #fN line elements
+// Because the structure is standard, ANY preset applies to ANY variant of ANY category.
 //
 // Easing contract (docs/DESIGN_LANGUAGE.md §4): the emitted block declares `easeIn` and
 // `easeOut` variables that every tween references — one obvious place to change the feel.
@@ -16,9 +17,11 @@
 import type { AnimPresetId } from '../../model/wizard';
 
 export interface PresetConfig {
+  /** The category's class prefix ('l3', 'card', 'credits', 'ticker'). */
+  prefix: string;
   /** How many visible text lines (#f0…#fN) the design has. */
   lineCount: number;
-  /** Whether the design has an .l3-accent element. */
+  /** Whether the design has a .<prefix>-accent element. */
   hasAccent: boolean;
   /** Multi-step mode: in-timeline shows line 1; each next() reveals one more line. */
   steps: boolean;
@@ -104,8 +107,8 @@ ${knobs(cfg)}
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeIn } });
-  tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
-  tl.fromTo('.l3-box',
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
     { y: 26, opacity: 0 },
     { y: 0, opacity: 1, duration: 0.55 / animSpeed }
   );
@@ -120,8 +123,8 @@ function buildInTimeline() {
 // buildOutTimeline(): the exit — always faster than the entrance.
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
-  tl.to('.l3-box', { y: 18, opacity: 0, duration: 0.35 / animSpeed });
-  tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
+  tl.to('.${cfg.prefix}-box', { y: 18, opacity: 0, duration: 0.35 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}
 ${MARK_CLOSE}`,
@@ -139,15 +142,15 @@ ${knobs(cfg)}
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeIn } });
-  tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}${
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}${
     cfg.hasAccent
       ? `
-  tl.fromTo('.l3-accent',
+  tl.fromTo('.${cfg.prefix}-accent',
     { scaleX: 0, transformOrigin: 'left center' },   // the line grows from its left end
     { scaleX: 1, duration: 0.45 / animSpeed }
   );`
       : `
-  tl.fromTo('.l3-box', { opacity: 0 }, { opacity: 1, duration: 0.3 / animSpeed });`
+  tl.fromTo('.${cfg.prefix}-box', { opacity: 0 }, { opacity: 1, duration: 0.3 / animSpeed });`
   }
   tl.fromTo([${linesInIntro(cfg)}],
     { yPercent: 110 },                               // start hidden below the mask edge
@@ -163,10 +166,10 @@ function buildOutTimeline() {
   tl.to([${lineList(cfg.lineCount)}], { yPercent: 110, duration: 0.35 / animSpeed, stagger: 0.05 / animSpeed });${
     cfg.hasAccent
       ? `
-  tl.to('.l3-accent', { scaleX: 0, transformOrigin: 'right center', duration: 0.3 / animSpeed }, '-=0.1');`
+  tl.to('.${cfg.prefix}-accent', { scaleX: 0, transformOrigin: 'right center', duration: 0.3 / animSpeed }, '-=0.1');`
       : ''
   }
-  tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}
 ${MARK_CLOSE}`,
@@ -184,8 +187,8 @@ ${knobs(cfg)}
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeIn } });
-  tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
-  tl.fromTo('.l3-box',
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
     { clipPath: 'inset(0 100% 0 0)' },               // fully clipped from the right…
     { clipPath: 'inset(0 0% 0 0)', duration: 0.55 / animSpeed }  // …wipes open
   );
@@ -201,8 +204,8 @@ function buildInTimeline() {
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to([${lineList(cfg.lineCount)}], { opacity: 0, duration: 0.2 / animSpeed });
-  tl.to('.l3-box', { clipPath: 'inset(0 0 0 100%)', duration: 0.4 / animSpeed }, '-=0.1');
-  tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
+  tl.to('.${cfg.prefix}-box', { clipPath: 'inset(0 0 0 100%)', duration: 0.4 / animSpeed }, '-=0.1');
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}
 ${MARK_CLOSE}`,
@@ -220,8 +223,8 @@ ${knobs(cfg)}
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeIn } });
-  tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
-  tl.fromTo('.l3-box',
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
     { scale: 0.9, y: 24, opacity: 0 },
     { scale: 1, y: 0, opacity: 1, duration: 0.6 / animSpeed }
   );
@@ -236,8 +239,8 @@ function buildInTimeline() {
 // buildOutTimeline(): the exit — shrinks away quickly, no bounce on the way out.
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
-  tl.to('.l3-box', { scale: 0.94, y: 14, opacity: 0, duration: 0.35 / animSpeed });
-  tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
+  tl.to('.${cfg.prefix}-box', { scale: 0.94, y: 14, opacity: 0, duration: 0.35 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}
 ${MARK_CLOSE}`,
@@ -255,8 +258,8 @@ ${knobs(cfg)}
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeIn } });
-  tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
-  tl.fromTo('.l3-box',
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
     { x: -90, skewX: -10, opacity: 0 },              // arrives fast with a lean…
     { x: 0, skewX: 0, opacity: 1, duration: 0.38 / animSpeed }  // …and snaps straight
   );
@@ -271,8 +274,8 @@ function buildInTimeline() {
 // buildOutTimeline(): the exit — snaps out the opposite way, even faster.
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
-  tl.to('.l3-box', { x: 70, skewX: 6, opacity: 0, duration: 0.28 / animSpeed });
-  tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
+  tl.to('.${cfg.prefix}-box', { x: 70, skewX: 6, opacity: 0, duration: 0.28 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}
 ${MARK_CLOSE}`,
@@ -290,8 +293,8 @@ ${knobs(cfg)}
 // buildInTimeline(): choreographs the entrance. Called by play().
 function buildInTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeIn } });
-  tl.set('.l3', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
-  tl.fromTo('.l3-box',
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
     { opacity: 0, filter: 'blur(14px)', y: 12 },
     { opacity: 1, filter: 'blur(0px)', y: 0, duration: 0.6 / animSpeed }
   );
@@ -306,8 +309,8 @@ function buildInTimeline() {
 // buildOutTimeline(): the exit — dissolves back into the blur, faster.
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
-  tl.to('.l3-box', { opacity: 0, filter: 'blur(10px)', duration: 0.35 / animSpeed });
-  tl.set('.l3', { opacity: 0 });                     // fully hidden; ready to play again
+  tl.to('.${cfg.prefix}-box', { opacity: 0, filter: 'blur(10px)', duration: 0.35 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}
 ${MARK_CLOSE}`,

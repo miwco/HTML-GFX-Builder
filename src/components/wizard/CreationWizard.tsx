@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTemplateStore } from '../../store/templateStore';
-import { LOWER_THIRDS, lowerThirdById } from '../../templates/lowerThirds';
+import { variantById, variantsFor } from '../../templates/catalog';
 import { createBlankTemplate } from '../../templates/blank';
 import { brandPatch, draftResolution, draftToOptions, initialDraft, mergeDraft, type DraftPatch, type WizardDraft } from './draft';
 import { loadBrand, saveBrand, type ProjectBrand } from '../../model/brand';
@@ -59,7 +59,7 @@ export default function CreationWizard() {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, closeGallery]);
 
-  const variant = draft.variantId ? lowerThirdById(draft.variantId) : undefined;
+  const variant = draft.variantId ? variantById(draft.variantId) : undefined;
 
   // The live preview always renders the draft as real template code.
   const previewTemplate = useMemo(
@@ -100,7 +100,7 @@ export default function CreationWizard() {
 
   // Ordering: imported images put logo-slot designs first; a matched brand puts its
   // style family first (so the package's siblings lead).
-  const orderedVariants = [...LOWER_THIRDS].sort((a, b) => {
+  const orderedVariants = [...variantsFor(draft.category)].sort((a, b) => {
     if (draft.importedImages.length > 0) {
       const logo = Number(b.hasLogoSlot) - Number(a.hasLogoSlot);
       if (logo !== 0) return logo;

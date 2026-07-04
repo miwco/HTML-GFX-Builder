@@ -5,6 +5,7 @@ import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 
 const OUT = process.argv[2] || './l3-shots';
+const CATEGORY = process.argv[3] || 'lower-third';
 mkdirSync(OUT, { recursive: true });
 
 const browser = await chromium.launch();
@@ -14,8 +15,9 @@ await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(800);
 
 // ---------- 1) Deterministic checks (run inside the app page: Vite serves the source) ----------
-const results = await page.evaluate(async () => {
-  const { LOWER_THIRDS } = await import('/src/templates/lowerThirds/index.ts');
+const results = await page.evaluate(async (CATEGORY) => {
+  const { CATALOG } = await import('/src/templates/catalog.ts');
+  const LOWER_THIRDS = CATALOG[CATEGORY] || [];
   const { composeDocument } = await import('/src/preview/composeDocument.ts');
   const { validateTemplate } = await import('/src/validation/validateTemplate.ts');
 
@@ -44,7 +46,7 @@ const results = await page.evaluate(async () => {
     row.checks.rootVars = tpl.css.includes('--accent:') && tpl.css.includes('--scale:');
     row.checks.markers = tpl.js.includes('== ANIMATION') && tpl.js.includes('== END ANIMATION ==');
     row.checks.fontFace = tpl.css.includes('@font-face');
-    row.checks.masks = tpl.html.includes('l3-mask') && tpl.html.includes('id="f0"');
+    row.checks.masks = /-mask/.test(tpl.html) && tpl.html.includes('id="f0"');
 
     const rt = await runInFrame(tpl, async (w, d) => {
       w.update(JSON.stringify({ f0: 'Test Person', f1: 'Test Title' }));
@@ -89,7 +91,7 @@ const results = await page.evaluate(async () => {
     const r4 = await runInFrame(t4, async (w, d) => {
       const long = 'Alexandrina Konstantinopolous-Vanderberg Featherstonehaugh III';
       const el = d.getElementById('f0');
-      const box = d.querySelector('.l3-box');
+      const box = d.querySelector('[class*="-box"]');
       w.update(JSON.stringify({ f0: 'Al', f1: 'Title' }));
       const shortH = el.getBoundingClientRect().height;
       w.update(JSON.stringify({ f0: long, f1: 'Title' }));
@@ -97,22 +99,24 @@ const results = await page.evaluate(async () => {
       const boxRect = box.getBoundingClientRect();
       return { wrapped: longRect.height > shortH * 1.5, boxW: Math.round(boxRect.width) };
     });
-    row.checks.autoFit = !r4.fatal && !!r4.wrapped && r4.boxW <= 830;
-    if (!row.checks.autoFit) row.issues.push('autofit: ' + JSON.stringify({ fatal: r4.fatal, wrapped: r4.wrapped, boxW: r4.boxW }));
+    // The cap differs per category — read it from the generated CSS (max-width on the box).
+    const cap = Number((t4.css.match(/max-width:\s*(\d+)px/) || [])[1] ?? 830);
+    row.checks.autoFit = !r4.fatal && !!r4.wrapped && r4.boxW <= cap + 2;
+    if (!row.checks.autoFit) row.issues.push('autofit: ' + JSON.stringify({ fatal: r4.fatal, wrapped: r4.wrapped, boxW: r4.boxW, cap }));
     out.push(row);
   }
   return out;
-});
+}, CATEGORY);
 
 console.log(JSON.stringify(results, null, 1));
 
 // ---------- 2) Taste screenshots: settled state over a video-like backdrop ----------
 const ids = results.map((r) => r.id);
 for (const id of ids) {
-  await page.evaluate(async (variantId) => {
-    const { LOWER_THIRDS } = await import('/src/templates/lowerThirds/index.ts');
+  await page.evaluate(async ([variantId, CAT]) => {
     const { composeDocument } = await import('/src/preview/composeDocument.ts');
-    const v = LOWER_THIRDS.find((x) => x.id === variantId);
+    const { CATALOG: C2 } = await import('/src/templates/catalog.ts');
+    const v = (C2[CAT] || []).find((x) => x.id === variantId);
     const tpl = v.create();
     document.body.innerHTML = '';
     document.body.style.cssText = 'margin:0;width:1920px;height:1080px;overflow:hidden;position:relative;' +
@@ -130,7 +134,7 @@ for (const id of ids) {
     const w = f.contentWindow;
     w.update(JSON.stringify({ f0: v.suggestedLines[0]?.sample || 'Name', f1: v.suggestedLines[1]?.sample || '' }));
     w.play();
-  }, id);
+  }, [id, CATEGORY]);
   await page.waitForTimeout(1600); // let the entrance settle
   await page.screenshot({ path: `${OUT}/${id}.png` });
   console.log('shot:', id);
