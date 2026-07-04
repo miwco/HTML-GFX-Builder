@@ -65,7 +65,13 @@ export default function PreviewFrame({ iframeRef }: Props) {
   }, [template, iframeRef, setPreviewError]);
 
   return (
-    <div className={`preview-stage ${previewBg}`} ref={stageRef}>
+    <div
+      className={`preview-stage ${previewBg}`}
+      ref={stageRef}
+      // The stage's own height follows the template's aspect (clamped by max-height in
+      // CSS); the iframe then scales to fit whatever box results.
+      style={{ aspectRatio: `${stageW} / ${stageH}` }}
+    >
       <iframe
         ref={iframeRef}
         className="preview-frame"

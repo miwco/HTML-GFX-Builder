@@ -78,7 +78,9 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .workspace {
   flex: 1;
   display: grid;
-  grid-template-columns: minmax(380px, 1.1fr) minmax(420px, 1.2fr) minmax(320px, 0.95fr);
+  /* Two columns: code (left) + preview-over-tabs (right). The right column stacks the
+     16:9 canvas above the panels, so portrait monitors get no dead space. */
+  grid-template-columns: minmax(380px, 1.05fr) minmax(460px, 1fr);
   min-height: 0;
 }
 
@@ -116,9 +118,13 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 .editor-host { flex: 1; min-height: 0; }
 
 /* ---------- Preview ---------- */
-.preview-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* The preview sits ABOVE the tool panels: its height comes from the template's aspect
+   ratio (inline style set by PreviewFrame), clamped so portrait templates don't swallow
+   the column. The panels below take the remaining height. */
+.preview-wrap { flex: 0 0 auto; display: flex; flex-direction: column; min-height: 0; }
 .preview-stage {
-  flex: 1;
+  width: 100%;
+  max-height: 52vh;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -189,6 +195,15 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
   flex-wrap: wrap;
 }
 .simulator .bg-switch { margin-left: auto; display: flex; gap: 4px; }
+
+/* ---------- Editor change highlight (what the last apply touched) ---------- */
+.changed-line { background: rgba(94, 175, 255, 0.10); }
+.changed-gutter {
+  width: 3px !important;
+  margin-left: 3px;
+  background: var(--accent-2, #5eafff);
+  border-radius: 2px;
+}
 
 /* ---------- Panels ---------- */
 .panel-tabs { display: flex; gap: 4px; flex-wrap: wrap; }

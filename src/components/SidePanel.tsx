@@ -1,25 +1,21 @@
 import { useTemplateStore, type SidePanel as PanelId } from '../store/templateStore';
 import SampleDataPanel from './SampleDataPanel';
-import BuildingBlockMenu from './BuildingBlockMenu';
 import StylePanel from './StylePanel';
 import AnimationPanel from './AnimationPanel';
-import LearnPanel from './LearnPanel';
 import AIPromptPanel from './AIPromptPanel';
-import TemplateValidator from './TemplateValidator';
 import ExportPanel from './ExportPanel';
 
+// Five focused tools. Validation lives inside Export; explanations live on hover in the
+// editor (and in the AI panel's Explain); element/animation inserts go through AI + Motion.
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'data', label: 'Data' },
-  { id: 'blocks', label: 'Blocks' },
   { id: 'style', label: 'Style' },
   { id: 'animation', label: 'Motion' },
-  { id: 'learn', label: 'Learn' },
   { id: 'ai', label: 'AI' },
-  { id: 'validate', label: 'Validate' },
   { id: 'export', label: 'Export' },
 ];
 
-/** Right-hand pane that hosts the supporting tools, one at a time. */
+/** The tool panels under the preview, one at a time. */
 export default function SidePanel() {
   const activePanel = useTemplateStore((s) => s.activePanel);
   const setActivePanel = useTemplateStore((s) => s.setActivePanel);
@@ -41,12 +37,9 @@ export default function SidePanel() {
       </div>
       <div className="panel-body">
         {activePanel === 'data' && <SampleDataPanel />}
-        {activePanel === 'blocks' && <BuildingBlockMenu />}
         {activePanel === 'style' && <StylePanel />}
         {activePanel === 'animation' && <AnimationPanel />}
-        {activePanel === 'learn' && <LearnPanel />}
         {activePanel === 'ai' && <AIPromptPanel />}
-        {activePanel === 'validate' && <TemplateValidator />}
         {activePanel === 'export' && <ExportPanel />}
       </div>
     </>

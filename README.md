@@ -39,27 +39,24 @@ npm run build    # typecheck + production build to dist/
   coherent, on-air-ready package.
 - **Live Style & Motion panels after creation** — colors/font/size/position patch the `:root`
   style contract in the visible CSS; animation preset/speed/easing/steps rewrite only a clearly
-  marked region of the JS. Your own edits outside the contract are never touched; Ctrl+Z undoes.
-- **Code editor** (Monaco) with HTML / CSS / JS tabs — the template is the single source of truth.
+  marked region of the JS. The Motion panel scopes changes to **In / Out / Both** (mix one
+  preset's entrance with another's exit) and **replays the graphic on every apply** so you see
+  the change. Your own edits outside the contract are never touched; Ctrl+Z undoes.
+- **Code editor** (Monaco) with HTML / CSS / JS tabs — the template is the single source of
+  truth. Every panel/AI change **highlights the exact lines it wrote** and scrolls them into
+  view, and hovering `play()`, a field id, or a CSS property shows a short SPX-specific
+  explanation right in the code.
 - **Live preview** in a sandboxed iframe, scaled to fit, with a visible **canvas outline** and
   toggleable **safe-area** and **rule-of-thirds** guides, over transparent / black / video-like
   backgrounds.
 - **Playout simulator** — Play / Stop / Update / Next call the template's SPX runtime functions.
-- **Sample data panel** — edit the values sent to `update(data)`, one control per field `ftype`.
-- **Building blocks** — a searchable, hierarchical menu of deterministic, well-commented code
-  inserts. Groups include **Lower third** (name + title, etc.), **Layouts**, **Boxes & lines**,
-  **Logos & images**, **Text & data**, **Sport**, and **Animation** split into two learning tracks:
-  **CSS** (`@keyframes` applied to an element) and **GSAP** (tweens injected into `play()/stop()`).
-  Inserted elements land in the lower-left action-safe area with rich, commented CSS. Every apply is
-  **undoable** (toast button or **Ctrl/Cmd+Z**), and after inserting, **suggested-property chips**
-  add common CSS one click at a time.
+- **Sample data panel** — edit the values sent to `update(data)`, one control per field `ftype`,
+  and **add new fields** (text / long text / number / image) straight into the SPX definition.
 - **Image fields & assets** — fields use the types live broadcast actually needs: text, long
   text, number, and **Image** (SPX `filelist` — the operator picks a file from the project's
   `images/` folder). End credits, the corner bug, and the frosted info card expose their logo
   slot as a real Logo field; uploads are stored as data URLs, render live in the preview, and
   export as real files under `images/`. Brand colours are managed as `:root` CSS variables.
-- **Learn (teaching) layer** — click any token in the editor for a short, SPX-specific explanation,
-  and browse a curated **CSS property reference** with examples and deep-links to MDN.
 - **AI mode** — the "Describe it" entry generates a complete template from a prompt, optionally
   with your logo / a still frame (Claude sees the images) and your project's brand colors. The
   generated code keeps the same contracts as the wizard's (`:root` style vars, marked ANIMATION
@@ -68,8 +65,9 @@ npm run build    # typecheck + production build to dist/
   panel modifies / fixes / explains the current graphic. Bring your own Anthropic key (in-app AI
   settings or `.env`, see `.env.example`); it is stored locally and sent only to Anthropic. A
   `VITE_AI_PROXY_URL` config exists for pointing at a hosted key-holding gateway instead.
-- **Validation** — runtime functions, `SPXGCTemplateDefinition`, field↔DOM mapping, relative asset
-  paths (HTML + CSS), missing assets, JS syntax, and preview runtime errors. Errors block export.
+- **Validation, inside Export** — runtime functions, `SPXGCTemplateDefinition`, field↔DOM
+  mapping, relative asset paths (HTML + CSS), missing assets, JS syntax, and preview runtime
+  errors run automatically in the Export panel; errors are listed inline and block the download.
 - **Export** (modular targets) — **Starter** (1:1 with the editor code) and **Advanced / Pack**
   (fuller SPX package with a helper interface + metadata). Both are plug-and-play: the zip
   contains one project folder, so extracting into your SPX/CasparCG templates folder gives

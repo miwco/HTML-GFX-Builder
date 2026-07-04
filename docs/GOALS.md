@@ -92,6 +92,22 @@ with its lower-third siblings (§8), swept per category, and covered by an E2E s
       `<project>/images/<file>` (+ fonts/, css/, js/), extracting straight into
       `[TemplatesFolder]/` the way SPX/CasparCG expect
 
+### UX overhaul (user feedback round 2 — portrait monitors + real use)
+- [x] **Preview-over-tabs layout** — code editor full-height left; on the right the 16:9 canvas
+      (sized by the template's aspect, clamped) sits above the tool tabs — no dead space on
+      vertical screens, works on landscape too
+- [x] **Validate tab removed** — validation runs automatically inside Export, errors listed
+      inline, download gated
+- [x] **Motion phases** — In / Out / Both control: mix one preset's entrance with another's
+      exit (marked-region splice, per-phase `// In preset:` / `// Out preset:` comments,
+      backward compatible); every Motion apply auto-replays the graphic
+- [x] **Change highlighting** — every panel/AI apply diffs the code and highlights + scrolls to
+      the changed lines in the editor (accent wash + gutter bar)
+- [x] **Blocks tab removed** — add-field moved into the Data panel; element/motion inserts go
+      through AI + Motion (the block registry remains as the offline AI stub's vocabulary)
+- [x] **Learn tab removed** — the knowledge base became Monaco hover tooltips (hover play(),
+      an fN id, or a CSS property); Claude-powered Explain stays in the AI panel
+
 ### Later (explicitly deferred)
 - [ ] Full package manager (named, saved packages; apply-to-all; share as a file) — the
       project-brand mechanism above is the light version

@@ -1,7 +1,16 @@
-import { useRef } from 'react';
-import { DATA_FTYPES, type SpxField } from '../model/types';
+import { useRef, useState } from 'react';
+import { DATA_FTYPES, type Ftype, type SpxField } from '../model/types';
 import { fileToDataUrl, isImageAsset, uniqueAssetPath } from '../assets/assetUtils';
+import { addFieldToDefinition, nextFieldId } from '../blocks/edit';
 import { useTemplateStore } from '../store/templateStore';
+
+// The broadcast field set (same as the wizard's extras).
+const ADD_FTYPES: { value: Ftype; label: string }[] = [
+  { value: 'textfield', label: 'Text' },
+  { value: 'textarea', label: 'Long text' },
+  { value: 'number', label: 'Number' },
+  { value: 'filelist', label: 'Image' },
+];
 
 /** Image field ("filelist"): pick an already-added image, or upload a new one. */
 function ImageFieldControl({ value, set }: { value: string; set: (v: string) => void }) {
@@ -97,11 +106,32 @@ function FieldControl({ field }: { field: SpxField }) {
  * SPXGCTemplateDefinition; each renders the control matching its ftype.
  */
 export default function SampleDataPanel() {
+  const template = useTemplateStore((s) => s.template);
   const fields = useTemplateStore((s) => s.template.fields);
   const resetSampleData = useTemplateStore((s) => s.resetSampleData);
+  const applyTemplate = useTemplateStore((s) => s.applyTemplate);
+  const setActiveTab = useTemplateStore((s) => s.setActiveTab);
+
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState<Ftype>('textfield');
 
   const dataFields = fields.filter((f) => DATA_FTYPES.includes(f.ftype));
   const noteFields = fields.filter((f) => ['instruction', 'caption'].includes(f.ftype));
+
+  // Append a field to the SPX definition (the editor highlights the new entry). The field
+  // is definition-only until it's wired to an element — AI modify does that in one prompt.
+  const addField = () => {
+    const field: SpxField = {
+      field: nextFieldId(fields),
+      ftype: newType,
+      title: newTitle.trim() || 'New field',
+      value: newType === 'number' ? '0' : '',
+      ...(newType === 'filelist' ? { assetfolder: './images/', extension: 'png' } : {}),
+    };
+    applyTemplate(addFieldToDefinition(template, field));
+    setActiveTab('html'); // the definition lives in the HTML — show what was added
+    setNewTitle('');
+  };
 
   return (
     <div>
@@ -143,6 +173,30 @@ export default function SampleDataPanel() {
           <button onClick={resetSampleData}>Reset to defaults</button>
         </>
       )}
+
+      <div className="divider" />
+      <div className="panel-section">
+        <h3>Add a field</h3>
+        <div className="row">
+          <input
+            className="grow"
+            placeholder="Label the operator sees, e.g. Sponsor"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') addField(); }}
+          />
+          <select value={newType} onChange={(e) => setNewType(e.target.value as Ftype)}>
+            {ADD_FTYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+          <button onClick={addField} title="Append the field to the SPX definition">+ Add</button>
+        </div>
+        <p className="hint" style={{ marginTop: 6 }}>
+          Lands in the SPX definition (highlighted in the HTML). To show it in the design, ask the
+          AI — e.g. “display the new Sponsor field under the title”.
+        </p>
+      </div>
     </div>
   );
 }

@@ -143,15 +143,5 @@ test('export: downloads a plug-and-play SPX zip', async ({ page }) => {
   expect(download.suggestedFilename()).toMatch(/\.zip$/);
 });
 
-test('blocks: search, apply, undo still work on wizard templates', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('[data-entry="blank"]').click();
-  await page.locator('.panel-tabs .tab', { hasText: 'Blocks' }).click();
-  await page.locator('.block-search').fill('name');
-  await page.locator('.block-btn', { hasText: 'Name + title' }).click();
-  await expect(page.locator('.block-toast')).toContainText('Name + title');
-  const frame = previewFrame(page);
-  await expect(frame.locator('#f0')).toBeVisible();
-  await page.locator('.block-toast').getByText('Undo').click();
-  await expect(frame.locator('#f0')).toHaveCount(0);
-});
+// (The Blocks tab was retired in the UX overhaul — element inserts go through AI, and
+// adding data fields lives in the Data panel; see e2e/ux.spec.ts.)

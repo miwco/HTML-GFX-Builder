@@ -107,10 +107,17 @@ src/
                   quiz/         qz01 (prefix 'qz'; f0 question, f1-f4 options, hidden f5
                                 correct-answer dropdown; next() → revealAnswer() adds
                                 .qz-correct/.qz-dim, update() clears the reveal)
-  store/        templateStore.ts — zustand; template + UI state; undo history; lastInserted
+  store/        templateStore.ts — zustand; template + UI state; undo history; lastChange
+                (per-tab changed-line ranges from every apply — the editor highlight);
+                replayNonce (Motion applies auto-replay via PlayoutSimulator); patchCss
+                (Style-panel patches: highlight without history spam)
   preview/      composeDocument.ts — inlines CSS + GSAP + JS + assets into the iframe srcdoc
-  blocks/       registry.ts (hierarchical BuildingBlock[]), edit.ts, cssVars.ts (:root vars),
-                animPatch.ts (marked-region readers/patchers for the Motion panel)
+  blocks/       registry.ts (BuildingBlock[] — no Blocks tab anymore; this is the offline AI
+                stub's vocabulary), edit.ts (nextFieldId, addFieldToDefinition, …), cssVars.ts,
+                animPatch.ts (marked-region readers/patchers: readAnimationInfo reads per-phase
+                "// In preset:" / "// Out preset:" comments falling back to "// Preset:";
+                swapAnimationPhase(js, id, cfg, 'in'|'out'|'both') splices two emitted regions
+                at the buildOutTimeline boundary — steps code travels with the IN phase)
   ai/           provider.ts (AIProvider + GenerateContext), claudeProvider.ts (real provider:
                 system prompt = SPX + house contracts + lt01's generated code as the canonical
                 example; forced emit_template tool; validate + one repair round), anthropic.ts
@@ -120,11 +127,16 @@ src/
   validation/   validateTemplate.ts — runs before export and on AI output
   export/       registry.ts (targets), targets/spxStarter.ts, targets/spxPack.ts, common.ts
                 (also bundles referenced fonts/*.woff2 + FONT_LICENSES.md)
-  teach/        knowledge.ts (cursor explanations), explain.ts, cssReference.ts (browsable + chips)
+  teach/        knowledge.ts + explain.ts — surfaced as Monaco HOVER tooltips in the editor
+                (registered in CodeEditor.tsx; there is no Learn tab), cssReference.ts
   assets/       gsap.min.js (bundled), assetUtils.ts (data-URL assets)
-  components/    AppShell, CodeEditor, PreviewFrame, CanvasGuides, PlayoutSimulator, SidePanel,
-                 SampleDataPanel, BuildingBlockMenu, StylePanel, AnimationPanel, LearnPanel,
-                 AIPromptPanel, TemplateValidator, ExportPanel,
+  components/    AppShell (two-pane layout: code left; preview stacked over the tool tabs
+                 right — the stage's aspect-ratio comes from the template resolution),
+                 CodeEditor (Monaco + change-highlight decorations + hover explanations),
+                 PreviewFrame, CanvasGuides, PlayoutSimulator (auto-replays on replayNonce),
+                 SidePanel (five tabs: Data / Style / Motion / AI / Export),
+                 SampleDataPanel (sample values + add-field), StylePanel, AnimationPanel
+                 (In/Out/Both phase control), AIPromptPanel, ExportPanel (validation inline),
                  wizard/ (CreationWizard, draft.ts, WizardPreview, MiniPreview, steps/)
 public/fonts/   the 6 bundled woff2 fonts (served at /fonts, copied into exports)
 scripts/        l3-sweep.mjs — Playwright dev tool: `node scripts/l3-sweep.mjs <shots-dir>

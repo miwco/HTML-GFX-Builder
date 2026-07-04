@@ -1,4 +1,4 @@
-import { type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 
 interface Props {
@@ -12,9 +12,13 @@ type SpxWindow = Window & {
   update?: (data: string) => void;
 };
 
+// The preview rebuilds on a ~350 ms debounce after an apply — replay after it settles.
+const REPLAY_AFTER_REBUILD_MS = 550;
+
 /** Simulate SPX playout: call play()/stop()/update()/next() on the live preview. */
 export default function PlayoutSimulator({ iframeRef }: Props) {
   const sampleData = useTemplateStore((s) => s.sampleData);
+  const replayNonce = useTemplateStore((s) => s.replayNonce);
 
   const win = (): SpxWindow | null => (iframeRef.current?.contentWindow as SpxWindow) ?? null;
 
@@ -33,6 +37,16 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     sendUpdate();
     call('play');
   };
+
+  // Auto-replay: the Motion panel bumps replayNonce after an apply so the change is
+  // immediately visible. Wait out the debounced preview rebuild, then play the new code.
+  const playRef = useRef(playWithData);
+  playRef.current = playWithData;
+  useEffect(() => {
+    if (replayNonce === 0) return;
+    const handle = setTimeout(() => playRef.current(), REPLAY_AFTER_REBUILD_MS);
+    return () => clearTimeout(handle);
+  }, [replayNonce]);
 
   return (
     <div className="simulator">

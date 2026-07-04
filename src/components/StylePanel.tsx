@@ -46,7 +46,8 @@ const ZONES: Zone9[] = [
  */
 export default function StylePanel() {
   const template = useTemplateStore((s) => s.template);
-  const setCss = useTemplateStore((s) => s.setCss);
+  const setCss = useTemplateStore((s) => s.patchCss);
+  const setActiveTab = useTemplateStore((s) => s.setActiveTab);
   const addAsset = useTemplateStore((s) => s.addAsset);
   const removeAsset = useTemplateStore((s) => s.removeAsset);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -66,7 +67,10 @@ export default function StylePanel() {
   // Position editing needs the standard .l3 root.
   const canPosition = /\.l3\s*\{/.test(template.css);
 
-  const setVar = (name: string, value: string) => setCss(setCssVariable(template.css, name, value));
+  const setVar = (name: string, value: string) => {
+    setCss(setCssVariable(template.css, name, value));
+    setActiveTab('css'); // show the changed line in the editor
+  };
 
   const swapFont = (fontId: string) => {
     const font = FONTS.find((f) => f.id === fontId);

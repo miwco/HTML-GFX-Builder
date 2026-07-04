@@ -10,13 +10,52 @@ import type { ValidationResult } from '../validation/validateTemplate';
 
 export type EditorTab = 'html' | 'css' | 'js';
 export type PreviewBg = 'checkerboard' | 'black' | 'video';
-export type SidePanel = 'data' | 'blocks' | 'style' | 'animation' | 'learn' | 'ai' | 'validate' | 'export';
+export type SidePanel = 'data' | 'style' | 'animation' | 'ai' | 'export';
 
-/** What the cursor is currently on in the code editor (drives the Learn panel). */
+/** What the cursor is currently on in the code editor (drives the hover explanations). */
 export interface EditorContext {
   tab: EditorTab;
   token: string;
   line: string;
+}
+
+/** The lines the last panel/AI apply changed, per tab — the editor highlights them. */
+export interface LastChange {
+  ranges: Partial<Record<EditorTab, { start: number; end: number }>>;
+  /** Bumped per apply so an identical follow-up change still re-triggers the highlight. */
+  nonce: number;
+}
+
+/**
+ * Cheap per-tab line diff: trim the common prefix and suffix lines, report the changed
+ * span in the NEW text. Good enough for the targeted patches panels and AI produce.
+ */
+function changedRange(before: string, after: string): { start: number; end: number } | null {
+  if (before === after) return null;
+  const a = before.split('\n');
+  const b = after.split('\n');
+  let start = 0;
+  while (start < a.length && start < b.length && a[start] === b[start]) start++;
+  let endA = a.length - 1;
+  let endB = b.length - 1;
+  while (endA >= start && endB >= start && a[endA] === b[endB]) {
+    endA--;
+    endB--;
+  }
+  // Monaco lines are 1-based; a pure deletion still highlights the seam line.
+  return { start: start + 1, end: Math.max(endB + 1, start + 1) };
+}
+
+/** Diff all three files of a template apply into a LastChange (null when nothing changed). */
+function diffTemplates(before: SpxTemplate, after: SpxTemplate, nonce: number): LastChange | null {
+  const ranges: LastChange['ranges'] = {};
+  const html = changedRange(before.html, after.html);
+  const css = changedRange(before.css, after.css);
+  const js = changedRange(before.js, after.js);
+  if (html) ranges.html = html;
+  if (css) ranges.css = css;
+  if (js) ranges.js = js;
+  return Object.keys(ranges).length ? { ranges, nonce } : null;
 }
 
 interface TemplateState {
@@ -35,10 +74,12 @@ interface TemplateState {
   guides: { safeAreas: boolean; grid: boolean };
   /** Whether the template gallery / new-project screen is open. */
   galleryOpen: boolean;
-  /** Snapshots taken before each block / AI / gallery apply, for one-click undo. */
+  /** Snapshots taken before each panel / AI / gallery apply, for one-click undo. */
   history: SpxTemplate[];
-  /** The selector + tab the most recent block touched (drives suggestion chips). */
-  lastInserted: { selector: string | null; tab: EditorTab } | null;
+  /** The lines the last apply changed (drives the editor's change highlight). */
+  lastChange: LastChange | null;
+  /** Bumped by panels after an apply to make the playout simulator replay the graphic. */
+  replayNonce: number;
 
   setActiveTab: (tab: EditorTab) => void;
   setPreviewBg: (bg: PreviewBg) => void;
@@ -47,13 +88,15 @@ interface TemplateState {
   setHtml: (html: string) => void;
   setCss: (css: string) => void;
   setJs: (js: string) => void;
+  /** A deterministic panel patch to the CSS: updates + highlights, no history snapshot. */
+  patchCss: (css: string) => void;
 
-  /** Replace the whole template (used by building blocks, AI, and template gallery). */
+  /** Replace the whole template (used by the panels, AI, and the wizard). */
   applyTemplate: (template: SpxTemplate, opts?: { resetSampleData?: boolean }) => void;
   /** Restore the template from before the last apply. No-op when history is empty. */
   undo: () => void;
-  /** Record what the last block touched (for the suggestion chips). */
-  setLastInserted: (info: { selector: string | null; tab: EditorTab } | null) => void;
+  /** Ask the playout simulator to replay the graphic (used after Motion applies). */
+  requestReplay: () => void;
   resetToDefault: () => void;
 
   setSampleValue: (field: string, value: string) => void;
@@ -104,32 +147,51 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   guides: { safeAreas: false, grid: false },
   galleryOpen: true, // Show the template chooser on first load.
   history: [],
-  lastInserted: null,
+  lastChange: null,
+  replayNonce: 0,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
   setActivePanel: (panel) => set({ activePanel: panel }),
 
+  // A deterministic CSS patch from the Style panel: highlight what changed (no history
+  // snapshot — color drags fire dozens of these per second).
+  patchCss: (css) =>
+    set((s) => {
+      const next = { ...s.template, css };
+      return {
+        template: next,
+        validation: null,
+        lastChange: diffTemplates(s.template, next, (s.lastChange?.nonce ?? 0) + 1),
+      };
+    }),
+
+  // Manual typing clears the change highlight — the user is editing, not reviewing.
   setHtml: (html) =>
     set((s) => {
       const template = withParsedFields({ ...s.template, html });
-      return { template, sampleData: syncSampleData(template, s.sampleData), validation: null };
+      return { template, sampleData: syncSampleData(template, s.sampleData), validation: null, lastChange: null };
     }),
-  setCss: (css) => set((s) => ({ template: { ...s.template, css }, validation: null })),
-  setJs: (js) => set((s) => ({ template: { ...s.template, js }, validation: null })),
+  setCss: (css) => set((s) => ({ template: { ...s.template, css }, validation: null, lastChange: null })),
+  setJs: (js) => set((s) => ({ template: { ...s.template, js }, validation: null, lastChange: null })),
 
   applyTemplate: (template, opts) =>
     set((s) => {
       const synced = withParsedFields(template);
       return {
         template: synced,
-        // In-place edits (blocks, panels, AI) keep typed sample values; creating a NEW
-        // project must not leak the previous template's values into matching field ids.
+        // In-place edits (panels, AI) keep typed sample values; creating a NEW project
+        // must not leak the previous template's values into matching field ids.
         sampleData: syncSampleData(synced, opts?.resetSampleData ? {} : s.sampleData),
         validation: null,
         galleryOpen: false,
         // Snapshot the pre-apply template so the action can be undone.
         history: [...s.history, s.template].slice(-30),
+        // Highlight what changed in the editor — but not for whole-project swaps
+        // (a new project changes everything; a highlight would just be noise).
+        lastChange: opts?.resetSampleData
+          ? null
+          : diffTemplates(s.template, synced, (s.lastChange?.nonce ?? 0) + 1),
       };
     }),
 
@@ -142,11 +204,11 @@ export const useTemplateStore = create<TemplateState>((set) => ({
         sampleData: syncSampleData(prev, s.sampleData),
         validation: null,
         history: s.history.slice(0, -1),
-        lastInserted: null,
+        lastChange: null,
       };
     }),
 
-  setLastInserted: (lastInserted) => set({ lastInserted }),
+  requestReplay: () => set((s) => ({ replayNonce: s.replayNonce + 1 })),
 
   resetToDefault: () =>
     set(() => {

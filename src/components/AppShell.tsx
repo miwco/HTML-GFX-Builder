@@ -7,9 +7,11 @@ import SidePanel from './SidePanel';
 import CreationWizard from './wizard/CreationWizard';
 
 /**
- * Three-pane workspace: code editor (left), live preview + playout simulator (center),
- * and the supporting side panels (right). The iframe ref is shared so the simulator can
- * call play()/stop()/update() on the live preview.
+ * Two-pane workspace: code editor (left) and, on the right, the live preview (16:9,
+ * sized by the template's aspect) stacked above the playout simulator and the tool
+ * panels. This keeps the canvas compact on portrait monitors instead of floating in
+ * dead space. The iframe ref is shared so the simulator can call play()/stop()/update()
+ * on the live preview.
  */
 export default function AppShell() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -65,9 +67,6 @@ export default function AppShell() {
             <PreviewFrame iframeRef={iframeRef} />
             <PlayoutSimulator iframeRef={iframeRef} />
           </div>
-        </section>
-
-        <section className="pane">
           <SidePanel />
         </section>
       </div>

@@ -1,12 +1,45 @@
+import { useEffect, useRef } from 'react';
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { useTemplateStore, type EditorTab } from '../store/templateStore';
-import { tokenAt } from '../teach/explain';
+import { explain, tokenAt } from '../teach/explain';
 
 const TABS: { id: EditorTab; label: string; language: string }[] = [
   { id: 'html', label: 'HTML', language: 'html' },
   { id: 'css', label: 'CSS', language: 'css' },
   { id: 'js', label: 'JS', language: 'javascript' },
 ];
+
+type MonacoEditor = Parameters<OnMount>[0];
+type Monaco = Parameters<OnMount>[1];
+
+// Register the hover explanations once per page (Monaco registries are global).
+let hoverRegistered = false;
+interface HoverModel { getLineContent(lineNumber: number): string }
+interface HoverPosition { lineNumber: number; column: number }
+function registerHoverExplanations(monaco: Monaco) {
+  if (hoverRegistered) return;
+  hoverRegistered = true;
+  const provider = {
+    provideHover(model: HoverModel, position: HoverPosition) {
+      const line = model.getLineContent(position.lineNumber);
+      const token = tokenAt(line, position.column - 1);
+      if (!token) return null;
+      const results = explain({ token, line });
+      if (results.length === 0) return null;
+      return {
+        contents: results.map((r) => ({
+          value:
+            `**${r.title}** · ${r.category}\n\n${r.body}` +
+            (r.affects ? `\n\n*In the preview:* ${r.affects}` : ''),
+        })),
+      };
+    },
+  };
+  for (const lang of ['html', 'css', 'javascript']) {
+    // The teach knowledge base shows up as hover tooltips right where the code is.
+    monaco.languages.registerHoverProvider(lang, provider as never);
+  }
+}
 
 /** Monaco-based editor with HTML / CSS / JS tabs, bound to the template store. */
 export default function CodeEditor() {
@@ -16,8 +49,12 @@ export default function CodeEditor() {
   const setHtml = useTemplateStore((s) => s.setHtml);
   const setCss = useTemplateStore((s) => s.setCss);
   const setJs = useTemplateStore((s) => s.setJs);
+  const lastChange = useTemplateStore((s) => s.lastChange);
 
   const setEditorContext = useTemplateStore((s) => s.setEditorContext);
+
+  const editorRef = useRef<MonacoEditor | null>(null);
+  const decorationsRef = useRef<ReturnType<MonacoEditor['createDecorationsCollection']> | null>(null);
 
   const current = TABS.find((t) => t.id === activeTab)!;
   const value = activeTab === 'html' ? template.html : activeTab === 'css' ? template.css : template.js;
@@ -29,8 +66,35 @@ export default function CodeEditor() {
     else setJs(v);
   };
 
-  // Report the token under the cursor to the store so the Learn panel can explain it.
-  const onMount: OnMount = (editor) => {
+  // Highlight + reveal the lines the last panel/AI apply changed in this tab.
+  useEffect(() => {
+    decorationsRef.current?.clear();
+    const editor = editorRef.current;
+    const range = lastChange?.ranges[activeTab];
+    if (!editor || !range) return;
+    // Small delay: the new value reaches Monaco right after this render commit.
+    const handle = setTimeout(() => {
+      decorationsRef.current?.clear();
+      decorationsRef.current = editor.createDecorationsCollection([
+        {
+          range: { startLineNumber: range.start, startColumn: 1, endLineNumber: range.end, endColumn: 1 },
+          options: {
+            isWholeLine: true,
+            className: 'changed-line',
+            linesDecorationsClassName: 'changed-gutter',
+          },
+        },
+      ]);
+      editor.revealLineInCenter(range.start);
+    }, 80);
+    return () => clearTimeout(handle);
+  }, [lastChange, activeTab]);
+
+  // Report the token under the cursor (kept for future context-aware tools) and register
+  // the hover explanations.
+  const onMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    registerHoverExplanations(monaco);
     const report = () => {
       const model = editor.getModel();
       const pos = editor.getPosition();
