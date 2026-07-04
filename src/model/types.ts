@@ -10,6 +10,9 @@
 /** High-level graphic category, used for gallery grouping and future visual tools. */
 export type TemplateType =
   | 'lower-third'
+  | 'info-card'
+  | 'end-credits'
+  | 'ticker'
   | 'fullscreen'
   | 'bug'
   | 'countdown'

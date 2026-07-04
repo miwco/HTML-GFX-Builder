@@ -55,7 +55,7 @@ source of truth, and always exports to a working SPX package.
 - [x] **Project brand + match toggle** — the app remembers the project's brand (family, palette
       incl. custom, font incl. imported); the wizard preselects it ("Match current project", on
       by default) so the next graphic automatically belongs to the same package
-- [ ] **Package-consistency foundations** — DESIGN_LANGUAGE addendum with per-family
+- [x] **Package-consistency foundations** — DESIGN_LANGUAGE addendum with per-family
       cross-category tokens (shape, type roles, motion timing); shared template assembler
       extracted from lowerThirds for all categories; continuous-motion machinery (linear loops)
 - [ ] **First wave categories** (each: briefs → workflow build + judge incl. a package-consistency

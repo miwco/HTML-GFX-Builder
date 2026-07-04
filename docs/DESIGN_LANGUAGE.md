@@ -135,7 +135,32 @@ use the tighter classic 120 px left inset for lower-left thirds). Zone sets the 
   build steps, no modules, no cleverness. Field convention: one element `id="fN"` per data field;
   `update(data)` writes values straight in (see `docs/SPX_TEMPLATE_FORMAT.md`).
 
-## 8. Judging checklist (what reviewers score)
+## 8. Package consistency (cross-category)
+
+Graphics from one project must read as **one show**. Categories are not islands: every category
+ships at least one variant per style family, and that variant must look like the **sibling** of its
+lower-third counterpart. The shared `:root` contract + brand mechanism carry palette and font;
+these family tokens carry the *shape and motion*:
+
+| Token | minimal | sport | glass |
+|---|---|---|---|
+| Accent geometry | hairlines 2–4 px, short underlines | slabs 8–12 px, fused to panel edges | dots, rings, gradient edges |
+| Panel | none or keyline `rgba(255,255,255,0.14)` | solid slab, **skewX(−8°)** where skewed | translucent white 0.08–0.14 + `blur(18px)` + keyline 0.18 |
+| Radius | 0–2 px | 0 | 14–18 px |
+| Shadow | none/subtle | hard offset (sticker-slab) | soft wide `0 20px 60px rgba(0,0,0,0.35)` |
+| Type | normal width, weights 400–700 | condensed/heavy caps, 0.02–0.1 em tracking on labels | soft rounded families, weights 500–800 |
+| Motion feel | expo/power3 reveals, masked lines | ≤0.5 s snap-stingers, x-slides with skew | back.out pops, blur-ins |
+| Continuous motion (tickers/credits/loops) | `ease: 'none'` (Linear) for the travel itself; entrances/exits still eased | same | same |
+
+Rules:
+- A new category variant **must name its lower-third sibling** in its brief and be judged against
+  it ("would these two appear in the same show?").
+- Reuse the exact token values above (e.g. sport's −8° skew, glass's blur 18) — don't improvise
+  new ones per category.
+- Category structure contracts mirror `.l3`: `.card`, `.credits`, `.ticker` roots with the same
+  `:root` variable names, the same marked ANIMATION region, and the same auto-fit text rules.
+
+## 9. Judging checklist (what reviewers score)
 
 1. **Taste** — would this pass on a paid-asset marketplace? Palette discipline, spacing, type
    hierarchy per the rules above.

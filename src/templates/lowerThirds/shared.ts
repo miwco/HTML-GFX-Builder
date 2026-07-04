@@ -1,7 +1,7 @@
-// Shared scaffolding for all lower-third variants. A variant supplies only its unique design
-// fragments (inner HTML + design CSS); this module assembles the complete, teachable template:
-// document skeleton, SPX definition, :root style contract, @font-face, zone positioning,
-// the auto-fit text pattern, the JS runtime scaffold, and the marked animation block.
+// Lower-third scaffolding. The generic pieces (font resolution, :root contract, reset,
+// scale math, zones, document + runtime skeletons) live in templates/shared/base.ts and are
+// composed here with the lower-third specifics: the .l3 structure contract, the auto-fit
+// pattern, and the L3 animation presets.
 //
 // Standard structure contract (all variants; presets rely on it):
 //   <div class="l3">            root — positioned by zone; opacity:0 until play()
@@ -12,9 +12,8 @@
 //     </div>
 //   </div>
 
-import { DEFAULT_SETTINGS, type Resolution, type SpxSettings, type SpxTemplate } from '../../model/types';
+import type { SpxTemplate } from '../../model/types';
 import { definitionScriptBlock } from '../../model/spxDefinition';
-import { customFontFaceCss, customFontStack, fontById, fontFaceCss, fontStack } from '../../model/fonts';
 import { resolveEasing } from '../../model/easings';
 import {
   fieldsFromOptions,
@@ -22,9 +21,22 @@ import {
   type ResolvedOptions,
   type TemplateVariant,
   type WizardOptions,
-  type Zone9,
 } from '../../model/wizard';
+import {
+  baseSettings,
+  computeMaxTextWidth,
+  computeScale,
+  documentHtml,
+  resetCanvasCss,
+  resolveHeadingFont,
+  rootVarsCss,
+  runtimeJs,
+  zoneCssText,
+} from '../shared/base';
 import { presetById, type PresetConfig } from './animPresets';
+
+// Re-exported so existing imports (Style panel, sweep) keep working.
+export { zoneDecls, type ZoneDecl } from '../shared/base';
 
 // ── What a variant author writes ─────────────────────────────────────────────
 
@@ -62,63 +74,6 @@ export function lineMasks(o: ResolvedOptions, indent = '      '): string {
     .join('\n');
 }
 
-// ── Positioning: 9 zones snapped to safe areas ───────────────────────────────
-
-export interface ZoneDecl {
-  prop: string;
-  value: string;
-  comment: string;
-}
-
-/**
- * The full set of positioning declarations for an anchor zone (unused sides explicitly
- * reset so re-positioning an existing template fully overrides the previous zone).
- */
-export function zoneDecls(zone: Zone9, nudge: { x: number; y: number }, res: Resolution): ZoneDecl[] {
-  const hInset = Math.round(res.width * 0.0625); // ≈ classic 120 px side inset at 1920
-  const topInset = Math.round(res.height * 0.08);
-  const bottomInset = Math.round(res.height * 0.11);
-
-  const [v, h] = zone.split('-') as ['top' | 'mid' | 'bottom', 'left' | 'center' | 'right'];
-  const decls: ZoneDecl[] = [];
-  const transforms: string[] = [];
-
-  if (h === 'left') decls.push({ prop: 'left', value: `${hInset + nudge.x}px`, comment: 'inset from the left edge (safe area)' });
-  if (h === 'right') decls.push({ prop: 'right', value: `${hInset - nudge.x}px`, comment: 'inset from the right edge (safe area)' });
-  if (h === 'center') {
-    decls.push({ prop: 'left', value: `calc(50% + ${nudge.x}px)`, comment: 'anchored to the horizontal center' });
-    transforms.push('translateX(-50%)');
-  }
-  if (v === 'top') decls.push({ prop: 'top', value: `${topInset + nudge.y}px`, comment: 'inset from the top edge' });
-  if (v === 'bottom') decls.push({ prop: 'bottom', value: `${bottomInset - nudge.y}px`, comment: 'inset from the bottom — wrapped text grows upward' });
-  if (v === 'mid') {
-    decls.push({ prop: 'top', value: `calc(50% + ${nudge.y}px)`, comment: 'anchored to the vertical center' });
-    transforms.push('translateY(-50%)');
-  }
-  // Explicitly reset whatever this zone doesn't use, so zone changes fully override.
-  const used = new Set(decls.map((d) => d.prop));
-  for (const side of ['left', 'right', 'top', 'bottom']) {
-    if (!used.has(side)) decls.push({ prop: side, value: 'auto', comment: 'not used by this anchor zone' });
-  }
-  decls.push({
-    prop: 'transform',
-    value: transforms.length > 0 ? transforms.join(' ') : 'none',
-    comment: transforms.length > 0 ? 'center on the anchor point' : 'no centering needed',
-  });
-  const align = h === 'right' ? 'right' : h === 'center' ? 'center' : 'left';
-  decls.push({ prop: 'text-align', value: align, comment: 'lines align toward the anchor edge' });
-  return decls;
-}
-
-/** Pretty CSS text for the zone declarations (used in freshly generated templates). */
-function zoneCss(zone: Zone9, nudge: { x: number; y: number }, res: Resolution): { decls: string } {
-  const lines = zoneDecls(zone, nudge, res)
-    // Freshly generated code omits the explicit "auto"/"none" resets for readability.
-    .filter((d) => !(d.value === 'auto' || (d.prop === 'transform' && d.value === 'none')))
-    .map((d) => `  ${d.prop}: ${d.value};`.padEnd(35) + `/* ${d.comment} */`);
-  return { decls: lines.join('\n') };
-}
-
 // ── The assembler ────────────────────────────────────────────────────────────
 
 /**
@@ -126,84 +81,33 @@ function zoneCss(zone: Zone9, nudge: { x: number; y: number }, res: Resolution):
  * Everything generated here follows docs/DESIGN_LANGUAGE.md.
  */
 export function assembleLowerThird(meta: L3Meta, design: L3Design, o: ResolvedOptions): SpxTemplate {
-  // An imported font (embedded asset) wins over the bundled set.
-  const bundled = fontById(o.fontId);
-  const headingStack = o.customFont ? customFontStack(o.customFont) : fontStack(bundled);
-  const fontFace = o.customFont ? customFontFaceCss(o.customFont) : fontFaceCss(bundled);
+  const font = resolveHeadingFont(o); // imported font wins over the bundled set
   const fields = fieldsFromOptions(o);
+  const settings = baseSettings(meta, o);
+  const scale = computeScale(o);
+  const maxTextWidth = computeMaxTextWidth(o.resolution);
 
-  const settings: SpxSettings = {
-    ...DEFAULT_SETTINGS,
-    description: meta.name,
-    playlayer: '7', // lower thirds sit high in the stack (docs use 7)
-    webplayout: '7',
-    // SPX: 1 = normal in/out; ≥2 enables the Continue button (one phase per revealed line).
-    steps: o.animation.steps && o.lines.length > 1 ? String(o.lines.length) : '1',
-    uicolor: meta.uicolor,
-  };
-
-  // One knob drives size choice AND resolution scaling (variants author px at 1080p).
-  const resFactor = Math.min(o.resolution.width / 1920, o.resolution.height / 1080);
-  const scale = +(o.sizeScale * resFactor).toFixed(3);
-
-  // The panel never grows past this — text wraps to new rows instead (auto-fit pattern).
-  const maxTextWidth = Math.round(Math.min(o.resolution.width * 0.42, o.resolution.width - 2 * (o.resolution.width * 0.0625)));
-
-  const zone = zoneCss(o.zone, o.nudge, o.resolution);
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>${meta.name}</title>
-
-  <!-- GSAP animation library (bundled locally — no internet needed at playout). -->
-  <script src="js/gsap.min.js"></script>
-
-  <!-- Template styles and logic. -->
-  <link rel="stylesheet" href="css/template.css" />
-  <script src="js/template.js"></script>
-
-  <!-- SPX template definition: the data fields shown to the operator. -->
-  ${definitionScriptBlock(settings, fields)}
-</head>
-<body>
-  <!-- ${meta.name}. Hidden until play(); positioned by the .l3 rule in the CSS. -->
+  const html = documentHtml({
+    title: meta.name,
+    definitionBlock: definitionScriptBlock(settings, fields),
+    body: `  <!-- ${meta.name}. Hidden until play(); positioned by the .l3 rule in the CSS. -->
   <div class="l3">
 ${design.html}
-  </div>
-</body>
-</html>
-`;
+  </div>`,
+  });
 
   const css = `/* ${meta.name} — generated by SPX GFX Builder. Edit freely: this file is yours. */
 
-/* ── Style contract: change these variables to retint the whole graphic. ── */
-:root {
-  --accent: ${o.palette.accent};           /* the one accent color */
-  --text-color: ${o.palette.text};          /* primary text */
-  --text-dim: ${o.palette.textDim};  /* secondary text (title line) */
-  --panel-bg: ${o.palette.panel};  /* the panel behind the text */
-  --font-heading: ${headingStack};  /* the graphic's typeface */
-  --scale: ${scale};                  /* size multiplier (also handles resolution) */
-}
+${rootVarsCss(o, font.stack, scale)}
 
-${fontFace}
+${font.face}
 
-/* Reset and a transparent canvas (broadcast graphics render over video). */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body {
-  width: ${o.resolution.width}px;
-  height: ${o.resolution.height}px;
-  overflow: hidden;                /* nothing ever scrolls on air */
-  background: transparent;
-  font-family: var(--font-heading);
-}
+${resetCanvasCss(o.resolution)}
 
 /* ── Root position (anchor zone) ── */
 .l3 {
   position: absolute;
-${zone.decls}
+${zoneCssText(o.zone, o.nudge, o.resolution)}
   opacity: 0;                      /* hidden until play() runs the entrance */
 }
 
@@ -238,39 +142,8 @@ ${design.css}
     easeIn: ease.easeIn,
     easeOut: ease.easeOut,
   };
-  const animationBlock = preset.emit(presetCfg);
 
-  const js = `// ${meta.name} — generated by SPX GFX Builder. SPX calls update(), play(), stop(), next().
-
-// update(data): SPX sends field values as JSON, e.g. {"f0":"Ada","f1":"Engineer"}.
-// Each value is written into the element whose id matches the field name (f0 -> id="f0").
-function update(data) {
-  var fields = (typeof data === 'string') ? JSON.parse(data) : data;
-  for (var key in fields) {
-    var el = document.getElementById(key);
-    if (el) el.innerHTML = fields[key];
-  }
-}
-
-// play(): take the graphic on air — run the entrance timeline.
-function play() {
-  gsap.killTweensOf('*');          // stop any animation that is still running
-  buildInTimeline();
-}
-
-// stop(): take the graphic off air — run the exit timeline.
-function stop() {
-  gsap.killTweensOf('*');
-  buildOutTimeline();
-}
-
-// next(): SPX Continue — reveals the next step on multi-step graphics (no-op otherwise).
-function next() {
-  if (typeof revealNextStep === 'function') revealNextStep();
-}
-
-${animationBlock}
-`;
+  const js = runtimeJs(meta.name, preset.emit(presetCfg));
 
   return {
     name: meta.name,
