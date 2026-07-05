@@ -2,17 +2,21 @@
 // each result over a video-like backdrop, and build a review gallery. This is the raw
 // material for iterating the system prompt in src/ai/claudeProvider.ts.
 //
-//   node scripts/ai-bench.mjs [out-dir] [count]
+//   node scripts/ai-bench.mjs [out-dir] [count | id,id,…]
 //
 // Requirements: the dev server on http://localhost:5174 and VITE_ANTHROPIC_API_KEY in
 // .env (or the environment). ⚠ SPENDS REAL TOKENS — roughly a few cents per brief with
-// the default model; [count] limits the run (default: all briefs).
+// the default model; the third arg limits the run to the first N briefs, or to a
+// comma-separated list of brief ids (e.g. "karaoke-line,weather-now").
+//
+// Beyond validation, every result gets a RUNTIME LAYOUT CHECK in the settled frame:
+// pairwise text-element overlap detection (unintentional stacking is the #1 taste bug).
 
 import { chromium } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 const OUT = process.argv[2] || './bench-out';
-const COUNT = Number(process.argv[3]) || Infinity;
+const FILTER = process.argv[3] ?? '';
 mkdirSync(OUT, { recursive: true });
 
 // ── The brief bank: deliberately OFF-catalog graphics (no starting template) ──
@@ -56,8 +60,12 @@ await page.addInitScript((key) => {
 await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(800);
 
+const selected = /^[a-z-]+(,[a-z-]+)*$/.test(FILTER)
+  ? BRIEFS.filter(([id]) => FILTER.split(',').includes(id))
+  : BRIEFS.slice(0, Number(FILTER) || Infinity);
+
 const results = [];
-for (const [id, brief] of BRIEFS.slice(0, COUNT)) {
+for (const [id, brief] of selected) {
   process.stdout.write(`▸ ${id} … `);
   try {
     const r = await page.evaluate(
@@ -98,14 +106,48 @@ for (const [id, brief] of BRIEFS.slice(0, COUNT)) {
     await page.waitForTimeout(2200);
     await page.screenshot({ path: `${OUT}/${id}.png` });
 
-    results.push({ id, brief, name: r.name, summary: r.summary, ok: r.ok, errors: r.errors });
-    console.log(r.ok ? `OK  (${r.name})` : `INVALID (${r.errors.length} errors)`);
+    // Runtime layout check: unintentional text-on-text overlap in the settled frame.
+    const overlaps = await page.evaluate(() => {
+      const doc = document.getElementById('shot').contentDocument;
+      const texts = [...doc.querySelectorAll('body *')].filter((el) => {
+        const cs = doc.defaultView.getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05) return false;
+        return [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+      });
+      const label = (el) => `<${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}> "${el.textContent.trim().slice(0, 24)}"`;
+      const found = [];
+      for (let i = 0; i < texts.length; i++) {
+        for (let j = i + 1; j < texts.length; j++) {
+          const a = texts[i]; const b = texts[j];
+          if (a.contains(b) || b.contains(a)) continue;
+          // Identical text stacked on itself is deliberate layering (karaoke wipes,
+          // glow copies) — only DIFFERENT information colliding is a bug.
+          if (a.textContent.trim() === b.textContent.trim()) continue;
+          const ra = a.getBoundingClientRect(); const rb = b.getBoundingClientRect();
+          const ix = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
+          const iy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+          if (ix > 4 && iy > 4) {
+            const inter = ix * iy;
+            const smaller = Math.min(ra.width * ra.height, rb.width * rb.height);
+            // >15% of the smaller element covered = a real collision, not line-height kissing.
+            if (smaller > 0 && inter / smaller > 0.15) found.push(`${label(a)} ⇄ ${label(b)}`);
+          }
+        }
+      }
+      return found.slice(0, 5);
+    });
+
+    results.push({ id, brief, name: r.name, summary: r.summary, ok: r.ok, errors: r.errors, overlaps });
+    console.log(
+      (r.ok ? `OK  (${r.name})` : `INVALID (${r.errors.length} errors)`) +
+        (overlaps.length ? `  ⚠ ${overlaps.length} text overlap(s)` : ''),
+    );
 
     // Back to the app for the next round.
     await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(600);
   } catch (e) {
-    results.push({ id, brief, name: null, summary: null, ok: false, errors: [String(e.message || e)] });
+    results.push({ id, brief, name: null, summary: null, ok: false, errors: [String(e.message || e)], overlaps: [] });
     console.log('FAILED: ' + (e.message || e));
   }
 }
@@ -116,10 +158,11 @@ writeFileSync(`${OUT}/results.json`, JSON.stringify(results, null, 2));
 const rows = results
   .map(
     (r) => `
-  <figure class="${r.ok ? 'ok' : 'bad'}">
+  <figure class="${r.ok && !(r.overlaps ?? []).length ? 'ok' : 'bad'}">
     <img src="${r.id}.png" alt="${r.id}" loading="lazy">
     <figcaption>
       <strong>${r.name ?? r.id}</strong> <em>${r.ok ? '✓ valid' : '✗ ' + r.errors.join(' · ')}</em>
+      ${(r.overlaps ?? []).length ? `<p class="warn">⚠ overlap: ${r.overlaps.join(' · ')}</p>` : ''}
       <p>${r.summary ?? ''}</p>
       <details><summary>brief</summary><p>${r.brief}</p></details>
     </figcaption>
@@ -135,7 +178,7 @@ writeFileSync(
   figure{margin:0;border:1px solid #242c38;border-radius:10px;overflow:hidden;background:#171d26}
   figure.bad{border-color:#7a2e2e} img{width:100%;display:block;aspect-ratio:16/9;object-fit:cover}
   figcaption{padding:10px 12px} em{color:#8b95a5;font-style:normal;font-size:12px;margin-left:6px}
-  figure.bad em{color:#ff8484} p{margin:6px 0 0;color:#8b95a5;font-size:13px} summary{cursor:pointer;color:#8b95a5;font-size:12px;margin-top:6px}
+  figure.bad em{color:#ff8484} p{margin:6px 0 0;color:#8b95a5;font-size:13px} p.warn{color:#ffb35c} summary{cursor:pointer;color:#8b95a5;font-size:12px;margin-top:6px}
 </style>
 <h1>AI quality bench — ${results.filter((r) => r.ok).length}/${results.length} valid</h1>
 <div class="grid">${rows}</div>`,

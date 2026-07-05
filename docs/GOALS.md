@@ -147,11 +147,23 @@ server era (no server = no CORS-free social APIs, no inbound chat endpoint).
       with a machine-readable BRIEF line; "Use as brief" fills the prompt box.
 - [x] **Example prompt gallery** — 8 curated off-catalog briefs as one-click chips in the
       Describe-it step (ai/examplePrompts.ts).
-- [ ] **"Any graphic" quality push** — bench run #1 DONE (2026-07-05): **12/12 valid on the
-      first pass, zero repair rounds**. Known issues from run #1: tight label columns can
-      wrap mid-word (weather "HUMIDITY"); image-field placeholders not always visually
-      present (versus-card logos). Next: user taste review of the run-1 gallery → iterate
-      the system prompt in claudeProvider.ts → re-bench (`node scripts/ai-bench.mjs`).
+- [x] **"Any graphic" quality push — iteration loop proven** — run #1: 12/12 valid, zero
+      repair rounds; user review found text-on-text stacking (karaoke), mid-word label
+      wraps (weather), invisible logo slots (versus). Fix: a **Layout safety** section in
+      the generation system prompt (no unintentional overlap, double-length mental render,
+      nowrap labels, broadcast contrast, visible image placeholders) + a **runtime overlap
+      detector** in the bench (pairwise text-rect intersection in the settled frame;
+      identical-text stacking whitelisted as deliberate layering). Run #2 on the flagged
+      briefs: all three fixed. The loop (bench → review → prompt → re-bench) is the
+      standing quality process; re-run the full bank after any system-prompt change.
+
+### Era 3.5 — Catalog growth from bench winners (user idea 2026-07-05)
+- [ ] The bench's off-catalog graphics become real catalog templates: promote the winners
+      (timing tower, poll donut, donation counter, quote card, schedule board, stock strip,
+      versus card…) into hand-tuned variants via the established brief→build→judge workflow.
+- [ ] Wizard category grouping: **Essentials** (the live-show must-haves: lower thirds,
+      tickers, scoreboards, credits…) vs **Specials/Niche** — so the catalog can grow
+      without burying the basics.
 
 ### Era 4 — Local backend (no server, no login)
 - [ ] **Control panels for your graphics** — auto-generate an operator page from the
@@ -175,6 +187,9 @@ private repo; the app reaches it via VITE_AI_PROXY_URL and Supabase URLs).
 - [ ] Remote realtime control: control panel on any device → channel → renderer subscription
       block in exported templates
 - [ ] Social ingestion + show chat (public send-in page → moderated queue → graphic)
+- [ ] **User-shared templates** (user idea 2026-07-05): a community section where logged-in
+      users publish templates/packets others can browse and use — needs accounts, storage,
+      and a moderation/quality gate (the validator + bench checks are the automated part)
 - [ ] Payments/subscriptions LAST (long beta first; gateway plan already sketched in the
       AI-mode discussion: separate private repo, Stripe, metered generations)
 

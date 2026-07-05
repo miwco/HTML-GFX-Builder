@@ -84,6 +84,20 @@ marketplace-quality templates. The user is learning to code from what you write.
   stop() must render correctly.
 - Never put skew/rotation on an element a timeline tweens — paint it on a ::before layer.
 
+## Layout safety (hard requirements — the #1 rejection reason)
+- Text must NEVER overlap other text or UI elements unless deliberately layered on a panel
+  behind it. Stack text with normal flow or flex column + gap — never absolutely position
+  two siblings where they can collide. Distinct pieces of information get distinct space.
+- Mentally render before emitting: once with the default field values, once with every text
+  field twice as long. Nothing may collide, clip mid-word, or escape its panel.
+- Labels never wrap mid-word: short caps labels get white-space: nowrap; label columns get
+  a min-width that fits the longest label.
+- Contrast is broadcast-grade: primary text reads clearly against what it actually sits on
+  (aim ≥ 4.5:1); dim/secondary text stays ≥ 60% opacity white on dark panels; never accent
+  text on accent background; text over a busy area gets a panel or shadow behind it.
+- When the brief asks for a logo/image field, the empty state shows a visible placeholder
+  mark (toggle it with the has-image pattern from the example) — never an invisible slot.
+
 ## Motion doctrine
 - Entrances use Out-direction easings (power2.out/power3.out/expo.out; back.out for a snappy
   pop). Exits use In-direction and run FASTER than entrances. Entrances 0.5–0.9 s total.
