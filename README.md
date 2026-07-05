@@ -52,6 +52,10 @@ npm run build    # typecheck + production build to dist/
 - **Playout simulator** — Play / Stop / Update / Next call the template's SPX runtime functions.
 - **Sample data panel** — edit the values sent to `update(data)`, one control per field `ftype`,
   and **add new fields** (text / long text / number / image) straight into the SPX definition.
+- **Import existing templates** — drop an `.html` file or an SPX-style `.zip` into the wizard's
+  Import entry: it opens as editable code (styles/scripts split into the panes, assets pulled
+  in), validation shows what needs fixing, and the export targets turn it into SPX, CasparCG,
+  or OGraf.
 - **Image fields & assets** — fields use the types live broadcast actually needs: text, long
   text, number, and **Image** (SPX `filelist` — the operator picks a file from the project's
   `images/` folder). End credits, the corner bug, and the frosted info card expose their logo

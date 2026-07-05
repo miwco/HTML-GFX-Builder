@@ -21,8 +21,8 @@ export default function EntryStep({ onTemplates, onImport, onAi, onBlank }: Prop
       </button>
       <button className="wz-entry-card" onClick={onImport} data-entry="import">
         <span className="wz-entry-icon">⬇</span>
-        <strong>Import graphics</strong>
-        <span className="hint">Drop in your logos or images first — the wizard builds the template around them.</span>
+        <strong>Import</strong>
+        <span className="hint">Logos/images to design around — or an existing .html/SPX template to edit and convert (SPX · CasparCG · OGraf).</span>
       </button>
       <button className="wz-entry-card" onClick={onBlank} data-entry="blank">
         <span className="wz-entry-icon">‹›</span>

@@ -132,11 +132,12 @@ server era (no server = no CORS-free social APIs, no inbound chat endpoint).
       Vite-bundled workers); E2E proves the editor works with every CDN blocked
 
 ### Era 2 — Workflow help: import to start
-- [ ] **Import HTML templates** — a wizard entry accepting an .html file or an SPX-style zip:
-      split into HTML/CSS/JS panes, run validation, offer the AI "Make SPX-ready" fix path.
-      Imported foreign templates won't have the house contracts (Style/Motion panels degrade
-      gracefully — they already detect the contracts); converting to SPX/CasparCG/OGraf then
-      comes free via the four export targets.
+- [x] **Import HTML templates** — the wizard's Import entry accepts .html and SPX-style .zip:
+      inline style/script split into the panes (the SPX definition stays in the HTML; bundled
+      GSAP blobs dropped), zip assets pulled in with relative paths, then straight to Export's
+      inline validation with the AI "Make SPX-ready" fix path; converting to
+      SPX/CasparCG/OGraf comes free via the four targets. Round-trip E2E: an exported Starter
+      zip re-imports as byte-identical code.
 - SKIPPED for now (user decision 2026-07-05): animated-SVG import and Lottie import — revisit
   after the server era if demand shows. (Lottie = the big one: bundled lottie-web player,
   segment mapping, text-layer binding.)

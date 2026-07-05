@@ -4,6 +4,7 @@ import { variantById, variantsFor } from '../../templates/catalog';
 import { createBlankTemplate } from '../../templates/blank';
 import { brandPatch, draftResolution, draftToOptions, initialDraft, mergeDraft, type DraftPatch, type WizardDraft } from './draft';
 import { loadBrand, saveBrand, type ProjectBrand } from '../../model/brand';
+import { importTemplateFile } from '../../model/importTemplate';
 import { paletteById } from '../../model/wizard';
 import WizardPreview from './WizardPreview';
 import EntryStep from './steps/EntryStep';
@@ -177,6 +178,19 @@ export default function CreationWizard() {
                 onContinue={(category) => {
                   patch({ category });
                   setStep(2);
+                }}
+                onTemplateFile={async (file) => {
+                  try {
+                    const imported = await importTemplateFile(file);
+                    applyTemplate(imported, { resetSampleData: true });
+                    setActiveTab('html');
+                    // Land on Export: its inline validation shows what (if anything) needs
+                    // fixing before the template is SPX/CasparCG/OGraf-ready.
+                    useTemplateStore.getState().setActivePanel('export');
+                    return null;
+                  } catch (e) {
+                    return e instanceof Error ? e.message : String(e);
+                  }
                 }}
               />
             )}
