@@ -147,11 +147,11 @@ server era (no server = no CORS-free social APIs, no inbound chat endpoint).
       with a machine-readable BRIEF line; "Use as brief" fills the prompt box.
 - [x] **Example prompt gallery** — 8 curated off-catalog briefs as one-click chips in the
       Describe-it step (ai/examplePrompts.ts).
-- [ ] **"Any graphic" quality push** — bench BUILT (`node scripts/ai-bench.mjs [out] [count]`:
-      12 template-less briefs → REAL generations → screenshots → review gallery +
-      results.json), ⚠ awaiting the first run: needs VITE_ANTHROPIC_API_KEY in .env and a
-      token budget nod (~a few cents per brief). Then: user taste review → iterate the
-      system prompt in claudeProvider.ts → re-bench.
+- [ ] **"Any graphic" quality push** — bench run #1 DONE (2026-07-05): **12/12 valid on the
+      first pass, zero repair rounds**. Known issues from run #1: tight label columns can
+      wrap mid-word (weather "HUMIDITY"); image-field placeholders not always visually
+      present (versus-card logos). Next: user taste review of the run-1 gallery → iterate
+      the system prompt in claudeProvider.ts → re-bench (`node scripts/ai-bench.mjs`).
 
 ### Era 4 — Local backend (no server, no login)
 - [ ] **Control panels for your graphics** — auto-generate an operator page from the

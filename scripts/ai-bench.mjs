@@ -33,10 +33,12 @@ const BRIEFS = [
 
 // ── Key: .env first, then the environment ──
 function readKey() {
-  if (process.env.VITE_ANTHROPIC_API_KEY) return process.env.VITE_ANTHROPIC_API_KEY;
+  // Tolerate quotes/whitespace around the value (Vite's own dotenv does the same).
+  const clean = (v) => v.replace(/^[\s"']+|[\s"']+$/g, '');
+  if (process.env.VITE_ANTHROPIC_API_KEY) return clean(process.env.VITE_ANTHROPIC_API_KEY);
   if (existsSync('.env')) {
     const m = readFileSync('.env', 'utf8').match(/^VITE_ANTHROPIC_API_KEY=(.+)$/m);
-    if (m) return m[1].trim();
+    if (m) return clean(m[1]) || null;
   }
   return null;
 }
