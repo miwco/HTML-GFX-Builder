@@ -37,6 +37,8 @@ export interface Packet {
   id: string;
   name: string;
   graphics: SavedGraphic[];
+  /** When the packet last changed (ISO). Bumped on every mutation; drives Era-5 cloud sync (LWW). */
+  updatedAt: string;
 }
 
 const PACKETS_KEY = 'spx-gfx-packets';
@@ -46,6 +48,10 @@ function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `id-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
 }
 
 function loadList<T>(key: string): T[] {
@@ -67,14 +73,27 @@ function saveList(key: string, list: unknown): string | null {
 }
 
 export function loadPackets(): Packet[] {
-  return loadList<Packet>(PACKETS_KEY);
+  // Back-fill updatedAt for packets saved before Era 5 so every record has a sync timestamp.
+  return loadList<Packet>(PACKETS_KEY).map((p) => (p.updatedAt ? p : { ...p, updatedAt: nowIso() }));
 }
 
 export function createPacket(name: string): Packet[] {
   const packets = loadPackets();
-  packets.push({ id: newId(), name: name.trim() || 'Untitled packet', graphics: [] });
+  packets.push({ id: newId(), name: name.trim() || 'Untitled packet', graphics: [], updatedAt: nowIso() });
   saveList(PACKETS_KEY, packets);
   return packets;
+}
+
+/**
+ * Insert or replace a whole packet by id (used by the Era-5 storage seam's put('packet')).
+ * Unlike createPacket this preserves the given id and its graphics.
+ */
+export function upsertPacket(packet: Packet): void {
+  const packets = loadPackets();
+  const i = packets.findIndex((p) => p.id === packet.id);
+  if (i >= 0) packets[i] = packet;
+  else packets.push(packet);
+  saveList(PACKETS_KEY, packets);
 }
 
 /**
@@ -95,13 +114,17 @@ export function saveGraphicToPacket(packetId: string, template: SpxTemplate): { 
   const existing = packet.graphics.findIndex((g) => g.name === template.name);
   if (existing >= 0) packet.graphics[existing] = graphic;
   else packet.graphics.push(graphic);
+  packet.updatedAt = nowIso();
   return { packets, error: saveList(PACKETS_KEY, packets) };
 }
 
 export function removeGraphic(packetId: string, graphicId: string): Packet[] {
   const packets = loadPackets();
   const packet = packets.find((p) => p.id === packetId);
-  if (packet) packet.graphics = packet.graphics.filter((g) => g.id !== graphicId);
+  if (packet) {
+    packet.graphics = packet.graphics.filter((g) => g.id !== graphicId);
+    packet.updatedAt = nowIso();
+  }
   saveList(PACKETS_KEY, packets);
   return packets;
 }
@@ -118,17 +141,32 @@ export interface SavedLook {
   id: string;
   name: string;
   brand: ProjectBrand;
+  /** When the look last changed (ISO). Set on save; drives Era-5 cloud sync (LWW). */
+  updatedAt: string;
 }
 
 export function loadLooks(): SavedLook[] {
-  return loadList<SavedLook>(LOOKS_KEY);
+  // Back-fill updatedAt for looks saved before Era 5 so every record has a sync timestamp.
+  return loadList<SavedLook>(LOOKS_KEY).map((l) => (l.updatedAt ? l : { ...l, updatedAt: nowIso() }));
 }
 
 export function addLook(name: string, brand: ProjectBrand): SavedLook[] {
   const looks = loadLooks();
-  looks.push({ id: newId(), name: name.trim() || 'Untitled look', brand });
+  looks.push({ id: newId(), name: name.trim() || 'Untitled look', brand, updatedAt: nowIso() });
   saveList(LOOKS_KEY, looks);
   return looks;
+}
+
+/**
+ * Insert or replace a whole look by id (used by the Era-5 storage seam's put('look')).
+ * Unlike addLook this preserves the given id.
+ */
+export function upsertLook(look: SavedLook): void {
+  const looks = loadLooks();
+  const i = looks.findIndex((l) => l.id === look.id);
+  if (i >= 0) looks[i] = look;
+  else looks.push(look);
+  saveList(LOOKS_KEY, looks);
 }
 
 export function deleteLook(lookId: string): SavedLook[] {

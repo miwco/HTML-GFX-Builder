@@ -1,0 +1,60 @@
+# Supabase project config for the OPEN, self-hostable app (Era 5). A self-hoster runs
+#   supabase db push    # or `supabase start` for a local stack
+# to stand up a working instance from this file + the migrations in ./migrations.
+#
+# Only the OPEN features are declared here (auth, db, storage). The private repo's edge functions
+# (billing, metered AI gateway, social ingestion) are intentionally NOT declared — they are wired
+# in at deploy time on the hosted instance only. Secrets are referenced via env(NAME); no literal
+# secret ever lives in this file. See docs/ERA5_PLAN.md.
+
+project_id = "spx-html-gfx-builder"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = true
+# Fonts/images sync to a private bucket (see migrations/0001). 50 MiB is ample for a single asset.
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:5174"
+additional_redirect_urls = ["http://localhost:5174"]
+jwt_expiry = 3600
+
+# Invite-only closed beta. The GATE is the Before-User-Created hook below (an allowlist check),
+# NOT this toggle. Signups are left ENABLED on purpose so the hook is always reached for a
+# self-serve OAuth / email attempt; the hook then rejects anyone not on the allowlist. Flipping
+# this to false risks short-circuiting the hook before it runs (unverified GoTrue behaviour) —
+# only disable it after confirming allowlisted users can still sign up. See docs/ERA5_PLAN.md 5.1.
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
+
+# Before-User-Created hook: the invite-only allowlist gate. Postgres-function form so the check
+# never leaves the instance and a self-hoster needs no extra service. Defined in migrations/0002.
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/enforce_allowlist"
