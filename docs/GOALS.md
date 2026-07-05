@@ -121,7 +121,68 @@ with its lower-third siblings (§8), swept per category, and covered by an E2E s
 - [x] **CasparCG export** — one self-contained .html (CG ADD loads it directly) with a data shim
       accepting both JSON and CasparCG XML templateData payloads
 
-### Later (explicitly deferred)
+## The pipeline (road ahead — user-defined eras, analyzed 2026-07-05)
+
+Order matters: each era is independently shippable, and nothing in an earlier era gets
+reworked by a later one. Social/chat features were MOVED from the local era into the
+server era (no server = no CORS-free social APIs, no inbound chat endpoint).
+
+### Era 1 — Hygiene
+- [ ] **Self-hosted Monaco** — bundle the editor like GSAP is bundled; the builder becomes
+      fully offline and immune to CDN failures. (~small)
+
+### Era 2 — Workflow help: import to start
+Recommended order: HTML first (cheap, big utility), SVG second, Lottie last (biggest).
+- [ ] **Import HTML templates** — a wizard entry accepting an .html file or an SPX-style zip:
+      split into HTML/CSS/JS panes, run validation, offer the AI "Make SPX-ready" fix path.
+      Imported foreign templates won't have the house contracts (Style/Motion panels degrade
+      gracefully — they already detect the contracts); converting to SPX/CasparCG/OGraf then
+      comes free via the four export targets.
+- [ ] **Import animated SVG** — inline the SVG, map play()/stop() to CSS-class toggles, bind
+      `<text>` elements to fN fields. Simpler than Lottie; no new runtime dependency.
+- [ ] **Import Lottie** — needs the lottie-web player bundled into exports (like GSAP; the
+      offline pillar allows bundled, not CDN). Map in/out segments to play()/stop(), text
+      layers to fN fields where the AE project used text layers. A mini-project of its own.
+
+### Era 3 — AI depth
+- [ ] **Chat-first Describe-it** — a short brainstorm conversation (Claude) that helps write
+      the brief before generation; the chat's conclusion becomes the prompt.
+- [ ] **Example prompt gallery** — curated prompts with thumbnail results, showing the range
+      (and teaching good briefs).
+- [ ] **"Any graphic" quality push** — the important one: generation must look
+      marketplace-grade for graphics that have NO starting template. Method: reuse the
+      multi-agent judging machinery on PROMPTS — a bank of diverse briefs → real generations
+      → screenshot gallery → judge → iterate the system prompt in claudeProvider.ts.
+      ⚠ Requires a real API key + a blessed token budget (all current AI tests are mocked;
+      prompt-quality work cannot be mocked).
+
+### Era 4 — Local backend (no server, no login)
+- [ ] **Control panels for your graphics** — auto-generate an operator page from the
+      DataFields (number → +1/+2/+3 score buttons, textarea → ticker list editor, filelist →
+      image picker), customizable (quick buttons, hide/reorder); drives the in-app preview
+      live. This is the "custom backend builder" v1.
+- [ ] **Google Sheets as a live source** — exported templates optionally poll a published
+      Sheet (no auth needed) and call update(); ticker/scoreboard follow a spreadsheet edit.
+- ⚠ MOVED to Era 5: social-media import (X/YouTube comments) and the show-chat website —
+  both need server-side API keys / an inbound endpoint; they are Supabase-era features.
+
+### Era 5 — Server era (one coherent planning round before building)
+Stack decision (user to bless): **Supabase** — Google OAuth + email/password + tester
+invites, Postgres for cloud-saved projects/packets/looks, Realtime channels for remote
+control panels, Edge functions for the AI gateway + social ingestion later.
+- [ ] Login (Google + custom) with invite-only beta accounts
+- [ ] Cloud persistence: projects, packets, brand looks per user (localStorage = offline fallback)
+- [ ] Remote realtime control: control panel on any device → channel → renderer subscription
+      block in exported templates
+- [ ] Social ingestion + show chat (public send-in page → moderated queue → graphic)
+- [ ] Payments/subscriptions LAST (long beta first; gateway plan already sketched in the
+      AI-mode discussion: separate private repo, Stripe, metered generations)
+
+### Era 6 — WYSIWYG editor
+Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
+nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
+for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/
+duration knobs. Big; planned last deliberately.
 
 ### AI mode (after the wizard works)
 - [x] Claude-backed `AIProvider` (key via the in-app AI settings or `VITE_ANTHROPIC_API_KEY`;

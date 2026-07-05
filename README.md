@@ -122,7 +122,7 @@ exporters can be added later without touching the UI.
 
 ## Notes / future work
 
-- The Monaco editor loads from a CDN in dev; self-hosting it would make the builder fully offline.
-- AI is a deterministic stub — wiring a real Claude-backed `AIProvider` is a drop-in replacement.
-- Possible next steps: CasparCG + OGraf exporters, the Claude-backed AI mode, a full package
-  manager, and lightweight visual editing on top of the code.
+- The Monaco editor still loads from a CDN — self-hosting it (Era 1 of the roadmap) makes the
+  builder fully offline.
+- The road ahead (import-to-start, deeper AI, control panels + live data, accounts/realtime,
+  WYSIWYG) lives in [`docs/GOALS.md`](docs/GOALS.md) under "The pipeline".
