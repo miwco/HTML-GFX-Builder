@@ -14,3 +14,7 @@ example_projects/
 
 # Never commit API keys - copy .env.example to .env and fill it in locally.
 .env
+
+# AI bench / comparison outputs (screenshots + generated code, regenerated on demand)
+bench-out/
+compare-out/
