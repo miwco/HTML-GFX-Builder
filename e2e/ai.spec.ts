@@ -121,7 +121,11 @@ test('describe-it: refine sends the current code back through modify', async ({ 
 });
 
 test('describe-it: without a key, generation is gated and settings open', async ({ page }) => {
-  await page.addInitScript(() => localStorage.removeItem('spx-gfx-ai'));
+  // An explicitly EMPTY saved key (not a removed one): the developer's own .env key would
+  // otherwise configure the app through the env fallback and break the premise.
+  await page.addInitScript(() =>
+    localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: '', model: 'claude-sonnet-5', proxyUrl: '' })),
+  );
   await openAiStep(page);
   await expect(page.getByRole('button', { name: '✦ Generate' })).toBeDisabled();
   await expect(page.locator('.wz-step input[type="password"]')).toBeVisible(); // key field auto-open
