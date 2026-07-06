@@ -118,13 +118,15 @@ earlier phase is reworked by a later one.
   the real boundary (UI gate is UX only).
 
 ### 5.2 - Cloud persistence (projects, packets, looks)
-Split when built: **5.2a** (done) = the sync engine + `SupabaseProvider` + tombstone deletes for
-**packets and looks**, body stored inline in jsonb, build+offline-E2E green (a 10-assertion pure
-`reconcile`/`runSync` spec). **5.2b** (pending) = externalize embedded assets to the Storage bucket
-(dedupe by hash), **brand-singleton sync** (its `id='default'` needs cross-device identity handling
-before it can share the uuid-PK table), the **working project as a first-class autosaved "project"**,
-and the first-login reconciliation UX. Rationale: the pure merge core is fully verifiable offline and
-worth landing solid; assets/brand/project each carry identity or UX subtleties best done deliberately.
+Built + live-verified in three parts. **5.2a** = the sync engine + `SupabaseProvider` + tombstone
+deletes for **packets and looks** (pure `reconcile`/`runSync`, hardened by an 11-agent adversarial
+review). **5.2b** = assets externalized to Storage (content-hash keyed), the working project
+**autosaved locally** (reload-restore, wizard-first startup unchanged), **brand + project cloud sync**
+as per-user singletons (deterministic `uuid(uid:kind)` → one row each; reconciled by KIND, LWW, no
+conflict-copy), and coordinated tombstone purge (both sides, 90-day grace). Known edge: a project
+pulled from another device is adopted on reload, not live (a live "updated elsewhere" prompt is future
+polish). Singletons sidestep the `id='default'` uuid-PK problem via the deterministic id, not a fixed
+string.
 
 - `SupabaseProvider implements StorageProvider`. Schema: `documents(id, user_id, kind, name,
   body jsonb, updated_at, deleted)` with per-user RLS; **binaries (data-URL fonts/images) go to a

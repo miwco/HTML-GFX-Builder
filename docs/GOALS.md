@@ -230,9 +230,13 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       hardened by an 11-agent adversarial review (7 bugs fixed). **Live-verified 2026-07-06**:
       authed write/read round-trip, auto-sync "Synced", delete, and cross-user RLS isolation (user 2
       cannot see user 1's rows). Body is inline jsonb until 5.2b.
-- [ ] **5.2b Cloud persistence (finish)** — externalize embedded assets to the Storage bucket
-      (dedupe by hash); brand-singleton sync (cross-device identity); the working project becomes a
-      first-class autosaved "project"; first-login reconciliation UX.
+- [x] **5.2b Cloud persistence (finish)** — assets externalized to the `user-assets` Storage bucket
+      (content-hash keyed, so a shared font stores once; **live-verified**: row shrinks to ~236 B, one
+      Storage object, exact rehydrate); the working project **autosaved** locally (survives reload,
+      wizard-first startup unchanged); **brand + project cloud sync** as per-user singletons
+      (deterministic `uuid(uid:kind)` → one row each, **live-verified**); coordinated tombstone purge
+      (both sides, 90-day grace). *Known edge: a project pulled from another device is adopted on
+      reload, not live — a live "updated elsewhere" prompt is future polish.*
 - [ ] **5.3 Remote realtime control** — opt-in default-off export block over a private Realtime
       channel (room-scoped JWT); controlpanel.html gains an any-device path; validator promotes
       external-dep to error + whitelists `.supabase.co`
