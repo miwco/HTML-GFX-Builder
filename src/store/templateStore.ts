@@ -7,6 +7,7 @@ import { parseDefinition } from '../model/spxDefinition';
 import type { AssetFile, SpxTemplate } from '../model/types';
 import { DATA_FTYPES } from '../model/types';
 import type { ValidationResult } from '../validation/validateTemplate';
+import { loadProject, saveProject } from '../model/project';
 
 export type EditorTab = 'html' | 'css' | 'js';
 export type PreviewBg = 'checkerboard' | 'black' | 'video';
@@ -140,7 +141,10 @@ function withParsedFields(template: SpxTemplate): SpxTemplate {
   return { ...template, fields: parsed.fields, settings: parsed.settings };
 }
 
-const initialTemplate = createDefaultTemplate();
+// Restore the last autosaved working project (Era 5.2b) so a reload doesn't lose it; fall back to
+// a fresh blank on first-ever load. The wizard still opens on top (galleryOpen below is unchanged) —
+// closing it reveals this restored graphic.
+const initialTemplate = loadProject()?.template ?? createDefaultTemplate();
 
 export const useTemplateStore = create<TemplateState>((set) => ({
   template: initialTemplate,
@@ -249,3 +253,14 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   openGallery: () => set({ galleryOpen: true }),
   closeGallery: () => set({ galleryOpen: false }),
 }));
+
+// Autosave the working project (debounced) whenever the template actually changes, so a reload
+// restores it instead of a blank default. Covers every mutation that touches the template — panels,
+// AI, wizard, and manual edits — in one place. Local only for now; cloud sync of this single
+// 'project' record lands with the singleton work.
+let projectSaveTimer: ReturnType<typeof setTimeout> | null = null;
+useTemplateStore.subscribe((state, prev) => {
+  if (state.template === prev.template) return;
+  if (projectSaveTimer) clearTimeout(projectSaveTimer);
+  projectSaveTimer = setTimeout(() => saveProject(useTemplateStore.getState().template), 800);
+});
