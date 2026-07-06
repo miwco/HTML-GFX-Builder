@@ -106,3 +106,52 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
   expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);
   expect(results.length).toBe(12);
 });
+
+test('asset externalization: round-trips through a Storage stub', async ({ page }) => {
+  await page.goto('/');
+
+  const result = await page.evaluate(async () => {
+    const { externalizeAssets, rehydrateAssets, STORAGE_SENTINEL } = await import('/src/backend/assets.ts?t=' + Date.now());
+
+    // In-memory "Storage": key -> data-URL.
+    const store = new Map<string, string>();
+    const upload = async (key: string, dataUrl: string) => { store.set(key, dataUrl); };
+    const download = async (key: string) => store.get(key) ?? null;
+
+    const png =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    // A packet-shaped body: the asset is nested deep (graphics[].template.assets[]).
+    const body = {
+      id: 'p1', name: 'Show', updatedAt: 'x',
+      graphics: [{ template: { assets: [{ path: 'images/logo.png', data: png }] } }],
+    };
+
+    const ext: any = await externalizeAssets(body, 'user123', upload);
+    const extData: string = ext.graphics[0].template.assets[0].data;
+    const re: any = await rehydrateAssets(ext, download);
+    const reData: string = re.graphics[0].template.assets[0].data;
+
+    // A non-base64 data-URL (inline SVG) must be left inline, not externalized.
+    const svg = 'data:image/svg+xml,<svg/>';
+    const extSvg: any = await externalizeAssets({ a: { path: 'x', data: svg } }, 'u', upload);
+
+    return {
+      sentinel: extData.startsWith(STORAGE_SENTINEL),
+      keyScopedToUser: extData.includes('user123/'),
+      storedExactlyOne: store.size === 1,
+      bodyShrank: JSON.stringify(ext).length < JSON.stringify(body).length,
+      roundTrips: reData === png,
+      nonBase64LeftInline: extSvg.a.data === svg,
+    };
+  });
+
+  expect(result).toEqual({
+    sentinel: true,
+    keyScopedToUser: true,
+    storedExactlyOne: true,
+    bodyShrank: true,
+    roundTrips: true,
+    nonBase64LeftInline: true,
+  });
+});

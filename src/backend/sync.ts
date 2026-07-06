@@ -93,7 +93,13 @@ export async function runSync(local: StorageProvider, remote: StorageProvider): 
 
   const plan = reconcile(localRecs, remoteRecs, since);
 
-  for (const r of plan.toLocal) await local.put(r);
+  // Pull: re-fetch each record via get() so the provider can rehydrate externalized assets
+  // (list() returns cheap sentinel bodies; get() returns the full body). Falls back to the
+  // list record if get() returns nothing.
+  for (const r of plan.toLocal) {
+    const full = (await remote.get(r.kind, r.id)) ?? r;
+    await local.put(full);
+  }
   for (const r of plan.toRemote) await remote.put(r);
   for (const loser of plan.conflicts) {
     const copy = makeConflictCopy(loser);

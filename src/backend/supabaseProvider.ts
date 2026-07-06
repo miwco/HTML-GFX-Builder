@@ -1,22 +1,23 @@
 // The cloud StorageProvider (Era 5.2): the `documents` table behind per-user RLS. Implements the
 // same StorageProvider contract as LocalStorageProvider, so the sync engine treats both uniformly.
 //
-// Identity: packets/looks use their client-generated UUID as the row id (a valid uuid string, so it
-// slots straight into the uuid PK) — the SAME id locally and in the cloud, which is what lets the
-// sync engine reconcile by id. user_id defaults to auth.uid() on insert; RLS restricts every row to
-// its owner, so one user can never read or write another's rows.
+// Identity: packets/looks use their client-generated UUID as the row id — the SAME id locally and in
+// the cloud, which is what lets the sync engine reconcile by id. user_id defaults to auth.uid() on
+// insert; RLS restricts every row to its owner, so one user can never read or write another's rows.
 //
-// 5.2a scope: the whole record body is stored inline in the `body` jsonb column. Large embedded
-// assets (data-URL fonts/images) therefore travel inline for now — fine while there is no live data
-// yet; 5.2b externalizes them to the `assets` Storage bucket (schema already in migration 0001)
-// before any real deployment. A soft size warning flags oversized bodies meanwhile.
+// Assets (Era 5.2b): embedded fonts/images are externalized to the `user-assets` Storage bucket on
+// put() and restored on get(), so cloud rows stay small (see assets.ts). list() intentionally does
+// NOT rehydrate — it returns cheap sentinel bodies, because the sync engine only needs each record's
+// timestamp to reconcile; the full asset bytes are fetched via get() only for records actually pulled.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase } from './supabase';
 import { toStoredRecord, type StorageProvider, type StoredRecord, type SyncKind } from './storage';
+import { externalizeAssets, rehydrateAssets, dataUrlToBlob, blobToDataUrl } from './assets';
 
 const TABLE = 'documents';
-const BODY_WARN_BYTES = 500_000; // ~0.5 MB — above this, 5.2b asset externalization matters
+const BUCKET = 'user-assets';
+const BODY_WARN_BYTES = 500_000; // after externalization a body should be small; warn if not
 
 interface DocumentRow {
   id: string;
@@ -27,16 +28,25 @@ interface DocumentRow {
 }
 
 export class SupabaseProvider implements StorageProvider {
+  /** Per-instance dedupe so the same asset (same hash → same key) uploads at most once a session. */
+  private uploaded = new Set<string>();
+
   private async client(): Promise<SupabaseClient> {
     const sb = await getSupabase();
     if (!sb) throw new Error('Supabase is not configured.');
     return sb;
   }
 
+  private async uid(sb: SupabaseClient): Promise<string> {
+    const { data } = await sb.auth.getUser();
+    if (!data.user) throw new Error('Not signed in.');
+    return data.user.id;
+  }
+
   async list(kind: SyncKind): Promise<StoredRecord[]> {
     const sb = await this.client();
-    // RLS scopes this to the signed-in user's rows automatically. Tombstones (deleted=true) are
-    // included so the sync engine can propagate remote deletes.
+    // RLS scopes this to the signed-in user's rows. Tombstones (deleted=true) are included so the
+    // sync engine can propagate remote deletes. Bodies keep their Storage sentinels here (cheap).
     const { data, error } = await sb.from(TABLE).select('id, kind, name, body, deleted').eq('kind', kind);
     if (error) throw new Error(`Cloud list(${kind}) failed: ${error.message}`);
     const rows = (data ?? []) as DocumentRow[];
@@ -53,20 +63,26 @@ export class SupabaseProvider implements StorageProvider {
       .maybeSingle();
     if (error) throw new Error(`Cloud get(${kind}) failed: ${error.message}`);
     const row = data as DocumentRow | null;
-    return row ? toStoredRecord(kind, row.id, row.body) : null;
+    if (!row) return null;
+    const body = await rehydrateAssets(row.body, (key) => this.download(sb, key));
+    return toStoredRecord(kind, row.id, body);
   }
 
   async put(record: StoredRecord): Promise<void> {
     const sb = await this.client();
-    const body = record.body as { name?: unknown };
-    warnIfLarge(record);
-    // user_id is omitted: the column defaults to auth.uid() on insert, and RLS blocks updating
-    // anyone else's row. onConflict:'id' makes this an upsert keyed by the shared record id.
+    const uid = await this.uid(sb);
+    // Move embedded fonts/images to Storage; the row's body keeps only small references.
+    const body = await externalizeAssets(record.body, uid, (key, dataUrl) => this.upload(sb, key, dataUrl));
+    warnIfLarge(record.kind, record.id, body);
+
+    const srcName = (record.body as { name?: unknown }).name;
+    // user_id is omitted: it defaults to auth.uid() on insert, and RLS blocks updating another
+    // user's row. onConflict:'id' makes this an upsert keyed by the shared record id.
     const row = {
       id: record.id,
       kind: record.kind,
-      name: typeof body.name === 'string' ? body.name : '',
-      body: record.body,
+      name: typeof srcName === 'string' ? srcName : '',
+      body,
       deleted: Boolean(record.deleted),
     };
     const { error } = await sb.from(TABLE).upsert(row, { onConflict: 'id' });
@@ -79,18 +95,29 @@ export class SupabaseProvider implements StorageProvider {
     const { error } = await sb.from(TABLE).delete().eq('kind', kind).eq('id', id);
     if (error) throw new Error(`Cloud remove(${kind}) failed: ${error.message}`);
   }
+
+  private async upload(sb: SupabaseClient, key: string, dataUrl: string): Promise<void> {
+    if (this.uploaded.has(key)) return; // already uploaded this session (content-hash dedupe)
+    const blob = dataUrlToBlob(dataUrl);
+    const { error } = await sb.storage.from(BUCKET).upload(key, blob, { contentType: blob.type, upsert: true });
+    if (error) throw new Error(`asset upload failed: ${error.message}`);
+    this.uploaded.add(key);
+  }
+
+  private async download(sb: SupabaseClient, key: string): Promise<string | null> {
+    const { data, error } = await sb.storage.from(BUCKET).download(key);
+    if (error || !data) return null;
+    return blobToDataUrl(data);
+  }
 }
 
-function warnIfLarge(record: StoredRecord): void {
+function warnIfLarge(kind: string, id: string, body: unknown): void {
   try {
-    const size = JSON.stringify(record.body).length;
+    const size = JSON.stringify(body).length;
     if (size > BODY_WARN_BYTES && typeof console !== 'undefined') {
-      console.warn(
-        `[sync] ${record.kind} ${record.id} body is ~${Math.round(size / 1024)}KB inline. ` +
-          'Era 5.2b moves embedded fonts/images to Storage to keep cloud rows small.',
-      );
+      console.warn(`[sync] ${kind} ${id} body is ~${Math.round(size / 1024)}KB after externalization — unexpectedly large.`);
     }
   } catch {
-    // Ignore measurement failures — never block a sync on a size check.
+    // Never block a sync on a size check.
   }
 }
