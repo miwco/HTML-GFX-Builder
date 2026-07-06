@@ -833,3 +833,21 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .sync-syncing .sync-dot { background: var(--accent-2); }
 .sync-error .sync-dot { background: var(--danger); }
 .sync-error { color: var(--danger); border-color: var(--danger); }
+
+/* Show chat (Era 5.4) */
+.sendin { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg); padding: 24px; }
+.sendin-card { width: 100%; max-width: 420px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px; padding: 26px; box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6); }
+.sendin-title { font-weight: 700; font-size: 18px; margin-bottom: 14px; }
+.sendin-count { font-size: 11px; text-align: right; margin-top: 4px; }
+.sendin-send { width: 100%; margin-top: 12px; padding: 9px 12px; }
+.sendin-again { margin-top: 12px; }
+.sendin-ok { color: var(--ok); font-size: 14px; }
+.sendin-error { color: var(--danger); font-size: 12px; margin-top: 10px; }
+.chat-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-top: 1px solid var(--border); }
+.chat-row .chat-msg { flex: 1; font-size: 13px; line-height: 1.4; }
+.chat-acts { display: flex; gap: 4px; flex: 0 0 auto; }
+.chat-acts button { font-size: 12px; padding: 4px 8px; }
+.chat-badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; margin-right: 6px; vertical-align: middle; background: var(--bg-3); color: var(--text-dim); }
+.chat-badge.chat-on_air { background: var(--danger); color: #fff; }
+.chat-badge.chat-approved { background: var(--ok); color: #06131f; }
+.chat-badge.chat-pending { background: var(--warn); color: #06131f; }

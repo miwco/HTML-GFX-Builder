@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { controlsForFields, type ControlDescriptor } from '../control/controlModel';
 import { renderControlPanelHtml } from '../control/controlPanelHtml';
@@ -10,6 +10,9 @@ import {
   remoteControlConfig,
 } from '../control/realtimeControl';
 import { isBackendConfigured } from '../backend/config';
+import { hasChatGraphic, chatGraphicBlock, stripChatGraphic, chatBackendRefKey, type ChatMode } from '../showchat/chatGraphicBlock';
+import { listMyShows, type ShowRow } from '../showchat/chatData';
+import ModerationPanel from '../showchat/ModerationPanel';
 import { slug } from '../export/common';
 import { fileToDataUrl, isImageAsset, uniqueAssetPath } from '../assets/assetUtils';
 import { useTemplateStore, type PlayoutAction } from '../store/templateStore';
@@ -120,6 +123,10 @@ export default function ControlPanel() {
   const [live, setLive] = useState(true);
   const [sheetUrl, setSheetUrl] = useState('');
   const [pollSecs, setPollSecs] = useState('5');
+  const [moderationOpen, setModerationOpen] = useState(false);
+  const [chatShows, setChatShows] = useState<ShowRow[]>([]);
+  const [chatShowId, setChatShowId] = useState('');
+  const [chatMode, setChatMode] = useState<ChatMode>('feed');
 
   const controls = controlsForFields(template.fields);
   const liveDataOn = hasLiveData(template.js);
@@ -145,6 +152,36 @@ export default function ControlPanel() {
   };
   const disableRemote = () => {
     applyTemplate({ ...template, js: stripRealtimeControl(template.js) });
+    setActiveTab('js');
+  };
+
+  // ── Show chat ──
+  const chatOn = hasChatGraphic(template.js);
+  const chatRefKey = backendConfigured ? chatBackendRefKey() : null;
+  useEffect(() => {
+    if (!backendConfigured) return;
+    void listMyShows().then((s) => {
+      setChatShows(s);
+      setChatShowId((id) => id || s[0]?.id || '');
+    });
+  }, [backendConfigured, moderationOpen]); // refresh after moderating (shows may have been created)
+
+  const enableChat = () => {
+    if (!chatRefKey || !chatShowId) return;
+    const block = chatGraphicBlock({
+      ...chatRefKey,
+      showId: chatShowId,
+      mode: chatMode,
+      pollSeconds: 4,
+      feedField: 'f0',
+      authorField: 'f0',
+      messageField: 'f1',
+    });
+    applyTemplate({ ...template, js: stripChatGraphic(template.js).trimEnd() + '\n\n' + block });
+    setActiveTab('js');
+  };
+  const disableChat = () => {
+    applyTemplate({ ...template, js: stripChatGraphic(template.js) });
     setActiveTab('js');
   };
 
@@ -261,6 +298,44 @@ export default function ControlPanel() {
           )}
         </div>
       )}
+
+      {backendConfigured && (
+        <div className="panel-section">
+          <div className="divider" />
+          <h3>Show chat <span className="muted">— audience send-in</span></h3>
+          <p className="hint">
+            Share a public link; viewers submit messages you approve and send to air. Manage the
+            queue, then add a graphic block that shows the on-air messages.
+          </p>
+          <button onClick={() => setModerationOpen(true)}>💬 Manage &amp; moderate</button>
+
+          {chatRefKey ? (
+            <div className="row" style={{ marginTop: 8, alignItems: 'center' }}>
+              <select className="grow" value={chatShowId} onChange={(e) => setChatShowId(e.target.value)}>
+                {chatShows.length === 0 && <option value="">Create a show first</option>}
+                {chatShows.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title}</option>
+                ))}
+              </select>
+              <select value={chatMode} onChange={(e) => setChatMode(e.target.value as ChatMode)} title="How on-air messages appear">
+                <option value="feed">Feed</option>
+                <option value="spotlight">Spotlight</option>
+              </select>
+              {chatOn && <button onClick={disableChat}>Remove</button>}
+              <button className="primary" disabled={!chatShowId} onClick={enableChat}>{chatOn ? 'Update block' : 'Add chat'}</button>
+            </div>
+          ) : (
+            <p className="muted" style={{ marginTop: 6 }}>Sign in to use show chat.</p>
+          )}
+          {chatOn && (
+            <p className="status-ok" style={{ marginTop: 6 }}>
+              ✓ Chat block is in the JS ({chatMode}). Edit the field mapping in the marked region to match this graphic.
+            </p>
+          )}
+        </div>
+      )}
+
+      {moderationOpen && <ModerationPanel onClose={() => setModerationOpen(false)} />}
     </div>
   );
 }
