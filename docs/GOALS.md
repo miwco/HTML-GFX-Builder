@@ -237,10 +237,17 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       (deterministic `uuid(uid:kind)` → one row each, **live-verified**); coordinated tombstone purge
       (both sides, 90-day grace). *Known edge: a project pulled from another device is adopted on
       reload, not live — a live "updated elsewhere" prompt is future polish.*
-- [ ] **5.3 Remote realtime control** — opt-in default-off export block over a private Realtime
-      channel (room-scoped JWT); controlpanel.html gains an any-device path; validator promotes
-      external-dep to error + whitelists `.supabase.co`
-- [ ] **5.4 Social ingestion + show chat** — public send-in page → moderated queue → graphic
+- [x] **5.3 Remote realtime control** — opt-in default-off export block over a **public** Realtime
+      Broadcast channel + publishable key (research call: no token to expire, so an on-air graphic
+      never drops; isolation via an unguessable topic capability). Hand-rolled WS client;
+      controlpanel.html gains an any-device REST-send path; validator host-suffix whitelists
+      `.supabase.co`. **Live-verified** (WS-join + REST broadcast round-trip). Private-channel +
+      minted-token "hardened mode" documented as deferred.
+- [x] **5.4 Show chat** — public send-in page (`?chat=<slug>`) → owner moderation (Realtime queue,
+      Approve/Reject/Air) → graphic block that polls on-air messages (feed or spotlight). All
+      in-database (one migration: RLS + abuse trigger, no edge function). **Live-verified** every
+      RLS boundary + the full submit→moderate→air→graphic flow. *Social-media API import (X/YouTube
+      comments) deferred — it needs private API keys (repo-split), unlike this custom chat.*
 - [ ] **5.5 User-shared templates** (user idea 2026-07-05): a community section where logged-in
       users publish templates/packets others browse and use — moderation gate = validator + bench
       checks (automated) + human review
