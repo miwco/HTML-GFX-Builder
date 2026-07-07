@@ -25,7 +25,8 @@ const STATUS_LABEL: Record<ModeratorItem['status'], string> = {
   removed: 'removed',
 };
 
-const PREVIEW_W = 460;
+// Fit the preview to the modal on a phone (the modal is ~full width there), cap it on desktop.
+const PREVIEW_W = Math.min(460, (typeof window !== 'undefined' ? window.innerWidth : 500) - 90);
 
 /**
  * Moderator-only takedown queue (Era 5.5 hardening). Lists every published submission and the abuse

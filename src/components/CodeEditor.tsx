@@ -96,6 +96,16 @@ export default function CodeEditor() {
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     registerHoverExplanations(monaco);
+    // When the editor mounts into a just-shown box (e.g. the mobile "Show code" panel), Monaco can
+    // read a ~0 size at creation and stay collapsed at 5×5. Force a layout to the REAL container size
+    // (bypassing Monaco's own measurement), after paint and once more shortly after, to fill it.
+    const relayout = () => {
+      const host = editor.getDomNode()?.closest('.editor-host') as HTMLElement | null;
+      if (host && host.clientHeight) editor.layout({ width: host.clientWidth, height: host.clientHeight });
+      else editor.layout();
+    };
+    requestAnimationFrame(relayout);
+    setTimeout(relayout, 150);
     const report = () => {
       const model = editor.getModel();
       const pos = editor.getPosition();

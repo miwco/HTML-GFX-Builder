@@ -12,6 +12,7 @@ import AuthStatus from './auth/AuthStatus';
 import SyncStatus from './SyncStatus';
 import { isBackendConfigured } from '../backend/config';
 import { useIsModerator } from '../community/useIsModerator';
+import { useIsMobile } from './useIsMobile';
 
 /**
  * Two-pane workspace: code editor (left) and, on the right, the live preview (16:9,
@@ -39,6 +40,11 @@ export default function AppShell() {
   // Moderator takedown queue — the button appears only for users in the moderators table.
   const isModerator = useIsModerator();
   const [moderationOpen, setModerationOpen] = useState(false);
+
+  // On a phone the app reflows to a single column (preview + panels first); the code editor is
+  // collapsed and mounted on demand (Monaco is heavy and secondary on mobile).
+  const isMobile = useIsMobile();
+  const [codeOpen, setCodeOpen] = useState(false);
 
   // Global undo for block / AI / gallery actions. Skips Monaco and form fields so they
   // keep their own native text undo.
@@ -94,19 +100,35 @@ export default function AppShell() {
         <AuthStatus />
       </header>
 
-      <div className="workspace">
-        <section className="pane">
-          <CodeEditor />
-        </section>
-
-        <section className="pane">
+      {isMobile ? (
+        <div className="workspace workspace-mobile">
           <div className="preview-wrap">
             <PreviewFrame iframeRef={iframeRef} />
             <PlayoutSimulator iframeRef={iframeRef} />
           </div>
           <SidePanel />
-        </section>
-      </div>
+          <div className="mobile-code">
+            <button className="mobile-code-toggle" onClick={() => setCodeOpen((o) => !o)}>
+              {codeOpen ? '▾ Hide code' : '▸ Show code'}
+            </button>
+            {codeOpen && <CodeEditor />}
+          </div>
+        </div>
+      ) : (
+        <div className="workspace">
+          <section className="pane">
+            <CodeEditor />
+          </section>
+
+          <section className="pane">
+            <div className="preview-wrap">
+              <PreviewFrame iframeRef={iframeRef} />
+              <PlayoutSimulator iframeRef={iframeRef} />
+            </div>
+            <SidePanel />
+          </section>
+        </div>
+      )}
 
       {/* Creation wizard overlay — shown on startup and via "New project". */}
       <CreationWizard />
