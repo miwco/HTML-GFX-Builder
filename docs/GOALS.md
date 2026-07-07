@@ -277,6 +277,18 @@ nudge + --scale foundations already exist) — code stays the source of truth. T
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/
 duration knobs. Big; planned last deliberately.
 
+### Era 7 — Nightly automation + the auto-generated graphics library (committed direction, unscheduled)
+Binding plan: **`docs/NIGHTLY_AUTOMATION_PLAN.md`**. The site continuously generates and (eventually)
+publishes new premium graphics — a large free library covering almost any use case (lower thirds,
+titles, timers, tickers, scoreboards, event/holiday/sports/news/social formats, …), with an automatic
+quality + safety gate that auto-rejects anything broken, low-quality, inappropriate, or off-brand.
+Also nightly health checks (build, E2E, `npm audit`, Supabase advisors). Trajectory: **human-reviewed
+now** (drafts land `pending` in the Era-5.5 community table via a least-privilege bot; a human approves
+in the 🛡 queue) → **gate-trusted auto-publish later** once the automatic gate matches human judgment.
+Reuses `claudeProvider.generate` + `publishGate` + the bench harness; runs on GitHub Actions cron + one
+read-only scheduled cloud agent. Not yet built — see the plan doc for the verified guardrails
+(migration `0006`) and open decisions.
+
 ### AI mode (after the wizard works)
 - [x] Claude-backed `AIProvider` (key via the in-app AI settings or `VITE_ANTHROPIC_API_KEY`;
       model configurable, Sonnet 5 default; `VITE_AI_PROXY_URL` is the seam a future hosted
