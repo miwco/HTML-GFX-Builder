@@ -191,10 +191,14 @@ export async function getCommunity(slug: string): Promise<CommunityItem | null> 
 export async function listMySubmissions(): Promise<MySubmission[]> {
   const sb = await getSupabase();
   if (!sb) return [];
-  // RLS (community_owner_all) scopes a direct SELECT to the caller's own rows.
+  const uid = await currentUid(sb);
+  if (!uid) return [];
+  // Filter to the caller's OWN rows explicitly. A moderator's RLS SELECT policy (migration 0005)
+  // exposes every row, so relying on RLS alone would show all submissions to a moderator here.
   const { data } = await sb
     .from('community_templates')
     .select('id, slug, kind, name, summary, category, status, moderation_note, created_at')
+    .eq('author_id', uid)
     .order('created_at', { ascending: false });
   return (data as MySubmission[] | null) ?? [];
 }

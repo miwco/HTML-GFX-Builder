@@ -55,6 +55,10 @@ unchanged.
   line in `community_moderation_guard` (INSERT branch) from `'approved'` to `'pending'` and ship the
   moderator queue UI. Make someone a moderator with
   `insert into moderators (user_id) values ('<their-auth-uid>');` (service_role / SQL editor).
+- `migrations/0005_community_moderator_read.sql` — a moderator SELECT policy on `community_templates`.
+  Required so a takedown works at all: Postgres applies SELECT policies to the rows an
+  `UPDATE ... WHERE` must locate, so without it a moderator's status change silently matches 0 rows
+  (found in live-verify). Also what a review/takedown queue reads.
 - `seed.sql` — local-dev-only allowlist seed.
 
 Migrations are ordered by filename and are **immutable once shipped** — change the schema by adding
