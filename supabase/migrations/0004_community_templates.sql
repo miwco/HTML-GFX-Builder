@@ -34,7 +34,10 @@ create or replace function public.is_moderator()
 returns boolean language sql security definer set search_path = '' stable as $$
   select exists (select 1 from public.moderators m where m.user_id = (select auth.uid()));
 $$;
-revoke execute on function public.is_moderator() from public;
+-- Supabase's default privileges grant EXECUTE on new functions directly to anon + authenticated, so
+-- revoking only from `public` would leave anon able to call this. Revoke anon explicitly (authenticated
+-- keeps the default grant).
+revoke execute on function public.is_moderator() from public, anon;
 grant execute on function public.is_moderator() to authenticated;
 
 -- ── community_templates: one published graphic or look. ─────────────────────────────────────────────
@@ -137,7 +140,8 @@ create trigger community_templates_moderation_guard before insert or update on p
 
 -- ── browse read path: SECURITY DEFINER RPCs (the ONLY public read boundary). ─────────────────────────
 -- Granted to `authenticated` only (signed-in-only beta). They hard-filter status='approved' and
--- project browse-safe columns (never author_id). Opening to anon later = also grant these to `anon`.
+-- project browse-safe columns (never author_id). Supabase default-grants EXECUTE to anon on new
+-- functions, so anon is revoked EXPLICITLY below — opening the gallery to anon later = `grant ... to anon`.
 create or replace function public.community_list(
   p_kind text default null, p_category text default null, p_limit int default 60, p_offset int default 0)
 returns table (id uuid, slug text, kind text, name text, summary text, category text,
@@ -152,7 +156,7 @@ language sql security definer set search_path = '' stable as $$
   limit greatest(1, least(coalesce(p_limit, 60), 200))
   offset greatest(0, coalesce(p_offset, 0));
 $$;
-revoke execute on function public.community_list(text, text, int, int) from public;
+revoke execute on function public.community_list(text, text, int, int) from public, anon;
 grant execute on function public.community_list(text, text, int, int) to authenticated;
 
 create or replace function public.community_get(p_slug text)
@@ -163,7 +167,7 @@ language sql security definer set search_path = '' stable as $$
   from public.community_templates t
   where t.slug = p_slug and t.status = 'approved';
 $$;
-revoke execute on function public.community_get(text) from public;
+revoke execute on function public.community_get(text) from public, anon;
 grant execute on function public.community_get(text) to authenticated;
 
 -- ── community_reports: the self-service takedown path (any signed-in user flags an approved row). ────
