@@ -21,6 +21,7 @@ import { buildPacketZip } from '../export/packetExport';
 import { slug } from '../export/common';
 import { isBackendConfigured } from '../backend/config';
 import { subscribeAuth } from '../backend/auth';
+import { useAuthUi } from './auth/authUi';
 import {
   listMySubmissions,
   publishGraphic,
@@ -72,6 +73,7 @@ export default function PacketManager({ onClose }: Props) {
   const backendConfigured = isBackendConfigured();
   const [signedIn, setSignedIn] = useState(false);
   const communityOn = backendConfigured && signedIn;
+  const openSignIn = useAuthUi((s) => s.openSignIn);
   const [mySubs, setMySubs] = useState<MySubmission[]>([]);
   const [publish, setPublish] = useState<PublishTarget | null>(null);
   const [summary, setSummary] = useState('');
@@ -255,7 +257,20 @@ export default function PacketManager({ onClose }: Props) {
             </div>
           </div>
 
-          {/* ── Share to community (Era 5.5) — hidden unless a backend is configured AND signed in ── */}
+          {/* ── Share to community (Era 5.5) — needs a backend + an account. Signed-out visitors in
+                 hosted mode get a sign-in nudge instead (local packets above work without one). ── */}
+          {backendConfigured && !signedIn && (
+            <div className="panel-section">
+              <h3>🌐 Share to community</h3>
+              <p className="hint">
+                Publishing to the community (and syncing packets across devices) needs an account —{' '}
+                <button className="link-inline" onClick={() => openSignIn('Sign in to publish to the community and sync your packets across devices.')}>
+                  sign in
+                </button>{' '}
+                to unlock it. Everything above stays saved in this browser.
+              </p>
+            </div>
+          )}
           {communityOn && (
             <div className="panel-section">
               <h3>🌐 Share to community</h3>

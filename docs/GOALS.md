@@ -289,7 +289,15 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       **moderator takedown queue UI shipped** (🛡 Moderate, gated on `is_moderator()`; review a
       sandboxed preview → Remove/Restore; reports queue). **Deferred:** human pre-review flip (one line
       + the queue already exists), whole-packet publishing, anon public gallery + login-less share page.
-- [ ] **5.6 Payments/subscriptions LAST** (long beta first; separate private repo, Stripe, metered
+- [x] **5.6 The open editor (free-to-try posture, 2026-07-08)** — the app-wide login wall is GONE
+      (`VITE_REQUIRE_AUTH` removed; AuthGate/LoginScreen → an on-demand `SignInDialog` + `useAuthState`
+      feature gates). Anyone can create, preview, and export with no account — hosted or self-hosted.
+      Signing in (topbar button or any gate) unlocks the account features: cloud sync, community,
+      show chat, AI (both the side panel and the wizard's Describe-it entry). Local packets stay
+      anonymous-friendly; publish/sync nudge sign-in inline. Offline builds grow no auth UI at all
+      (E2E-pinned). *Still invite-only at the account-creation step (the allowlist hook) — opening
+      signup is a separate switch + abuse-posture decision (email confirm + captcha) for later.*
+- [ ] **5.7 Payments/subscriptions LAST** (long beta first; separate private repo, Stripe, metered
       generations)
 
 ### Era 6 — WYSIWYG editor

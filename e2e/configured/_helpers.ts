@@ -10,17 +10,25 @@ export const haveCreds = Boolean(E2E_EMAIL && E2E_PASSWORD);
 export const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 export const SUPABASE_URL = process.env.VITE_SUPABASE_URL ?? '';
 
-/** Sign in with email + password (fresh Playwright contexts have no persisted session, so the login
- *  gate is shown). Resolves once the app shell is up. */
+/** Sign in with email + password via the topbar dialog (Era 5.6 — the editor is open, no wall;
+ *  fresh Playwright contexts have no persisted session). Leaves the wizard OPEN afterwards, the
+ *  same state a fresh load presents, so createGraphic can run directly. */
 export async function signIn(page: Page): Promise<void> {
   await page.goto('/');
-  const email = page.locator('input[type="email"]');
+  // The startup wizard covers the topbar — close it to reach the Sign in button.
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const email = page.locator('#auth-email');
   await email.waitFor({ state: 'visible', timeout: 15_000 });
   await email.fill(E2E_EMAIL);
-  await page.locator('input[type="password"]').fill(E2E_PASSWORD);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  // The app shell (topbar) appears once auth completes.
-  await expect(page.getByRole('button', { name: /Packets/ })).toBeVisible({ timeout: 20_000 });
+  await page.locator('#auth-pass').fill(E2E_PASSWORD);
+  await page.locator('.auth-card').getByRole('button', { name: 'Sign in', exact: true }).click();
+  // The dialog closes itself on session; the account appears in the topbar.
+  await expect(page.locator('.auth-status')).toBeVisible({ timeout: 20_000 });
+  // Restore the state downstream helpers expect (wizard open, as on a fresh load).
+  await page.getByRole('button', { name: '+ New project' }).click();
+  await expect(page.locator('.wz-modal')).toBeVisible();
 }
 
 /** Create a project through the wizard (which opens on load). */

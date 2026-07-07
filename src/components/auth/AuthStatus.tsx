@@ -1,24 +1,28 @@
-import { useEffect, useState } from 'react';
-import { isAuthRequired } from '../../backend/config';
-import { signOut, subscribeAuth, type AuthState } from '../../backend/auth';
+import { signOut } from '../../backend/auth';
+import { useAuthState } from './useAuthState';
+import { useAuthUi } from './authUi';
 
 /**
- * Topbar "signed in as … · Sign out" indicator. Renders nothing in offline / self-host mode (no
- * backend, no login), so the offline UI is unchanged. In hosted mode AppShell only mounts once
- * signed in, so this shows the current user and a sign-out button.
+ * Topbar account control. Renders nothing in offline / self-host mode (no backend, no login UI).
+ * In hosted mode: signed out → a "Sign in" button opening the SignInDialog; signed in → the
+ * user's email + Sign out. The app itself is never gated — this is the only always-visible
+ * entry point into an account.
  */
 export default function AuthStatus() {
-  const authRequired = isAuthRequired();
-  const [state, setState] = useState<AuthState>({ status: 'loading', user: null });
+  const { backendConfigured, status, user } = useAuthState();
+  const openSignIn = useAuthUi((s) => s.openSignIn);
 
-  useEffect(() => {
-    if (!authRequired) return;
-    return subscribeAuth(setState);
-  }, [authRequired]);
+  if (!backendConfigured || status === 'loading') return null;
 
-  if (!authRequired || state.status !== 'signed-in') return null;
+  if (status === 'signed-out') {
+    return (
+      <button className="auth-signin" onClick={() => openSignIn()} title="Sign in to save your work, share to the community, and use AI">
+        Sign in
+      </button>
+    );
+  }
 
-  const label = state.user?.email ?? 'Signed in';
+  const label = user?.email ?? 'Signed in';
   return (
     <span className="auth-status">
       <span className="muted" title={label}>{label}</span>

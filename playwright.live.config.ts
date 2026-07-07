@@ -12,7 +12,7 @@ for (const key of ['E2E_EMAIL', 'E2E_PASSWORD', 'SUPABASE_SERVICE_ROLE_KEY', 'VI
 
 // Configured-mode E2E — the AUTHENTICATED community flows the offline suite (playwright.config.ts)
 // cannot cover, because that one pins Vite to offline mode. This config instead runs a dev server WITH
-// the real Supabase backend from .env and forces login, then the specs sign in as a THROWAWAY test
+// the real Supabase backend from .env; the specs sign in via the topbar dialog as a THROWAWAY test
 // account (E2E_EMAIL / E2E_PASSWORD) and exercise publish → browse → import → moderate against it.
 //
 // Opt-in and secret-free: run with `npm run test:e2e:live`. The specs skip themselves when E2E_EMAIL /
@@ -25,7 +25,9 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // One retry: these specs cross the real network to Supabase, and the first auth call from a cold
+  // browser context can stall past the expect timeout (observed 2026-07-08; identical re-run green).
+  retries: 1,
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:5175',
@@ -38,7 +40,7 @@ export default defineConfig({
     reuseExistingServer: true,
     timeout: 60_000,
     // NO Supabase override here (unlike the offline config): Vite loads VITE_SUPABASE_URL / _ANON_KEY
-    // from .env, so the app runs in configured mode. Force the login gate on regardless of .env.
-    env: { VITE_REQUIRE_AUTH: 'true' },
+    // from .env, so the app runs in configured mode. The editor itself is open (no login wall);
+    // account features gate themselves, and the specs sign in through the topbar dialog.
   },
 });

@@ -10,6 +10,9 @@ import ModerationQueue from './ModerationQueue';
 import CreationWizard from './wizard/CreationWizard';
 import BrandLogo from './BrandLogo';
 import AuthStatus from './auth/AuthStatus';
+import SignInDialog from './auth/SignInDialog';
+import { useAuthState } from './auth/useAuthState';
+import { useAuthUi } from './auth/authUi';
 import SyncStatus from './SyncStatus';
 import { isBackendConfigured } from '../backend/config';
 import { useIsModerator } from '../community/useIsModerator';
@@ -46,13 +49,33 @@ export default function AppShell() {
   const [packetsOpen, setPacketsOpen] = useState(false);
 
   // Community gallery (Era 5.5) — only offered when a backend is configured (offline shows nothing).
-  // A `?template=<slug>` share link auto-opens the gallery focused on that item.
+  // Browsing needs an account (the RPCs are authenticated-only), so signed-out visitors get the
+  // sign-in dialog instead of an empty gallery. A `?template=<slug>` share link auto-opens the
+  // gallery focused on that item once signed in.
   const backendConfigured = isBackendConfigured();
+  const { signedIn, needsSignIn } = useAuthState();
+  const openSignIn = useAuthUi((s) => s.openSignIn);
   const initialTemplateSlug = useMemo(
     () => (backendConfigured ? new URLSearchParams(window.location.search).get('template') : null),
     [backendConfigured],
   );
-  const [communityOpen, setCommunityOpen] = useState(Boolean(initialTemplateSlug));
+  const [communityOpen, setCommunityOpen] = useState(false);
+  const openCommunity = () => {
+    if (needsSignIn) openSignIn('Sign in to browse the community gallery.');
+    else setCommunityOpen(true);
+  };
+  // Share-link deep link: open the gallery as soon as we know the visitor's auth state — signed
+  // in opens it directly; signed out asks for sign-in first, then opens it (once).
+  const deepLinkDone = useRef(false);
+  useEffect(() => {
+    if (!initialTemplateSlug || deepLinkDone.current) return;
+    if (signedIn && backendConfigured) {
+      deepLinkDone.current = true;
+      setCommunityOpen(true);
+    } else if (needsSignIn) {
+      openSignIn('Sign in to view this shared template.');
+    }
+  }, [initialTemplateSlug, signedIn, needsSignIn, backendConfigured, openSignIn]);
 
   // Moderator takedown queue — the button appears only for users in the moderators table.
   const isModerator = useIsModerator();
@@ -163,7 +186,7 @@ export default function AppShell() {
           📦 Packets
         </button>
         {backendConfigured && (
-          <button onClick={() => setCommunityOpen(true)} title="Browse and reuse templates shared by other users">
+          <button onClick={openCommunity} title="Browse and reuse templates shared by other users">
             🌐 Community
           </button>
         )}
@@ -259,6 +282,9 @@ export default function AppShell() {
 
       {/* Moderator takedown queue overlay — only reachable when the button is shown (a moderator). */}
       {moderationOpen && <ModerationQueue onClose={() => setModerationOpen(false)} />}
+
+      {/* On-demand sign-in dialog — opened by the topbar button or any account-gated feature. */}
+      <SignInDialog />
     </div>
   );
 }

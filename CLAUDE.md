@@ -160,6 +160,15 @@ src/
   teach/        knowledge.ts + explain.ts — surfaced as Monaco HOVER tooltips in the editor
                 (registered in CodeEditor.tsx; there is no Learn tab), cssReference.ts
   assets/       gsap.min.js (bundled), assetUtils.ts (data-URL assets)
+  backend/      the OPTIONAL Supabase backend (Era 5): config.ts (isBackendConfigured — the ONE
+                feature-detection point; unset env = pure offline mode), supabase.ts (lazy
+                client), auth.ts (Google OAuth + email/password + subscribeAuth),
+                storage.ts/supabaseProvider.ts/sync.ts/syncController.ts (LWW cloud sync of
+                packets/looks/brand for signed-in users), assets.ts (Storage bucket)
+  community/    Era 5.5 shared templates: communityData.ts (RPCs, signed-in only), gate.ts
+                (validate + bench at publish AND import), useIsModerator.ts
+  showchat/     Era 5.4 audience send-in: SendIn page (?chat=<slug>), ModerationPanel,
+                chatGraphicBlock (polling graphic block), chatData.ts
   components/    AppShell (two-pane layout: code left; preview stacked over the tool tabs
                  right — the stage's aspect-ratio comes from the template resolution),
                  CodeEditor (Monaco + change-highlight decorations + hover explanations),
@@ -170,7 +179,10 @@ src/
                  downloads controlpanel.html; adds the Google-Sheets live-data block),
                  StylePanel, AnimationPanel (In/Out/Both phase control), AIPromptPanel,
                  ExportPanel (validation inline), PacketManager (📦 topbar modal),
-                 wizard/ (CreationWizard, draft.ts, WizardPreview, MiniPreview, steps/)
+                 CommunityGallery (🌐), ModerationQueue (🛡), SyncStatus,
+                 wizard/ (CreationWizard, draft.ts, WizardPreview, MiniPreview, steps/),
+                 auth/ (useAuthState hook + authUi store + SignInDialog + SignInPrompt +
+                 AuthStatus — see "Auth posture" below)
 public/fonts/   the 6 bundled woff2 fonts (served at /fonts, copied into exports)
 scripts/        l3-sweep.mjs — Playwright dev tool: `node scripts/l3-sweep.mjs <shots-dir>
                 <category>` validates every variant × preset × easing (+ category-specific
@@ -178,6 +190,16 @@ scripts/        l3-sweep.mjs — Playwright dev tool: `node scripts/l3-sweep.mjs
 docs/           GOALS.md (north star + milestones), DESIGN_LANGUAGE.md (taste rulebook),
                 SPX_TEMPLATE_FORMAT.md (SPX contract)
 ```
+
+### Auth posture (Era 5.6 — the open editor)
+
+**There is no login wall, ever.** The editor — create, preview, export, local packets — is open to
+everyone, hosted or self-hosted. Only *account features* gate themselves: cloud sync, community,
+show chat, and AI (hosted mode). The pattern: read `useAuthState().needsSignIn` (true only when a
+backend is configured AND the visitor is signed out) and render `SignInPrompt` / call
+`useAuthUi().openSignIn(reason)` — never block the app. Offline builds (no Supabase env) must grow
+**zero** auth UI (E2E-pinned in `e2e/auth.spec.ts`). Account creation is invite-only server-side
+(the allowlist hook) until the maintainer opens signup. Don't reintroduce an app-wide gate.
 
 ### The choose-first creation flow (primary UX)
 

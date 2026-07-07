@@ -24,9 +24,9 @@ export default defineConfig({
     reuseExistingServer: true,
     timeout: 60_000,
     // Pin the suite to OFFLINE mode regardless of the developer's local .env (which may hold real
-    // Supabase creds + VITE_REQUIRE_AUTH for live testing). Env vars set here take priority over
-    // .env files in Vite, so these empty values win and the app behaves as the no-backend tool the
-    // specs assume. Auth/sync live paths are verified separately (supabase/README.md checklist).
-    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_REQUIRE_AUTH: '' },
+    // Supabase creds for live testing). Env vars set here take priority over .env files in Vite,
+    // so these empty values win and the app behaves as the no-backend tool the specs assume.
+    // Auth/sync live paths are verified separately (supabase/README.md checklist).
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
   },
 });
