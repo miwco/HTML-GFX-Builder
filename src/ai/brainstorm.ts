@@ -10,7 +10,7 @@ export interface ChatMessage {
   text: string;
 }
 
-const SYSTEM = `You are the design partner inside the SPX HTML GFX Builder, brainstorming a
+const SYSTEM = `You are the design partner inside NoaCG Studio, brainstorming a
 broadcast graphic with the user before it gets generated. You know what makes a graphic
 generable here: a clear WHAT (the kind of graphic), the operator-editable FIELDS (text,
 long text, number, image), and the FEEL (family/mood, colors, motion character, screen

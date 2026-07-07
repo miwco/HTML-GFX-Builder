@@ -1,10 +1,10 @@
 {
-  "name": "spx-html-gfx-builder",
+  "name": "noacg-studio",
   "private": true,
   "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "type": "module",
-  "description": "AI-assisted, code-first SPX HTML broadcast graphics builder",
+  "description": "NoaCG Studio — a modern, premium broadcast graphics builder. Create on-air templates and export SPX / CasparCG / OGraf.",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

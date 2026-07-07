@@ -1,4 +1,4 @@
-// Core data model for the SPX HTML GFX Builder.
+// Core data model for NoaCG Studio.
 //
 // The *template* is the single source of truth. The editor edits html / css / js
 // directly; `fields` and `settings` are parsed from the SPXGCTemplateDefinition that

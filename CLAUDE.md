@@ -5,8 +5,10 @@ conventions change.
 
 ## What this is
 
-An **AI-assisted, SPX-first** browser tool for creating modern, premium HTML broadcast graphics and
-exporting them as working **SPX** templates (SPX Graphics / CasparCG) and other targets. The aim is to
+**NoaCG Studio** — an **AI-assisted, SPX-first** browser tool for creating modern, premium HTML
+broadcast graphics and exporting them as working **SPX** templates (SPX Graphics / CasparCG) and
+other targets. (Brand: dark control-room aesthetic, one amber "on-air" accent, restrained glow;
+full system in `NoaCG-Brand-Kit/BRAND-MANUAL.md`.) The aim is to
 be **the best and easiest place to create broadcast graphics** — for organizations, TV channels,
 streamers, and universities, technical and non-technical users alike (it's also used in teaching, but
 the product is a production tool, not a code tutorial). The creation wizard builds a graphic from

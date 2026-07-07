@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../../backend/auth';
+import BrandLogo from '../BrandLogo';
 
 /**
  * The full-screen login for the hosted closed beta: Google OAuth + email/password, with a
@@ -51,7 +52,8 @@ export default function LoginScreen() {
   return (
     <div className="auth-gate">
       <div className="auth-card">
-        <div className="auth-brand">SPX GFX Builder</div>
+        <div className="auth-logo"><BrandLogo size={44} stacked /></div>
+        <p className="auth-tag">Broadcast graphics, built in minutes.</p>
         <p className="muted auth-sub">Private beta — sign in to continue.</p>
 
         <button className="primary auth-google" onClick={google} disabled={busy}>

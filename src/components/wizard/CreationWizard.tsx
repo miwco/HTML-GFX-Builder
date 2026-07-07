@@ -7,6 +7,7 @@ import { loadBrand, saveBrand, type ProjectBrand } from '../../model/brand';
 import { importTemplateFile } from '../../model/importTemplate';
 import { paletteById } from '../../model/wizard';
 import WizardPreview from './WizardPreview';
+import BrandLogo from '../BrandLogo';
 import EntryStep from './steps/EntryStep';
 import ImportStep from './steps/ImportStep';
 import CategoryStep from './steps/CategoryStep';
@@ -129,9 +130,12 @@ export default function CreationWizard() {
       <div className="wz-modal">
         {/* Header: title + step dots */}
         <div className="wz-header">
-          <div>
-            <h2>New project</h2>
-            <p className="hint">Build it by choosing — then tweak the code it writes, or leave it as-is.</p>
+          <div className="wz-title">
+            <BrandLogo size={20} />
+            <span className="wz-title-sep">·</span>
+            <span className="wz-title-step">
+              {mode === 'ai' ? 'Describe it' : mode === 'import' ? 'Import' : 'New project'}
+            </span>
           </div>
           <div className="wz-dots">
             {stepTitles.map((t, i) => (

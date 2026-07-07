@@ -1,8 +1,14 @@
-# SPX HTML GFX Builder
+# NoaCG Studio
 
-A code-first, browser-based tool for building HTML broadcast graphics and exporting them as working
-**SPX** templates. You always see and edit the real HTML, CSS, and JS (with GSAP); building blocks,
-branding, a teaching layer, and an AI assistant support that workflow rather than hiding the code.
+**NoaCG Studio** is a modern, premium broadcast graphics builder. Create on-air lower thirds,
+tickers, scoreboards, info cards and more by choosing — template → fields → style → animation, with
+a live preview at every step — then export working **SPX**, **CasparCG**, and **OGraf** templates.
+
+Two audiences are first-class: a **non-technical creator** who never opens the code, and a
+**professional** who drops into the always-available Monaco editor for full control. Either way the
+generated HTML/CSS/JS stays clean, commented, and the single source of truth — its view is just
+optional. AI and the live panels write deterministic, readable code; nothing hides behind a
+visual-only scene model.
 
 For contributor/agent guidance and conventions, see [`CLAUDE.md`](CLAUDE.md). For the SPX template
 format, see [`docs/SPX_TEMPLATE_FORMAT.md`](docs/SPX_TEMPLATE_FORMAT.md).

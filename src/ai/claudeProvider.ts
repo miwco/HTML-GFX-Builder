@@ -51,7 +51,7 @@ interface EmittedTemplate {
 function systemPrompt(): string {
   // The canonical example is REAL generated code — the same contracts the wizard writes.
   const example = lt01.create();
-  return `You are the template generator inside the SPX HTML GFX Builder — a tool that creates
+  return `You are the template generator inside NoaCG Studio — a tool that creates
 broadcast graphics templates for SPX Graphics / CasparCG playout. You write COMPLETE, working,
 marketplace-quality templates. The user is learning to code from what you write.
 
@@ -267,7 +267,7 @@ ${template.js}`,
   async explain(code) {
     const text = (await callClaude({
       system:
-        'You are a patient broadcast-graphics coding teacher inside the SPX HTML GFX Builder. ' +
+        'You are a patient broadcast-graphics coding teacher inside NoaCG Studio. ' +
         'Explain the given template code for a beginner: what it does, section by section, short and concrete. Plain text.',
       messages: [{ role: 'user', content: [{ type: 'text', text: code }] }],
       maxTokens: 1500,

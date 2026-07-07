@@ -5,7 +5,7 @@ bottom rather than rewriting history.
 
 ## North star
 
-> **The best and easiest place to create modern, premium broadcast graphics — for any platform.**
+> **NoaCG Studio — the best and easiest place to create modern, premium broadcast graphics, for any platform.**
 
 Make an on-air-worthy graphic in a couple of minutes, no code required, then export it to a working
 SPX package (or CasparCG / OGraf). Two kinds of user are first-class: a **non-technical creator** who

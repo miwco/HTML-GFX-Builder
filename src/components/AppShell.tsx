@@ -8,6 +8,7 @@ import PacketManager from './PacketManager';
 import CommunityGallery from './CommunityGallery';
 import ModerationQueue from './ModerationQueue';
 import CreationWizard from './wizard/CreationWizard';
+import BrandLogo from './BrandLogo';
 import AuthStatus from './auth/AuthStatus';
 import SyncStatus from './SyncStatus';
 import { isBackendConfigured } from '../backend/config';
@@ -134,11 +135,11 @@ export default function AppShell() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
-          SPX GFX Builder
-        </div>
+        <button className="brand brand-home" onClick={openGallery} title="NoaCG Studio — start a new project">
+          <BrandLogo size={24} />
+        </button>
         <span className="tpl-name">{template.name}</span>
-        <span className="muted" style={{ fontSize: 12, marginLeft: 6 }}>
+        <span className="mono muted" style={{ fontSize: 11, marginLeft: 6 }}>
           {template.resolution.width}×{template.resolution.height} · {template.fps}&thinsp;fps
         </span>
         <div className="spacer" />

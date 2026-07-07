@@ -181,7 +181,7 @@ hasn't resolved. Acceptable strategies: queue, abort the previous animation, or 
 
 ---
 
-## Implementing an OGraf export (e.g. from an SPX HTML GFX Builder template)
+## Implementing an OGraf export (e.g. from a NoaCG Studio template)
 
 OGraf is a natural second export target next to SPX. A deterministic mapping from a template that
 uses global `play()/stop()/update(data)` + `id="fN"` elements:

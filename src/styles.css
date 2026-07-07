@@ -1,17 +1,62 @@
+/* ============================================================================
+   NoaCG Studio — app theme.
+   Dark control-room ground, a single amber "on-air" accent, restrained glow.
+   Brand Manual §3 tokens: Void / Panel / Amber / Glow / Rec / Paper.
+   ============================================================================ */
+
+/* Brand typefaces, bundled locally (offline-first — no CDN at runtime).
+   Space Grotesk = display / UI / wordmark (variable 400-700).
+   JetBrains Mono = technical labels, data, timecode. */
+@font-face {
+  font-family: "Space Grotesk";
+  src: url("/fonts/space-grotesk.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
-  --bg: #0e1116;
-  --bg-2: #161b22;
-  --bg-3: #1c232d;
-  --border: #2a323d;
-  --text: #e6edf3;
-  --text-dim: #9aa7b4;
-  --accent: #3aa0ff;
-  --accent-2: #ffd32a;
-  --danger: #ff6b6b;
-  --warn: #ffb454;
-  --ok: #4ec9a8;
+  /* Brand palette (Brand Manual §3) */
+  --void: #0a0c10;   /* base canvas   */
+  --panel: #141922;  /* surfaces      */
+  --amber: #f6a623;  /* primary accent */
+  --glow: #ffc65c;   /* glow / hover   */
+  --rec: #e5484d;    /* live / record only */
+  --paper: #e8edf2;  /* text / knockout */
+
+  /* App tokens — names kept stable so existing consumers don't change; only the
+     values move to the brand palette. */
+  --bg: var(--void);       /* base canvas */
+  --bg-2: var(--panel);    /* topbar + panels */
+  --bg-3: #1b2230;         /* raised surfaces: buttons, inputs */
+  --border: #262f3c;       /* hairlines */
+  --text: var(--paper);
+  --text-dim: #8b98a8;     /* muted grey (the wordmark's "CG" grey) */
+  --accent: var(--amber);  /* the on-air accent (was blue) */
+  --accent-2: var(--glow); /* hover / live glow */
+  --danger: var(--rec);    /* live/record + errors */
+  --warn: #f2b84b;
+  --ok: #43c59e;
   --radius: 8px;
-  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* Type */
+  --font-ui: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Signature amber glow (Brand Manual §5) — amber only, on dark, restrained. */
+  --amber-glow: 0 0 24px rgba(246, 166, 35, 0.35);
+
+  font-family: var(--font-ui);
 }
 
 * { box-sizing: border-box; }
@@ -34,11 +79,11 @@ button {
   font-size: 13px;
   transition: background 0.12s, border-color 0.12s;
 }
-button:hover { background: #232c38; border-color: #3a4654; }
+button:hover { background: #202836; border-color: #37424f; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #06131f; font-weight: 600; }
-button.primary:hover { background: #58adff; }
-button.active { background: #243044; border-color: var(--accent); color: var(--text); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--void); font-weight: 600; box-shadow: 0 0 14px rgba(246, 166, 35, 0.22); }
+button.primary:hover { background: var(--glow); border-color: var(--glow); }
+button.active { background: rgba(246, 166, 35, 0.14); border-color: var(--accent); color: var(--text); }
 
 input, select, textarea {
   font-family: inherit;
@@ -70,10 +115,50 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
   border-bottom: 1px solid var(--border);
   flex: 0 0 auto;
 }
-.topbar .brand { font-weight: 700; font-size: 15px; letter-spacing: 0.2px; }
-.topbar .brand .dot { color: var(--accent-2); }
+.topbar .brand { display: inline-flex; align-items: center; }
 .topbar .tpl-name { color: var(--text-dim); font-size: 13px; }
+.topbar .divider-dot { color: var(--border); }
 .topbar .spacer { flex: 1; }
+
+/* ---------- Brand mark + lockup (Brand Manual §2) ---------- */
+.brand-mark { display: block; flex: 0 0 auto; }
+.brand-mark__on  { fill: var(--amber); }
+.brand-mark__mid { fill: var(--paper); opacity: 0.82; }
+.brand-mark__lo  { fill: var(--paper); opacity: 0.32; }
+/* Signature glow — amber only, on dark, restrained (§5). */
+.brand-mark--glow .brand-mark__on { filter: drop-shadow(0 0 4px rgba(246, 166, 35, 0.5)); }
+
+.brand-lockup { display: inline-flex; align-items: center; gap: 0.42em; font-size: var(--mark-size, 26px); }
+.brand-lockup--stacked { flex-direction: column; gap: 0.5em; text-align: center; }
+.brand-lockup__type { display: flex; flex-direction: column; line-height: 1; }
+.brand-wordmark {
+  font-family: var(--font-ui);
+  font-size: 0.66em;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--paper);
+  white-space: nowrap;
+}
+.brand-wordmark b { font-weight: 700; }
+.brand-wordmark__cg { font-weight: 400; color: var(--text-dim); }
+.brand-studio {
+  font-family: var(--font-mono);
+  font-size: 0.3em;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 0.36em;
+  padding-left: 0.1em;
+}
+.brand-lockup--stacked .brand-studio { margin-top: 0.15em; }
+
+/* Logo doubles as the "home / new project" affordance in the topbar. */
+.brand-home { background: transparent; border: none; padding: 3px 4px; border-radius: 8px; box-shadow: none; }
+.brand-home:hover { background: rgba(255, 255, 255, 0.04); border-color: transparent; }
+
+/* Monospace utility for technical labels / data (Brand Manual §4). */
+.mono { font-family: var(--font-mono); }
 
 .workspace {
   flex: 1;
@@ -279,7 +364,7 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   white-space: pre-wrap;
 }
 .ai-msg.user { justify-content: flex-end; }
-.ai-msg.user span { background: #243044; }
+.ai-msg.user span { background: #212a37; }
 .ai-msg.assistant span { background: var(--bg-2); border: 1px solid var(--border); }
 .ai-brief {
   display: flex;
@@ -378,8 +463,8 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   margin-top: 14px;
   padding: 9px 12px;
   font-size: 13px;
-  background: rgba(58, 160, 255, 0.12);
-  border: 1px solid rgba(58, 160, 255, 0.4);
+  background: rgba(246, 166, 35, 0.12);
+  border: 1px solid rgba(246, 166, 35, 0.4);
   border-radius: 6px;
 }
 kbd {
@@ -467,7 +552,7 @@ kbd {
 }
 .wz-dot span { opacity: 0.65; margin-right: 2px; }
 .wz-dot.done { color: var(--text); }
-.wz-dot.active { border-color: var(--accent); color: var(--text); background: rgba(58, 160, 255, 0.08); }
+.wz-dot.active { border-color: var(--accent); color: var(--text); background: rgba(246, 166, 35, 0.08); }
 .wz-dot:disabled { opacity: 0.45; cursor: default; }
 
 .wz-body { flex: 1; display: flex; min-height: 0; }
@@ -510,20 +595,50 @@ kbd {
   border-top: 1px solid var(--border);
 }
 
-/* Step 0: entry cards */
-.wz-entry { display: flex; gap: 14px; padding: 40px 10px; justify-content: center; flex-wrap: wrap; }
+/* Wizard header brand line */
+.wz-title { display: inline-flex; align-items: center; gap: 10px; }
+.wz-title-sep { color: var(--border); }
+.wz-title-step { font-size: 14px; color: var(--text-dim); font-weight: 500; }
+
+/* Step 0: the home hero + entry cards */
+.wz-entry-wrap { display: flex; flex-direction: column; align-items: center; }
+.wz-hero { text-align: center; max-width: 660px; padding: 30px 16px 4px; }
+.wz-hero-title {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+  margin: 20px 0 12px;
+}
+.wz-hero-title span { color: var(--amber); }
+.wz-hero-sub { font-size: 15px; line-height: 1.55; color: var(--text-dim); margin: 0 auto; max-width: 540px; }
+.wz-hero-tags { display: flex; gap: 8px; justify-content: center; margin-top: 18px; }
+.wz-hero-tags span {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 11px;
+}
+
+.wz-entry { display: flex; gap: 14px; padding: 26px 10px 8px; justify-content: center; flex-wrap: wrap; }
 .wz-entry-card {
-  width: 280px;
-  padding: 26px 22px;
+  width: 264px;
+  padding: 22px 20px;
   text-align: left;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-radius: 10px;
+  border-radius: 12px;
   line-height: 1.4;
+  transition: border-color 0.14s, background 0.14s, transform 0.14s;
 }
-.wz-entry-card .wz-entry-icon { font-size: 22px; color: var(--accent); }
-.wz-entry-card strong { font-size: 15px; }
+.wz-entry-card:hover { border-color: var(--accent); background: var(--bg-2); transform: translateY(-2px); }
+.wz-entry-card--primary { border-color: rgba(246, 166, 35, 0.45); }
+.wz-entry-card .wz-entry-icon { font-size: 20px; color: var(--accent); }
+.wz-entry-card strong { font-size: 15px; font-weight: 600; }
 .wz-entry-card:disabled { opacity: 0.55; cursor: default; }
 
 /* Step 1 (import mode): drop zone */
@@ -538,7 +653,7 @@ kbd {
   cursor: pointer;
   background: var(--bg-3);
 }
-.wz-drop.over { border-color: var(--accent); background: rgba(58, 160, 255, 0.08); }
+.wz-drop.over { border-color: var(--accent); background: rgba(246, 166, 35, 0.08); }
 
 /* Step 1: categories */
 .wz-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
@@ -593,7 +708,7 @@ kbd {
 .wz-font .hint { display: block; }
 .wz-zones { display: grid; grid-template-columns: repeat(3, 30px); gap: 4px; }
 .wz-zone { width: 30px; height: 22px; border-radius: 4px; padding: 0; }
-.wz-zone.selected { border-color: var(--accent); background: rgba(58, 160, 255, 0.25); }
+.wz-zone.selected { border-color: var(--accent); background: rgba(246, 166, 35, 0.25); }
 .wz-nudge { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-dim); }
 .wz-nudge input { width: 80px; }
 
@@ -707,7 +822,7 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .gallery-card:hover { border-color: var(--accent); }
 .gallery-card.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(58, 160, 255, 0.25);
+  box-shadow: 0 0 0 2px rgba(246, 166, 35, 0.25);
 }
 .gallery-card:focus { outline: none; }
 
@@ -792,7 +907,7 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   text-decoration: underline;
   cursor: pointer;
 }
-.link-btn:hover { background: transparent; border-color: transparent; color: #58adff; }
+.link-btn:hover { background: transparent; border-color: transparent; color: var(--glow); }
 
 /* ---------- Learn / teaching ---------- */
 .learn-card { border-left: 3px solid var(--border); }
@@ -844,8 +959,9 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   padding: 28px 26px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
 }
-.auth-brand { font-weight: 700; font-size: 18px; letter-spacing: 0.2px; }
-.auth-sub { margin: 6px 0 20px; font-size: 13px; }
+.auth-logo { display: flex; justify-content: center; margin: 4px 0 14px; }
+.auth-tag { text-align: center; font-size: 14px; color: var(--text); margin: 0; }
+.auth-sub { margin: 6px 0 20px; font-size: 13px; text-align: center; }
 .auth-google { width: 100%; padding: 9px 12px; }
 .auth-or { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--text-dim); font-size: 12px; }
 .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
@@ -889,8 +1005,8 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .chat-acts button { font-size: 12px; padding: 4px 8px; }
 .chat-badge { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 5px; border-radius: 4px; margin-right: 6px; vertical-align: middle; background: var(--bg-3); color: var(--text-dim); }
 .chat-badge.chat-on_air { background: var(--danger); color: #fff; }
-.chat-badge.chat-approved { background: var(--ok); color: #06131f; }
-.chat-badge.chat-pending { background: var(--warn); color: #06131f; }
+.chat-badge.chat-approved { background: var(--ok); color: var(--void); }
+.chat-badge.chat-pending { background: var(--warn); color: var(--void); }
 
 /* ---------- Mobile ( <=768px ): single-column "view & test" layout ---------- */
 /* The desktop two-pane IDE reflows to one scrolling column — preview + tool panels first, the
