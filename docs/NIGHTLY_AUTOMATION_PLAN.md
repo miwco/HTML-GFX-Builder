@@ -17,6 +17,54 @@ moderator queue).
 
 ---
 
+## The long-term product direction (committed vision, not yet scheduled)
+
+This nightly job is the first step toward a standing product capability:
+
+> **The site continuously generates and publishes new premium-quality broadcast graphics - so a huge,
+> free, ready-made library covers almost any use case a user could need.**
+
+Concretely, the destination is:
+
+- **A large free library** of high-quality broadcast graphics that grows on its own, on a regular
+  cadence (e.g. nightly). Users arriving with a need should almost always find something ready to use.
+- **Broad coverage on every axis** - use case, format, style, and occasion. Across categories:
+  lower thirds, titles/opens, timers/countdowns, tickers, scoreboards, event graphics, holiday &
+  seasonal graphics, sports graphics, news graphics, social-media formats (vertical/square), and other
+  useful templates. Generation should deliberately spread across this space (rotate categories,
+  styles, palettes, and topical/seasonal occasions) rather than churning out variations of one thing.
+- **An automatic quality + safety gate that can stand on its own.** Before anything is published, it
+  must pass automated checks; anything **broken, low-quality, inappropriate, off-brand, or otherwise
+  not good enough is auto-rejected** and never appears on the site. The gate is the platform's
+  responsibility, not the model's - the same posture as the export validator and the community
+  publish gate.
+
+**The trajectory (how the plan below leads here).** The two are not in conflict; they are phases:
+
+1. **Now (this plan): human-reviewed.** Every draft lands as `pending` and a human approves it. This
+   is the safe default *and* it produces the labeled approve/reject signal that tells us how good the
+   automatic gate actually is.
+2. **Later: trusted auto-publish behind a strong automatic gate.** As the automatic quality + safety
+   gate proves it matches human judgment on that accumulated signal, publishing shifts from
+   human-approved to gate-approved - graphics that clearly pass go live automatically; borderline ones
+   still route to a human; failures are auto-rejected. Human review never disappears; it becomes the
+   exception path and the ongoing calibration loop for the gate.
+
+What the automatic gate must eventually cover (beyond today's `publishGate`, which is correctness +
+share-safety): **taste/quality** (marketplace-grade, on the DESIGN_LANGUAGE bar, not a tutorial demo),
+**motion correctness** (the deterministic multi-timestamp checker in §5), **brand/design-language
+conformance**, **appropriateness/content-safety** (nothing offensive, misleading, or legally risky),
+and **de-duplication** (genuinely new, not a near-copy of existing library entries). Each is a
+buildable check; none needs to exist for phase 1, but the human-review data from phase 1 is what
+justifies trusting them in phase 2.
+
+This is written down as **committed product direction**. It does not need to be built now - but the
+nightly pipeline below should be built so this is the natural next step (which it is: the automatic
+gate is the same `publishGate` + motion + taste checks, and "auto-publish" is just letting a
+high-confidence pass skip the human instead of waiting for one).
+
+---
+
 ## 0. The one finding that shapes everything (verified against the SQL)
 
 A red-team pass over the guardrail *"a nightly draft can never reach the public gallery without a
