@@ -1,4 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
+import { loadEnv } from 'vite';
+
+// Playwright's runner (Node) does NOT auto-load .env — only Vite does, and only for its own dev
+// server. Load the project's .env here so the specs can read the test-account creds from a FILE
+// (E2E_EMAIL / E2E_PASSWORD / SUPABASE_SERVICE_ROLE_KEY, plus VITE_SUPABASE_URL for the moderator
+// admin client) instead of the command line. Inline env vars still win — we only fill what's missing.
+const fileEnv = loadEnv('development', process.cwd(), '');
+for (const key of ['E2E_EMAIL', 'E2E_PASSWORD', 'SUPABASE_SERVICE_ROLE_KEY', 'VITE_SUPABASE_URL']) {
+  if (!process.env[key] && fileEnv[key]) process.env[key] = fileEnv[key];
+}
 
 // Configured-mode E2E — the AUTHENTICATED community flows the offline suite (playwright.config.ts)
 // cannot cover, because that one pins Vite to offline mode. This config instead runs a dev server WITH
