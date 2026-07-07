@@ -248,9 +248,20 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       in-database (one migration: RLS + abuse trigger, no edge function). **Live-verified** every
       RLS boundary + the full submit→moderate→air→graphic flow. *Social-media API import (X/YouTube
       comments) deferred — it needs private API keys (repo-split), unlike this custom chat.*
-- [ ] **5.5 User-shared templates** (user idea 2026-07-05): a community section where logged-in
-      users publish templates/packets others browse and use — moderation gate = validator + bench
-      checks (automated) + human review
+- [x] **5.5 User-shared templates** (user idea 2026-07-05): a community section where logged-in
+      users publish templates/looks others browse and use. Migration `0004` (own `community_templates`
+      table — NOT a documents sync kind — + browse RPCs granted to `authenticated` only + a global
+      `moderators` role + a report/takedown path + a public `community-assets` bucket with
+      author-scoped writes); automated gate = `validateTemplate` + new `templateBench` composed in
+      `community/gate.ts`, run at BOTH publish and import; publish UI + "My submissions" in
+      PacketManager; the `🌐 Community` gallery (browse/Use/Report) + topbar button + `?template=<slug>`
+      deep-link. **Decisions (2026-07-07):** self-service publishing now (clean gate → `approved`) with
+      the full pre-review schema shipped for a one-line switch later; gallery reads signed-in-only;
+      single graphics + looks (whole-packet publishing deferred). Offline-invariant (E2E-proven, no
+      community UI without a backend); build + full E2E (55) green; migration adversarially reviewed
+      (5 findings fixed). **Deferred:** human pre-review + moderator queue UI, whole-packet publishing,
+      anon public gallery + login-less share page. Live authed/RLS paths → maintainer live-verify
+      (supabase/README.md §Community sharing).
 - [ ] **5.6 Payments/subscriptions LAST** (long beta first; separate private repo, Stripe, metered
       generations)
 

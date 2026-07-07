@@ -161,9 +161,32 @@ string.
 - Public send-in page → moderated queue → graphic. Needs private Edge Functions (social APIs, an
   inbound endpoint) + moderation tables/RLS. Depends on 5.1-5.2. Bigger; scoped when reached.
 
-### 5.5 - Community shared templates
-- Logged-in users publish templates/packets others browse and use. Moderation/quality gate =
-  `validateTemplate` + bench checks (the automated part) + human review. Needs 5.1-5.2.
+### 5.5 - Community shared templates ✅ (self-service cut, 2026-07-07)
+- Logged-in users publish templates/looks others browse and use. **Shipped:** migration `0004`
+  (`community_templates` as its OWN table — a one-way publish, never a `documents` sync kind; browse
+  via SECURITY DEFINER `community_list`/`community_get` granted to `authenticated` only; a global
+  `moderators` role + `is_moderator()`; a `community_reports` takedown path; a public
+  `community-assets` Storage bucket with **author-scoped** writes `<uid>/<hash>`), the automated gate
+  `community/gate.ts` = `validateTemplate` + new `validation/templateBench.ts` (promotes
+  external-dep/missing-asset to blocking, blocks un-serializable/oversized) run at BOTH publish and
+  import, `community/communityData.ts` (all null-guarded, reuses the `assets.ts` externalize codec),
+  publish UI + "My submissions" in PacketManager, and the `CommunityGallery` + `🌐 Community` topbar
+  button + `?template=<slug>` deep-link.
+- **Decisions (2026-07-07, user):** (1) **self-service now** — the client gate publishes straight to
+  `status='approved'`; the full lifecycle + moderator role + guard trigger ship so **human pre-review**
+  is a one-line change (the INSERT branch of `community_moderation_guard`) plus the queue UI. (2)
+  **signed-in-only** gallery reads (RPCs to `authenticated`); opening to anon later = also grant anon.
+  (3) **single graphics + looks**; whole-packet publishing deferred.
+- **Moderation gate composition:** automated (validate + bench, blocks) at publish AND import
+  (defence-in-depth on a fetched row); human review is the deferred third gate (status flip).
+- **Verified:** build + full offline E2E (55, incl. a new `community.spec.ts`: offline-invariance +
+  gate behaviour) green; configured-mode UI smoke (publish sheet, gallery render); migration
+  adversarially reviewed (3-lens workflow, 5 findings fixed — critical author self-approve/takedown
+  reversal, INSERT-side audit forgery, report spoof/rate-limit bypass, URL-unsafe slug, asset
+  poisoning). **Deferred to maintainer live-verify:** RLS isolation, the moderation guard, asset
+  round-trip through the public bucket (supabase/README.md §Community sharing).
+- **Deferred features:** human pre-review + moderator queue UI, whole-packet publishing, anon public
+  gallery + a login-less `?template=<slug>` page.
 
 ### 5.6 - Payments / subscriptions (LAST)
 - Stripe, metered generations - entirely in the private repo. Long beta first.

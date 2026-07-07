@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import CodeEditor from './CodeEditor';
 import PreviewFrame from './PreviewFrame';
 import PlayoutSimulator from './PlayoutSimulator';
 import SidePanel from './SidePanel';
 import PacketManager from './PacketManager';
+import CommunityGallery from './CommunityGallery';
 import CreationWizard from './wizard/CreationWizard';
 import AuthStatus from './auth/AuthStatus';
 import SyncStatus from './SyncStatus';
+import { isBackendConfigured } from '../backend/config';
 
 /**
  * Two-pane workspace: code editor (left) and, on the right, the live preview (16:9,
@@ -22,6 +24,15 @@ export default function AppShell() {
   const openGallery = useTemplateStore((s) => s.openGallery);
   const undo = useTemplateStore((s) => s.undo);
   const [packetsOpen, setPacketsOpen] = useState(false);
+
+  // Community gallery (Era 5.5) — only offered when a backend is configured (offline shows nothing).
+  // A `?template=<slug>` share link auto-opens the gallery focused on that item.
+  const backendConfigured = isBackendConfigured();
+  const initialTemplateSlug = useMemo(
+    () => (backendConfigured ? new URLSearchParams(window.location.search).get('template') : null),
+    [backendConfigured],
+  );
+  const [communityOpen, setCommunityOpen] = useState(Boolean(initialTemplateSlug));
 
   // Global undo for block / AI / gallery actions. Skips Monaco and form fields so they
   // keep their own native text undo.
@@ -59,6 +70,11 @@ export default function AppShell() {
         <button onClick={() => setPacketsOpen(true)} title="Save this show's graphics together + manage brand looks">
           📦 Packets
         </button>
+        {backendConfigured && (
+          <button onClick={() => setCommunityOpen(true)} title="Browse and reuse templates shared by other users">
+            🌐 Community
+          </button>
+        )}
         <button onClick={openGallery} title="Start a new project from a template">
           + New project
         </button>
@@ -86,6 +102,11 @@ export default function AppShell() {
 
       {/* Packet manager overlay — saved graphics collections + brand looks. */}
       {packetsOpen && <PacketManager onClose={() => setPacketsOpen(false)} />}
+
+      {/* Community gallery overlay — browse + import shared templates (hosted mode only). */}
+      {communityOpen && (
+        <CommunityGallery onClose={() => setCommunityOpen(false)} initialSlug={initialTemplateSlug} />
+      )}
     </div>
   );
 }
