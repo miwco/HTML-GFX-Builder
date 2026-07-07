@@ -7,7 +7,7 @@
 # in at deploy time on the hosted instance only. Secrets are referenced via env(NAME); no literal
 # secret ever lives in this file. See docs/ERA5_PLAN.md.
 
-project_id = "spx-html-gfx-builder"
+project_id = "noacg-studio"
 
 [api]
 enabled = true

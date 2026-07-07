@@ -5,13 +5,17 @@ conventions change.
 
 ## What this is
 
-**NoaCG Studio** — an **AI-assisted, SPX-first** browser tool for creating modern, premium HTML
-broadcast graphics and exporting them as working **SPX** templates (SPX Graphics / CasparCG) and
-other targets. (Brand: dark control-room aesthetic, one amber "on-air" accent, restrained glow;
-full system in `NoaCG-Brand-Kit/BRAND-MANUAL.md`.) The aim is to
-be **the best and easiest place to create broadcast graphics** — for organizations, TV channels,
-streamers, and universities, technical and non-technical users alike (it's also used in teaching, but
-the product is a production tool, not a code tutorial). The creation wizard builds a graphic from
+**NoaCG Studio** — an **AI-assisted, multi-platform** browser tool for creating modern, premium HTML
+broadcast graphics and exporting them to **many broadcast/streaming environments** (SPX Graphics,
+CasparCG, OGraf today; **OBS, vMix and more over time** — "anything-goes export"). SPX remains the
+**canonical internal template format** and the strictest validation target; other targets are export
+adapters derived from that same source. (Brand: dark control-room aesthetic, one amber "on-air" accent,
+restrained glow; full system in `NoaCG-Brand-Kit/BRAND-MANUAL.md`.) The aim is to be **the best and
+most useful place to create broadcast graphics, and run them anywhere** — for organizations, TV
+channels, streamers, and universities, technical and non-technical users alike (it's also used in
+teaching, but the product is a production tool, not a code tutorial). **Business posture: free forever
+for the core; the only paid surface is hosted AI without a BYO key; the current goal is users/adoption,
+not revenue** (see `docs/GOALS.md` operating principles). The creation wizard builds a graphic from
 choices (template → fields → style → animation): a **non-technical user never has to open the code**,
 while a **professional** can drop into the always-available editor and take full control. Code stays
 the single source of truth — the live panels patch it deterministically and nothing hides behind
@@ -25,8 +29,11 @@ keep it checked off as work lands).
 - **Best & easiest to create** — the north star is premium output with the least friction; a
   non-technical user can make a great graphic without ever touching code.
 - **AI-assisted** — AI and blocks help write the template; a pro stays in full control of the code.
-- **SPX-first** — the primary target is a working SPX template; SPX compatibility comes before
-  everything (CasparCG / OGraf export from the same template).
+- **Export anywhere, SPX-canonical** — the ambition is a platform that runs graphics in many
+  environments (SPX, OBS, vMix, CasparCG, OGraf, and more). SPX is the canonical *internal* template
+  format and the strictest validation target; every other target is an export adapter off the same
+  source, so breadth is added without reworking the core. SPX compatibility stays rock-solid, but the
+  product is not "an SPX generator."
 - **Code is real & always available, view optional** — every visual/AI action writes real HTML/CSS/JS
   you can open and edit; **nothing hides behind a visual-only scene model**. But the code *view* is
   optional: no-code users keep it hidden, pros work in it directly.

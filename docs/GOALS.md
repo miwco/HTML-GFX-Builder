@@ -5,14 +5,35 @@ bottom rather than rewriting history.
 
 ## North star
 
-> **NoaCG Studio — the best and easiest place to create modern, premium broadcast graphics, for any platform.**
+> **NoaCG Studio — the best and most useful place to create modern, premium broadcast graphics, and run them anywhere.**
 
-Make an on-air-worthy graphic in a couple of minutes, no code required, then export it to a working
-SPX package (or CasparCG / OGraf). Two kinds of user are first-class: a **non-technical creator** who
+Make an on-air-worthy graphic in a couple of minutes, no code required, then export it to whatever
+environment the user already runs. Two kinds of user are first-class: a **non-technical creator** who
 never opens the code, and a **professional** who drops into the always-available editor for full
 control. The generated HTML/CSS/JS stays clean, well-named, and the single source of truth — its view
 is optional. Users span organizations, TV channels, streamers, and universities (it's also used in
 teaching, but the product is a production tool, not a code tutorial).
+
+### Anything-goes export (a platform, not an SPX generator)
+
+Export is **not SPX-first only**. The ambition is a flexible broadcast-graphics **platform** targeting
+many broadcast and streaming environments - **SPX, OBS, vMix, CasparCG, OGraf**, and more over time.
+SPX stays the canonical *internal* template format (and the strictest validation target); every other
+target is an export adapter derived from that same source, so breadth is added without reworking the
+core. Breadth across the whole live stack - plus automation, remote control, and smarter workflows - is
+a primary long-term differentiator, not a nice-to-have.
+
+### Operating principles (business posture)
+
+- **Free forever for the core.** Creating, editing, exporting, controlling, and self-hosting are free,
+  always - no feature paywall on the workflow.
+- **One paid surface only, and later:** hosted AI generation for users who won't bring their own API
+  key (real compute cost). **Bring-your-own-key stays free.** Premium features / paid services are
+  deferred until there is a large user base and are not a current priority - don't build paywalls
+  speculatively.
+- **The goal now is users, not revenue.** Optimize for usefulness, adoption, and regular use
+  (activation + retention). Money is a later, optional consequence of a large, happy user base. See
+  the GTM plan + [[gtm-competitive]] memory.
 
 ### What "done right" feels like
 - **Fast:** new project → on-air-worthy lower third in under 2 minutes, no code required.
