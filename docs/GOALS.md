@@ -5,13 +5,14 @@ bottom rather than rewriting history.
 
 ## North star
 
-> **Build a broadcast-quality graphic in under 2 minutes by choosing — then learn from the code it
-> wrote.**
+> **The best and easiest place to create modern, premium broadcast graphics — for any platform.**
 
-The user does not want to write code; they want to **learn** code. So the app writes it for them:
-they choose a template, fields, style, and animation, and the result is simple, commented,
-well-named HTML/CSS/JS they can read, understand, and edit. The code is always visible, always the
-source of truth, and always exports to a working SPX package.
+Make an on-air-worthy graphic in a couple of minutes, no code required, then export it to a working
+SPX package (or CasparCG / OGraf). Two kinds of user are first-class: a **non-technical creator** who
+never opens the code, and a **professional** who drops into the always-available editor for full
+control. The generated HTML/CSS/JS stays clean, well-named, and the single source of truth — its view
+is optional. Users span organizations, TV channels, streamers, and universities (it's also used in
+teaching, but the product is a production tool, not a code tutorial).
 
 ### What "done right" feels like
 - **Fast:** new project → on-air-worthy lower third in under 2 minutes, no code required.
@@ -21,8 +22,8 @@ source of truth, and always exports to a working SPX package.
 - **Yours:** custom brand colors (hex/picker) and imported fonts are first-class — fonts are
   embedded in the template and its export, never external.
 - **Smooth:** animations run at 60 fps, transform/opacity-based, with professional easing.
-- **Teachable:** open any generated file and every line explains itself — clear names, short
-  comments, no cleverness.
+- **Editable:** open any generated file and every line reads clearly — clear names, short comments,
+  no cleverness — so a pro can extend it (but no one has to).
 - **Reliable:** every export passes the validation gate and plugs straight into SPX.
 - **Still code-first underneath:** hand edits are always possible; panels and wizard write
   deterministic patches and never fight the user's edits outside their marked regions.

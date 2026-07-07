@@ -113,13 +113,13 @@ Nine anchor zones snapped to safe areas (5 % inset at 1080p ≈ 96 px sides / 54
 use the tighter classic 120 px left inset for lower-left thirds). Zone sets the anchoring edges
 (`left/right/top/bottom` + transforms for centered zones); a nudge offset adds to them.
 
-## 7. Generated-code style (teachability)
+## 7. Generated-code style (readability & editability)
 
 - **Naming:** one short prefix per category — lower thirds use `l3` (`.l3`, `.l3-box`, `.l3-name`,
   `.l3-title`, `.l3-kicker`, `.l3-accent`, `.l3-logo`). Functions are verbs:
   `buildInTimeline()`, `buildOutTimeline()`, `update(data)`, `play()`, `stop()`, `next()`.
 - **Comment every CSS property** (short, right-aligned style as in existing templates) and every
-  JS section. Comments teach *what it does*, not *that it changed*.
+  JS section. Comments explain *what it does*, not *that it changed*.
 - **`:root` style contract** at the top of the CSS: `--accent`, `--text-color`, `--text-dim`,
   `--panel-bg`, `--font-heading`, `--scale` — each commented.
 - **Marked animation region** in template.js:
@@ -168,7 +168,7 @@ Rules:
    jank; respects `animSpeed`; steps mode works when enabled.
 3. **Auto-fit** — a 60-character name wraps to new rows, box grows upward, nothing overflows or
    clips wrongly.
-4. **Code teachability** — naming convention, every property/section commented, `:root` contract
+4. **Code readability** — naming convention, every property/section commented, `:root` contract
    present, marked animation region present, simple ES5 JS.
 5. **SPX validity** — `validateTemplate` passes; `update/play/next/stop` run clean; export is
    plug-and-play (relative paths, bundled font + GSAP).

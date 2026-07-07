@@ -5,23 +5,30 @@ conventions change.
 
 ## What this is
 
-An **AI-assisted, SPX-first** browser tool for building HTML broadcast graphics and exporting them
-as working **SPX** templates (SPX Graphics / CasparCG). The primary UX is **choose-first,
-learn-after**: the creation wizard builds the graphic from choices (template → fields → style →
-animation) and writes simple, commented code the user then reads, learns from, and edits. Code
-remains the single source of truth — Monaco always shows it, the live panels patch it
-deterministically, and nothing hides behind visual-only tools.
+An **AI-assisted, SPX-first** browser tool for creating modern, premium HTML broadcast graphics and
+exporting them as working **SPX** templates (SPX Graphics / CasparCG) and other targets. The aim is to
+be **the best and easiest place to create broadcast graphics** — for organizations, TV channels,
+streamers, and universities, technical and non-technical users alike (it's also used in teaching, but
+the product is a production tool, not a code tutorial). The creation wizard builds a graphic from
+choices (template → fields → style → animation): a **non-technical user never has to open the code**,
+while a **professional** can drop into the always-available editor and take full control. Code stays
+the single source of truth — the live panels patch it deterministically and nothing hides behind
+visual-only tools — but its *view* is optional (the code editor can be hidden).
 
 Binding project docs (read before generating or judging templates): **`docs/DESIGN_LANGUAGE.md`**
 (taste + motion + code-style rules) and **`docs/GOALS.md`** (north star + milestone checklist —
 keep it checked off as work lands).
 
 **The pillars (keep every change true to these):**
-- **AI-assisted** — AI and blocks help write the template, but the human stays in control of the code.
-- **SPX-first** — the target is a working SPX template; SPX compatibility comes before everything.
-- **Code stays visible** — the real HTML/CSS/JS is always shown and editable. **Never hide the graphic
-  behind visual-only tools**; any visual/AI action must write code the user can see.
-- **Simple, teachable code** — generated code is clean, commented, and beginner-friendly.
+- **Best & easiest to create** — the north star is premium output with the least friction; a
+  non-technical user can make a great graphic without ever touching code.
+- **AI-assisted** — AI and blocks help write the template; a pro stays in full control of the code.
+- **SPX-first** — the primary target is a working SPX template; SPX compatibility comes before
+  everything (CasparCG / OGraf export from the same template).
+- **Code is real & always available, view optional** — every visual/AI action writes real HTML/CSS/JS
+  you can open and edit; **nothing hides behind a visual-only scene model**. But the code *view* is
+  optional: no-code users keep it hidden, pros work in it directly.
+- **Clean, editable code** — generated code is clean and commented so a professional can read and extend it.
 - **Reliable export** — an SPX package must always be valid and plug-and-play (see the validation gate).
 
 ## Commands
@@ -41,8 +48,9 @@ Verifying, below). Never mark work done on a green build alone if behaviour is o
 1. **Code is the single source of truth.** `SpxTemplate` (html/css/js + parsed definition) is
    canonical. Visual/AI/block actions must emit *deterministic, readable code patches*, never a
    hidden scene model. The editor always reflects exactly what was written.
-2. **Generated code must be clean, commented, and beginner-friendly.** These templates teach. Prefer
-   simple, obvious code over clever code. Rich-but-commented CSS is the house style.
+2. **Generated code must be clean, commented, and easy to edit.** Prefer simple, obvious code over
+   clever code — a professional should be able to read and extend it. Rich-but-commented CSS is the
+   house style.
 3. **Offline-first, no unnecessary dependencies.** GSAP is bundled locally
    (`src/assets/gsap.min.js`). Don't add runtime deps or external/CDN references in generated
    templates. The exported package must be plug-and-play (relative paths, bundled GSAP).
@@ -240,9 +248,8 @@ Key flows and patterns:
 - **Assets/branding:** uploads are base64 data URLs in `template.assets[]`; the preview inlines
   them, the exporter decodes them to real files under `assets/`. Brand colours are `:root` CSS
   variables.
-- **Teaching:** `teach/cssReference.ts` is the single catalog powering both the Learn-tab reference
-  (with MDN deep-links) and the Blocks "suggested property" chips (which call
-  `setCssDeclaration`).
+- **Editor hover help (optional):** the `teach/` module surfaces explanations as Monaco hover
+  tooltips for users who open the code — an aid, not the point. There is no Learn tab.
 
 ## Verifying changes
 
