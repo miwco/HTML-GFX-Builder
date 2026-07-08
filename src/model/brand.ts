@@ -1,7 +1,8 @@
 // The project brand: the light "broadcast package" mechanism. Every wizard Create captures
 // the chosen style family + palette + font (custom colors and imported fonts included) and
-// persists it in localStorage. The wizard's "Match current project" toggle (on by default)
-// preselects it for the next graphic, so everything made in a project looks like one show.
+// persists it in localStorage. The wizard's "Use current project's colors & font" toggle
+// (off by default — opting in is explicit) applies it to the next graphic, so everything
+// made in a project looks like one show.
 // (A full named-package manager is deferred — see docs/GOALS.md.)
 
 import type { Palette } from './wizard';

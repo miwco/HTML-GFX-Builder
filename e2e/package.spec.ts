@@ -87,7 +87,10 @@ test('project brand: match toggle carries the look to another variant', async ({
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Frosted Card' }).click();
-  await expect(page.locator('.wz-match input')).toBeChecked();
+  // The match toggle is off by default — carrying the look over is an explicit choice.
+  const match = page.locator('.wz-match input');
+  await expect(match).not.toBeChecked();
+  await match.check();
   await create(page);
   await expect
     .poll(async () => frame(page).locator('.lower-third').evaluate(() => {

@@ -13,7 +13,7 @@ import { validateTemplate, type ValidationResult } from '../../../validation/val
 interface Props {
   resolution: Resolution;
   fps: number;
-  /** Brand colors to honor (when "Match current project" is on and a brand exists). */
+  /** Brand colors to honor (when "Use current project's colors & font" is on and a brand exists). */
   brandPalette: Palette | null;
   /** The current AI result shown in the live preview (null until the first generation). */
   result: SpxTemplate | null;

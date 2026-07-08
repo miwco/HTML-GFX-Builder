@@ -936,6 +936,10 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 
 .wz-match { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
 
+/* The wizard's main forward action: bigger than its neighbors so the path onward is unmissable
+   (the amber fill comes from .primary). */
+.wz-footer button.wz-next { padding: 9px 26px; font-size: 14px; }
+
 /* ---------- Auth (Era 5.6 — on-demand sign-in; the app itself is never walled) ---------- */
 .auth-gate {
   position: fixed;

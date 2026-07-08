@@ -75,8 +75,9 @@ a primary long-term differentiator, not a nice-to-have.
       the file becomes a template asset (`fonts/…`), gets a visible `@font-face`, renders in the
       preview, and ships inside the export (single file per font; weight sets later)
 - [x] **Project brand + match toggle** — the app remembers the project's brand (family, palette
-      incl. custom, font incl. imported); the wizard preselects it ("Match current project", on
-      by default) so the next graphic automatically belongs to the same package
+      incl. custom, font incl. imported); the wizard's "Use current project's colors & font"
+      toggle (off by default — matching is an explicit choice) makes the next graphic belong
+      to the same package
 - [x] **Package-consistency foundations** — DESIGN_LANGUAGE addendum with per-family
       cross-category tokens (shape, type roles, motion timing); shared template assembler
       extracted from lowerThirds for all categories; continuous-motion machinery (linear loops)

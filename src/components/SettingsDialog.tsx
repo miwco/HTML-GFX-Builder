@@ -88,7 +88,8 @@ export default function SettingsDialog({ onClose }: Props) {
             <h3>Brand &amp; style defaults</h3>
             <p className="hint">
               Your visual defaults live where the work happens: the <strong>project brand</strong> is
-              captured on every wizard Create (and preselected via "Match current project"), and
+              captured on every wizard Create (reapply it with the wizard's "Use current
+              project's colors &amp; font" toggle), and
               named <strong>brand looks</strong> — palette + font, shareable as files — live under
               📦 Packets. Imported fonts and logos travel inside each graphic and its export.
             </p>
