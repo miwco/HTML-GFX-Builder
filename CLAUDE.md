@@ -192,9 +192,13 @@ src/
                  StylePanel, AnimationPanel (In/Out/Both phase control), AIPromptPanel,
                  ExportPanel (validation inline), PacketManager (📦 topbar modal),
                  CommunityGallery (🌐), ModerationQueue (🛡), SyncStatus,
+                 Homebase (signed-in dashboard: all saved graphics across packets, one
+                 store with 📦 Packets), SettingsDialog (AI key/model + workflow defaults
+                 from model/prefs.ts; ExportPanel remembers the last-picked target there),
                  wizard/ (CreationWizard, draft.ts, WizardPreview, MiniPreview, steps/),
                  auth/ (useAuthState hook + authUi store + SignInDialog + SignInPrompt +
-                 AuthStatus — see "Auth posture" below)
+                 AuthStatus avatar menu → Homebase/Settings/Sign out — see "Auth posture"
+                 below)
 public/fonts/   the 7 bundled woff2 fonts (served at /fonts, copied into exports;
                 jetbrains-mono.woff2 doubles as the app UI's mono face)
 scripts/        l3-sweep.mjs — Playwright dev tool: `node scripts/l3-sweep.mjs <shots-dir>

@@ -35,6 +35,18 @@ test('export panel offers all five targets', async ({ page }) => {
   }
 });
 
+test('export target choice is remembered as the default across reloads', async ({ page }) => {
+  await createHairline(page);
+  await page.locator('.panel-tabs .tab', { hasText: 'Export' }).click();
+  await page.locator('.issue', { hasText: 'CasparCG export' }).click();
+  // Fresh load: the wizard opens; behind it the Export tab must preselect the remembered target.
+  await page.reload();
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.locator('.panel-tabs .tab', { hasText: 'Export' }).click();
+  await expect(page.locator('.issue', { hasText: 'CasparCG export' }).locator('input[type="radio"]')).toBeChecked();
+});
+
 test('html overlay: self-contained, autoplays with the Data panel values, control panel bundled', async ({ page }) => {
   await createHairline(page);
   // Type a custom value in the Data panel — the export must bake it in.

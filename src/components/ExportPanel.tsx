@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { EXPORT_TARGETS } from '../export/registry';
 import { slug } from '../export/common';
+import { loadPrefs, savePrefs } from '../model/prefs';
 import { useTemplateStore } from '../store/templateStore';
 import { validateTemplate } from '../validation/validateTemplate';
 
@@ -16,9 +17,18 @@ export default function ExportPanel() {
   const previewError = useTemplateStore((s) => s.previewError);
   const setValidation = useTemplateStore((s) => s.setValidation);
 
-  const [targetId, setTargetId] = useState(EXPORT_TARGETS[0].id);
+  // The target preselects from the remembered preference (Settings, or simply the last pick).
+  const [targetId, setTargetId] = useState(() => {
+    const preferred = loadPrefs().defaultExportTarget;
+    return EXPORT_TARGETS.some((t) => t.id === preferred) ? preferred : EXPORT_TARGETS[0].id;
+  });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const pickTarget = (id: string) => {
+    setTargetId(id);
+    savePrefs({ defaultExportTarget: id }); // remember the choice as the new default
+  };
 
   const target = EXPORT_TARGETS.find((t) => t.id === targetId)!;
 
@@ -74,7 +84,7 @@ export default function ExportPanel() {
                 name="export-target"
                 style={{ width: 'auto', marginTop: 3 }}
                 checked={targetId === t.id}
-                onChange={() => setTargetId(t.id)}
+                onChange={() => pickTarget(t.id)}
               />
               <div>
                 <div style={{ fontWeight: 600 }}>{t.label}</div>

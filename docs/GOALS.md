@@ -201,6 +201,20 @@ server era (no server = no CORS-free social APIs, no inbound chat endpoint).
       with their query; in-app link generation follows `location.pathname`; Google OAuth returns
       to `/app` (origin+pathname). E2E: landing.spec (3) + every spec migrated to `/app`.
 
+### Homebase (2026-07-08 — the signed-in account surface)
+- [x] **Avatar account menu** in the topbar (Google photo or initial chip) → Your homebase ·
+      Settings · Sign out; signed-out hosted mode keeps the plain "Sign in" button; offline
+      builds still grow zero auth UI.
+- [x] **Your homebase** — every saved graphic across all packets, newest first, open-into-editor;
+      reads the SAME packet store 📦 Packets manages (one source of saved designs; cloud sync
+      already mirrors it). Empty state routes to the wizard.
+- [x] **Settings** — AI key + model (same ai/settings store the wizard uses) + workflow defaults
+      (`model/prefs.ts`: default export target — the Export tab also remembers the last pick);
+      brand/style defaults deliberately stay where the work happens (project brand + looks).
+      *Future settings home: preferred styles, platform presets, personal brand assets.*
+- [x] E2E: configured homebase.spec (avatar → homebase → settings → sign out, live-verified);
+      offline export-default persistence spec.
+
 ### The NoaCG house family (2026-07-08 — brand-kit overlays as first-class templates)
 - [x] **A 4th style family `noacg`** — the product's own on-air look (§8 tokens: 8px amber bar +
       void blur(8px) panels, mono label voice, restrained accent glow), so built-in output
