@@ -190,7 +190,8 @@ src/
                  hover cursors, drag the root → nearest zone + residual nudge → the SAME
                  zoneDecls patch the Style panel writes; dblclick a visible #fN → inline
                  edit → sample value + definition default via blocks/edit.ts
-                 setFieldDefault; root detected via class="(\w+)-box"), CanvasGuides,
+                 setFieldDefault; corner handle → live --scale preview + one patchCss
+                 write, clamped 0.5–2; root detected via class="(\w+)-box"), CanvasGuides,
                  PlayoutSimulator (owns the running preview timeline __activeTl; settles
                  the design view after every rebuild — progress(1, true) + a second
                  update(); auto-replays on replayNonce), TimelineView (collapsible strip

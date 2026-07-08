@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { zoneDecls } from '../templates/shared/base';
 import { setCssDeclaration, setFieldDefault } from '../blocks/edit';
+import { getCssVariable, setCssVariable } from '../blocks/cssVars';
 import type { Zone9 } from '../model/wizard';
 
 interface Props {
@@ -32,8 +33,20 @@ interface EditState {
   rect: { left: number; top: number; width: number; height: number };
 }
 
+/** W2 — a corner scale-handle drag: live --scale preview, one patch on release. */
+interface ScaleDrag {
+  startX: number;
+  origScale: number;
+  /** The root's width at drag start, in screen px (the drag's scaling reference). */
+  rootWidth: number;
+  value: number;
+}
+
 // A real drag, not a shaky click (screen px).
 const DRAG_THRESHOLD = 4;
+// The Style panel's size range, continuous (S 0.85 · M 1 · L 1.2 are its presets).
+const SCALE_MIN = 0.5;
+const SCALE_MAX = 2;
 
 /**
  * The direct-manipulation layer over the preview (Era 6 — no modes): hover shows what's
@@ -46,6 +59,7 @@ const DRAG_THRESHOLD = 4;
 export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const template = useTemplateStore((s) => s.template);
   const setCss = useTemplateStore((s) => s.setCss);
+  const patchCss = useTemplateStore((s) => s.patchCss);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const setSampleValue = useTemplateStore((s) => s.setSampleValue);
   const sampleData = useTemplateStore((s) => s.sampleData);
@@ -53,6 +67,11 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const [drag, setDrag] = useState<DragState | null>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [cursor, setCursor] = useState<'default' | 'grab' | 'text'>('default');
+  // The root's rect (canvas px) while the pointer is over it — anchors the scale handle.
+  const [hoverRect, setHoverRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [scaleDrag, setScaleDrag] = useState<ScaleDrag | null>(null);
+  const scaleDragRef = useRef<ScaleDrag | null>(null);
+  scaleDragRef.current = scaleDrag;
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
   // Mirror of `editing` so blur-after-Escape can't commit a cancelled edit (the blur handler
@@ -138,12 +157,64 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
       setDrag({ ...d, dx, dy, active: d.active || Math.hypot(dx, dy) > DRAG_THRESHOLD });
       return;
     }
-    if (editing) return;
-    // Hover affordances: hand on the graphic, text cursor on an editable line.
+    if (editing || scaleDragRef.current) return;
+    // Hover affordances: hand on the graphic, text cursor on an editable line, and the
+    // corner scale handle anchored to the root while the pointer is over it.
     const p = toCanvas(e);
     const r = rootEl()?.getBoundingClientRect();
-    if (r && inRect(p, r)) setCursor(textFieldAt(p) ? 'text' : 'grab');
-    else setCursor('default');
+    if (r && inRect(p, r)) {
+      setCursor(textFieldAt(p) ? 'text' : 'grab');
+      setHoverRect({ left: r.left, top: r.top, width: r.width, height: r.height });
+    } else {
+      setCursor('default');
+      // Keep the handle reachable: it sits just OUTSIDE the root's corner, so don't clear
+      // the rect while the pointer is within its small halo.
+      if (hoverRect) {
+        const halo = 18 / scale; // handle size in canvas px
+        const nearHandle =
+          p.x >= hoverRect.left + hoverRect.width - halo && p.x <= hoverRect.left + hoverRect.width + halo &&
+          p.y >= hoverRect.top + hoverRect.height - halo && p.y <= hoverRect.top + hoverRect.height + halo;
+        if (!nearHandle) setHoverRect(null);
+      }
+    }
+  };
+
+  // ── W2: the corner scale handle → one --scale patch (the Style panel's size knob) ──
+  const currentScale = () => {
+    const v = parseFloat(getCssVariable(template.css, 'scale') ?? '');
+    return Number.isFinite(v) ? v : 1;
+  };
+
+  const startScaleDrag = (e: React.PointerEvent) => {
+    if (!hoverRect) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const orig = currentScale();
+    setScaleDrag({ startX: e.clientX, origScale: orig, rootWidth: hoverRect.width * scale, value: orig });
+  };
+
+  const moveScaleDrag = (e: React.PointerEvent) => {
+    const d = scaleDragRef.current;
+    if (!d) return;
+    e.stopPropagation();
+    // Dragging the corner right/left grows/shrinks proportionally to the root's width.
+    const factor = 1 + (e.clientX - d.startX) / Math.max(40, d.rootWidth);
+    const value = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, d.origScale * factor)) * 100) / 100;
+    setScaleDrag({ ...d, value });
+    // Live preview: an inline :root override on the preview document (the rebuild clears it).
+    doc()?.documentElement.style.setProperty('--scale', String(value));
+  };
+
+  const endScaleDrag = (e: React.PointerEvent) => {
+    const d = scaleDragRef.current;
+    setScaleDrag(null);
+    if (!d) return;
+    e.stopPropagation();
+    doc()?.documentElement.style.removeProperty('--scale');
+    if (d.value === d.origScale) return;
+    // The SAME write the Style panel's size control makes: the :root --scale variable.
+    patchCss(setCssVariable(template.css, 'scale', String(d.value)));
   };
 
   const onPointerUp = () => {
@@ -246,6 +317,26 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
       onPointerCancel={() => setDrag(null)}
       onDoubleClick={onDoubleClick}
     >
+      {/* W2 — the corner scale handle: appears while hovering the graphic; drag = --scale. */}
+      {hoverRect && !ghost && !editing && (
+        <div
+          className={`scale-handle${scaleDrag ? ' dragging' : ''}`}
+          data-testid="scale-handle"
+          style={{
+            left: (hoverRect.left + hoverRect.width) * scale - 5,
+            top: (hoverRect.top + hoverRect.height) * scale - 5,
+          }}
+          title="Drag to resize (writes the --scale variable, like the Style panel's size)"
+          onPointerDown={startScaleDrag}
+          onPointerMove={moveScaleDrag}
+          onPointerUp={endScaleDrag}
+          onPointerCancel={() => { setScaleDrag(null); doc()?.documentElement.style.removeProperty('--scale'); }}
+        />
+      )}
+      {scaleDrag && (
+        <div className="move-hint">×{scaleDrag.value.toFixed(2)} — release to apply</div>
+      )}
+
       {/* The 9-zone grid + ghost — only while a real drag is under way. */}
       {ghost && (
         <>

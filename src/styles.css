@@ -1081,6 +1081,21 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .canvas-layer.cursor-text { cursor: text; }
 .canvas-layer.dragging { cursor: grabbing; }
 
+/* W2 — the corner scale handle (bottom-right of the hovered graphic). */
+.scale-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--amber);
+  border: 1.5px solid rgba(10, 12, 16, 0.9);
+  box-shadow: 0 0 10px rgba(246, 166, 35, 0.5);
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 6;
+}
+.scale-handle.dragging { box-shadow: 0 0 14px rgba(246, 166, 35, 0.8); }
+
 /* The inline text editor floated over the text element it edits. */
 .inline-edit { position: absolute; z-index: 6; }
 .inline-edit input,

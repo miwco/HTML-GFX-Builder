@@ -67,6 +67,33 @@ test('dragging the graphic re-anchors it via a zone+nudge code patch (no mode)',
   expect((await rootAnchor(page)).bottom).not.toBe('auto');
 });
 
+test('W2: dragging the corner handle writes the --scale variable', async ({ page }) => {
+  await createHairline(page);
+  await waitSettled(page);
+
+  // Hovering the graphic reveals the corner scale handle.
+  const box = (await page.getByTestId('canvas-layer').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.15, box.y + box.height * 0.82);
+  const handle = page.getByTestId('scale-handle');
+  await expect(handle).toBeVisible();
+
+  // Drag it to the right — the graphic grows.
+  const hb = (await handle.boundingBox())!;
+  await page.mouse.move(hb.x + 5, hb.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + 5 + box.width * 0.15, hb.y + 5, { steps: 6 });
+  await page.mouse.up();
+
+  // One --scale patch (the Style panel's size mechanism), visible in the rebuilt preview.
+  await page.waitForTimeout(650);
+  const scaleVar = await page
+    .frameLocator('iframe.preview-frame')
+    .locator('body')
+    .evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--scale').trim());
+  expect(Number(scaleVar)).toBeGreaterThan(1);
+  expect(Number(scaleVar)).toBeLessThanOrEqual(2); // clamped to the Style panel's range
+});
+
 test('a drag starting on empty canvas does nothing', async ({ page }) => {
   await createHairline(page);
   await waitSettled(page);

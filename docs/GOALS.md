@@ -375,6 +375,10 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       everything. One undoable applyTemplate per release + auto-replay. set() ticks and
       measured durations stay read-only. Per-element eases = T2.5. E2E: stretch rewrites the
       literal + undo restores; move writes the absolute position + still plays.
+- [x] **W2 corner scale handle (2026-07-08)** — hovering the graphic shows a handle at the
+      root's bottom-right; dragging live-previews `--scale` (inline :root override, ×N badge)
+      and releases ONE `patchCss` write of the variable (the Style panel's size mechanism),
+      clamped 0.5–2. E2E: the drag grows --scale in the rebuilt preview within the clamp.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

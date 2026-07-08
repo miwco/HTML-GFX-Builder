@@ -32,9 +32,12 @@ clocks/loops stay idle), never a blank canvas.
 - Guardrails unchanged: zone snap ALWAYS (freeform absolute positions stay out — wrapped-text
   growth and safe areas depend on anchoring).
 
-### W2 — Resize (scale) handle
-A corner handle on the selected root; drag = live `--scale` preview, release = one
-`patchCss` write of `--scale` (the Style panel's size control, continuous). Clamp 0.5–2.
+### W2 — Resize (scale) handle — ✅ SHIPPED (2026-07-08)
+Hovering the graphic reveals a corner handle at the root's bottom-right (a small halo keeps
+it reachable just outside the rect); dragging it live-previews `--scale` via an inline :root
+override on the preview document (cleared on release/rebuild), with a ×N badge. Release =
+one `patchCss` write of `--scale` (the Style panel's size control, continuous), clamped
+0.5–2, rounded to 2 decimals.
 
 ### W3 — Edit text in place — ✅ SHIPPED (2026-07-08), stronger than planned
 Double-click a visible `#fN` element (text cursor on hover) → an overlay input over it.
