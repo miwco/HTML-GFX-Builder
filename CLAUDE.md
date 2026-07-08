@@ -137,7 +137,8 @@ src/
   store/        templateStore.ts — zustand; template + UI state; undo history; lastChange
                 (per-tab changed-line ranges from every apply — the editor highlight);
                 replayNonce (Motion applies auto-replay via PlayoutSimulator); patchCss
-                (Style-panel patches: highlight without history spam)
+                (Style-panel patches: highlight without history spam); sendScrub (timeline
+                view → simulator pauses the preview's in/out timeline at a time)
   preview/      composeDocument.ts — inlines CSS + GSAP + JS + assets into the iframe srcdoc
   blocks/       registry.ts (BuildingBlock[] — no Blocks tab anymore; this is the offline AI
                 stub's vocabulary), edit.ts (nextFieldId, addFieldToDefinition, …), cssVars.ts,
@@ -193,7 +194,9 @@ src/
                  SampleDataPanel (sample values + add-field), ControlPanel (operator view from
                  control/ engine; live-drives the preview via store.sendControl → simulator;
                  downloads controlpanel.html; adds the Google-Sheets live-data block),
-                 StylePanel, AnimationPanel (In/Out/Both phase control), AIPromptPanel,
+                 StylePanel, AnimationPanel (In/Out/Both phase control + TimelineView —
+                 Era 6 T1: blocks/timelineModel.ts parses the emitted ANIMATION region
+                 into tracks; scrub pauses the preview), AIPromptPanel,
                  ExportPanel (validation inline), PacketManager (📦 topbar modal),
                  CommunityGallery (🌐), ModerationQueue (🛡), SyncStatus,
                  Homebase (signed-in dashboard: all saved graphics across packets, one

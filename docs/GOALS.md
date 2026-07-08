@@ -348,6 +348,13 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       `zoneDecls` patch the Style panel writes onto the detected root rule — deterministic,
       highlighted, undoable. Esc cancels. E2E: drag re-anchors bottom-left → top-right in the
       preview's stylesheet + Ctrl+Z restores; Escape leaves the code untouched.
+- [x] **T1 read-only timeline view (2026-07-08)** — the Motion tab renders the marked ANIMATION
+      region as tracks (`blocks/timelineModel.ts`: parse-by-construction of the emitted
+      tl.set/to/fromTo calls — knobs, durations `X / animSpeed`, staggers, `'-=N'` overlaps;
+      unrecognizable hand-edits degrade to an honest "the code is the truth" note). In/Out phase
+      tabs with real durations (∞ badge for loops), one row per tween, and a scrubber that
+      PAUSES the live preview at any moment (store `sendScrub` → simulator builds + pauses the
+      phase timeline; OUT scrubs start from the settled on-air state). Timing knobs = T2.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

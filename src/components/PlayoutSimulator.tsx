@@ -5,11 +5,17 @@ interface Props {
   iframeRef: RefObject<HTMLIFrameElement>;
 }
 
+type GsapTimeline = { pause: (t?: number) => void; progress: (p: number) => void; duration: () => number };
 type SpxWindow = Window & {
   play?: () => void;
   stop?: () => void;
   next?: () => void;
   update?: (data: string) => void;
+  gsap?: { killTweensOf: (target: string) => void };
+  buildInTimeline?: () => GsapTimeline;
+  buildOutTimeline?: () => GsapTimeline;
+  /** The timeline view's paused scrub timeline (Era 6 · T1) — rebuilt per phase. */
+  __scrubTl?: { phase: 'in' | 'out'; tl: GsapTimeline };
 };
 
 // The preview rebuilds on a ~350 ms debounce after an apply — replay after it settles.
@@ -20,6 +26,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
   const sampleData = useTemplateStore((s) => s.sampleData);
   const replayNonce = useTemplateStore((s) => s.replayNonce);
   const controlCommand = useTemplateStore((s) => s.controlCommand);
+  const scrubCommand = useTemplateStore((s) => s.scrubCommand);
 
   const win = (): SpxWindow | null => (iframeRef.current?.contentWindow as SpxWindow) ?? null;
 
@@ -62,6 +69,30 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     else if (controlCommand.action === 'next') w.next?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlCommand?.nonce]);
+
+  // Timeline scrub (Era 6 · T1): pause the phase's timeline at the requested time. The
+  // paused timeline is cached on the preview window per phase; an iframe rebuild clears it
+  // naturally. Scrubbing OUT first jumps the entrance to its end state (that is the state
+  // the exit animates FROM). Pressing ▶ Play afterwards replays normally (play() kills all).
+  useEffect(() => {
+    if (!scrubCommand) return;
+    const w = win();
+    if (!w || typeof w.buildInTimeline !== 'function') return;
+    if (!w.__scrubTl || w.__scrubTl.phase !== scrubCommand.phase) {
+      w.gsap?.killTweensOf('*');
+      w.update?.(JSON.stringify(useTemplateStore.getState().sampleData));
+      if (scrubCommand.phase === 'out') {
+        if (typeof w.buildOutTimeline !== 'function') return;
+        w.buildInTimeline().progress(1); // the exit starts from the settled on-air state
+        w.__scrubTl = { phase: 'out', tl: w.buildOutTimeline() };
+      } else {
+        w.__scrubTl = { phase: 'in', tl: w.buildInTimeline() };
+      }
+    }
+    const tl = w.__scrubTl.tl;
+    tl.pause(Math.min(scrubCommand.time, tl.duration()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrubCommand?.nonce]);
 
   return (
     <div className="simulator">

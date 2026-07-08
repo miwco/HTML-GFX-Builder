@@ -1114,6 +1114,55 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   white-space: nowrap;
 }
 
+/* ---------- Timeline view (Era 6 · T1 — read-only tracks over the ANIMATION region) ---------- */
+.timeline-tracks {
+  position: relative;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(10, 12, 16, 0.35);
+}
+.timeline-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.timeline-label {
+  width: 102px;
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-lane {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  background: rgba(232, 237, 242, 0.04);
+  border-radius: 4px;
+}
+.timeline-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--amber), rgba(246, 166, 35, 0.55));
+  min-width: 3px;
+}
+.timeline-bar.set {
+  width: 3px;
+  background: var(--paper);   /* an instant set() — a tick, not a span */
+}
+.timeline-playhead {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: rgba(232, 237, 242, 0.7);
+  pointer-events: none;
+}
+.timeline-scrub { accent-color: var(--amber); }
+
 /* Cloud sync status pill (Era 5.2) */
 .sync-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; }
 .sync-status .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }

@@ -86,6 +86,8 @@ interface TemplateState {
   replayNonce: number;
   /** The Control panel's latest live command (executed immediately by the simulator). */
   controlCommand: { action: PlayoutAction; nonce: number } | null;
+  /** The timeline view's scrub position (Era 6 · T1) — the simulator seeks the live preview. */
+  scrubCommand: { phase: 'in' | 'out'; time: number; nonce: number } | null;
 
   setActiveTab: (tab: EditorTab) => void;
   setPreviewBg: (bg: PreviewBg) => void;
@@ -105,6 +107,8 @@ interface TemplateState {
   requestReplay: () => void;
   /** Drive the live preview from the Control panel (update/play/stop/next), immediately. */
   sendControl: (action: PlayoutAction) => void;
+  /** Seek the live preview's in/out timeline to a time (the timeline view's scrubber). */
+  sendScrub: (phase: 'in' | 'out', time: number) => void;
   resetToDefault: () => void;
 
   setSampleValue: (field: string, value: string) => void;
@@ -161,6 +165,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   lastChange: null,
   replayNonce: 0,
   controlCommand: null,
+  scrubCommand: null,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
@@ -223,6 +228,8 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   requestReplay: () => set((s) => ({ replayNonce: s.replayNonce + 1 })),
 
   sendControl: (action) => set((s) => ({ controlCommand: { action, nonce: (s.controlCommand?.nonce ?? 0) + 1 } })),
+
+  sendScrub: (phase, time) => set((s) => ({ scrubCommand: { phase, time, nonce: (s.scrubCommand?.nonce ?? 0) + 1 } })),
 
   resetToDefault: () =>
     set(() => {
