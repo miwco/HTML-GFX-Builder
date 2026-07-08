@@ -13,6 +13,7 @@ import { QUIZ_PRESETS } from '../templates/quiz/quizPresets';
 import type { AnimPresetId } from '../model/wizard';
 import type { SpxTemplate } from '../model/types';
 import { replaceDefinitionInHtml } from '../model/spxDefinition';
+import { countLines, detectPrefix } from '../model/structure';
 
 /** The presets that apply to a template, by its category. */
 export function presetsForType(type: SpxTemplate['type']): AnimPreset[] {
@@ -92,9 +93,9 @@ export function setAnimKnob(js: string, knob: 'animSpeed' | 'easeIn' | 'easeOut'
 export function presetConfigFromTemplate(template: SpxTemplate, steps: boolean): PresetConfig {
   const info = readAnimationInfo(template.js);
   // Every category uses the same structure contract with its own class prefix.
-  const prefix = (template.html.match(/class="(\w+)-box"/) || [])[1] ?? 'l3';
+  const prefix = detectPrefix(template.html) ?? 'l3';
   // Visible text lines are the id="fN" elements wrapped in the standard line masks.
-  const lineCount = Math.max(1, (template.html.match(/id="f\d+"[^>]*class="\w+-/g) || []).length);
+  const lineCount = Math.max(1, countLines(template.html));
   const fallbackId = info.inPresetId ?? info.outPresetId;
   const preset = fallbackId ? anyPresetById(fallbackId) : ANIM_PRESETS[0];
   return {

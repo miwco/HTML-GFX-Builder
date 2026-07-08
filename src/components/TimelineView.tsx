@@ -10,6 +10,7 @@ import {
   type TimelineTween,
 } from '../blocks/timelineModel';
 import { setStepsMode } from '../blocks/animPatch';
+import { countLines, detectPrefix } from '../model/structure';
 import { EASINGS } from '../model/easings';
 import { loadPrefs, savePrefs } from '../model/prefs';
 import { useIsMobile } from './useIsMobile';
@@ -104,11 +105,8 @@ export default function TimelineView({ iframeRef }: Props) {
 
   const model = useMemo(() => parseTimeline(template.js), [template.js]);
   // The category's class prefix + visible line count — for friendly labels and the »+ button.
-  const prefix = useMemo(() => (template.html.match(/class="(\w+)-box"/) || [])[1] ?? null, [template.html]);
-  const lineCount = useMemo(
-    () => (template.html.match(/id="f\d+"[^>]*class="\w+-/g) || []).length,
-    [template.html],
-  );
+  const prefix = useMemo(() => detectPrefix(template.html), [template.html]);
+  const lineCount = useMemo(() => countLines(template.html), [template.html]);
   const [phaseId, setPhaseId] = useState<string>('in');
   const [time, setTime] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);

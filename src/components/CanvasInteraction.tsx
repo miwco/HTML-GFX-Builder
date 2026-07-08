@@ -4,6 +4,7 @@ import { zoneDecls } from '../templates/shared/base';
 import { setCssDeclaration, setFieldDefault } from '../blocks/edit';
 import { getCssVariable, setCssVariable } from '../blocks/cssVars';
 import type { Zone9 } from '../model/wizard';
+import { detectPrefix } from '../model/structure';
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement>;
@@ -83,8 +84,8 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const res = template.resolution;
   const scale = width / res.width; // screen px per canvas px
   // The structure contract: every generated template has one root `.{prefix}` holding a
-  // `.{prefix}-box` — the same detection the Motion panel uses (blocks/animPatch.ts).
-  const prefix = (template.html.match(/class="(\w+)-box"/) || [])[1] ?? 'l3';
+  // `.{prefix}-box` — the same detection every live panel uses (model/structure.ts).
+  const prefix = detectPrefix(template.html) ?? 'l3';
   const rootSelector = `.${prefix}`;
 
   const doc = () => iframeRef.current?.contentDocument ?? null;
