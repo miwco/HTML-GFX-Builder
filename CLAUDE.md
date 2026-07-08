@@ -185,7 +185,10 @@ src/
   components/    AppShell (two-pane layout: code left; preview stacked over the tool tabs
                  right — the stage's aspect-ratio comes from the template resolution),
                  CodeEditor (Monaco + change-highlight decorations + hover explanations),
-                 PreviewFrame, CanvasGuides, PlayoutSimulator (auto-replays on replayNonce),
+                 PreviewFrame (+ Move toggle), MoveOverlay (Era 6 W1: drag → nearest zone +
+                 residual nudge → the SAME zoneDecls patch the Style panel writes; root
+                 detected via class="(\w+)-box"), CanvasGuides, PlayoutSimulator
+                 (auto-replays on replayNonce),
                  SidePanel (six tabs: Data / Control / Style / Motion / AI / Export),
                  SampleDataPanel (sample values + add-field), ControlPanel (operator view from
                  control/ engine; live-drives the preview via store.sendControl → simulator;

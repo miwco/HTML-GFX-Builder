@@ -1068,6 +1068,52 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 /* The inline gate a signed-out visitor sees where an account feature would render. */
 .signin-prompt .primary { margin-top: 4px; }
 
+/* ---------- Move mode (Era 6 · W1 — drag-to-position) ---------- */
+.move-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;                 /* above the guides, below the toolbar */
+  cursor: grab;
+  touch-action: none;         /* pointer events own the gesture */
+}
+.move-overlay.dragging { cursor: grabbing; }
+.move-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  pointer-events: none;
+}
+.move-cell { border: 1px dashed rgba(246, 166, 35, 0.18); }
+.move-cell.target { background: rgba(246, 166, 35, 0.1); border-color: rgba(246, 166, 35, 0.55); }
+.move-ghost {
+  position: absolute;
+  border: 1.5px solid var(--amber);
+  border-radius: 3px;
+  background: rgba(246, 166, 35, 0.08);
+  box-shadow: 0 0 18px rgba(246, 166, 35, 0.35);
+  pointer-events: none;
+}
+.move-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: rgba(10, 12, 16, 0.8);
+  padding: 4px 10px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 /* Cloud sync status pill (Era 5.2) */
 .sync-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; }
 .sync-status .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }

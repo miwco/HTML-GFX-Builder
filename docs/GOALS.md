@@ -342,6 +342,12 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       generations)
 
 ### Era 6 — WYSIWYG editor + timeline
+- [x] **W1 drag-to-position (2026-07-08)** — the Move toggle on the preview toolbar overlays a
+      pointer layer (9-zone grid + ghost + target-cell highlight; the root is revealed while the
+      mode is on): release computes nearest zone + residual nudge and writes the SAME
+      `zoneDecls` patch the Style panel writes onto the detected root rule — deterministic,
+      highlighted, undoable. Esc cancels. E2E: drag re-anchors bottom-left → top-right in the
+      preview's stylesheet + Ctrl+Z restores; Escape leaves the code untouched.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/
