@@ -76,11 +76,15 @@ Slices:
   still scales); `patchStepTiming`/`patchStepEase` rewrite one element; step bars stretch and
   pick eases exactly like phase bars. Older regions without the arrays simply show no step
   segments until any Motion-panel apply re-emits them.
-- **T3.3 — Reveal groups (the better-than-Loopic move).** Which lines reveal on which press
-  stops being fixed one-line-per-step: the emitted block declares
-  `var stepGroups = [['#f1'], ['#f2', '#f3']]` (commented, readable), the runtime reveals a
-  GROUP per next(), and the strip lets you drag a line's bar from one step segment to another
-  to regroup. Data-driven graphics get arbitrary reveal choreography with zero keyframing.
+- **T3.3 — Reveal groups (the better-than-Loopic move). ✅ SHIPPED (2026-07-08).** The emitted
+  block declares `var stepGroups = [['#f1'], ['#f2', '#f3']]`; revealNextStep reveals a GROUP
+  per next() (staggered 0.08s inside a group). On the strip, a step segment shows one row per
+  line; dragging a row's bar onto another » tab moves the line there (`patchStepRegroup`
+  rewrites all three knob arrays as one patch), an EMPTIED step disappears with its timing, and
+  a »+ drop target (appears while dragging) splits a line out into a brand-new step. The
+  moved line's destination segment is selected after the drop. Data-driven graphics get
+  arbitrary reveal choreography with zero keyframing — the thing stop-point keyframe tools
+  structurally can't offer. Legacy stepLines regions parse read-only until re-emitted.
 
 Non-goals: freeform stop-points inside arbitrary hand-written timelines (the code editor is
 the escape hatch, as ever); Singular-style state machines. The steps vocabulary stays within

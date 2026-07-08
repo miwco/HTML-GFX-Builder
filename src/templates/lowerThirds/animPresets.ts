@@ -66,31 +66,33 @@ var easeIn = '${cfg.easeIn}';${' '.repeat(Math.max(1, 18 - cfg.easeIn.length))}/
 var easeOut = '${cfg.easeOut}';${' '.repeat(Math.max(1, 17 - cfg.easeOut.length))}// exit ease — starts naturally, leaves quickly`;
 }
 
-/** The multi-step block: reveals one further line per next() call (SPX Continue).
- *  Per-step timing/ease live in the arrays — the timeline strip edits those literals. */
+/** The multi-step block: each next() (SPX Continue) reveals the next GROUP of lines.
+ *  Groups + per-step timing/ease live in the arrays — the timeline strip edits those
+ *  literals (drag a line between step segments to regroup). */
 function stepsBlock(cfg: PresetConfig): string {
   if (!cfg.steps || cfg.lineCount < 2) return '';
   const count = cfg.lineCount - 1;
-  const rest = Array.from({ length: count }, (_, i) => `'#f${i + 1}'`).join(', ');
+  const groups = Array.from({ length: count }, (_, i) => `['#f${i + 1}']`).join(', ');
   const durations = Array.from({ length: count }, () => '0.45').join(', ');
   const eases = Array.from({ length: count }, () => 'easeIn').join(', ');
   return `
 
 // Multi-step: the in animation shows only the first line; each Continue (next())
-// reveals one more line. Per-step timing below — the timeline strip edits these.
+// reveals the next GROUP of lines. Groups + per-step timing below — the timeline
+// strip edits these (drag a line between step segments to regroup).
 var currentStep = 0;
-var stepLines = [${rest}];  // lines revealed by steps, in order
+var stepGroups = [${groups}];  // lines revealed per Continue, in order
 var stepDurations = [${durations}];  // seconds per step (divided by animSpeed)
 var stepEases = [${eases}];  // ease per step (a quoted string overrides the knob)
 function revealNextStep() {
-  var line = stepLines[currentStep];
-  if (line === undefined) return null;     // no more lines to reveal
+  var group = stepGroups[currentStep];
+  if (group === undefined) return null;    // no more steps
   var duration = stepDurations[currentStep] || 0.45;
   var ease = stepEases[currentStep] || easeIn;
   currentStep += 1;
-  return gsap.fromTo(line,
+  return gsap.fromTo(group,
     { yPercent: 110 },
-    { yPercent: 0, duration: duration / animSpeed, ease: ease }
+    { yPercent: 0, duration: duration / animSpeed, stagger: 0.08 / animSpeed, ease: ease }
   );
 }`;
 }

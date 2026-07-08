@@ -390,8 +390,13 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       step segments scrub (prior state jumped, callbacks suppressed), stretch
       (`var stepDurations = [...]` literals) and take per-step eases (`stepEases`) — all
       through the same undoable literal patcher. Emit upgrade also fixed a latent bug:
-      replaying a steps template never reset `currentStep`. T3.3 reveal GROUPS (drag lines
-      between steps — beyond what Loopic can do for data graphics) is next.
+      replaying a steps template never reset `currentStep`.
+- [x] **T3.3 reveal groups (2026-07-08)** — the better-than-Loopic move: `var stepGroups =
+      [['#f1'], ['#f2']]` in the emitted block (a GROUP per Continue, 0.08s stagger inside a
+      group); step segments show one row per line and dragging a row's bar onto another » tab
+      regroups (`patchStepRegroup` rewrites groups+durations+eases as one undoable patch;
+      emptied steps disappear with their timing; a »+ drop target splits a line into a new
+      step). E2E: merge »3 into »2 → one press reveals both lines → split back out via »+.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

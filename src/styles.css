@@ -1168,6 +1168,26 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .timeline-knobs { white-space: nowrap; }
 .timeline-seg { white-space: nowrap; }
 .timeline-marker { color: var(--amber); font-size: 10px; }
+.timeline-seg.drop-target {
+  outline: 1.5px solid var(--amber);
+  outline-offset: 1px;
+  background: rgba(246, 166, 35, 0.12);
+}
+.timeline-newstep { color: var(--text-dim); border: 1px dashed var(--border); border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+.regroup-ghost {
+  position: fixed;
+  z-index: 300;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  background: rgba(10, 12, 16, 0.92);
+  border: 1px solid rgba(246, 166, 35, 0.5);
+  border-radius: 4px;
+  padding: 3px 8px;
+  pointer-events: none;
+  white-space: nowrap;
+}
 .timeline-outmode {
   font-family: "JetBrains Mono", Consolas, monospace;
   font-size: 9px;

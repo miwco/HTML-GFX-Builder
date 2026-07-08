@@ -42,13 +42,17 @@ export interface TimelinePhase {
   infinite: boolean;
 }
 
-/** T3 — one Continue press: which line reveals, how long, with which ease. */
+/** T3 — one Continue press: which line GROUP reveals, how long, with which ease. */
 export interface TimelineStep {
-  target: string;
-  /** Seconds, with the animSpeed knob applied. */
+  targets: string[];
+  /** Seconds per line, with the animSpeed knob applied (multi-line groups stagger). */
   duration: number;
+  /** Per-line stagger in seconds (0 in the legacy one-line shape). */
+  stagger: number;
   /** The step's own ease literal, or null when it inherits the easeIn knob. */
   ease: string | null;
+  /** T3.3: whether the group arrays exist in the region (regrouping is patchable). */
+  groupable: boolean;
 }
 
 export interface TimelineModel {
@@ -169,22 +173,36 @@ export function parseTimeline(js: string): TimelineModel | null {
   return { animSpeed, easeIn, easeOut, phases, steps: parseSteps(region, animSpeed) };
 }
 
-/** Parse the multi-step block's knob arrays (emitted by stepsBlock in animPresets). */
+/** Parse the multi-step block's knob arrays (emitted by stepsBlock in animPresets).
+ *  Reads the T3.3 `stepGroups` shape; falls back to the earlier one-line `stepLines` shape
+ *  (regrouping unavailable there until any Motion-panel apply re-emits the region). */
 function parseSteps(region: string, animSpeed: number): TimelineStep[] {
-  const lines = region.match(/var stepLines = \[([^\]]*)\]/)?.[1];
   const durations = region.match(/var stepDurations = \[([^\]]*)\]/)?.[1];
   const eases = region.match(/var stepEases = \[([^\]]*)\]/)?.[1];
-  // Older emits have stepLines but no per-step arrays — no step segments for those until
-  // the region is re-emitted (any Motion-panel apply upgrades it).
-  if (!lines || !durations || !eases) return [];
-  const targets = lines.split(',').map((s) => s.replace(/['\s]/g, '')).filter(Boolean);
+  if (!durations || !eases) return [];
   const durs = durations.split(',').map((s) => Number(s.trim()));
   const easeTokens = eases.split(',').map((s) => s.trim());
-  return targets.map((target, i) => ({
-    target,
+  // The group reveal's per-line stagger (one value for the whole steps block).
+  const stagger = Number(region.match(/function revealNextStep[\s\S]*?stagger:\s*([\d.]+)\s*\/\s*animSpeed/)?.[1] ?? 0);
+  const step = (targets: string[], i: number, groupable: boolean): TimelineStep => ({
+    targets,
     duration: (Number.isFinite(durs[i]) ? durs[i] : 0.45) / animSpeed,
+    stagger: groupable ? stagger / animSpeed : 0,
     ease: easeTokens[i]?.startsWith("'") ? easeTokens[i].slice(1, -1) : null,
-  }));
+    groupable,
+  });
+
+  const groupsText = region.match(/var stepGroups = \[([\s\S]*?)\];/)?.[1];
+  if (groupsText) {
+    const groups = [...groupsText.matchAll(/\[([^\]]*)\]/g)].map((m) =>
+      m[1].split(',').map((s) => s.replace(/['\s]/g, '')).filter(Boolean),
+    );
+    return groups.map((targets, i) => step(targets, i, true));
+  }
+  const lines = region.match(/var stepLines = \[([^\]]*)\]/)?.[1];
+  if (!lines) return [];
+  const targets = lines.split(',').map((s) => s.replace(/['\s]/g, '')).filter(Boolean);
+  return targets.map((t, i) => step([t], i, false));
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -326,4 +344,55 @@ export function patchStepTiming(js: string, stepIndex: number, duration: number)
 /** T3.2: set (or clear → inherit the easeIn knob) one Continue step's ease. */
 export function patchStepEase(js: string, stepIndex: number, ease: string | null): string | null {
   return patchStepArray(js, 'stepEases', stepIndex, ease === null ? 'easeIn' : `'${ease}'`);
+}
+
+/**
+ * T3.3: move a line from one Continue step to another — the regroup behind dragging a
+ * line's bar onto a different » segment. `toStep === stepGroups.length` appends a NEW step
+ * (default timing); a step left EMPTY is removed, its timing knobs spliced with it. All
+ * three arrays are rewritten as one consistent patch. Returns null when the region doesn't
+ * carry the group shape (older emits) or the move is a no-op.
+ */
+export function patchStepRegroup(js: string, target: string, fromStep: number, toStep: number): string | null {
+  const region = js.match(REGION_RE)?.[0];
+  const animSpeed = Number(region?.match(/var animSpeed = ([\d.]+)/)?.[1] ?? NaN);
+  if (!region || !animSpeed) return null;
+  const groupsText = region.match(/var stepGroups = \[([\s\S]*?)\];/)?.[1];
+  const durations = region.match(/var stepDurations = \[([^\]]*)\]/)?.[1];
+  const eases = region.match(/var stepEases = \[([^\]]*)\]/)?.[1];
+  if (!groupsText || !durations || !eases) return null;
+
+  const groups = [...groupsText.matchAll(/\[([^\]]*)\]/g)].map((m) =>
+    m[1].split(',').map((s) => s.replace(/['\s]/g, '')).filter(Boolean),
+  );
+  const durs = durations.split(',').map((s) => s.trim());
+  const easeTokens = eases.split(',').map((s) => s.trim());
+
+  if (fromStep === toStep || fromStep < 0 || fromStep >= groups.length) return null;
+  if (toStep < 0 || toStep > groups.length) return null;
+  if (!groups[fromStep].includes(target)) return null;
+
+  groups[fromStep] = groups[fromStep].filter((t) => t !== target);
+  if (toStep === groups.length) {
+    groups.push([target]); // a brand-new step at the end of the chain
+    durs.push('0.45');
+    easeTokens.push('easeIn');
+  } else {
+    groups[toStep].push(target);
+  }
+  // An emptied step disappears — a Continue press must never do nothing.
+  for (let i = groups.length - 1; i >= 0; i--) {
+    if (groups[i].length === 0) {
+      groups.splice(i, 1);
+      durs.splice(i, 1);
+      easeTokens.splice(i, 1);
+    }
+  }
+  if (groups.length === 0) return null; // would remove the last step — not a regroup's job
+
+  const groupsLiteral = groups.map((g) => `[${g.map((t) => `'${t}'`).join(', ')}]`).join(', ');
+  let out = js.replace(/var stepGroups = \[[\s\S]*?\];/, `var stepGroups = [${groupsLiteral}];`);
+  out = out.replace(/var stepDurations = \[[^\]]*\];/, `var stepDurations = [${durs.join(', ')}];`);
+  out = out.replace(/var stepEases = \[[^\]]*\];/, `var stepEases = [${easeTokens.join(', ')}];`);
+  return out;
 }

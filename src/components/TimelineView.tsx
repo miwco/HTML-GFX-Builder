@@ -3,6 +3,7 @@ import { useTemplateStore } from '../store/templateStore';
 import {
   parseTimeline,
   patchStepEase,
+  patchStepRegroup,
   patchStepTiming,
   patchTweenEase,
   patchTweenTiming,
@@ -42,6 +43,16 @@ interface BarDrag {
 
 const SNAP = 0.05; // timing grid — keeps the emitted literals readable (two decimals)
 
+/** T3.3 — a line being dragged toward another » segment (regroup). */
+interface RegroupDrag {
+  target: string;
+  fromStep: number;
+  x: number;
+  y: number;
+  /** The » tab currently under the pointer (its step index; steps.length = the »+ target). */
+  overStep: number | null;
+}
+
 /** The per-tween ease options for a phase: the vocabulary's phase-correct half, deduped by
  *  the actual GSAP string (several presets share a curve), plus 'auto' (inherit the knob). */
 function easeOptionsFor(direction: 'in' | 'out'): { value: string; label: string }[] {
@@ -79,6 +90,10 @@ export default function TimelineView({ iframeRef }: Props) {
   const [barDrag, setBarDrag] = useState<BarDrag | null>(null);
   const barDragRef = useRef<BarDrag | null>(null);
   barDragRef.current = barDrag;
+  // T3.3 regroup-drag state (same hook-placement rule).
+  const [regroup, setRegroup] = useState<RegroupDrag | null>(null);
+  const regroupRef = useRef<RegroupDrag | null>(null);
+  regroupRef.current = regroup;
 
   // Collapsed state: explicit preference wins; otherwise expanded on desktop, collapsed on phones.
   const isMobile = useIsMobile();
@@ -136,7 +151,7 @@ export default function TimelineView({ iframeRef }: Props) {
       id: `step-${k + 2}`,
       marker: '»',
       label: String(k + 2),
-      duration: s.duration,
+      duration: s.duration + s.stagger * Math.max(0, s.targets.length - 1),
       infinite: false,
       kind: 'step' as const,
       stepIndex: k,
@@ -214,6 +229,43 @@ export default function TimelineView({ iframeRef }: Props) {
   // Cheap enough to build per render — and NO hooks may sit below the model-null return above.
   const easeOptions = easeOptionsFor(seg.kind === 'out' ? 'out' : 'in');
 
+  // ── T3.3: drag a line onto another » segment to regroup what each Continue reveals ──
+  const startRegroup = (e: React.PointerEvent, target: string, fromStep: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setRegroup({ target, fromStep, x: e.clientX, y: e.clientY, overStep: null });
+  };
+
+  const moveRegroup = (e: React.PointerEvent) => {
+    const r = regroupRef.current;
+    if (!r) return;
+    const under = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-step-drop]');
+    setRegroup({
+      ...r,
+      x: e.clientX,
+      y: e.clientY,
+      overStep: under ? Number(under.getAttribute('data-step-drop')) : null,
+    });
+  };
+
+  const endRegroup = () => {
+    const r = regroupRef.current;
+    setRegroup(null);
+    if (!r || r.overStep === null || r.overStep === r.fromStep) return;
+    const emptied = model.steps[r.fromStep].targets.length === 1;
+    // Dropping the LAST step's only line on »+ would just re-create the same step.
+    if (r.overStep === model.steps.length && emptied && r.fromStep === model.steps.length - 1) return;
+    const js = patchStepRegroup(template.js, r.target, r.fromStep, r.overStep);
+    if (!js) return;
+    applyTemplate({ ...template, js });
+    requestReplay();
+    // Follow the moved line to its destination segment (indices shift when a step empties).
+    let dest = Math.min(r.overStep, model.steps.length);
+    if (emptied && r.fromStep < dest) dest -= 1;
+    setPhaseId(`step-${dest + 2}`);
+  };
+
   const scrubTo = (raw: number) => {
     // Range steps accumulate float error and can stall one step short of the end — snap the
     // last step to the exact phase end so end-of-phase set() calls (e.g. the final hide) render.
@@ -231,23 +283,22 @@ export default function TimelineView({ iframeRef }: Props) {
 
   const label = (targets: string[]) => targets.join(', ');
 
-  /** The rows shown for the selected segment: the phase's tweens, or the step's one reveal. */
-  const rows =
-    seg.kind === 'step'
-      ? [
-          {
-            targets: [model.steps[seg.stepIndex!].target],
-            kind: 'to' as const,
-            props: ['yPercent'],
-            duration: model.steps[seg.stepIndex!].duration,
-            stagger: 0,
-            start: 0,
-            end: model.steps[seg.stepIndex!].duration,
-            editable: true,
-            ease: model.steps[seg.stepIndex!].ease,
-          },
-        ]
-      : (seg.kind === 'in' ? inPhase : outPhase).tweens;
+  /** The rows shown for the selected segment: the phase's tweens, or ONE ROW PER LINE of
+   *  the step's reveal group (each offset by the group stagger — drag a row to regroup). */
+  const step = seg.kind === 'step' ? model.steps[seg.stepIndex!] : null;
+  const rows = step
+    ? step.targets.map((t, li) => ({
+        targets: [t],
+        kind: 'to' as const,
+        props: ['yPercent'],
+        duration: step.duration,
+        stagger: 0,
+        start: li * step.stagger,
+        end: li * step.stagger + step.duration,
+        editable: true,
+        ease: step.ease,
+      }))
+    : (seg.kind === 'in' ? inPhase : outPhase).tweens;
 
   return (
     <div className={`timeline-strip${collapsed ? ' collapsed' : ''}`} data-testid="timeline">
@@ -256,21 +307,35 @@ export default function TimelineView({ iframeRef }: Props) {
           {collapsed ? '▸' : '▾'}
         </button>
         {segments.map((s) => (
-          <button
-            key={s.id}
-            className={`tab timeline-seg ${s.id === seg.id ? 'active' : ''}`}
-            onClick={() => pickSegment(s.id)}
-            title={
-              s.kind === 'step'
-                ? `Continue step ${s.label} — plays on the ${Number(s.label) - 1}${Number(s.label) === 2 ? 'st' : Number(s.label) === 3 ? 'nd' : 'th'} » Next press`
-                : s.kind === 'in'
-                  ? 'The entrance — plays on ▶ Play'
-                  : `The exit — plays on ■ Stop${outBadge ? ` (${outBadge})` : ''}`
-            }
-            data-testid={`timeline-seg-${s.id}`}
-          >
-            <span className="timeline-marker">{s.marker}</span> {s.label} {s.infinite ? '∞' : `${s.duration.toFixed(2)}s`}
-          </button>
+          <span key={s.id} style={{ display: 'contents' }}>
+            {/* The »+ drop target — a NEW Continue step; shown only while regrouping. */}
+            {s.kind === 'out' && regroup && (
+              <span
+                className={`tab timeline-seg timeline-newstep${regroup.overStep === model.steps.length ? ' drop-target' : ''}`}
+                data-step-drop={model.steps.length}
+                data-testid="timeline-seg-new"
+              >
+                <span className="timeline-marker">»</span> +
+              </span>
+            )}
+            <button
+              className={`tab timeline-seg ${s.id === seg.id ? 'active' : ''}${
+                regroup && s.kind === 'step' && regroup.overStep === s.stepIndex ? ' drop-target' : ''
+              }`}
+              onClick={() => pickSegment(s.id)}
+              title={
+                s.kind === 'step'
+                  ? `Continue step ${s.label} — plays on the ${Number(s.label) - 1}${Number(s.label) === 2 ? 'st' : Number(s.label) === 3 ? 'nd' : 'th'} » Next press`
+                  : s.kind === 'in'
+                    ? 'The entrance — plays on ▶ Play'
+                    : `The exit — plays on ■ Stop${outBadge ? ` (${outBadge})` : ''}`
+              }
+              data-testid={`timeline-seg-${s.id}`}
+              {...(s.kind === 'step' ? { 'data-step-drop': s.stepIndex } : {})}
+            >
+              <span className="timeline-marker">{s.marker}</span> {s.label} {s.infinite ? '∞' : `${s.duration.toFixed(2)}s`}
+            </button>
+          </span>
         ))}
         {outBadge && <span className="timeline-outmode">{outBadge}</span>}
         <input
@@ -311,17 +376,27 @@ export default function TimelineView({ iframeRef }: Props) {
                     title={
                       tw.kind === 'set'
                         ? `set · ${tw.props.join(', ')}`
-                        : `${tw.props.join(', ')} · ${(d ? start : tw.start).toFixed(2)}–${(d ? start + span : tw.end).toFixed(2)}s${tw.stagger ? ` · stagger ${tw.stagger.toFixed(2)}s` : ''}${tw.editable ? ' — drag to retime, edge to stretch' : ''}`
+                        : `${tw.props.join(', ')} · ${(d ? start : tw.start).toFixed(2)}–${(d ? start + span : tw.end).toFixed(2)}s${tw.stagger ? ` · stagger ${tw.stagger.toFixed(2)}s` : ''}${
+                            step?.groupable
+                              ? ' — drag onto another » step to regroup, edge to stretch'
+                              : tw.editable
+                                ? ' — drag to retime, edge to stretch'
+                                : ''
+                          }`
                     }
                     data-testid={`timeline-bar-${i}`}
                     onPointerDown={
-                      tw.editable
-                        ? (e) => startBarDrag(e, i, seg.kind === 'step' ? 'resize' : 'move', { start: tw.start, duration: tw.duration })
-                        : undefined
+                      !tw.editable
+                        ? undefined
+                        : step?.groupable
+                          ? (e) => startRegroup(e, tw.targets[0], seg.stepIndex!) // drag onto another » tab
+                          : step
+                            ? (e) => startBarDrag(e, i, 'resize', { start: tw.start, duration: tw.duration })
+                            : (e) => startBarDrag(e, i, 'move', { start: tw.start, duration: tw.duration })
                     }
-                    onPointerMove={moveBarDrag}
-                    onPointerUp={endBarDrag}
-                    onPointerCancel={() => setBarDrag(null)}
+                    onPointerMove={(e) => { moveBarDrag(e); moveRegroup(e); }}
+                    onPointerUp={() => { endBarDrag(); endRegroup(); }}
+                    onPointerCancel={() => { setBarDrag(null); setRegroup(null); }}
                   >
                     {tw.editable && tw.kind !== 'set' && (
                       <span
@@ -332,8 +407,9 @@ export default function TimelineView({ iframeRef }: Props) {
                     )}
                   </div>
                 </div>
-                {/* The tween's own ease; 'auto' inherits the phase knob. */}
-                {tw.editable ? (
+                {/* The tween's own ease; 'auto' inherits the phase knob. In a step segment
+                    the ease belongs to the GROUP — one chip on the first row. */}
+                {tw.editable && (!step || i === 0) ? (
                   <select
                     className="timeline-ease"
                     value={tw.ease ?? 'auto'}
@@ -362,6 +438,13 @@ export default function TimelineView({ iframeRef }: Props) {
             style={{ left: `calc(110px + (100% - 110px - 104px) * ${frac})` }}
             aria-hidden="true"
           />
+        </div>
+      )}
+
+      {/* T3.3 — the line chip following the pointer while regrouping. */}
+      {regroup && (
+        <div className="regroup-ghost" style={{ left: regroup.x + 10, top: regroup.y - 24 }}>
+          {regroup.target} → {regroup.overStep === null ? 'drop on a » step' : regroup.overStep === model.steps.length ? 'new step' : `step ${regroup.overStep + 2}`}
         </div>
       )}
     </div>

@@ -197,11 +197,14 @@ src/
                  update(); auto-replays on replayNonce; playNext owns each Continue's
                  reveal tween as __activeTl step-N), TimelineView (collapsible strip
                  under the preview: the playout segment chain ▶In · »2 · »3 · ■Out from
-                 blocks/timelineModel.ts — steps parsed from the stepDurations/stepEases
-                 knob arrays; scrub pauses any segment, live rAF playhead follows
-                 __activeTl; bars drag/stretch + per-tween/per-step ease chips →
-                 patchTweenTiming/patchTweenEase/patchStepTiming/patchStepEase rewrite
-                 literals in the marked region — one undoable apply + auto-replay),
+                 blocks/timelineModel.ts — steps parsed from the stepGroups/stepDurations/
+                 stepEases knob arrays (legacy stepLines reads read-only); scrub pauses any
+                 segment, live rAF playhead follows __activeTl; bars drag/stretch,
+                 per-tween/per-step ease chips, and step rows drag onto another » tab (or
+                 »+) to regroup what each Continue reveals →
+                 patchTweenTiming/patchTweenEase/patchStepTiming/patchStepEase/
+                 patchStepRegroup rewrite literals in the marked region — one undoable
+                 apply + auto-replay),
                  SidePanel (six tabs: Data / Control / Style / Motion / AI / Export),
                  SampleDataPanel (sample values + add-field), ControlPanel (operator view from
                  control/ engine; live-drives the preview via store.sendControl → simulator;

@@ -220,6 +220,67 @@ test('T3: Continue steps appear as segments — live playhead + editable per-ste
   expect(await templateJs()).toMatch(/var stepEases = \['back\.out\(1\.6\)'/);
 });
 
+test('T3.3: dragging a line onto another step regroups the Continue chain (and back out)', async ({ page }) => {
+  // Soft Stack with steps: reveal groups start as [['#f1'], ['#f2']].
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-variant', { hasText: 'Soft Stack' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.locator('.wz-step input[type="checkbox"]').check();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await page.waitForTimeout(650);
+
+  const templateJs = async () =>
+    page
+      .frameLocator('iframe.preview-frame')
+      .locator('body')
+      .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
+  expect(await templateJs()).toContain("var stepGroups = [['#f1'], ['#f2']];");
+
+  // MERGE: open »3 and drag its line's bar onto the »2 tab — one press reveals both lines.
+  await page.getByTestId('timeline-seg-step-3').click();
+  const bar = page.getByTestId('timeline-bar-0');
+  const bb = (await bar.boundingBox())!;
+  const tab2 = (await page.getByTestId('timeline-seg-step-2').boundingBox())!;
+  await page.mouse.move(bb.x + 20, bb.y + bb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tab2.x + tab2.width / 2, tab2.y + tab2.height / 2, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(650);
+  expect(await templateJs()).toContain("var stepGroups = [['#f1', '#f2']];");
+  // The emptied step is gone, and its timing knobs were spliced with it.
+  await expect(page.getByTestId('timeline-seg-step-3')).toHaveCount(0);
+  expect((await templateJs()).match(/var stepDurations = \[([^\]]*)\]/)![1].split(',')).toHaveLength(1);
+
+  // One Continue now reveals BOTH lines.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.waitForTimeout(1100);
+  const f2Before = await frame(page).locator('#f2').evaluate((el) => getComputedStyle(el).transform);
+  await page.getByRole('button', { name: '» Next' }).click();
+  await expect
+    .poll(async () => frame(page).locator('#f2').evaluate((el) => getComputedStyle(el).transform))
+    .not.toBe(f2Before);
+
+  // SPLIT: drag #f2 out to the »+ target — the chain grows back to two steps.
+  await page.getByTestId('timeline-seg-step-2').click();
+  const row2 = page.getByTestId('timeline-bar-1'); // second row of the group = #f2
+  const rb = (await row2.boundingBox())!;
+  await page.mouse.move(rb.x + 20, rb.y + rb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(rb.x + 40, rb.y - 10, { steps: 2 }); // start the drag → »+ appears
+  const plus = (await page.getByTestId('timeline-seg-new').boundingBox())!;
+  await page.mouse.move(plus.x + plus.width / 2, plus.y + plus.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(650);
+  expect(await templateJs()).toContain("var stepGroups = [['#f1'], ['#f2']];");
+  await expect(page.getByTestId('timeline-seg-step-3')).toBeVisible();
+});
+
 test('timeline strip collapses to a slim bar and remembers it', async ({ page }) => {
   await createHairline(page);
   const timeline = page.getByTestId('timeline');
