@@ -39,13 +39,13 @@ export const card03: TemplateVariant = defineCardVariant(
     const logoPath = o.logoAssetPath ?? '';
 
     const logo = `      <!-- Logo (image field ${logoField}) — a rounded square above the heading. Empty = hidden. -->
-      <img id="${logoField}" class="card-logo"${logoPath ? ` src="${logoPath}"` : ' style="display: none"'} alt="" />
+      <img id="${logoField}" class="info-card-logo"${logoPath ? ` src="${logoPath}"` : ' style="display: none"'} alt="" />
 `;
 
     const logoCss = `
 
 /* The logo: a rounded square leading the card, above the heading (hidden while empty). */
-.card-logo {
+.info-card-logo {
   display: block;                  /* its own row — the heading starts below it */
   width: calc(56px * var(--scale));   /* logo square width */
   height: calc(56px * var(--scale));  /* logo square height */
@@ -56,7 +56,7 @@ export const card03: TemplateVariant = defineCardVariant(
 
     return {
       html: `    <!-- One frosted glass panel: logo + masked heading and body lines inside a single translucent card. -->
-    <div class="card-box">
+    <div class="info-card-box">
 ${logo}${cardLineMasks(o)}
     </div>`,
 
@@ -72,7 +72,7 @@ ${logo}${cardLineMasks(o)}
       ],
 
       css: `/* The frosted panel — translucent card, heavy backdrop blur, one soft lifting shadow. */
-.card-box {
+.info-card-box {
   padding: calc(26px * var(--scale)) calc(32px * var(--scale));  /* generous inner air at card scale */
   background: var(--panel-bg);     /* translucent white — the glass tint */
   backdrop-filter: blur(18px);     /* frosts the video playing behind the card */
@@ -83,7 +83,7 @@ ${logo}${cardLineMasks(o)}
 }
 
 /* Line 1 — the heading leads the card. */
-.card-name {
+.info-card-name {
   font-size: calc(42px * var(--scale));  /* headline size */
   font-weight: 700;                /* bold enough to carry the card */
   line-height: 1.1;                /* tight leading — big text needs less */
@@ -92,7 +92,7 @@ ${logo}${cardLineMasks(o)}
 }
 
 /* Line 2 — the first body line sits quietly under the heading. */
-.card-title {
+.info-card-title {
   margin-top: calc(12px * var(--scale));  /* even gap — body lines read as a list */
   font-size: calc(23px * var(--scale));   /* half the heading — clear hierarchy */
   font-weight: 500;                /* medium — present but not competing */
@@ -101,7 +101,7 @@ ${logo}${cardLineMasks(o)}
 }
 
 /* Line 3 (optional) — a further body line in the same quiet voice. */
-.card-extra {
+.info-card-extra {
   margin-top: calc(12px * var(--scale));  /* same gap keeps the list rhythm */
   font-size: calc(23px * var(--scale));   /* matches the line above — one list, one size */
   font-weight: 500;                /* medium — same voice as the line above */

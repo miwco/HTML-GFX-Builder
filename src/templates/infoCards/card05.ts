@@ -41,13 +41,13 @@ export const card05: TemplateVariant = defineCardVariant(
     // by hand instead of via cardLineMasks() (field order stays f0/f1/f2).
     const mask = (i: number) =>
       `      <!-- ${o.lines[i].title} (f${i}) — SPX writes this field's value straight into the element. -->\n` +
-      `      <div class="card-mask"><span id="f${i}" class="${cardLineClass(i)}">${o.lines[i].sample}</span></div>`;
+      `      <div class="info-card-mask"><span id="f${i}" class="${cardLineClass(i)}">${o.lines[i].sample}</span></div>`;
     const kicker = o.lines.length > 1 ? mask(1) + '\n' : '';
     const subtitle = o.lines.length > 2 ? '\n' + mask(2) : '';
 
     return {
       html: `    <!-- House Title: mono kicker, huge display title, quiet subtitle. -->
-    <div class="card-box">
+    <div class="info-card-box">
 ${kicker}${mask(0)}${subtitle}
     </div>`,
 
@@ -55,13 +55,13 @@ ${kicker}${mask(0)}${subtitle}
 
 /* The block — no panel: the type composites straight over the picture, lifted by a
    soft radial accent glow painted on a pseudo-layer no preset ever tweens. */
-.card-box {
+.info-card-box {
   position: relative;              /* anchors the painted glow (::before) */
 }
 
 /* The glow — a large, very quiet radial accent wash behind the block (brand overlay's
    backdrop moment, kept transparent so the card works over any picture). */
-.card-box::before {
+.info-card-box::before {
   content: '';                     /* pseudo-elements need content to render */
   position: absolute;              /* pinned behind the text block */
   inset: calc(-120px * var(--scale));  /* reaches well past the type on every side */
@@ -73,7 +73,7 @@ ${kicker}${mask(0)}${subtitle}
 }
 
 /* The kicker (f1) — the house label voice announcing the show. */
-.card-title {
+.info-card-title {
   display: block;                  /* its own row above the title */
   font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
   font-size: calc(24px * var(--scale));  /* label scale — clearly subordinate */
@@ -86,7 +86,7 @@ ${kicker}${mask(0)}${subtitle}
 }
 
 /* The title (f0) — the biggest type in the house family: one huge display statement. */
-.card-name {
+.info-card-name {
   font-size: calc(96px * var(--scale));  /* full-frame headline scale */
   font-weight: 700;                /* full display weight */
   line-height: 1.02;               /* huge text sits tight */
@@ -96,7 +96,7 @@ ${kicker}${mask(0)}${subtitle}
 }
 
 /* The subtitle (f2) — the quiet closing voice. */
-.card-extra {
+.info-card-extra {
   font-size: calc(32px * var(--scale));  /* well below the title — clear hierarchy */
   font-weight: 400;                /* regular — the title did the shouting */
   line-height: 1.3;                /* room if the subtitle wraps */

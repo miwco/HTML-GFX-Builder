@@ -33,14 +33,14 @@ export const card01: TemplateVariant = defineCardVariant(
   },
   (o) => ({
     html: `    <!-- Hairline Card structure: [vertical accent line] | [transparent text block]. -->
-    <div class="card-accent"></div>
-    <div class="card-box">
+    <div class="info-card-accent"></div>
+    <div class="info-card-box">
 ${cardLineMasks(o)}
     </div>`,
     css: `/* The hairline — a thin vertical line spanning the full height of the text block.
    Same accent geometry as the Hairline lower third, just taller; presets grow it in. */
-.card-accent {
-  position: absolute;               /* pinned inside the positioned .card root */
+.info-card-accent {
+  position: absolute;               /* pinned inside the positioned .info-card root */
   left: 0;                          /* sits at the block's left edge */
   top: 0;                           /* stretches from the very top… */
   bottom: 0;                        /* …to the very bottom of the text block */
@@ -50,12 +50,12 @@ ${cardLineMasks(o)}
 }
 
 /* The text block — deliberately transparent: no panel, whitespace does the work. */
-.card-box {
+.info-card-box {
   padding-left: calc(31px * var(--scale));  /* room for the 3px line + a generous 28px gap */
 }
 
 /* Heading — big and confident; the only heavy element in the design. */
-.card-name {
+.info-card-name {
   font-size: calc(44px * var(--scale));  /* card heading size (values are 1080p reference) */
   font-weight: 700;                 /* bold enough to carry the design on its own */
   line-height: 1.1;                 /* big text sits tight */
@@ -64,8 +64,8 @@ ${cardLineMasks(o)}
 }
 
 /* Body lines — quiet on purpose: smaller, lighter, dimmed. */
-.card-title,
-.card-extra {
+.info-card-title,
+.info-card-extra {
   font-size: calc(24px * var(--scale));  /* ≈1.8:1 below the heading — clear hierarchy */
   font-weight: 400;                 /* regular weight; contrast comes from the heading */
   line-height: 1.35;                /* body text gets room to breathe */
@@ -74,7 +74,7 @@ ${cardLineMasks(o)}
 }
 
 /* The first body line sits a touch further from the heading than lines sit from each other. */
-.card-title {
+.info-card-title {
   margin-top: calc(14px * var(--scale));  /* heading → body: a slightly larger break */
 }`,
     hasAccent: true,

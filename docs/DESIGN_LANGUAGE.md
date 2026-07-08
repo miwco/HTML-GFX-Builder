@@ -164,7 +164,7 @@ Rules:
   it ("would these two appear in the same show?").
 - Reuse the exact token values above (e.g. sport's −8° skew, glass's blur 18) — don't improvise
   new ones per category.
-- Category structure contracts mirror `.lower-third`: `.card`, `.credits`, `.ticker` roots with the same
+- Category structure contracts mirror `.lower-third`: `.info-card`, `.credits`, `.ticker` roots with the same
   `:root` variable names, the same marked ANIMATION region, and the same auto-fit text rules.
 
 ## 9. Judging checklist (what reviewers score)

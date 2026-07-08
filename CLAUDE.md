@@ -108,7 +108,7 @@ src/
                   lowerThirds/  lt01…lt13 on shared.ts (prefix 'lower-third') + animPresets.ts (6
                                 marked-region GSAP presets, prefix-parameterized — they animate
                                 any category's .{prefix}-box structure)
-                  infoCards/    card01…card05 (prefix 'card')
+                  infoCards/    card01…card05 (prefix 'info-card')
                   endCredits/   cr01…cr04 (prefix 'credits') + creditsPresets.ts (credits-roll /
                                 credits-pages / credits-crawl); data-driven: a hidden #f0
                                 textarea holds "Role | Name" lines, template JS parses and

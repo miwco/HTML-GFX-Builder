@@ -15,7 +15,7 @@ scene model, no hidden transform layer, nothing the code editor can't show.
 - **Text** is sample data: the Data panel's values drive `update()` — inline editing writes
   `setSampleValue`, not code.
 - **Selection** is the structure contract: every category has a known root
-  (`.lower-third/.card/.ticker/…`) and known line elements (`#fN`).
+  (`.lower-third/.info-card/.ticker/…`) and known line elements (`#fN`).
 
 ## Slices (each independently shippable)
 

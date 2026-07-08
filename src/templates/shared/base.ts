@@ -5,7 +5,7 @@
 // settings, and the JS runtime scaffold around the marked ANIMATION region.
 //
 // A category module (e.g. templates/lowerThirds/shared.ts) composes these pieces and
-// adds its own structure contract (.l3 / .card / .credits / .ticker) and motion module.
+// adds its own structure contract (.lower-third / .info-card / .credits / .ticker) and motion module.
 
 import { DEFAULT_SETTINGS, type Resolution, type SpxSettings } from '../../model/types';
 import { customFontFaceCss, customFontStack, fontById, fontFaceCss, fontStack } from '../../model/fonts';

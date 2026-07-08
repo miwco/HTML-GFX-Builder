@@ -2,7 +2,7 @@
 // o.lines — the wizard's line editor doesn't apply here):
 //   f0 "Team A" (name) · f1 "Score A" · f2 "Team B" (name) · f3 "Score B"
 //
-// Structure contract (mirrors the standard .l3 contract so the six standard lowerThirds
+// Structure contract (mirrors the standard .lower-third contract so the six standard lowerThirds
 // animation presets work unchanged with prefix 'sb' and lineCount 4):
 //   <div class="sb">                 root — zone positioned; opacity:0 until play()
 //     <div class="sb-box">           the panel; presets tween this

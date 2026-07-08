@@ -100,10 +100,10 @@ test('info card: creates, binds, and plays', async ({ page }) => {
   await toVariantStep(page, 'Info cards', 'Slab Card');
   await create(page);
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Slab Card');
-  await expect(frame(page).locator('.card')).toBeAttached(); // the NEW document is loaded
+  await expect(frame(page).locator('.info-card')).toBeAttached(); // the NEW document is loaded
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame(page).locator('.card').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.info-card').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 

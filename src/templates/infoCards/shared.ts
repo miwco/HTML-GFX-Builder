@@ -1,15 +1,15 @@
 // Info-card scaffolding — the category-generic assembler bound to the info-card contract:
-// class prefix "card", a wider auto-fit cap (cards carry more text than straps), and the
+// class prefix "info-card", a wider auto-fit cap (cards carry more text than straps), and the
 // card root comment. Cards default to centered/right zones and read as the SIBLINGS of
 // their lower-third counterparts (docs/DESIGN_LANGUAGE.md §8).
 //
 // Structure contract:
-//   <div class="card">            root — positioned by zone; opacity:0 until play()
-//     [<div class="card-accent">] optional accent shape
-//     <div class="card-box">      the panel; presets animate this
-//       <div class="card-mask"><span id="f0" class="card-name">…</span></div>
-//       <div class="card-mask"><span id="f1" class="card-title">…</span></div>
-//       <div class="card-mask"><span id="f2" class="card-extra">…</span></div>
+//   <div class="info-card">            root — positioned by zone; opacity:0 until play()
+//     [<div class="info-card-accent">] optional accent shape
+//     <div class="info-card-box">      the panel; presets animate this
+//       <div class="info-card-mask"><span id="f0" class="info-card-name">…</span></div>
+//       <div class="info-card-mask"><span id="f1" class="info-card-title">…</span></div>
+//       <div class="info-card-mask"><span id="f2" class="info-card-extra">…</span></div>
 //     </div>
 //   </div>
 
@@ -30,19 +30,19 @@ export type CardMeta = StandardMeta;
 
 const CARD_CATEGORY: CategorySpec = {
   type: 'info-card',
-  prefix: 'card',
-  rootComment: 'Info card. Hidden until play(); positioned by the .card rule in the CSS.',
+  prefix: 'info-card',
+  rootComment: 'Info card. Hidden until play(); positioned by the .info-card rule in the CSS.',
   // Cards may be wider than lower thirds: up to 56% of frame width inside safe areas.
   maxTextWidth: (res: Resolution) =>
     Math.round(Math.min(res.width * 0.56, res.width - 2 * (res.width * 0.0625))),
 };
 
 export function cardLineClass(index: number): string {
-  return lineClassFor('card', index);
+  return lineClassFor('info-card', index);
 }
 
 export function cardLineMasks(o: ResolvedOptions, indent = '      '): string {
-  return lineMasksFor('card', o, indent);
+  return lineMasksFor('info-card', o, indent);
 }
 
 export function assembleInfoCard(meta: CardMeta, design: CardDesign, o: ResolvedOptions): SpxTemplate {

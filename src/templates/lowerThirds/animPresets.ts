@@ -3,7 +3,7 @@
 // rewrite. Everything outside the markers (play/stop/update/next scaffolding) never changes.
 //
 // Presets rely on the standard structure contract, parameterized by a class PREFIX so every
-// category shares this library (lower thirds use "lower-third", info cards "card", …):
+// category shares this library (lower thirds use "lower-third", info cards "info-card", …):
 //   .<p> (root, opacity:0 until play) → .<p>-accent? → .<p>-box → .<p>-mask > #fN line elements
 // Because the structure is standard, ANY preset applies to ANY variant of ANY category.
 //
@@ -17,7 +17,7 @@
 import type { AnimPresetId } from '../../model/wizard';
 
 export interface PresetConfig {
-  /** The category's class prefix ('lower-third', 'card', 'credits', 'ticker'). */
+  /** The category's class prefix ('lower-third', 'info-card', 'credits', 'ticker'). */
   prefix: string;
   /** How many visible text lines (#f0…#fN) the design has. */
   lineCount: number;
