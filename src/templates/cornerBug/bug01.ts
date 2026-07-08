@@ -17,7 +17,7 @@ export const bug01: TemplateVariant = defineBugVariant(
     maxLines: 1,
     suggestedLines: [{ title: 'Caption', sample: 'LIVE' }],
     hasLogoSlot: true,
-    animationPresets: ['blur-in', 'pop-spring', 'slide-fade'],
+    animationPresets: ['blur-in', 'pop-spring', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',
     defaultZone: 'top-right',

@@ -18,7 +18,7 @@ export const lt09: TemplateVariant = defineVariant(
       { title: 'Handle', sample: '@lunamakes' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['pop-spring', 'blur-in'],
+    animationPresets: ['pop-spring', 'blur-in', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('orchid'),
     defaultFontId: 'manrope',
     defaultZone: 'bottom-left',

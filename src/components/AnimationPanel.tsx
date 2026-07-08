@@ -19,7 +19,7 @@ const SPEEDS = [
 ];
 
 const PHASES: { id: AnimPhase; label: string; blurb: string }[] = [
-  { id: 'both', label: 'Both', blurb: 'replaces the entrance AND the exit' },
+  { id: 'both', label: 'In and out', blurb: 'replaces the entrance AND the exit' },
   { id: 'in', label: 'In only', blurb: 'replaces just the entrance — the exit stays' },
   { id: 'out', label: 'Out only', blurb: 'replaces just the exit — the entrance stays' },
 ];

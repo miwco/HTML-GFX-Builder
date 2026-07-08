@@ -20,7 +20,7 @@ export const lt12: TemplateVariant = defineVariant(
       { title: 'Label', sample: 'Breaking' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe'],
+    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',
     defaultZone: 'bottom-left',

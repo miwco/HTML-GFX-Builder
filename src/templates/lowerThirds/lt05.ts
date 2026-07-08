@@ -22,7 +22,7 @@ export const lt05: TemplateVariant = defineVariant(
       { title: 'Stat line', sample: '24 PTS · 11 AST' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['snap-stinger', 'mask-wipe'],
+    animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',
     defaultZone: 'bottom-left',

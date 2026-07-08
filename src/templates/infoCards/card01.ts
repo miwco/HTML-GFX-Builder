@@ -18,7 +18,7 @@ export const card01: TemplateVariant = defineCardVariant(
       { title: 'Line 2', sample: 'Coal at its lowest share since 1965' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe'],
+    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',
     defaultZone: 'mid-right',

@@ -17,7 +17,7 @@ export const lt07: TemplateVariant = defineVariant(
       { title: 'Subtitle', sample: 'HOME · GAME 4' },
     ],
     hasLogoSlot: true,
-    animationPresets: ['snap-stinger', 'pop-spring'],
+    animationPresets: ['snap-stinger', 'pop-spring', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('royal'),
     defaultFontId: 'bebas-neue',
     defaultZone: 'bottom-left',

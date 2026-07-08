@@ -105,7 +105,7 @@ src/
                                 makeDefineVariant) + clock.ts (countdown engine: hidden minutes
                                 field → M:SS + {prefix}-done at zero; DOM-ready-safe) — every
                                 category builds on these
-                  lowerThirds/  lt01…lt13 on shared.ts (prefix 'lower-third') + animPresets.ts (6
+                  lowerThirds/  lt01…lt13 on shared.ts (prefix 'lower-third') + animPresets.ts (9
                                 marked-region GSAP presets, prefix-parameterized — they animate
                                 any category's .{prefix}-box structure)
                   infoCards/    card01…card05 (prefix 'info-card')

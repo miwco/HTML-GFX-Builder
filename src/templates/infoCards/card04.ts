@@ -20,7 +20,7 @@ export const card04: TemplateVariant = defineCardVariant(
       { title: 'Role', sample: 'Theoretical physicist' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['blur-in', 'slide-fade', 'line-reveal'],
+    animationPresets: ['blur-in', 'slide-fade', 'line-reveal', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'manrope',
     defaultZone: 'mid-center',

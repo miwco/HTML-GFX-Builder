@@ -19,7 +19,7 @@ export const card03: TemplateVariant = defineCardVariant(
       { title: 'Line 2', sample: '21:15 — Live Q&A with the hosts' },
     ],
     hasLogoSlot: true,
-    animationPresets: ['pop-spring', 'blur-in', 'slide-fade'],
+    animationPresets: ['pop-spring', 'blur-in', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',
     defaultZone: 'mid-right',

@@ -2,7 +2,14 @@
 // null means "use the variant's tasteful default" — draftToOptions() maps the draft onto
 // WizardOptions, and resolveOptions() (model/wizard.ts) fills the rest.
 
-import { ASPECTS, type AssetFile, type Resolution } from '../../model/types';
+import { ASPECTS, type AssetFile, type Resolution, type SpxTemplate } from '../../model/types';
+import {
+  anyPresetById,
+  presetConfigFromTemplate,
+  swapAnimationPhase,
+  type AnimPhase,
+} from '../../blocks/animPatch';
+import { resolveEasing } from '../../model/easings';
 import type {
   AnimPresetId,
   AnimSpeed,
@@ -37,7 +44,12 @@ export interface WizardDraft {
   zone: Zone9 | null;
   nudge: { x: number; y: number };
   animation: {
+    /** The entrance preset (and the exit too while outPresetId is null). */
     presetId: AnimPresetId | null;
+    /** A different exit preset, or null = the exit matches the entrance. */
+    outPresetId: AnimPresetId | null;
+    /** What a preset click changes: both phases (default), entrance, or exit. */
+    direction: AnimPhase;
     speed: AnimSpeed;
     easing: EasingId;
     steps: boolean;
@@ -80,7 +92,7 @@ export function initialDraft(): WizardDraft {
     sizeScale: 1,
     zone: null,
     nudge: { x: 0, y: 0 },
-    animation: { presetId: null, speed: 1, easing: 'auto', steps: false },
+    animation: { presetId: null, outPresetId: null, direction: 'both', speed: 1, easing: 'auto', steps: false },
     importedImages: [],
     logoAssetPath: null,
   };
@@ -123,4 +135,24 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
     importedImages: draft.importedImages.length > 0 ? draft.importedImages : undefined,
     logoAssetPath: variant.hasLogoSlot ? draft.logoAssetPath ?? undefined : undefined,
   };
+}
+
+/**
+ * Build the draft's real template. `variant.create` emits the animation region with the
+ * entrance preset driving both phases; when the draft mixes a different exit in, the
+ * out phase is spliced with the same deterministic patcher the Motion panel uses —
+ * so the wizard preview and the created project are always the exact same code.
+ */
+export function buildDraftTemplate(variant: TemplateVariant, draft: WizardDraft): SpxTemplate {
+  const template = variant.create(draftToOptions(variant, draft));
+  const inId = draft.animation.presetId ?? variant.animationPresets[0];
+  const outId = draft.animation.outPresetId;
+  if (!outId || outId === inId) return template;
+  const outPreset = anyPresetById(outId);
+  const cfg = {
+    // Keeps the emitted speed and entrance ease; only the exit ease follows the new preset.
+    ...presetConfigFromTemplate(template, draft.animation.steps),
+    easeOut: resolveEasing(draft.animation.easing, outPreset.autoEase).easeOut,
+  };
+  return { ...template, js: swapAnimationPhase(template.js, outId, cfg, 'out') };
 }

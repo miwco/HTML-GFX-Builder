@@ -19,7 +19,7 @@ export const lt04: TemplateVariant = defineVariant(
       { title: 'Kicker', sample: 'EXCLUSIVE' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['mask-wipe', 'slide-fade'],
+    animationPresets: ['mask-wipe', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('porcelain'),
     defaultFontId: 'archivo',
     defaultZone: 'bottom-left',

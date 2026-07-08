@@ -110,7 +110,7 @@ export const ANIM_PRESETS: AnimPreset[] = [
   {
     id: 'slide-fade',
     name: 'Slide + fade',
-    description: 'The graphic rises into place while lines fade up in sequence. Quiet and universal.',
+    description: 'In: the graphic rises into place, lines follow in sequence. Out: it sinks back down and fades. Quiet and universal.',
     autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Slide + fade — the whole graphic rises in; text lines follow in sequence.
@@ -145,7 +145,7 @@ ${MARK_CLOSE}`,
   {
     id: 'line-reveal',
     name: 'Line reveal',
-    description: 'The accent line draws in first, then text slides up from behind an invisible mask. Elegant.',
+    description: 'In: the accent line draws in, text slides up from behind its mask. Out: text drops back, the line retracts. Elegant.',
     autoEase: { easeIn: 'expo.out', easeOut: 'power3.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Line reveal — the accent draws in, then text slides up from behind its mask.
@@ -190,7 +190,7 @@ ${MARK_CLOSE}`,
   {
     id: 'mask-wipe',
     name: 'Mask wipe',
-    description: 'The panel wipes open left-to-right like a curtain; text settles right behind it.',
+    description: 'In: the panel wipes open left-to-right like a curtain. Out: it wipes shut the other way.',
     autoEase: { easeIn: 'expo.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Mask wipe — the panel reveals via a clip-path wipe; text follows just behind.
@@ -230,7 +230,7 @@ ${MARK_CLOSE}`,
   {
     id: 'pop-spring',
     name: 'Pop spring',
-    description: 'Scales up with a springy overshoot — friendly, social-stream energy.',
+    description: 'In: pops up with a springy overshoot. Out: shrinks away cleanly, no bounce. Friendly, social-stream energy.',
     autoEase: { easeIn: 'back.out(1.6)', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Pop spring — the card pops in with a springy overshoot (Back Out ease).
@@ -265,7 +265,7 @@ ${MARK_CLOSE}`,
   {
     id: 'snap-stinger',
     name: 'Snap stinger',
-    description: 'Slams in from the side and settles in under half a second. Sport-fast.',
+    description: 'In: slams in from the left and snaps straight. Out: snaps away to the right, even faster. Sport-fast.',
     autoEase: { easeIn: 'power4.out', easeOut: 'power3.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Snap stinger — slams in from the left with a skew that settles. Fast by design.
@@ -300,7 +300,7 @@ ${MARK_CLOSE}`,
   {
     id: 'blur-in',
     name: 'Blur in',
-    description: 'Materialises out of a blur — soft, premium, glassy.',
+    description: 'In: materialises out of a blur. Out: dissolves back into it. Soft, premium, glassy.',
     autoEase: { easeIn: 'power2.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Blur in — the card materialises out of a blur (filter animates on the box only).
@@ -326,6 +326,112 @@ function buildInTimeline() {
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to('.${cfg.prefix}-box', { opacity: 0, filter: 'blur(10px)', duration: 0.35 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
+  return tl;
+}${stepsBlock(cfg)}
+${MARK_CLOSE}`,
+  },
+
+  {
+    id: 'fade',
+    name: 'Fade',
+    description: 'In: a clean crossfade, no movement at all. Out: fades to nothing. The calmest choice.',
+    autoEase: { easeIn: 'sine.out', easeOut: 'sine.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Fade — a pure opacity dissolve, no movement. Calm, documentary, timeless.
+${knobs(cfg)}
+
+// buildInTimeline(): choreographs the entrance. Called by play().
+function buildInTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
+    { opacity: 0 },
+    { opacity: 1, duration: 0.6 / animSpeed }
+  );
+  tl.fromTo([${linesInIntro(cfg)}],
+    { opacity: 0 },
+    { opacity: 1, duration: 0.5 / animSpeed, stagger: 0.12 / animSpeed },
+    '-=0.35'                                         // lines join while the box is still fading
+  );
+  return tl;
+}
+
+// buildOutTimeline(): the exit — fades away faster than it arrived.
+function buildOutTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
+  tl.to('.${cfg.prefix}-box', { opacity: 0, duration: 0.4 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
+  return tl;
+}${stepsBlock(cfg)}
+${MARK_CLOSE}`,
+  },
+
+  {
+    id: 'drop-in',
+    name: 'Drop in',
+    description: 'In: the card falls from above and lands with a soft overshoot. Out: it lifts straight back up and away.',
+    autoEase: { easeIn: 'back.out(1.4)', easeOut: 'power2.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Drop in — the card falls from above and settles with a small overshoot.
+${knobs(cfg)}
+
+// buildInTimeline(): choreographs the entrance. Called by play().
+function buildInTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
+    { y: -70, opacity: 0 },                          // starts well above its resting spot…
+    { y: 0, opacity: 1, duration: 0.6 / animSpeed }  // …falls in and settles (Back Out)
+  );
+  tl.fromTo([${linesInIntro(cfg)}],
+    { y: -12, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.4 / animSpeed, stagger: 0.07 / animSpeed },
+    '-=0.3'
+  );
+  return tl;
+}
+
+// buildOutTimeline(): the exit — lifts straight back up and away, faster.
+function buildOutTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
+  tl.to('.${cfg.prefix}-box', { y: -40, opacity: 0, duration: 0.35 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
+  return tl;
+}${stepsBlock(cfg)}
+${MARK_CLOSE}`,
+  },
+
+  {
+    id: 'flip-3d',
+    name: 'Flip 3D',
+    description: 'In: the card swings down from a 3D hinge along its top edge. Out: it folds forward and away. Dimensional.',
+    autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Flip 3D — the card swings in on a 3D hinge along its top edge.
+${knobs(cfg)}
+
+// buildInTimeline(): choreographs the entrance. Called by play().
+function buildInTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
+    { rotationX: -80, opacity: 0, transformPerspective: 900, transformOrigin: 'center top' },
+    { rotationX: 0, opacity: 1, duration: 0.65 / animSpeed }
+  );
+  tl.fromTo([${linesInIntro(cfg)}],
+    { opacity: 0 },
+    { opacity: 1, duration: 0.35 / animSpeed, stagger: 0.08 / animSpeed },
+    '-=0.25'
+  );
+  return tl;
+}
+
+// buildOutTimeline(): the exit — folds forward past the camera, faster.
+function buildOutTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
+  tl.to('.${cfg.prefix}-box',
+    { rotationX: 65, opacity: 0, transformPerspective: 900, transformOrigin: 'center top', duration: 0.4 / animSpeed });
   tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}

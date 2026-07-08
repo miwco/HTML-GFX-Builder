@@ -84,6 +84,38 @@ test('data: add-field appends to the SPX definition and highlights the HTML', as
   await expect(page.locator('.editor-host .changed-line').first()).toBeVisible();
 });
 
+test('wizard: direction control mixes a different exit preset at create', async ({ page }) => {
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click(); // Fields
+  await page.getByRole('button', { name: 'Next ›' }).click(); // Style
+  await page.getByRole('button', { name: 'Next ›' }).click(); // Animation
+  // Default direction: one matched style for the entrance AND the exit.
+  await expect(page.locator('.wz-step button.active', { hasText: 'In and out' })).toBeVisible();
+  // Switch only the exit; the direction hint reflects the mix.
+  await page.getByRole('button', { name: 'Out only' }).click();
+  await page.locator('.wz-anim', { hasText: 'Drop in' }).click();
+  await expect(page.locator('.wz-step .hint').first()).toContainText('Out Drop in');
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  // The created code carries the phase mix in the marker comments…
+  const js = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().template.js;
+  });
+  expect(js).toContain('// In preset: Line reveal'); // Hairline's default entrance, kept
+  expect(js).toContain('// Out preset: Drop in'); // the mixed-in exit
+  // …and the spliced runtime still plays.
+  await page.waitForTimeout(650); // debounced preview rebuild
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+});
+
 test('style: a color change highlights the changed CSS lines', async ({ page }) => {
   await createHairline(page);
   await page.locator('.panel-tabs .tab', { hasText: 'Style' }).click();

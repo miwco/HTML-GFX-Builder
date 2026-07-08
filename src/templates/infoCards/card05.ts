@@ -23,7 +23,7 @@ export const card05: TemplateVariant = defineCardVariant(
       { title: 'Subtitle', sample: 'Live from the studio · 20:00' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'mask-wipe', 'blur-in'],
+    animationPresets: ['line-reveal', 'mask-wipe', 'blur-in', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',
     defaultZone: 'bottom-left',

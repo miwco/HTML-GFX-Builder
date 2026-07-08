@@ -4,8 +4,10 @@ import type { SpxTemplate } from '../../model/types';
 
 interface Props {
   template: SpxTemplate;
-  /** Bumping this replays the entrance (used when the user changes the animation). */
+  /** Bumping this replays the animation (used when the user changes the animation). */
   replayKey?: number;
+  /** Demo the full lifecycle — in, hold, out, back in — after each (re)play. */
+  demoOut?: boolean;
 }
 
 type SpxWindow = Window & { play?: () => void; stop?: () => void; next?: () => void; update?: (d: string) => void };
@@ -15,11 +17,18 @@ type SpxWindow = Window & { play?: () => void; stop?: () => void; next?: () => v
  * The entrance plays automatically on every (debounced) rebuild so each choice is felt
  * immediately; Replay / Out let the user test the motion at any time.
  */
-export default function WizardPreview({ template, replayKey = 0 }: Props) {
+export default function WizardPreview({ template, replayKey = 0, demoOut = false }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.2);
   const [srcdoc, setSrcdoc] = useState('');
+  // Pending lifecycle-demo timers (out + back in) — cleared on any new play/stop.
+  const demoTimers = useRef<number[]>([]);
+  const clearDemo = () => {
+    demoTimers.current.forEach((t) => clearTimeout(t));
+    demoTimers.current = [];
+  };
+  useEffect(() => clearDemo, []);
 
   const { width, height } = template.resolution;
 
@@ -49,8 +58,16 @@ export default function WizardPreview({ template, replayKey = 0 }: Props) {
   const playIn = () => {
     const w = win();
     if (!w || typeof w.play !== 'function') return;
+    clearDemo();
     w.update?.(JSON.stringify(Object.fromEntries(template.fields.map((f) => [f.field, f.value]))));
     w.play();
+    if (demoOut) {
+      // Show the exit too, then come back on air so the preview isn't left empty.
+      demoTimers.current.push(
+        window.setTimeout(() => win()?.stop?.(), 1700),
+        window.setTimeout(() => win()?.play?.(), 2800),
+      );
+    }
   };
 
   // Replay when the parent asks (e.g. animation preset changed but srcdoc identical).
@@ -76,8 +93,8 @@ export default function WizardPreview({ template, replayKey = 0 }: Props) {
           {width}×{height} · {template.fps} fps
         </span>
         <div className="row" style={{ gap: 6 }}>
-          <button onClick={playIn} title="Replay the entrance animation">▶ Replay</button>
-          <button onClick={() => win()?.stop?.()} title="Play the exit animation">■ Out</button>
+          <button onClick={playIn} title={demoOut ? 'Replay the animation (in, then out)' : 'Replay the entrance animation'}>▶ Replay</button>
+          <button onClick={() => { clearDemo(); win()?.stop?.(); }} title="Play the exit animation">■ Out</button>
         </div>
       </div>
     </div>

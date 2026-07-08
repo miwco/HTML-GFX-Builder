@@ -31,7 +31,8 @@ const ALL_PRESETS = [
   ...SS_PRESETS, ...GT_PRESETS, ...IG_PRESETS, ...QUIZ_PRESETS,
 ];
 
-function anyPresetById(id: AnimPresetId): AnimPreset {
+/** Look up a preset across every category's library. */
+export function anyPresetById(id: AnimPresetId): AnimPreset {
   const p = ALL_PRESETS.find((x) => x.id === id);
   if (!p) throw new Error(`Unknown animation preset: ${id}`);
   return p;

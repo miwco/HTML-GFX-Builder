@@ -96,6 +96,9 @@ export type AnimPresetId =
   | 'pop-spring'
   | 'snap-stinger'
   | 'blur-in'
+  | 'fade'
+  | 'drop-in'
+  | 'flip-3d'
   // End-credits motion formats (templates/endCredits/creditsPresets.ts):
   | 'credits-roll'
   | 'credits-pages'
