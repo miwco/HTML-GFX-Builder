@@ -27,13 +27,18 @@ put it — a collapsible strip directly under the preview, above the transport b
 follows it, ▶ Play sweeps the In phase, ■ Stop auto-switches to Out and sweeps it, loops wrap.
 Idle parks at the end of In (the settled design-view state).
 
-### T2 — Timing knobs on the tracks
-Drag a bar's start/length → re-emit the region with per-element knob variables (e.g.
-`var lineDelay = [0, 0.12, 0.2]` style, commented), same as animSpeed today. Eases editable
-per element from the existing 12-preset easing vocabulary (direction-correct per phase —
-the doctrine in model/easings.ts stays the law). Everything undoable, highlighted, and
-still swappable: changing the preset re-emits cleanly because knobs live in the preset's
-emit contract, not in free edits.
+### T2 — Timing knobs on the tracks — ✅ SHIPPED (2026-07-08), simpler than planned
+Implemented as **literal patching, not knob emission**: dragging a bar's body (start) or its
+right-edge handle (duration) rewrites that tween's literals in the already-emitted region —
+`patchTweenTiming` in blocks/timelineModel.ts, the T1 parser in reverse. Durations stay the
+readable `N / animSpeed` form; a moved tween gets an explicit absolute position
+(`N / animSpeed` — plain GSAP), replacing its '-=' overlap. Zero preset-module changes; the
+emitted code keeps its sequential, commented shape; the speed knob still scales everything.
+0.05s snap keeps literals two-decimal readable. One undoable applyTemplate per release +
+auto-replay so the new timing is heard immediately. set() ticks and measured durations
+(marquee width/speed) are non-editable by construction. Preset swaps still re-emit cleanly
+(customizations are intentionally preset-scoped). **Per-element eases: deferred to T2.5**
+(the easing vocabulary + direction doctrine in model/easings.ts stays the law).
 
 ### T3 — Steps & next() sequencing (the live-graphics differentiator)
 Model SPX Continue/next() as timeline SEGMENTS: reveal groups with an explicit order,

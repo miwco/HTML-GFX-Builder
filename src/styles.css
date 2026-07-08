@@ -1174,6 +1174,7 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   height: 14px;
   background: rgba(232, 237, 242, 0.04);
   border-radius: 4px;
+  overflow: hidden;               /* a stretched bar clips instead of spilling */
 }
 .timeline-bar {
   position: absolute;
@@ -1182,6 +1183,20 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   border-radius: 3px;
   background: linear-gradient(90deg, var(--amber), rgba(246, 166, 35, 0.55));
   min-width: 3px;
+}
+/* T2 — editable bars: drag the body to retime, the right edge to stretch. */
+.timeline-bar.editable { cursor: grab; touch-action: none; }
+.timeline-bar.editable:hover { box-shadow: 0 0 8px rgba(246, 166, 35, 0.5); }
+.timeline-bar.dragging { cursor: grabbing; box-shadow: 0 0 10px rgba(246, 166, 35, 0.7); }
+.timeline-bar-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  border-right: 2px solid rgba(10, 12, 16, 0.55);  /* a visible grip on the bar's end */
+  border-radius: 0 3px 3px 0;
 }
 .timeline-bar.set {
   width: 3px;

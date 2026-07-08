@@ -88,6 +88,63 @@ test('scrubbing pauses the preview mid-animation', async ({ page }) => {
     .toBe('1');
 });
 
+test('T2: stretching a bar rewrites the duration literal in the marked region', async ({ page }) => {
+  await createHairline(page); // line-reveal: bar 1 = .l3-accent, duration 0.45 / animSpeed
+  const inTab = page.locator('[data-testid="timeline"] button.tab', { hasText: /^In/ });
+  await expect(inTab).toContainText('In 0.95s');
+
+  // Drag the accent bar's right-edge handle to the right — the entrance gets longer.
+  const handle = page.getByTestId('timeline-handle-1');
+  const box = (await handle.boundingBox())!;
+  const lane = (await page.locator('.timeline-lane').first().boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + lane.width * 0.4, box.y + box.height / 2, { steps: 6 });
+  await page.mouse.up();
+
+  // The code changed (one undoable patch): the phase re-parses longer than before…
+  await expect(inTab).not.toContainText('In 0.95s');
+  // …and the emitted literal is a readable `N / animSpeed` duration on the accent tween.
+  await page.waitForTimeout(650); // rebuild carries the new region into the preview
+  const js = await page
+    .frameLocator('iframe.preview-frame')
+    .locator('body')
+    .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
+  const accentDuration = js.match(/l3-accent[\s\S]*?duration:\s*([\d.]+)\s*\/\s*animSpeed/)?.[1];
+  expect(Number(accentDuration)).toBeGreaterThan(0.45);
+
+  // Undo restores the original timing.
+  await page.keyboard.press('Control+z');
+  await expect(inTab).toContainText('In 0.95s');
+});
+
+test('T2: moving a bar writes an explicit start position', async ({ page }) => {
+  await createHairline(page); // line-reveal: bar 2 = the staggered lines, starts at 0.30
+  // Drag the lines bar to the right (later start).
+  const bar = page.getByTestId('timeline-bar-2');
+  const before = (await bar.boundingBox())!;
+  const lane = (await page.locator('.timeline-lane').nth(2).boundingBox())!;
+  await page.mouse.move(before.x + 10, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + 10 + lane.width * 0.25, before.y + before.height / 2, { steps: 6 });
+  await page.mouse.up();
+
+  await page.waitForTimeout(650);
+  const js = await page
+    .frameLocator('iframe.preview-frame')
+    .locator('body')
+    .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
+  // The '-=0.15' overlap became an absolute `N / animSpeed` position on the lines tween.
+  const linesCall = js.match(/tl\.fromTo\(\['#f0', '#f1'\][\s\S]*?\);/)?.[0] ?? '';
+  expect(linesCall).not.toContain("'-=");
+  expect(linesCall).toMatch(/,\s*[\d.]+ \/ animSpeed/);
+  // And the graphic still plays to a settled visible state with the new choreography.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect
+    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+});
+
 test('timeline strip collapses to a slim bar and remembers it', async ({ page }) => {
   await createHairline(page);
   const timeline = page.getByTestId('timeline');

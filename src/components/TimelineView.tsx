@@ -1,9 +1,24 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
-import { parseTimeline } from '../blocks/timelineModel';
+import { parseTimeline, patchTweenTiming } from '../blocks/timelineModel';
 import { loadPrefs, savePrefs } from '../model/prefs';
 import { useIsMobile } from './useIsMobile';
 import type { SpxWindow } from './PlayoutSimulator';
+
+/** A bar drag in progress (T2): move = slide the start, resize = stretch the duration. */
+interface BarDrag {
+  index: number;
+  mode: 'move' | 'resize';
+  startClientX: number;
+  laneWidth: number;
+  origStart: number;
+  origDuration: number;
+  /** Live values while dragging (committed to code on release). */
+  start: number;
+  duration: number;
+}
+
+const SNAP = 0.05; // timing grid — keeps the emitted literals readable (two decimals)
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement>;
@@ -21,6 +36,8 @@ interface Props {
 export default function TimelineView({ iframeRef }: Props) {
   const template = useTemplateStore((s) => s.template);
   const sendScrub = useTemplateStore((s) => s.sendScrub);
+  const applyTemplate = useTemplateStore((s) => s.applyTemplate);
+  const requestReplay = useTemplateStore((s) => s.requestReplay);
 
   const model = useMemo(() => parseTimeline(template.js), [template.js]);
   const [phaseId, setPhaseId] = useState<'in' | 'out'>('in');
@@ -28,6 +45,11 @@ export default function TimelineView({ iframeRef }: Props) {
   const [scrubbing, setScrubbing] = useState(false);
   const scrubbingRef = useRef(false);
   scrubbingRef.current = scrubbing;
+  // T2 bar-drag state — declared with the other hooks (BEFORE the model-null early return,
+  // or templates without a parsable region would change the hook count and crash React).
+  const [barDrag, setBarDrag] = useState<BarDrag | null>(null);
+  const barDragRef = useRef<BarDrag | null>(null);
+  barDragRef.current = barDrag;
 
   // Collapsed state: explicit preference wins; otherwise expanded on desktop, collapsed on phones.
   const isMobile = useIsMobile();
@@ -79,6 +101,54 @@ export default function TimelineView({ iframeRef }: Props) {
   const total = Math.max(phase.duration, 0.001);
   const shown = Math.min(time, total);
   const frac = shown / total;
+
+  // ── T2: draggable timing bars ──────────────────────────────────────────────
+  const snap = (n: number) => Math.round(n / SNAP) * SNAP;
+
+  const startBarDrag = (e: React.PointerEvent, index: number, mode: BarDrag['mode']) => {
+    const tw = phase.tweens[index];
+    if (!tw.editable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const lane = (e.currentTarget as HTMLElement).closest('.timeline-lane') as HTMLElement;
+    setBarDrag({
+      index,
+      mode,
+      startClientX: e.clientX,
+      laneWidth: lane?.getBoundingClientRect().width || 1,
+      origStart: tw.start,
+      origDuration: tw.duration,
+      start: tw.start,
+      duration: tw.duration,
+    });
+  };
+
+  const moveBarDrag = (e: React.PointerEvent) => {
+    const d = barDragRef.current;
+    if (!d) return;
+    const dxSec = ((e.clientX - d.startClientX) / d.laneWidth) * total;
+    setBarDrag(
+      d.mode === 'move'
+        ? { ...d, start: Math.max(0, snap(d.origStart + dxSec)) }
+        : { ...d, duration: Math.max(SNAP, snap(d.origDuration + dxSec)) },
+    );
+  };
+
+  /** Release: rewrite the tween's timing literals in the marked region — one undoable patch. */
+  const endBarDrag = () => {
+    const d = barDragRef.current;
+    setBarDrag(null);
+    if (!d) return;
+    if (d.start === d.origStart && d.duration === d.origDuration) return;
+    const js = patchTweenTiming(template.js, phase.id, d.index, {
+      start: d.mode === 'move' ? d.start : undefined,
+      duration: d.mode === 'resize' ? d.duration : undefined,
+    });
+    if (!js) return; // not patchable after all — leave the code untouched
+    applyTemplate({ ...template, js });
+    requestReplay(); // hear the new timing immediately (plays after the rebuild settles)
+  };
 
   const scrubTo = (raw: number) => {
     // Range steps accumulate float error and can stall one step short of the end — snap the
@@ -132,25 +202,44 @@ export default function TimelineView({ iframeRef }: Props) {
 
       {!collapsed && (
         <div className="timeline-tracks">
-          {phase.tweens.map((tw, i) => (
-            <div className="timeline-row" key={i}>
-              <span className="timeline-label" title={label(tw.targets)}>{label(tw.targets)}</span>
-              <div className="timeline-lane">
-                <div
-                  className={`timeline-bar ${tw.kind}`}
-                  style={{
-                    left: `${(tw.start / total) * 100}%`,
-                    width: tw.kind === 'set' ? undefined : `${Math.max(1.5, ((tw.end - tw.start) / total) * 100)}%`,
-                  }}
-                  title={
-                    tw.kind === 'set'
-                      ? `set · ${tw.props.join(', ')}`
-                      : `${tw.props.join(', ')} · ${tw.start.toFixed(2)}–${tw.end.toFixed(2)}s${tw.stagger ? ` · stagger ${tw.stagger.toFixed(2)}s` : ''}`
-                  }
-                />
+          {phase.tweens.map((tw, i) => {
+            // While a bar is being dragged, render its live values instead of the parsed ones.
+            const d = barDrag?.index === i ? barDrag : null;
+            const start = d ? d.start : tw.start;
+            const span = d ? d.duration + tw.stagger * Math.max(0, tw.targets.length - 1) : tw.end - tw.start;
+            return (
+              <div className="timeline-row" key={i}>
+                <span className="timeline-label" title={label(tw.targets)}>{label(tw.targets)}</span>
+                <div className="timeline-lane">
+                  <div
+                    className={`timeline-bar ${tw.kind}${tw.editable ? ' editable' : ''}${d ? ' dragging' : ''}`}
+                    style={{
+                      left: `${(start / total) * 100}%`,
+                      width: tw.kind === 'set' ? undefined : `${Math.max(1.5, (span / total) * 100)}%`,
+                    }}
+                    title={
+                      tw.kind === 'set'
+                        ? `set · ${tw.props.join(', ')}`
+                        : `${tw.props.join(', ')} · ${(d ? start : tw.start).toFixed(2)}–${(d ? start + span : tw.end).toFixed(2)}s${tw.stagger ? ` · stagger ${tw.stagger.toFixed(2)}s` : ''}${tw.editable ? ' — drag to retime, edge to stretch' : ''}`
+                    }
+                    data-testid={`timeline-bar-${i}`}
+                    onPointerDown={tw.editable ? (e) => startBarDrag(e, i, 'move') : undefined}
+                    onPointerMove={moveBarDrag}
+                    onPointerUp={endBarDrag}
+                    onPointerCancel={() => setBarDrag(null)}
+                  >
+                    {tw.editable && tw.kind !== 'set' && (
+                      <span
+                        className="timeline-bar-handle"
+                        data-testid={`timeline-handle-${i}`}
+                        onPointerDown={(e) => startBarDrag(e, i, 'resize')}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {/* The playhead — spans the lane area (past the fixed label column). */}
           <div
             className="timeline-playhead"

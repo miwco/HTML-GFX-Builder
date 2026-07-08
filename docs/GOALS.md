@@ -367,6 +367,14 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       (above the transport), with a LIVE playhead following the simulator-owned `__activeTl`
       (Play sweeps In; Stop auto-switches to Out; scrub reclaims; end-snap fix so keyboard
       scrubs reach final set() calls). E2E: wysiwyg (3), timeline (5), inline-edit (2).
+- [x] **T2 draggable timing bars (2026-07-08)** — drag a bar's body to retime a tween, its
+      right-edge handle to stretch it (0.05s snap): `patchTweenTiming` (blocks/timelineModel.ts,
+      the parser in reverse) rewrites the tween's `N / animSpeed` duration literal and writes an
+      explicit absolute position (replacing '-=' overlaps) IN the emitted region — zero preset
+      changes, the code keeps its readable sequential shape, the speed knob still scales
+      everything. One undoable applyTemplate per release + auto-replay. set() ticks and
+      measured durations stay read-only. Per-element eases = T2.5. E2E: stretch rewrites the
+      literal + undo restores; move writes the absolute position + still plays.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

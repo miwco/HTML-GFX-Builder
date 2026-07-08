@@ -195,7 +195,9 @@ src/
                  the design view after every rebuild — progress(1, true) + a second
                  update(); auto-replays on replayNonce), TimelineView (collapsible strip
                  under the preview: tracks from blocks/timelineModel.ts, scrub pauses,
-                 live rAF playhead follows __activeTl),
+                 live rAF playhead follows __activeTl; T2: bars drag/stretch →
+                 patchTweenTiming rewrites the tween's duration literal / absolute
+                 position in the marked region — one undoable apply + auto-replay),
                  SidePanel (six tabs: Data / Control / Style / Motion / AI / Export),
                  SampleDataPanel (sample values + add-field), ControlPanel (operator view from
                  control/ engine; live-drives the preview via store.sendControl → simulator;
