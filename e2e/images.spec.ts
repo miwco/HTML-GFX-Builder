@@ -42,14 +42,15 @@ async function uploadImage(page: Page, fieldLabel: string, fileName: string) {
   await page.waitForTimeout(650);
 }
 
-test('wizard: the extra-field types are the broadcast set, and Image becomes a filelist field', async ({ page }) => {
+test('data panel: the add-field types are the broadcast set, and Image becomes a filelist field', async ({ page }) => {
   await createFrom(page, 'Lower thirds', 'Hairline');
-  await page.getByRole('button', { name: 'Next ›' }).click(); // Fields
-  await page.getByRole('button', { name: '+ Add an extra field' }).click();
-  const select = page.locator('.wz-step select').last();
+  await create(page);
+  await page.locator('.panel-tabs .tab', { hasText: 'Data' }).click();
+  const addSection = page.locator('.panel-section', { hasText: 'Add a field' });
+  const select = addSection.locator('select');
   await expect(select.locator('option')).toHaveText(['Text', 'Long text', 'Number', 'Image']);
   await select.selectOption('filelist');
-  await create(page);
+  await addSection.getByRole('button', { name: '+ Add' }).click();
   // The generated definition carries the SPX filelist contract.
   const html = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');

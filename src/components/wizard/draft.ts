@@ -32,6 +32,12 @@ export interface WizardDraft {
   resolutionLabel: string;
   fps: number;
   lines: LineSpec[];
+  /**
+   * Extra definition-only fields. The wizard UI no longer offers these (the generated
+   * design can't adapt to them yet — fields are added post-create via the Data tab + AI
+   * editing), but the data model stays so WizardOptions.extraFields and future custom
+   * fields keep working. Always [] from the wizard.
+   */
   extraFields: ExtraFieldSpec[];
   paletteId: string | null;
   /** User-defined colors (takes precedence over paletteId when set). */

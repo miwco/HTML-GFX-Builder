@@ -1,4 +1,4 @@
-import type { ExtraFieldSpec, TemplateVariant } from '../../../model/wizard';
+import type { TemplateVariant } from '../../../model/wizard';
 import type { DraftPatch, WizardDraft } from '../draft';
 
 interface Props {
@@ -7,26 +7,13 @@ interface Props {
   onDraft: (patch: DraftPatch) => void;
 }
 
-// The field types live broadcast graphics actually use (SPX ftype in parentheses).
-const EXTRA_FTYPES: { value: ExtraFieldSpec['ftype']; label: string }[] = [
-  { value: 'textfield', label: 'Text' },
-  { value: 'textarea', label: 'Long text' },
-  { value: 'number', label: 'Number' },
-  { value: 'filelist', label: 'Image' },
-];
-
-/** Step 3 — the data fields: 1–3 visible text lines (the design adapts) + optional extras. */
+/** Step 3 — the data fields: 1–3 visible text lines (the design adapts to these). */
 export default function FieldsStep({ variant, draft, onDraft }: Props) {
   const lines = draft.lines;
 
   const setLine = (i: number, key: 'title' | 'sample', value: string) => {
     const next = lines.map((l, k) => (k === i ? { ...l, [key]: value } : l));
     onDraft({ lines: next });
-  };
-
-  const setExtra = (i: number, patch: Partial<ExtraFieldSpec>) => {
-    const next = draft.extraFields.map((f, k) => (k === i ? { ...f, ...patch } : f));
-    onDraft({ extraFields: next });
   };
 
   return (
@@ -72,30 +59,11 @@ export default function FieldsStep({ variant, draft, onDraft }: Props) {
       </div>
 
       <div className="panel-section">
-        <h3>Extra fields <span className="muted">(added to the SPX form, not shown in the design)</span></h3>
-        {draft.extraFields.map((f, i) => (
-          <div className="wz-line-row" key={i}>
-            <span className="wz-fid">f{lines.length + i}</span>
-            <input placeholder="Label" value={f.title} onChange={(e) => setExtra(i, { title: e.target.value })} />
-            <select value={f.ftype} onChange={(e) => setExtra(i, { ftype: e.target.value as ExtraFieldSpec['ftype'] })}>
-              {EXTRA_FTYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-            <input
-              placeholder={f.ftype === 'filelist' ? 'images/logo.png (or empty)' : 'Default value'}
-              value={f.value}
-              onChange={(e) => setExtra(i, { value: e.target.value })}
-            />
-            <button title="Remove" onClick={() => onDraft({ extraFields: draft.extraFields.filter((_, k) => k !== i) })}>✕</button>
-          </div>
-        ))}
-        <button onClick={() => onDraft({ extraFields: [...draft.extraFields, { title: 'Extra', ftype: 'textfield', value: '' }] })}>
-          + Add an extra field
-        </button>
-        <p className="hint" style={{ marginTop: 8 }}>
-          Extras land in the template definition for you to wire up in code — a good first exercise.
-          You can add more later in the Data panel.
+        <h3>Need more fields? <span className="muted">(after creating)</span></h3>
+        <p className="hint">
+          The wizard keeps to the lines this design actually shows. Extra fields and custom
+          layouts are added after creating, where the design can adapt to them: the Data tab
+          adds a field, and AI editing or the canvas editor works it into the graphic.
         </p>
       </div>
     </div>
