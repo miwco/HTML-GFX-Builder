@@ -3,6 +3,7 @@ import { useTemplateStore } from '../store/templateStore';
 import CodeEditor from './CodeEditor';
 import PreviewFrame from './PreviewFrame';
 import PlayoutSimulator from './PlayoutSimulator';
+import TimelineView from './TimelineView';
 import SidePanel from './SidePanel';
 import PacketManager from './PacketManager';
 import CommunityGallery from './CommunityGallery';
@@ -146,11 +147,13 @@ export default function AppShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, [undo]);
 
-  // The preview + simulator block, shared across the mobile and both desktop arrangements (only one
+  // The preview block, shared across the mobile and both desktop arrangements (only one
   // renders at a time, so the shared iframeRef is always attached to a single instance).
+  // Order matters: stage → timeline strip → transport, like every animation tool.
   const preview = (
     <div className="preview-wrap">
       <PreviewFrame iframeRef={iframeRef} />
+      <TimelineView iframeRef={iframeRef} />
       <PlayoutSimulator iframeRef={iframeRef} />
     </div>
   );

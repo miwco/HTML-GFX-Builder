@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { composeDocument } from '../preview/composeDocument';
 import { useTemplateStore } from '../store/templateStore';
 import CanvasGuides from './CanvasGuides';
-import MoveOverlay from './MoveOverlay';
+import CanvasInteraction from './CanvasInteraction';
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement>;
@@ -25,8 +25,6 @@ export default function PreviewFrame({ iframeRef }: Props) {
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
-  // Era 6 · W1 — move mode: a pointer layer that turns drags into zone+nudge code patches.
-  const [moveMode, setMoveMode] = useState(false);
 
   const { width: stageW, height: stageH } = template.resolution;
 
@@ -87,7 +85,8 @@ export default function PreviewFrame({ iframeRef }: Props) {
         }}
       />
       <CanvasGuides width={stageW * scale} height={stageH * scale} />
-      {moveMode && <MoveOverlay iframeRef={iframeRef} width={stageW * scale} height={stageH * scale} />}
+      {/* Direct manipulation — always on: drag the graphic, double-click text to edit. */}
+      <CanvasInteraction iframeRef={iframeRef} width={stageW * scale} height={stageH * scale} />
 
       <div className="preview-toolbar">
         <div className="guide-switch">
@@ -104,14 +103,6 @@ export default function PreviewFrame({ iframeRef }: Props) {
             title="Toggle rule-of-thirds grid"
           >
             Grid
-          </button>
-          <button
-            className={moveMode ? 'active' : ''}
-            onClick={() => setMoveMode((m) => !m)}
-            title="Move mode: drag the graphic to reposition it — writes the same zone + nudge CSS the Style panel writes (undo with Ctrl+Z)"
-            data-testid="move-toggle"
-          >
-            Move
           </button>
         </div>
         <div className="bg-switch">

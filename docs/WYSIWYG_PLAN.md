@@ -19,24 +19,29 @@ scene model, no hidden transform layer, nothing the code editor can't show.
 
 ## Slices (each independently shippable)
 
-### W1 — Drag to position (the first slice to build)
-A "Move" toggle on the preview toolbar. When on: pointer-drag on the graphic's ROOT shows a
-ghost outline + the 9-zone grid (CanvasGuides already draws safe areas); on release, compute
-the nearest zone anchor and the pixel residual → emit the zone+nudge patch (identical to the
-Style panel's position control), highlighted + undoable like every panel apply. Multi-root
-designs don't exist (one root per template), so hit-testing is trivial.
-- Guardrails: zone snap ALWAYS (freeform absolute positions stay out — wrapped-text growth
-  and safe areas depend on anchoring); Escape cancels; the iframe stays pointer-transparent
-  when the toggle is off (playout preview unchanged).
+### W1 — Drag to position — ✅ SHIPPED, then REVISED (2026-07-08): no mode
+Shipped first as a "Move" toggle; user feedback immediately showed the mode was unnecessary
+(broadcast graphics take no pointer input, so nothing competes for the mouse). Now the
+`CanvasInteraction` layer is ALWAYS on: hand cursor over the graphic, drag starts only ON the
+root's rect and only past a 4px threshold (accidental-move protection replaces the mode), the
+9-zone grid + ghost appear during the drag only. Release emits the zone+nudge patch (identical
+to the Style panel's position control), highlighted + undoable; Esc cancels. Prerequisite that
+made it work: the **settled design view** — after every rebuild the preview shows the graphic
+settled (entrance jumped to its end with callbacks suppressed + a truth-restoring update(), so
+clocks/loops stay idle), never a blank canvas.
+- Guardrails unchanged: zone snap ALWAYS (freeform absolute positions stay out — wrapped-text
+  growth and safe areas depend on anchoring).
 
 ### W2 — Resize (scale) handle
 A corner handle on the selected root; drag = live `--scale` preview, release = one
 `patchCss` write of `--scale` (the Style panel's size control, continuous). Clamp 0.5–2.
 
-### W3 — Edit text in place
-Double-click a `#fN` element → an overlay input positioned over it; commit writes
-`setSampleValue(fN, value)` (live-drives the preview exactly like the Control tab). This is
-data, not code — the design never forks.
+### W3 — Edit text in place — ✅ SHIPPED (2026-07-08), stronger than planned
+Double-click a visible `#fN` element (text cursor on hover) → an overlay input over it.
+Commit writes BOTH the live sample value (like the Data panel) AND the field's default in the
+SPX definition + the static markup text (`setFieldDefault` in blocks/edit.ts) — one undoable
+template patch, so what you type is what every export ships. Hidden `#fN` source divs
+(credits/tickers/timers/quiz) are excluded — their visible rows aren't fields.
 
 ### W4 — Element nudges (later, carefully)
 Per-element offsets (e.g. move the accent bar) require a new, honest contract — e.g. emitted

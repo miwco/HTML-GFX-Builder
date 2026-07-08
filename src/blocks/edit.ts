@@ -39,6 +39,29 @@ export function addFieldToDefinition(template: SpxTemplate, field: SpxField): Sp
   return { ...template, html, fields };
 }
 
+/** Minimal HTML text escaping for content written into an element's body. */
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Set a field's DEFAULT value: updates the SPX definition's DataField `value` (what an SPX
+ * operator sees as the starting value) AND the element's static text in the markup, so the
+ * pre-play preview and the hidden-source categories (credits/tickers/timers) stay in sync.
+ * Used by the canvas inline text editor — one deterministic, undoable template patch.
+ */
+export function setFieldDefault(template: SpxTemplate, fieldId: string, value: string): SpxTemplate {
+  const fields = template.fields.map((f) => (f.field === fieldId ? { ...f, value } : f));
+  let html = replaceDefinitionInHtml(template.html, template.settings, fields);
+  // The static text inside the element with this id (a visible <span> or a hidden source
+  // <div>). [^<]* also matches newlines, so multi-line textarea sources are covered.
+  html = html.replace(
+    new RegExp(`(<(?:span|div)\\b[^>]*\\bid="${fieldId}"[^>]*>)[^<]*`),
+    (_m, open: string) => `${open}${escapeHtml(value)}`,
+  );
+  return { ...template, html, fields };
+}
+
 /**
  * Append a structured layer entry to the template's model. Layers are best-effort
  * metadata describing the visual elements — authoritative when produced by templates,

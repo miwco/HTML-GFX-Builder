@@ -355,6 +355,18 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       tabs with real durations (∞ badge for loops), one row per tween, and a scrubber that
       PAUSES the live preview at any moment (store `sendScrub` → simulator builds + pauses the
       phase timeline; OUT scrubs start from the settled on-air state). Timing knobs = T2.
+- [x] **The direct-manipulation rework (2026-07-08, same-day user feedback on the build):**
+      1) **Settled design view** — after every rebuild the preview shows the graphic SETTLED
+      (simulator: `buildInTimeline().progress(1, true)` + a truth-restoring second `update()`;
+      clocks/loops stay idle; blank/imported templates unaffected). The canvas is never dead.
+      2) **No move mode** — `CanvasInteraction` replaces the W1 toggle: hand/text hover cursors,
+      drag starts on the graphic with a 4px threshold, same zone+nudge patch; grid only during
+      drag. 3) **W3 inline text editing shipped** — dblclick a visible `#fN` → overlay input →
+      live sample value + SPX-definition default + static text in ONE undoable patch
+      (`setFieldDefault`). 4) **T1.5** — the timeline is a collapsible strip UNDER the preview
+      (above the transport), with a LIVE playhead following the simulator-owned `__activeTl`
+      (Play sweeps In; Stop auto-switches to Out; scrub reclaims; end-snap fix so keyboard
+      scrubs reach final set() calls). E2E: wysiwyg (3), timeline (5), inline-edit (2).
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

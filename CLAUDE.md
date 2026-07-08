@@ -186,17 +186,21 @@ src/
   components/    AppShell (two-pane layout: code left; preview stacked over the tool tabs
                  right — the stage's aspect-ratio comes from the template resolution),
                  CodeEditor (Monaco + change-highlight decorations + hover explanations),
-                 PreviewFrame (+ Move toggle), MoveOverlay (Era 6 W1: drag → nearest zone +
-                 residual nudge → the SAME zoneDecls patch the Style panel writes; root
-                 detected via class="(\w+)-box"), CanvasGuides, PlayoutSimulator
-                 (auto-replays on replayNonce),
+                 PreviewFrame, CanvasInteraction (Era 6 — always-on direct manipulation:
+                 hover cursors, drag the root → nearest zone + residual nudge → the SAME
+                 zoneDecls patch the Style panel writes; dblclick a visible #fN → inline
+                 edit → sample value + definition default via blocks/edit.ts
+                 setFieldDefault; root detected via class="(\w+)-box"), CanvasGuides,
+                 PlayoutSimulator (owns the running preview timeline __activeTl; settles
+                 the design view after every rebuild — progress(1, true) + a second
+                 update(); auto-replays on replayNonce), TimelineView (collapsible strip
+                 under the preview: tracks from blocks/timelineModel.ts, scrub pauses,
+                 live rAF playhead follows __activeTl),
                  SidePanel (six tabs: Data / Control / Style / Motion / AI / Export),
                  SampleDataPanel (sample values + add-field), ControlPanel (operator view from
                  control/ engine; live-drives the preview via store.sendControl → simulator;
                  downloads controlpanel.html; adds the Google-Sheets live-data block),
-                 StylePanel, AnimationPanel (In/Out/Both phase control + TimelineView —
-                 Era 6 T1: blocks/timelineModel.ts parses the emitted ANIMATION region
-                 into tracks; scrub pauses the preview), AIPromptPanel,
+                 StylePanel, AnimationPanel (In/Out/Both phase control), AIPromptPanel,
                  ExportPanel (validation inline), PacketManager (📦 topbar modal),
                  CommunityGallery (🌐), ModerationQueue (🛡), SyncStatus,
                  Homebase (signed-in dashboard: all saved graphics across packets, one

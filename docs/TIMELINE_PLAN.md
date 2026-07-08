@@ -17,11 +17,15 @@ readably, the timeline doesn't offer it.
 
 ## Phases
 
-### T1 — Read-only timeline view (see the choreography)
+### T1 — Read-only timeline view (see the choreography) — ✅ SHIPPED + T1.5 (2026-07-08)
 Parse the emitted region (we wrote it, so parsing is by construction, not heuristics) into
 tracks: one row per animated element (accent, box, each line mask), bars for start/duration,
-ease labels, phase markers (IN · steps · OUT). Scrub = `timeline.seek()` on the live preview
-via the simulator. Value: the Motion panel's presets stop being black boxes.
+ease labels, phase markers (IN · OUT). Scrub pauses the live preview via the simulator.
+**T1.5 (user feedback):** the timeline moved OUT of the Motion tab to where animation tools
+put it — a collapsible strip directly under the preview, above the transport buttons — with a
+**live playhead**: the simulator owns the running timeline (`window.__activeTl`), a rAF loop
+follows it, ▶ Play sweeps the In phase, ■ Stop auto-switches to Out and sweeps it, loops wrap.
+Idle parks at the end of In (the settled design-view state).
 
 ### T2 — Timing knobs on the tracks
 Drag a bar's start/length → re-emit the region with per-element knob variables (e.g.

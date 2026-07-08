@@ -1068,17 +1068,32 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 /* The inline gate a signed-out visitor sees where an account feature would render. */
 .signin-prompt .primary { margin-top: 4px; }
 
-/* ---------- Move mode (Era 6 · W1 — drag-to-position) ---------- */
-.move-overlay {
+/* ---------- Canvas direct manipulation (Era 6 — drag, hover affordances, inline edit) ---------- */
+.canvas-layer {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 5;                 /* above the guides, below the toolbar */
-  cursor: grab;
   touch-action: none;         /* pointer events own the gesture */
 }
-.move-overlay.dragging { cursor: grabbing; }
+.canvas-layer.cursor-grab { cursor: grab; }
+.canvas-layer.cursor-text { cursor: text; }
+.canvas-layer.dragging { cursor: grabbing; }
+
+/* The inline text editor floated over the text element it edits. */
+.inline-edit { position: absolute; z-index: 6; }
+.inline-edit input,
+.inline-edit textarea {
+  width: 100%;
+  background: rgba(10, 12, 16, 0.95);
+  border: 1.5px solid var(--amber);
+  border-radius: 6px;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6), 0 0 18px rgba(246, 166, 35, 0.25);
+  color: var(--paper);
+  font-size: 14px;
+  padding: 6px 10px;
+}
 .move-grid {
   position: absolute;
   inset: 0;
@@ -1114,14 +1129,33 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   white-space: nowrap;
 }
 
-/* ---------- Timeline view (Era 6 · T1 — read-only tracks over the ANIMATION region) ---------- */
-.timeline-tracks {
-  position: relative;
-  margin-top: 10px;
+/* ---------- Timeline strip (Era 6 — under the preview, above the transport) ---------- */
+.timeline-strip {
+  flex: 0 0 auto;              /* never steals stage height by growing */
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px 10px;
-  background: rgba(10, 12, 16, 0.35);
+  background: rgba(10, 12, 16, 0.5);
+  margin: 6px 8px 0;
+  padding: 4px 8px 6px;
+}
+.timeline-strip.collapsed { padding-bottom: 4px; }
+.timeline-head { display: flex; align-items: center; gap: 8px; }
+.timeline-head .tab { font-size: 11px; padding: 2px 8px; }
+.timeline-collapse {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.timeline-collapse:hover { color: var(--text); background: transparent; border-color: transparent; }
+.timeline-time { font-size: 11px; min-width: 44px; text-align: right; }
+.timeline-knobs { white-space: nowrap; }
+
+.timeline-tracks {
+  position: relative;
+  margin-top: 6px;
+  padding: 4px 2px 2px;
 }
 .timeline-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
 .timeline-label {

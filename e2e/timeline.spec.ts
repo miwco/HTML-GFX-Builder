@@ -1,9 +1,9 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type FrameLocator } from '@playwright/test';
 
-// Era 6 · T1 — the read-only timeline view (docs/TIMELINE_PLAN.md): the Motion tab renders
-// the marked ANIMATION region as tracks, and the scrubber pauses the live preview at a
-// chosen moment. Parsing is by construction (we emitted the region), so the tracks must
-// match the preset's known structure.
+// Era 6 — the timeline strip under the preview (docs/TIMELINE_PLAN.md): tracks parsed from
+// the marked ANIMATION region, a live playhead that follows ▶ Play / ■ Stop, and a scrubber
+// that pauses the preview. Also pins the "design view": after every rebuild the canvas shows
+// the graphic SETTLED (never blank), with clocks/loops idle until a real Play.
 
 async function createHairline(page: Page) {
   await page.goto('/app');
@@ -16,44 +16,86 @@ async function createHairline(page: Page) {
   await page.waitForTimeout(650);
 }
 
-test('timeline: tracks render for the generated preset with correct structure', async ({ page }) => {
-  await createHairline(page); // lt01 default preset: line-reveal (set + accent + lines)
-  await page.locator('.panel-tabs .tab', { hasText: 'Motion' }).click();
+function frame(page: Page): FrameLocator {
+  return page.frameLocator('iframe.preview-frame');
+}
 
-  const timeline = page.getByTestId('timeline');
+test('design view: the canvas shows the settled graphic without pressing Play', async ({ page }) => {
+  await createHairline(page);
+  // No Play pressed — the settle-on-rebuild jump makes the graphic visible at rest.
+  await expect
+    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+  await expect(frame(page).locator('#f0')).toHaveText('Alexandra Riva');
+});
+
+test('timeline strip lives under the preview and renders the preset structure', async ({ page }) => {
+  await createHairline(page); // lt01 default preset: line-reveal (set + accent + lines)
+  // Under the preview (inside .preview-wrap), NOT in the Motion tab.
+  const timeline = page.locator('.preview-wrap [data-testid="timeline"]');
   await expect(timeline).toBeVisible();
-  // Knobs read back from the region.
-  await expect(timeline).toContainText('speed ×1');
   await expect(timeline).toContainText('expo.out'); // line-reveal's auto ease pair
-  // In phase: the reveal set(), the accent draw, and the staggered lines — three rows.
   const rows = timeline.locator('.timeline-row');
   await expect(rows).toHaveCount(3);
   await expect(rows.nth(0)).toContainText('.l3');
   await expect(rows.nth(1)).toContainText('.l3-accent');
   await expect(rows.nth(2)).toContainText('#f0, #f1');
-  // Both phases offered, with real durations.
+  // Both phases offered, with real durations; idle playhead parks at the END of In.
   await expect(timeline.locator('button.tab', { hasText: /^In/ })).toContainText('s');
   await expect(timeline.locator('button.tab', { hasText: /^Out/ })).toContainText('s');
+  const inLabel = (await timeline.locator('button.tab', { hasText: /^In/ }).textContent())!;
+  const inDuration = inLabel.match(/([\d.]+)s/)![1];
+  await expect(page.getByTestId('timeline-time')).toHaveText(`${inDuration}s`);
 });
 
-test('timeline: scrubbing pauses the live preview mid-animation', async ({ page }) => {
+test('the playhead follows Play and the phase follows Stop', async ({ page }) => {
   await createHairline(page);
-  await page.locator('.panel-tabs .tab', { hasText: 'Motion' }).click();
+  const time = page.getByTestId('timeline-time');
+  const parked = (await time.textContent())!;
 
-  const frame = page.frameLocator('iframe.preview-frame');
-  // Before any scrub the graphic is CSS-hidden.
+  // Play restarts the entrance from 0 — the readout leaves its parked end-of-In value.
+  await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
-    .toBe('0');
+    .poll(async () => (await time.textContent()) !== parked, { timeout: 2000, intervals: [25, 50, 100] })
+    .toBe(true);
+  // …and settles back at the end when the entrance finishes.
+  await expect(time).toHaveText(parked, { timeout: 5000 });
 
-  // Scrub to the middle of the entrance: the reveal set() has run (root visible) and the
-  // timeline is PAUSED there (it stays visible, no exit runs).
+  // Stop switches the strip to the Out phase automatically (the playhead follows the run).
+  await page.getByRole('button', { name: '■ Stop' }).click();
+  await expect(page.locator('[data-testid="timeline"] button.tab.active')).toContainText('Out');
+  await expect
+    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('0');
+});
+
+test('scrubbing pauses the preview mid-animation', async ({ page }) => {
+  await createHairline(page);
+  // Scrub the OUT phase to its end: the graphic leaves and HOLDS there (paused).
+  await page.locator('[data-testid="timeline"] button.tab', { hasText: /^Out/ }).click();
   const scrub = page.getByTestId('timeline-scrub');
   await scrub.focus();
-  for (let i = 0; i < 25; i++) await page.keyboard.press('ArrowRight'); // 25 × 0.01s steps
+  for (let i = 0; i < 80; i++) await page.keyboard.press('ArrowRight'); // well past the 0.60s out
   await expect
-    .poll(async () => frame.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('0');
+  await page.waitForTimeout(400); // paused means paused
+  await expect(frame(page).locator('.l3').first()).toHaveCSS('opacity', '0');
+  // Play reclaims the playhead and brings the graphic back.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect
+    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
-  await page.waitForTimeout(400); // paused means paused — still visible after a beat
-  await expect(frame.locator('.l3').first()).toHaveCSS('opacity', '1');
+});
+
+test('timeline strip collapses to a slim bar and remembers it', async ({ page }) => {
+  await createHairline(page);
+  const timeline = page.getByTestId('timeline');
+  await expect(timeline.locator('.timeline-tracks')).toBeVisible();
+  await timeline.locator('.timeline-collapse').click();
+  await expect(timeline.locator('.timeline-tracks')).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('timeline').locator('.timeline-tracks')).toHaveCount(0);
 });

@@ -1,8 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Era 6 · W1 — drag-to-position (docs/WYSIWYG_PLAN.md). A drag on the Move overlay must end
-// as a deterministic zone+nudge patch on the root rule — the SAME declarations the Style
-// panel writes — visible in the live preview's stylesheet after the debounced rebuild.
+// Era 6 — direct manipulation (docs/WYSIWYG_PLAN.md, revised: NO move mode). The canvas
+// layer is always on: a drag that STARTS on the graphic re-anchors it via the same
+// zone+nudge patch the Style panel writes; drags on empty canvas do nothing; Esc cancels.
+// The preview shows the settled graphic at rest, so there is always something to grab.
 
 async function createHairline(page: Page) {
   await page.goto('/app');
@@ -31,16 +32,22 @@ async function rootAnchor(page: Page): Promise<{ top: string; right: string; bot
   });
 }
 
-test('move mode: dragging the graphic re-anchors it via a zone+nudge code patch', async ({ page }) => {
+/** Wait until the preview shows the settled graphic (the design view after every rebuild). */
+async function waitSettled(page: Page) {
+  await expect
+    .poll(async () =>
+      page.frameLocator('iframe.preview-frame').locator('.l3').evaluate((el) => getComputedStyle(el).opacity),
+    )
+    .toBe('1');
+}
+
+test('dragging the graphic re-anchors it via a zone+nudge code patch (no mode)', async ({ page }) => {
   await createHairline(page); // default zone: bottom-left
   expect((await rootAnchor(page)).bottom).not.toBe('auto');
-
-  await page.getByTestId('move-toggle').click();
-  const overlay = page.getByTestId('move-overlay');
-  await expect(overlay).toBeVisible();
+  await waitSettled(page); // the canvas layer is always on; the graphic is visible at rest
 
   // Drag from the graphic's home (bottom-left) up to the top-right third.
-  const box = (await overlay.boundingBox())!;
+  const box = (await page.getByTestId('canvas-layer').boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.15, box.y + box.height * 0.82);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.85, box.y + box.height * 0.15, { steps: 8 });
@@ -55,19 +62,33 @@ test('move mode: dragging the graphic re-anchors it via a zone+nudge code patch'
   expect(anchor.bottom).toBe('auto');
 
   // Undo restores the previous anchoring (the patch went through the normal history).
-  await page.getByTestId('move-toggle').click(); // leave move mode so Ctrl+Z hits the app
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(650);
   expect((await rootAnchor(page)).bottom).not.toBe('auto');
 });
 
-test('move mode: Escape cancels a drag without touching the code', async ({ page }) => {
+test('a drag starting on empty canvas does nothing', async ({ page }) => {
   await createHairline(page);
+  await waitSettled(page);
   const before = await rootAnchor(page);
 
-  await page.getByTestId('move-toggle').click();
-  const overlay = page.getByTestId('move-overlay');
-  const box = (await overlay.boundingBox())!;
+  // Start in the top-middle — far from the bottom-left graphic.
+  const box = (await page.getByTestId('canvas-layer').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.55, box.y + box.height * 0.2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.6, { steps: 4 });
+  await page.mouse.up();
+
+  await page.waitForTimeout(650);
+  expect(await rootAnchor(page)).toEqual(before);
+});
+
+test('Escape cancels a drag without touching the code', async ({ page }) => {
+  await createHairline(page);
+  await waitSettled(page);
+  const before = await rootAnchor(page);
+
+  const box = (await page.getByTestId('canvas-layer').boundingBox())!;
   await page.mouse.move(box.x + box.width * 0.15, box.y + box.height * 0.82);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.4, { steps: 4 });

@@ -1,0 +1,88 @@
+import { test, expect, type Page } from '@playwright/test';
+
+// Era 6 — inline text editing (docs/WYSIWYG_PLAN.md W3): double-click a text line in the
+// preview, type, Enter. The edit updates the LIVE value (preview + Data panel) AND the
+// field's default in the SPX definition — one undoable template patch. Undo reverts the
+// CODE (definition + static text); the live sample value is operator state and stays.
+
+async function createHairline(page: Page) {
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await page.waitForTimeout(650);
+}
+
+/** Screen position of the center of a preview element, mapped through the canvas scale. */
+async function screenPointOf(page: Page, selector: string): Promise<{ x: number; y: number }> {
+  const rect = await page
+    .frameLocator('iframe.preview-frame')
+    .locator(selector)
+    .evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; // canvas px (iframe space)
+    });
+  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
+  const scale = layer.width / 1920; // the canvas renders at the template's native width
+  return { x: layer.x + rect.x * scale, y: layer.y + rect.y * scale };
+}
+
+/** The field's DEFAULT in the SPX definition, read from the live preview document. */
+async function definitionDefault(page: Page, field: string): Promise<string> {
+  return page.frameLocator('iframe.preview-frame').locator('body').evaluate((_el, f) => {
+    const def = (window as unknown as { SPXGCTemplateDefinition?: { DataFields: { field: string; value?: string }[] } })
+      .SPXGCTemplateDefinition;
+    return def?.DataFields.find((d) => d.field === f)?.value ?? '';
+  }, field);
+}
+
+test('double-click edits text in place: live value + definition default, undoable', async ({ page }) => {
+  await createHairline(page);
+  // The settled design view makes the name visible and double-clickable.
+  await expect
+    .poll(async () => page.frameLocator('iframe.preview-frame').locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+
+  const p = await screenPointOf(page, '#f0');
+  await page.mouse.dblclick(p.x, p.y);
+  const editor = page.getByTestId('inline-editor');
+  await expect(editor).toBeVisible();
+  await expect(editor).toHaveValue('Alexandra Riva');
+
+  await editor.fill('Inline Name');
+  await editor.press('Enter');
+
+  // Live everywhere: the preview text, the Data panel value, and the definition default.
+  await page.waitForTimeout(650); // the template patch rebuilds the preview
+  await expect(page.frameLocator('iframe.preview-frame').locator('#f0')).toHaveText('Inline Name');
+  await page.locator('.panel-tabs .tab', { hasText: 'Data' }).click();
+  await expect(page.locator('.panel-body input').first()).toHaveValue('Inline Name');
+  expect(await definitionDefault(page, 'f0')).toBe('Inline Name');
+
+  // Undo reverts the template patch (the definition default returns to the wizard text).
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(650);
+  expect(await definitionDefault(page, 'f0')).toBe('Alexandra Riva');
+});
+
+test('Escape cancels an inline edit without changes', async ({ page }) => {
+  await createHairline(page);
+  await expect
+    .poll(async () => page.frameLocator('iframe.preview-frame').locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+
+  const p = await screenPointOf(page, '#f0');
+  await page.mouse.dblclick(p.x, p.y);
+  const editor = page.getByTestId('inline-editor');
+  await expect(editor).toBeVisible();
+  await editor.fill('Discarded');
+  await editor.press('Escape');
+  await expect(editor).toHaveCount(0);
+
+  await page.waitForTimeout(650);
+  expect(await definitionDefault(page, 'f0')).toBe('Alexandra Riva');
+  await expect(page.frameLocator('iframe.preview-frame').locator('#f0')).toHaveText('Alexandra Riva');
+});

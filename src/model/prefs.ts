@@ -7,10 +7,13 @@ const PREFS_KEY = 'spx-gfx-prefs';
 export interface UserPrefs {
   /** The export target preselected in the Export tab (also updated on every manual pick). */
   defaultExportTarget: string;
+  /** The preview timeline strip's collapsed state. null = auto (expanded desktop, collapsed mobile). */
+  timelineCollapsed: boolean | null;
 }
 
 const DEFAULTS: UserPrefs = {
   defaultExportTarget: '', // empty = the registry's first target
+  timelineCollapsed: null,
 };
 
 export function loadPrefs(): UserPrefs {

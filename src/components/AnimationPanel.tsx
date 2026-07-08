@@ -11,7 +11,6 @@ import {
 import { EASINGS, resolveEasing, type EasingId } from '../model/easings';
 import type { AnimPresetId } from '../model/wizard';
 import { replaceDefinitionInHtml } from '../model/spxDefinition';
-import TimelineView from './TimelineView';
 
 const SPEEDS = [
   { label: 'Slower', value: 0.75 },
@@ -217,8 +216,9 @@ export default function AnimationPanel() {
       </div>
       )}
 
-      {/* Era 6 · T1 — the read-only timeline view of the marked ANIMATION region. */}
-      <TimelineView />
+      <p className="hint" style={{ marginTop: 10 }}>
+        The animation timeline (tracks, scrubbing, live playhead) lives under the preview.
+      </p>
     </div>
   );
 }
