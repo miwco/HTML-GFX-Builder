@@ -109,6 +109,7 @@ export default function SampleDataPanel() {
   const template = useTemplateStore((s) => s.template);
   const fields = useTemplateStore((s) => s.template.fields);
   const resetSampleData = useTemplateStore((s) => s.resetSampleData);
+  const sendControl = useTemplateStore((s) => s.sendControl);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
 
@@ -138,8 +139,9 @@ export default function SampleDataPanel() {
       <div className="panel-section">
         <h3>Sample data</h3>
         <p className="hint">
-          These values are sent to <code className="inline">update(data)</code> as JSON when you press
-          Play or Update. They come from the template's field definitions.
+          These values come from the template's field definitions. After editing them, press
+          <strong> Update</strong> below to send them to <code className="inline">update(data)</code> as
+          JSON and refresh the preview (Play does this too).
         </p>
       </div>
 
@@ -170,7 +172,16 @@ export default function SampleDataPanel() {
       {dataFields.length > 0 && (
         <>
           <div className="divider" />
-          <button onClick={resetSampleData}>Reset to defaults</button>
+          <div className="row">
+            <button
+              className="primary"
+              onClick={() => sendControl('update')}
+              title="Send the current values to update() and refresh the preview"
+            >
+              ⟳ Update
+            </button>
+            <button onClick={resetSampleData}>Reset to defaults</button>
+          </div>
         </>
       )}
 
