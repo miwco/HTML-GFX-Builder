@@ -359,6 +359,12 @@ Always `npm run build` (typecheck + build) after changes.
   asks.
 - The working rhythm in this repo: **commit each completed, verified phase/step** with a descriptive
   message. **Never add a `Co-Authored-By` trailer or any agent co-author** (the user's global rule).
-  The user likes GitHub kept up to date, but ask before pushing unless they've already asked in the
-  current effort.
+  The user likes GitHub kept up to date: push completed, verified work to `main` without asking
+  (standing permission, 2026-07-08).
+- **Commit messages:** write clear, human-readable messages that explain the actual change — they
+  must be understandable to any outside developer reading the history cold. No chat/session
+  language, internal planning names, or AI-sounding phrases ("as requested", "starting era 5",
+  "continued work", "made changes", "AI update", "per your instructions"). Never mention Claude,
+  Codex, ChatGPT, agents, prompts, or the conversation unless the commit is specifically about AI
+  tooling.
 - Don't commit `dist/` changes as part of feature work.
