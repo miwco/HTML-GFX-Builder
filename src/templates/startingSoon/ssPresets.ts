@@ -4,8 +4,8 @@
 // region (templates/shared/clock.ts); the preset only calls startClock() / stopClock().
 //
 // The starting-soon structure contract (see shared.ts):
-//   .ss (root, opacity:0) → .ss-box (the panel) → .ss-mask #f0/#f1 lines, .ss-clock,
-//     and exactly one element with class "ss-pulse" — the breath target.
+//   .starting-soon (root, opacity:0) → .starting-soon-box (the panel) → .starting-soon-mask #f0/#f1 lines, .starting-soon-clock,
+//     and exactly one element with class "starting-soon-pulse" — the breath target.
 
 import type { AnimPresetId } from '../../model/wizard';
 import type { AnimPreset, PresetConfig } from '../lowerThirds/animPresets';
@@ -39,14 +39,14 @@ function buildInTimeline() {
   if (activeTl) activeTl.kill();               // cancel the previous in/out completely
   var tl = gsap.timeline();
   activeTl = tl;
-  tl.set('.ss', { opacity: 1 });               // reveal the (CSS-hidden) graphic
-  tl.fromTo('.ss-box',
+  tl.set('.starting-soon', { opacity: 1 });               // reveal the (CSS-hidden) graphic
+  tl.fromTo('.starting-soon-box',
     { opacity: 0, y: 24 },                     // start slightly low and invisible
     { opacity: 1, y: 0, duration: 0.7 / animSpeed, ease: easeIn }
   );
   tl.call(startClock);                         // the countdown begins as the panel settles
   // The ambient hold: a subtle breath on the pulse element, looping until stop().
-  tl.fromTo('.ss-pulse',
+  tl.fromTo('.starting-soon-pulse',
     { scale: 1 },
     {
       scale: 1.04,                             // barely there — a breath, not a bounce
@@ -65,8 +65,8 @@ function buildOutTimeline() {
   var tl = gsap.timeline();
   activeTl = tl;
   tl.call(stopClock);                          // freeze the clock before it fades
-  tl.to('.ss-box', { opacity: 0, duration: 0.5 / animSpeed, ease: easeOut });
-  tl.set('.ss', { opacity: 0 });               // fully hidden; ready to play again
+  tl.to('.starting-soon-box', { opacity: 0, duration: 0.5 / animSpeed, ease: easeOut });
+  tl.set('.starting-soon', { opacity: 0 });               // fully hidden; ready to play again
   return tl;
 }
 ${MARK_CLOSE}`,

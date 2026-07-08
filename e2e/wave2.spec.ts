@@ -21,7 +21,7 @@ function frame(page: Page): FrameLocator {
 
 test('starting soon: holds on screen and the countdown ticks', async ({ page }) => {
   await createFrom(page, 'Starting soon', 'Quiet Hold');
-  const clock = frame(page).locator('.ss-clock');
+  const clock = frame(page).locator('.starting-soon-clock');
   await expect(clock).toHaveText('5:00'); // idle paint shows the full duration
   await page.getByRole('button', { name: '▶ Play' }).click();
   // startClock() fires after the entrance, so give the first tick a wide window.
@@ -33,7 +33,7 @@ test('game timer: label binds and the clock runs', async ({ page }) => {
   await createFrom(page, 'Game show timer', 'Clean Clock');
   await expect(frame(page).locator('#f0')).toHaveText('ROUND 1');
   await page.getByRole('button', { name: '▶ Play' }).click();
-  await expect(frame(page).locator('.gt-clock')).not.toHaveText('3:00', { timeout: 6000 });
+  await expect(frame(page).locator('.game-timer-clock')).not.toHaveText('3:00', { timeout: 6000 });
 });
 
 test('scoreboard: all four fields bind and a score change lands', async ({ page }) => {

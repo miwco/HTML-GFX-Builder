@@ -4,15 +4,15 @@
 // clock element. The animation preset only calls startClock() / stopClock().
 //
 // Structure contract:
-//   <div class="gt">                    root — positioned by zone; opacity:0 until play()
-//     <div class="gt-box">              the panel; presets pop or reveal this
-//       <div class="gt-accent">?        optional accent line — line-reveal draws it first
-//       <div class="gt-mask"><span id="f0">…</span></div>   the label line
-//       <div class="gt-clock">…</div>   JS paints the remaining time as M:SS
+//   <div class="game-timer">                    root — positioned by zone; opacity:0 until play()
+//     <div class="game-timer-box">              the panel; presets pop or reveal this
+//       <div class="game-timer-accent">?        optional accent line — line-reveal draws it first
+//       <div class="game-timer-mask"><span id="f0">…</span></div>   the label line
+//       <div class="game-timer-clock">…</div>   JS paints the remaining time as M:SS
 //     </div>
 //     hidden #f1 source SPX writes the minutes into
 //   </div>
-// When the clock hits zero the root gets .gt-done — the design's CSS MUST style that
+// When the clock hits zero the root gets .game-timer-done — the design's CSS MUST style that
 // state (e.g. flip the clock to var(--accent) with a brief flash keyframe).
 
 import type { SpxField, SpxTemplate } from '../../model/types';
@@ -39,11 +39,11 @@ import type { PresetConfig } from '../lowerThirds/animPresets';
 import { gameTimerPresetById } from './gtPresets';
 
 export interface GameTimerDesign {
-  /** Inner HTML of .gt — must contain .gt-box > .gt-mask > #f0 and a .gt-clock element. */
+  /** Inner HTML of .game-timer — must contain .game-timer-box > .game-timer-mask > #f0 and a .game-timer-clock element. */
   html: string;
-  /** Variant CSS (panel, label, clock — and the .gt-done "time's up" state). */
+  /** Variant CSS (panel, label, clock — and the .game-timer-done "time's up" state). */
   css: string;
-  /** Whether the design has a .gt-accent element (line-reveal presets draw it first). */
+  /** Whether the design has a .game-timer-accent element (line-reveal presets draw it first). */
   hasAccent?: boolean;
 }
 
@@ -114,7 +114,7 @@ export function assembleGameTimer(meta: GameTimerMeta, design: GameTimerDesign, 
     title: meta.name,
     definitionBlock: definitionScriptBlock(settings, fields),
     body: `  <!-- ${meta.name}. The clock text is painted by the countdown runtime (M:SS). -->
-  <div class="gt">
+  <div class="game-timer">
 ${design.html}
     <!-- Hidden duration source — SPX writes field f1 (minutes) here; JS reads it. -->
     <div id="f1" style="display: none">${MINUTES_SAMPLE}</div>
@@ -130,22 +130,22 @@ ${font.face}
 ${resetCanvasCss(o.resolution)}
 
 /* ── Root position (anchor zone) ── */
-.gt {
+.game-timer {
   position: absolute;
 ${zoneCssText(o.zone, o.nudge, o.resolution)}
   opacity: 0;                      /* hidden until play() runs the entrance */
 }
 
 /* ── Auto-fit: the panel hugs its text and wraps instead of overflowing. ── */
-.gt-box {
+.game-timer-box {
   width: fit-content;              /* the panel hugs the text */
   max-width: ${maxTextWidth}px;             /* never wider than this — text wraps instead */
   will-change: transform, opacity; /* hint the browser: this element animates */
 }
-.gt-mask {
+.game-timer-mask {
   overflow: hidden;                /* lines animate in from behind this mask */
 }
-.gt-mask > span {
+.game-timer-mask > span {
   display: inline-block;           /* so the line can move inside its mask */
   overflow-wrap: break-word;       /* break very long unbroken words */
   text-wrap: balance;              /* wrapped rows get even lengths */
@@ -158,7 +158,7 @@ ${design.css}
   const preset = gameTimerPresetById(o.animation.presetId);
   const ease = resolveEasing(o.animation.easing, preset.autoEase);
   const cfg: PresetConfig = {
-    prefix: 'gt',
+    prefix: 'game-timer',
     lineCount: 1,
     hasAccent: design.hasAccent === true,
     steps: false,
@@ -169,7 +169,7 @@ ${design.css}
 
   const js = gameTimerRuntimeJs(
     meta.name,
-    `${clockRuntimeJs('gt', 'f1')}
+    `${clockRuntimeJs('game-timer', 'f1')}
 
 ${preset.emit(cfg)}`,
   );

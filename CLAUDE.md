@@ -117,10 +117,10 @@ src/
                                 ticker-flip); data-driven: #f0 lines → #ticker-track items;
                                 marquee = items rendered twice, slide one set width, linear
                                 repeat:-1 (seamless loop)
-                  startingSoon/ ss01…ss03 (prefix 'ss', hold-loop preset: entrance + calm
-                                .ss-pulse breathing + clock via shared/clock.ts, minutes in f2)
-                  gameTimers/   gt01…gt02 (prefix 'gt', type 'countdown'; timer-run pop +
-                                timer-line-reveal; minutes in f1; .gt-done styles time-up)
+                  startingSoon/ ss01…ss03 (prefix 'starting-soon', hold-loop preset: entrance + calm
+                                .starting-soon-pulse breathing + clock via shared/clock.ts, minutes in f2)
+                  gameTimers/   gt01…gt02 (prefix 'game-timer', type 'countdown'; timer-run pop +
+                                timer-line-reveal; minutes in f1; .game-timer-done styles time-up)
                   scoreboards/  sb01…sb02 (prefix 'sb'; fixed 4-field contract f0-f3 as
                                 sb-masks so the standard presets drive them; update() pops a
                                 score's mask when it changes on air)

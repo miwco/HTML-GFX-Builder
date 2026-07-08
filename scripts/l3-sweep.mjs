@@ -49,7 +49,7 @@ const results = await page.evaluate(async (CATEGORY) => {
     const isCredits = CATEGORY === 'end-credits';
     const isTicker = CATEGORY === 'ticker';
     // Clock categories share the countdown engine; their prefix differs.
-    const clockPrefix = { 'starting-soon': 'ss', 'game-timer': 'gt' }[CATEGORY] || null;
+    const clockPrefix = { 'starting-soon': 'starting-soon', 'game-timer': 'game-timer' }[CATEGORY] || null;
     const isScoreboard = CATEGORY === 'scoreboard';
     const isInfographic = CATEGORY === 'infographic';
     const isQuiz = CATEGORY === 'quiz';
