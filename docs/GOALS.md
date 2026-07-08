@@ -456,7 +456,8 @@ read-only scheduled cloud agent. Not yet built — see the plan doc for the veri
       — without it H2R silently shows no editable fields (found by the user importing into a
       real H2R install; verified against H2R's own Loopic-exported sample). Also dropped the
       unrecognized `file-path` gddType (filelist → plain single-line path input). E2E now pins
-      the `name` attribute.
+      the `name` attribute. **Live-confirmed in the real H2R app (2026-07-08): fields render
+      and text edits work.**
 - [ ] Data-driven/live content architecture (ticker/scoreboard controlled from a backend) — later
 
 ### Quality bar (always-on)
