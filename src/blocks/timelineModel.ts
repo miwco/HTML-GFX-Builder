@@ -42,11 +42,23 @@ export interface TimelinePhase {
   infinite: boolean;
 }
 
+/** T3 — one Continue press: which line reveals, how long, with which ease. */
+export interface TimelineStep {
+  target: string;
+  /** Seconds, with the animSpeed knob applied. */
+  duration: number;
+  /** The step's own ease literal, or null when it inherits the easeIn knob. */
+  ease: string | null;
+}
+
 export interface TimelineModel {
   animSpeed: number;
   easeIn: string;
   easeOut: string;
   phases: TimelinePhase[];
+  /** T3 — the Continue chain between In and Out (empty when the template has no steps,
+   *  or when its steps block predates the per-step knob arrays). */
+  steps: TimelineStep[];
 }
 
 const BOOKKEEPING_PROPS = new Set(['duration', 'stagger', 'ease', 'transformOrigin', 'clearProps', 'repeat', 'delay', 'onComplete']);
@@ -154,7 +166,25 @@ export function parseTimeline(js: string): TimelineModel | null {
     phases.push(phase);
   }
 
-  return { animSpeed, easeIn, easeOut, phases };
+  return { animSpeed, easeIn, easeOut, phases, steps: parseSteps(region, animSpeed) };
+}
+
+/** Parse the multi-step block's knob arrays (emitted by stepsBlock in animPresets). */
+function parseSteps(region: string, animSpeed: number): TimelineStep[] {
+  const lines = region.match(/var stepLines = \[([^\]]*)\]/)?.[1];
+  const durations = region.match(/var stepDurations = \[([^\]]*)\]/)?.[1];
+  const eases = region.match(/var stepEases = \[([^\]]*)\]/)?.[1];
+  // Older emits have stepLines but no per-step arrays — no step segments for those until
+  // the region is re-emitted (any Motion-panel apply upgrades it).
+  if (!lines || !durations || !eases) return [];
+  const targets = lines.split(',').map((s) => s.replace(/['\s]/g, '')).filter(Boolean);
+  const durs = durations.split(',').map((s) => Number(s.trim()));
+  const easeTokens = eases.split(',').map((s) => s.trim());
+  return targets.map((target, i) => ({
+    target,
+    duration: (Number.isFinite(durs[i]) ? durs[i] : 0.45) / animSpeed,
+    ease: easeTokens[i]?.startsWith("'") ? easeTokens[i].slice(1, -1) : null,
+  }));
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -272,4 +302,28 @@ export function patchTweenEase(
   const before = call.slice(0, lastBrace).replace(/\s*$/, '');
   const needsComma = !before.endsWith('{') && !before.endsWith(',');
   return spliceCall(loc, `${before}${needsComma ? ',' : ''} ease: '${ease}' ${call.slice(lastBrace)}`);
+}
+
+/** Replace one element of a step knob array (`var <name> = [ … ]`) in the region. */
+function patchStepArray(js: string, name: string, index: number, value: string): string | null {
+  const re = new RegExp(`(var ${name} = \\[)([^\\]]*)(\\])`);
+  const m = js.match(re);
+  if (!m) return null;
+  const parts = m[2].split(',').map((s) => s.trim());
+  if (index < 0 || index >= parts.length) return null;
+  parts[index] = value;
+  return js.replace(re, `$1${parts.join(', ')}$3`);
+}
+
+/** T3.2: set one Continue step's duration (actual seconds; written pre-division). */
+export function patchStepTiming(js: string, stepIndex: number, duration: number): string | null {
+  const region = js.match(REGION_RE)?.[0];
+  const animSpeed = Number(region?.match(/var animSpeed = ([\d.]+)/)?.[1] ?? NaN);
+  if (!animSpeed) return null;
+  return patchStepArray(js, 'stepDurations', stepIndex, String(round2(Math.max(0.05, duration) * animSpeed)));
+}
+
+/** T3.2: set (or clear → inherit the easeIn knob) one Continue step's ease. */
+export function patchStepEase(js: string, stepIndex: number, ease: string | null): string | null {
+  return patchStepArray(js, 'stepEases', stepIndex, ease === null ? 'easeIn' : `'${ease}'`);
 }

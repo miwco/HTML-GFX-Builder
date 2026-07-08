@@ -379,6 +379,19 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       root's bottom-right; dragging live-previews `--scale` (inline :root override, ×N badge)
       and releases ONE `patchCss` write of the variable (the Style panel's size mechanism),
       clamped 0.5–2. E2E: the drag grows --scale in the rebuilt preview within the clamp.
+- [x] **T2.5 per-tween eases (2026-07-08)** — an ease chip per editable bar: the easing
+      vocabulary's phase-correct half (doctrine intact) + auto (inherit the knob);
+      `patchTweenEase` writes/clears a quoted ease literal in the tween's vars.
+- [x] **T3.1+T3.2 steps sequencing (2026-07-08)** — the moat slice, competitor-researched
+      (Loopic = stop-point keyframes, step count baked in; SPX = a bare Continue button):
+      the strip shows the graphic as the playout chain **▶ In · » 2 · » 3 · ■ Out** —
+      data-driven step count, real durations, the SPX `out` mode as a badge. The simulator
+      owns each Continue's reveal tween so the LIVE PLAYHEAD sweeps every » Next press;
+      step segments scrub (prior state jumped, callbacks suppressed), stretch
+      (`var stepDurations = [...]` literals) and take per-step eases (`stepEases`) — all
+      through the same undoable literal patcher. Emit upgrade also fixed a latent bug:
+      replaying a steps template never reset `currentStep`. T3.3 reveal GROUPS (drag lines
+      between steps — beyond what Loopic can do for data graphics) is next.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

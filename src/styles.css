@@ -1166,6 +1166,19 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .timeline-collapse:hover { color: var(--text); background: transparent; border-color: transparent; }
 .timeline-time { font-size: 11px; min-width: 44px; text-align: right; }
 .timeline-knobs { white-space: nowrap; }
+.timeline-seg { white-space: nowrap; }
+.timeline-marker { color: var(--amber); font-size: 10px; }
+.timeline-outmode {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
 
 .timeline-tracks {
   position: relative;

@@ -21,10 +21,13 @@ export type SpxWindow = Window & {
   gsap?: { killTweensOf: (target: string) => void };
   buildInTimeline?: () => GsapTimeline;
   buildOutTimeline?: () => GsapTimeline;
-  /** The timeline the simulator is currently running (drives the timeline strip's playhead). */
-  __activeTl?: { phase: 'in' | 'out'; tl: GsapTimeline } | null;
+  /** Steps templates: reveal the next Continue line; returns the tween (null when done). */
+  revealNextStep?: () => GsapTimeline | null;
+  /** The timeline the simulator is currently running (drives the timeline strip's playhead).
+   *  Phase: 'in' | 'out' | 'step-N' (N = the 2-based Continue step). */
+  __activeTl?: { phase: string; tl: GsapTimeline } | null;
   /** The timeline view's paused scrub timeline — rebuilt per phase. */
-  __scrubTl?: { phase: 'in' | 'out'; tl: GsapTimeline } | null;
+  __scrubTl?: { phase: string; tl: GsapTimeline } | null;
 };
 
 // The preview rebuilds on a ~350 ms debounce after an apply — replay after it settles.
@@ -64,16 +67,35 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     if (w && typeof w.update === 'function') w.update(JSON.stringify(sampleData));
   };
 
+  // Which Continue press we are on (1 = the entrance) — drives the step playhead phase ids.
+  const stepRef = useRef(1);
+
   /** Run the entrance (Play): data in, then the in-timeline — simulator-owned. */
   const playIn = () => {
     const w = win();
     if (!w) return;
+    stepRef.current = 1; // a fresh play restarts the Continue chain
     w.update?.(latestData());
     if (typeof w.buildInTimeline === 'function') {
       killAll(w);
       w.__activeTl = { phase: 'in', tl: w.buildInTimeline() };
     } else {
       w.play?.(); // no builder contract (blank/imported) — the template's own play()
+    }
+  };
+
+  /** Advance a Continue step (Next) — own the reveal tween so the playhead follows it. */
+  const playNext = () => {
+    const w = win();
+    if (!w) return;
+    if (typeof w.revealNextStep === 'function') {
+      const tw = w.revealNextStep();
+      if (tw) {
+        stepRef.current += 1;
+        w.__activeTl = { phase: `step-${stepRef.current}`, tl: tw };
+      }
+    } else {
+      w.next?.(); // template-defined next (quiz reveal, …)
     }
   };
 
@@ -136,13 +158,14 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     if (controlCommand.action === 'update') w.update?.(latestData());
     else if (controlCommand.action === 'play') playIn();
     else if (controlCommand.action === 'stop') playOut();
-    else if (controlCommand.action === 'next') w.next?.();
+    else if (controlCommand.action === 'next') playNext();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlCommand?.nonce]);
 
   // Timeline scrub: pause the phase's timeline at the requested time. The paused timeline is
   // cached on the preview window per phase; an iframe rebuild clears it naturally. Scrubbing
-  // OUT first jumps the entrance to its end state (what the exit animates FROM).
+  // OUT (or a step) first jumps everything BEFORE it to its end state, callbacks suppressed —
+  // that is the state the scrubbed segment animates FROM.
   useEffect(() => {
     if (!scrubCommand) return;
     const w = win();
@@ -150,12 +173,24 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     if (!w.__scrubTl || w.__scrubTl.phase !== scrubCommand.phase) {
       killAll(w);
       w.update?.(latestData());
-      if (scrubCommand.phase === 'out') {
+      if (scrubCommand.phase === 'in') {
+        w.__scrubTl = { phase: 'in', tl: w.buildInTimeline() };
+      } else if (scrubCommand.phase.startsWith('step-')) {
+        // Continue segment N: run the entrance + the prior steps to their ends, then hold
+        // this step's reveal tween.
+        if (typeof w.revealNextStep !== 'function') return;
+        const n = parseInt(scrubCommand.phase.slice(5), 10); // 2-based
+        w.buildInTimeline().progress(1, true);
+        for (let k = 2; k < n; k++) w.revealNextStep()?.progress(1, true);
+        const tw = w.revealNextStep();
+        if (!tw) return;
+        w.__scrubTl = { phase: scrubCommand.phase, tl: tw };
+      } else {
         if (typeof w.buildOutTimeline !== 'function') return;
         w.buildInTimeline().progress(1, true); // settled on-air state, callbacks suppressed
+        // On air, every Continue step has usually played — the exit leaves from that state.
+        while (typeof w.revealNextStep === 'function' && w.revealNextStep()?.progress(1, true)) { /* all steps */ }
         w.__scrubTl = { phase: 'out', tl: w.buildOutTimeline() };
-      } else {
-        w.__scrubTl = { phase: 'in', tl: w.buildInTimeline() };
       }
     }
     const tl = w.__scrubTl.tl;
@@ -174,7 +209,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
       <button onClick={sendUpdate} title="Send current sample data to update()">
         ⟳ Update
       </button>
-      <button onClick={() => { const w = win(); w?.next?.(); }} title="Advance multi-step templates">
+      <button onClick={playNext} title="Advance multi-step templates (SPX Continue)">
         » Next
       </button>
     </div>

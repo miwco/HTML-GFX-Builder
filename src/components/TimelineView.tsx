@@ -1,23 +1,33 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, useMemo, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
-import { parseTimeline, patchTweenEase, patchTweenTiming } from '../blocks/timelineModel';
+import {
+  parseTimeline,
+  patchStepEase,
+  patchStepTiming,
+  patchTweenEase,
+  patchTweenTiming,
+} from '../blocks/timelineModel';
 import { EASINGS } from '../model/easings';
 import { loadPrefs, savePrefs } from '../model/prefs';
 import { useIsMobile } from './useIsMobile';
 import type { SpxWindow } from './PlayoutSimulator';
 
-/** The per-tween ease options for a phase: the vocabulary's phase-correct half, deduped by
- *  the actual GSAP string (several presets share a curve), plus 'auto' (inherit the knob). */
-function easeOptionsFor(phase: 'in' | 'out'): { value: string; label: string }[] {
-  const seen = new Map<string, string>();
-  for (const e of EASINGS) {
-    const value = phase === 'in' ? e.gsapIn : e.gsapOut;
-    if (!seen.has(value)) seen.set(value, e.tag === 'standard' ? e.name : `${e.name} ·${e.tag}`);
-  }
-  return [...seen.entries()].map(([value, label]) => ({ value, label }));
+interface Props {
+  iframeRef: RefObject<HTMLIFrameElement>;
 }
 
-/** A bar drag in progress (T2): move = slide the start, resize = stretch the duration. */
+/** One playout segment on the strip: the entrance, a Continue step, or the exit. */
+interface Segment {
+  id: string; // 'in' | 'step-N' | 'out'
+  marker: string; // the playout cue glyph: ▶ » ■
+  label: string;
+  duration: number;
+  infinite: boolean;
+  kind: 'in' | 'out' | 'step';
+  stepIndex?: number;
+}
+
+/** A bar drag in progress (T2/T3.2): move = slide the start, resize = stretch the duration. */
 interface BarDrag {
   index: number;
   mode: 'move' | 'resize';
@@ -32,18 +42,25 @@ interface BarDrag {
 
 const SNAP = 0.05; // timing grid — keeps the emitted literals readable (two decimals)
 
-interface Props {
-  iframeRef: RefObject<HTMLIFrameElement>;
+/** The per-tween ease options for a phase: the vocabulary's phase-correct half, deduped by
+ *  the actual GSAP string (several presets share a curve), plus 'auto' (inherit the knob). */
+function easeOptionsFor(direction: 'in' | 'out'): { value: string; label: string }[] {
+  const seen = new Map<string, string>();
+  for (const e of EASINGS) {
+    const value = direction === 'in' ? e.gsapIn : e.gsapOut;
+    if (!seen.has(value)) seen.set(value, e.tag === 'standard' ? e.name : `${e.name} ·${e.tag}`);
+  }
+  return [...seen.entries()].map(([value, label]) => ({ value, label }));
 }
 
 /**
- * The preview timeline strip (Era 6 · T1.5 — docs/TIMELINE_PLAN.md): lives directly under
- * the preview like every animation tool, above the transport buttons. Read from the marked
- * ANIMATION region (parse-by-construction, blocks/timelineModel.ts): In/Out phase tabs, one
- * track per tween, a scrubber that pauses the preview, and a LIVE playhead that follows the
- * simulator's running timeline (▶ Play sweeps In, ■ Stop sweeps Out). The code is the truth:
- * a hand-edited region the parser doesn't recognize degrades to an honest note. Timing
- * edits are T2 — nothing here writes code.
+ * The preview timeline strip (Era 6 — docs/TIMELINE_PLAN.md): the graphic as a playout
+ * segment chain `▶ In · » 2 · » 3 · … · ■ Out`, exactly what the operator's buttons do.
+ * Parsed from the marked ANIMATION region (parse-by-construction); a live playhead follows
+ * the simulator's running timeline through Play, every Continue, and Stop; scrubbing pauses
+ * the preview; bars drag/stretch and eases pick — each edit is ONE readable literal patch in
+ * the region (undoable). A hand-edited region the parser can't read makes the strip step
+ * aside — the code is the truth.
  */
 export default function TimelineView({ iframeRef }: Props) {
   const template = useTemplateStore((s) => s.template);
@@ -52,7 +69,7 @@ export default function TimelineView({ iframeRef }: Props) {
   const requestReplay = useTemplateStore((s) => s.requestReplay);
 
   const model = useMemo(() => parseTimeline(template.js), [template.js]);
-  const [phaseId, setPhaseId] = useState<'in' | 'out'>('in');
+  const [phaseId, setPhaseId] = useState<string>('in');
   const [time, setTime] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
   const scrubbingRef = useRef(false);
@@ -73,8 +90,8 @@ export default function TimelineView({ iframeRef }: Props) {
     });
   };
 
-  // The live playhead: follow the simulator's running timeline (window.__activeTl). Parks at
-  // the END of In when idle — that is the settled "design view" state the preview shows.
+  // The live playhead: follow the simulator's running timeline (window.__activeTl) through
+  // In, every Continue step, and Out. Parks at the END of In when idle — the settled state.
   const phaseRef = useRef(phaseId);
   phaseRef.current = phaseId;
   const lastActiveRef = useRef<unknown>(null);
@@ -82,11 +99,12 @@ export default function TimelineView({ iframeRef }: Props) {
     if (!model) return;
     let raf = 0;
     const inDur = model.phases.find((p) => p.id === 'in')?.duration ?? 0;
+    const knownIds = new Set(['in', 'out', ...model.steps.map((_, k) => `step-${k + 2}`)]);
     const tick = () => {
       raf = requestAnimationFrame(tick);
       const w = iframeRef.current?.contentWindow as SpxWindow | null;
       const active = w?.__activeTl;
-      // A NEW simulator run (Play/Stop) reclaims the playhead from a paused scrub.
+      // A NEW simulator run (Play/Next/Stop) reclaims the playhead from a paused scrub.
       if (active && active !== lastActiveRef.current) {
         lastActiveRef.current = active;
         if (scrubbingRef.current) setScrubbing(false);
@@ -94,7 +112,7 @@ export default function TimelineView({ iframeRef }: Props) {
       if (!active) lastActiveRef.current = null;
       if (scrubbingRef.current) return; // the user's scrub owns the playhead
       if (active) {
-        if (active.phase !== phaseRef.current) setPhaseId(active.phase); // follow Play/Stop
+        if (active.phase !== phaseRef.current && knownIds.has(active.phase)) setPhaseId(active.phase);
         const dur = Math.max(active.tl.duration(), 0.001);
         setTime(active.tl.time() % (dur + 0.0001)); // loops (repeat:-1) wrap visually
       } else if (phaseRef.current === 'in') {
@@ -109,17 +127,34 @@ export default function TimelineView({ iframeRef }: Props) {
     return null; // hand-edited beyond recognition (or blank/imported) — the strip steps aside
   }
 
-  const phase = model.phases.find((p) => p.id === phaseId) ?? model.phases[0];
-  const total = Math.max(phase.duration, 0.001);
+  const inPhase = model.phases.find((p) => p.id === 'in') ?? model.phases[0];
+  const outPhase = model.phases.find((p) => p.id === 'out') ?? model.phases[model.phases.length - 1];
+  // The playout segment chain — what each operator button plays.
+  const segments: Segment[] = [
+    { id: 'in', marker: '▶', label: 'In', duration: inPhase.duration, infinite: inPhase.infinite, kind: 'in' },
+    ...model.steps.map((s, k) => ({
+      id: `step-${k + 2}`,
+      marker: '»',
+      label: String(k + 2),
+      duration: s.duration,
+      infinite: false,
+      kind: 'step' as const,
+      stepIndex: k,
+    })),
+    { id: 'out', marker: '■', label: 'Out', duration: outPhase.duration, infinite: outPhase.infinite, kind: 'out' },
+  ];
+  const seg = segments.find((s) => s.id === phaseId) ?? segments[0];
+  const total = Math.max(seg.duration, 0.001);
   const shown = Math.min(time, total);
   const frac = shown / total;
+  // How the layer leaves air (the SPX `out` setting) — playout truth next to the Out tab.
+  const outMode = template.settings.out ?? 'manual';
+  const outBadge = outMode === 'none' ? 'no out' : /^\d+$/.test(outMode) ? `auto ${outMode}ms` : null;
 
-  // ── T2: draggable timing bars ──────────────────────────────────────────────
+  // ── T2/T3.2: draggable timing bars ─────────────────────────────────────────
   const snap = (n: number) => Math.round(n / SNAP) * SNAP;
 
-  const startBarDrag = (e: React.PointerEvent, index: number, mode: BarDrag['mode']) => {
-    const tw = phase.tweens[index];
-    if (!tw.editable) return;
+  const startBarDrag = (e: React.PointerEvent, index: number, mode: BarDrag['mode'], orig: { start: number; duration: number }) => {
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -129,10 +164,10 @@ export default function TimelineView({ iframeRef }: Props) {
       mode,
       startClientX: e.clientX,
       laneWidth: lane?.getBoundingClientRect().width || 1,
-      origStart: tw.start,
-      origDuration: tw.duration,
-      start: tw.start,
-      duration: tw.duration,
+      origStart: orig.start,
+      origDuration: orig.duration,
+      start: orig.start,
+      duration: orig.duration,
     });
   };
 
@@ -147,47 +182,72 @@ export default function TimelineView({ iframeRef }: Props) {
     );
   };
 
-  /** T2.5: set/clear one tween's own ease — one undoable patch + replay. */
-  const pickEase = (index: number, value: string) => {
-    const js = patchTweenEase(template.js, phase.id, index, value === 'auto' ? null : value);
-    if (!js || js === template.js) return;
-    applyTemplate({ ...template, js });
-    requestReplay();
-  };
-  // Cheap enough to build per render — and NO hooks may sit below the model-null return above.
-  const easeOptions = easeOptionsFor(phase.id);
-
-  /** Release: rewrite the tween's timing literals in the marked region — one undoable patch. */
+  /** Release: rewrite the timing literals in the marked region — one undoable patch. */
   const endBarDrag = () => {
     const d = barDragRef.current;
     setBarDrag(null);
     if (!d) return;
     if (d.start === d.origStart && d.duration === d.origDuration) return;
-    const js = patchTweenTiming(template.js, phase.id, d.index, {
-      start: d.mode === 'move' ? d.start : undefined,
-      duration: d.mode === 'resize' ? d.duration : undefined,
-    });
+    const js =
+      seg.kind === 'step'
+        ? patchStepTiming(template.js, seg.stepIndex!, d.duration)
+        : patchTweenTiming(template.js, seg.id as 'in' | 'out', d.index, {
+            start: d.mode === 'move' ? d.start : undefined,
+            duration: d.mode === 'resize' ? d.duration : undefined,
+          });
     if (!js) return; // not patchable after all — leave the code untouched
     applyTemplate({ ...template, js });
     requestReplay(); // hear the new timing immediately (plays after the rebuild settles)
   };
+
+  /** T2.5/T3.2: set/clear an ease — one undoable patch + replay. */
+  const pickEase = (index: number, value: string) => {
+    const ease = value === 'auto' ? null : value;
+    const js =
+      seg.kind === 'step'
+        ? patchStepEase(template.js, seg.stepIndex!, ease)
+        : patchTweenEase(template.js, seg.id as 'in' | 'out', index, ease);
+    if (!js || js === template.js) return;
+    applyTemplate({ ...template, js });
+    requestReplay();
+  };
+  // Cheap enough to build per render — and NO hooks may sit below the model-null return above.
+  const easeOptions = easeOptionsFor(seg.kind === 'out' ? 'out' : 'in');
 
   const scrubTo = (raw: number) => {
     // Range steps accumulate float error and can stall one step short of the end — snap the
     // last step to the exact phase end so end-of-phase set() calls (e.g. the final hide) render.
     const t = raw >= total - 0.011 ? total : raw;
     setTime(t);
-    sendScrub(phase.id, t);
+    sendScrub(seg.id, t);
   };
 
-  const pickPhase = (id: 'in' | 'out') => {
+  const pickSegment = (id: string) => {
     setPhaseId(id);
-    setScrubbing(true); // manual phase pick pauses at 0 until the next Play/Stop
+    setScrubbing(true); // manual pick pauses at 0 until the next Play/Next/Stop
     setTime(0);
     sendScrub(id, 0);
   };
 
   const label = (targets: string[]) => targets.join(', ');
+
+  /** The rows shown for the selected segment: the phase's tweens, or the step's one reveal. */
+  const rows =
+    seg.kind === 'step'
+      ? [
+          {
+            targets: [model.steps[seg.stepIndex!].target],
+            kind: 'to' as const,
+            props: ['yPercent'],
+            duration: model.steps[seg.stepIndex!].duration,
+            stagger: 0,
+            start: 0,
+            end: model.steps[seg.stepIndex!].duration,
+            editable: true,
+            ease: model.steps[seg.stepIndex!].ease,
+          },
+        ]
+      : (seg.kind === 'in' ? inPhase : outPhase).tweens;
 
   return (
     <div className={`timeline-strip${collapsed ? ' collapsed' : ''}`} data-testid="timeline">
@@ -195,15 +255,24 @@ export default function TimelineView({ iframeRef }: Props) {
         <button className="timeline-collapse" onClick={toggleCollapsed} title={collapsed ? 'Expand the timeline' : 'Collapse the timeline'}>
           {collapsed ? '▸' : '▾'}
         </button>
-        {model.phases.map((p) => (
+        {segments.map((s) => (
           <button
-            key={p.id}
-            className={`tab ${p.id === phase.id ? 'active' : ''}`}
-            onClick={() => pickPhase(p.id)}
+            key={s.id}
+            className={`tab timeline-seg ${s.id === seg.id ? 'active' : ''}`}
+            onClick={() => pickSegment(s.id)}
+            title={
+              s.kind === 'step'
+                ? `Continue step ${s.label} — plays on the ${Number(s.label) - 1}${Number(s.label) === 2 ? 'st' : Number(s.label) === 3 ? 'nd' : 'th'} » Next press`
+                : s.kind === 'in'
+                  ? 'The entrance — plays on ▶ Play'
+                  : `The exit — plays on ■ Stop${outBadge ? ` (${outBadge})` : ''}`
+            }
+            data-testid={`timeline-seg-${s.id}`}
           >
-            {p.label} {p.infinite ? '∞' : `${p.duration.toFixed(2)}s`}
+            <span className="timeline-marker">{s.marker}</span> {s.label} {s.infinite ? '∞' : `${s.duration.toFixed(2)}s`}
           </button>
         ))}
+        {outBadge && <span className="timeline-outmode">{outBadge}</span>}
         <input
           className="grow timeline-scrub"
           type="range"
@@ -224,7 +293,7 @@ export default function TimelineView({ iframeRef }: Props) {
 
       {!collapsed && (
         <div className="timeline-tracks">
-          {phase.tweens.map((tw, i) => {
+          {rows.map((tw, i) => {
             // While a bar is being dragged, render its live values instead of the parsed ones.
             const d = barDrag?.index === i ? barDrag : null;
             const start = d ? d.start : tw.start;
@@ -245,7 +314,11 @@ export default function TimelineView({ iframeRef }: Props) {
                         : `${tw.props.join(', ')} · ${(d ? start : tw.start).toFixed(2)}–${(d ? start + span : tw.end).toFixed(2)}s${tw.stagger ? ` · stagger ${tw.stagger.toFixed(2)}s` : ''}${tw.editable ? ' — drag to retime, edge to stretch' : ''}`
                     }
                     data-testid={`timeline-bar-${i}`}
-                    onPointerDown={tw.editable ? (e) => startBarDrag(e, i, 'move') : undefined}
+                    onPointerDown={
+                      tw.editable
+                        ? (e) => startBarDrag(e, i, seg.kind === 'step' ? 'resize' : 'move', { start: tw.start, duration: tw.duration })
+                        : undefined
+                    }
                     onPointerMove={moveBarDrag}
                     onPointerUp={endBarDrag}
                     onPointerCancel={() => setBarDrag(null)}
@@ -254,12 +327,12 @@ export default function TimelineView({ iframeRef }: Props) {
                       <span
                         className="timeline-bar-handle"
                         data-testid={`timeline-handle-${i}`}
-                        onPointerDown={(e) => startBarDrag(e, i, 'resize')}
+                        onPointerDown={(e) => startBarDrag(e, i, 'resize', { start: tw.start, duration: tw.duration })}
                       />
                     )}
                   </div>
                 </div>
-                {/* T2.5 — the tween's own ease; 'auto' inherits the phase knob. */}
+                {/* The tween's own ease; 'auto' inherits the phase knob. */}
                 {tw.editable ? (
                   <select
                     className="timeline-ease"

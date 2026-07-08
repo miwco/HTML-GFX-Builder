@@ -63,15 +63,19 @@ follows the data and presets stay swappable. The operator-facing truth ("what pl
 press") is the strip itself.
 
 Slices:
-- **T3.1 — Steps on the strip + live playhead.** Emit upgrade: `revealNextStep()` returns its
-  tween and reads per-step knobs (see T3.2), and the steps block gains a parseable shape. The
-  strip renders segment tabs `In · »2 · »3 · … · Out` with real durations and markers; the
-  simulator wraps next() so `__activeTl` covers steps and the playhead sweeps each press.
-  Scrubbing a step segment first jumps IN + prior steps to their end (suppressed), then pauses
-  the step's tween. The `out` playout setting shows as a badge after OUT ("manual" / auto-ms).
-- **T3.2 — Per-step timing/ease knobs.** The emitted steps block declares per-step literals
-  (duration/ease per revealed line — same `N / animSpeed` + quoted-ease vocabulary), patched by
-  the same literal patcher the T2/T2.5 bars use. Bars inside step segments drag like any other.
+- **T3.1 — Steps on the strip + live playhead. ✅ SHIPPED (2026-07-08).** Emit upgrade:
+  `revealNextStep()` returns its tween, reads per-step knob arrays, and a fresh play resets
+  `currentStep` (also fixed a latent replay bug). The strip renders the playout chain
+  `▶ In · » 2 · » 3 · ■ Out` with real durations; the simulator owns each Continue's tween
+  (`playNext` → `__activeTl: step-N`) so the playhead sweeps every press; templates with their
+  own next() (quiz) fall back to plain `next()`. Scrubbing a step jumps IN + prior steps to
+  their ends (suppressed); scrubbing OUT jumps ALL steps first (on air, everything has played).
+  The `out` playout setting shows as a badge (auto-ms / no out).
+- **T3.2 — Per-step timing/ease knobs. ✅ SHIPPED (2026-07-08).** The emitted steps block
+  declares `var stepDurations = [...]` + `var stepEases = [...]` (readable literals, animSpeed
+  still scales); `patchStepTiming`/`patchStepEase` rewrite one element; step bars stretch and
+  pick eases exactly like phase bars. Older regions without the arrays simply show no step
+  segments until any Motion-panel apply re-emits them.
 - **T3.3 — Reveal groups (the better-than-Loopic move).** Which lines reveal on which press
   stops being fixed one-line-per-step: the emitted block declares
   `var stepGroups = [['#f1'], ['#f2', '#f3']]` (commented, readable), the runtime reveals a

@@ -66,23 +66,31 @@ var easeIn = '${cfg.easeIn}';${' '.repeat(Math.max(1, 18 - cfg.easeIn.length))}/
 var easeOut = '${cfg.easeOut}';${' '.repeat(Math.max(1, 17 - cfg.easeOut.length))}// exit ease — starts naturally, leaves quickly`;
 }
 
-/** The multi-step block: reveals one further line per next() call (SPX Continue). */
+/** The multi-step block: reveals one further line per next() call (SPX Continue).
+ *  Per-step timing/ease live in the arrays — the timeline strip edits those literals. */
 function stepsBlock(cfg: PresetConfig): string {
   if (!cfg.steps || cfg.lineCount < 2) return '';
-  const rest = Array.from({ length: cfg.lineCount - 1 }, (_, i) => `'#f${i + 1}'`).join(', ');
+  const count = cfg.lineCount - 1;
+  const rest = Array.from({ length: count }, (_, i) => `'#f${i + 1}'`).join(', ');
+  const durations = Array.from({ length: count }, () => '0.45').join(', ');
+  const eases = Array.from({ length: count }, () => 'easeIn').join(', ');
   return `
 
 // Multi-step: the in animation shows only the first line; each Continue (next())
-// reveals one more line with the same motion vocabulary.
+// reveals one more line. Per-step timing below — the timeline strip edits these.
 var currentStep = 0;
 var stepLines = [${rest}];  // lines revealed by steps, in order
+var stepDurations = [${durations}];  // seconds per step (divided by animSpeed)
+var stepEases = [${eases}];  // ease per step (a quoted string overrides the knob)
 function revealNextStep() {
   var line = stepLines[currentStep];
-  if (!line) return;                       // no more lines to reveal
+  if (line === undefined) return null;     // no more lines to reveal
+  var duration = stepDurations[currentStep] || 0.45;
+  var ease = stepEases[currentStep] || easeIn;
   currentStep += 1;
-  gsap.fromTo(line,
+  return gsap.fromTo(line,
     { yPercent: 110 },
-    { yPercent: 0, duration: 0.45 / animSpeed, ease: easeIn }
+    { yPercent: 0, duration: duration / animSpeed, ease: ease }
   );
 }`;
 }
@@ -91,7 +99,9 @@ function revealNextStep() {
 function hideStepLines(cfg: PresetConfig): string {
   if (!cfg.steps || cfg.lineCount < 2) return '';
   const rest = Array.from({ length: cfg.lineCount - 1 }, (_, i) => `'#f${i + 1}'`).join(', ');
-  return `\n  tl.set([${rest}], { yPercent: 110 });  // step lines start hidden below their mask`;
+  return `
+  currentStep = 0;                                 // a fresh play restarts the step sequence
+  tl.set([${rest}], { yPercent: 110 });  // step lines start hidden below their mask`;
 }
 
 export const ANIM_PRESETS: AnimPreset[] = [

@@ -41,9 +41,9 @@ test('timeline strip lives under the preview and renders the preset structure', 
   await expect(rows.nth(1)).toContainText('.l3-accent');
   await expect(rows.nth(2)).toContainText('#f0, #f1');
   // Both phases offered, with real durations; idle playhead parks at the END of In.
-  await expect(timeline.locator('button.tab', { hasText: /^In/ })).toContainText('s');
-  await expect(timeline.locator('button.tab', { hasText: /^Out/ })).toContainText('s');
-  const inLabel = (await timeline.locator('button.tab', { hasText: /^In/ }).textContent())!;
+  await expect(timeline.locator('[data-testid="timeline-seg-in"]')).toContainText('s');
+  await expect(timeline.locator('[data-testid="timeline-seg-out"]')).toContainText('s');
+  const inLabel = (await timeline.locator('[data-testid="timeline-seg-in"]').textContent())!;
   const inDuration = inLabel.match(/([\d.]+)s/)![1];
   await expect(page.getByTestId('timeline-time')).toHaveText(`${inDuration}s`);
 });
@@ -72,7 +72,7 @@ test('the playhead follows Play and the phase follows Stop', async ({ page }) =>
 test('scrubbing pauses the preview mid-animation', async ({ page }) => {
   await createHairline(page);
   // Scrub the OUT phase to its end: the graphic leaves and HOLDS there (paused).
-  await page.locator('[data-testid="timeline"] button.tab', { hasText: /^Out/ }).click();
+  await page.getByTestId('timeline-seg-out').click();
   const scrub = page.getByTestId('timeline-scrub');
   await scrub.focus();
   for (let i = 0; i < 80; i++) await page.keyboard.press('ArrowRight'); // well past the 0.60s out
@@ -90,7 +90,7 @@ test('scrubbing pauses the preview mid-animation', async ({ page }) => {
 
 test('T2: stretching a bar rewrites the duration literal in the marked region', async ({ page }) => {
   await createHairline(page); // line-reveal: bar 1 = .l3-accent, duration 0.45 / animSpeed
-  const inTab = page.locator('[data-testid="timeline"] button.tab', { hasText: /^In/ });
+  const inTab = page.getByTestId('timeline-seg-in');
   await expect(inTab).toContainText('In 0.95s');
 
   // Drag the accent bar's right-edge handle to the right — the entrance gets longer.
@@ -167,6 +167,57 @@ test('T2.5: the ease picker writes and clears a per-tween ease literal', async (
   await page.waitForTimeout(650);
   const cleared = (await templateJs()).match(/tl\.fromTo\('\.l3-accent'[\s\S]*?\);/)?.[0] ?? '';
   expect(cleared).not.toContain("ease: 'back.out(1.6)'");
+});
+
+test('T3: Continue steps appear as segments — live playhead + editable per-step timing/ease', async ({ page }) => {
+  // Create Soft Stack (three lines) with steps mode on.
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-variant', { hasText: 'Soft Stack' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click(); // Fields
+  await page.getByRole('button', { name: 'Next ›' }).click(); // Style
+  await page.getByRole('button', { name: 'Next ›' }).click(); // Animation
+  await page.locator('.wz-step input[type="checkbox"]').check();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await page.waitForTimeout(650);
+
+  // The playout chain: ▶ In · » 2 · » 3 · ■ Out.
+  await expect(page.getByTestId('timeline-seg-step-2')).toBeVisible();
+  await expect(page.getByTestId('timeline-seg-step-3')).toBeVisible();
+
+  // Play, then Continue — the playhead follows into the step segment.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.waitForTimeout(1100); // let the entrance finish
+  await page.getByRole('button', { name: '» Next' }).click();
+  await expect(page.locator('[data-testid="timeline"] button.tab.active')).toContainText('2');
+
+  const templateJs = async () =>
+    page
+      .frameLocator('iframe.preview-frame')
+      .locator('body')
+      .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
+
+  // T3.2: stretch the step's reveal bar — the stepDurations literal grows.
+  await page.getByTestId('timeline-seg-step-2').click();
+  const handle = page.getByTestId('timeline-handle-0');
+  const hb = (await handle.boundingBox())!;
+  const lane = (await page.locator('.timeline-lane').first().boundingBox())!;
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(hb.x + lane.width * 0.5, hb.y + hb.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(650);
+  const durations = (await templateJs()).match(/var stepDurations = \[([^\]]*)\]/)?.[1] ?? '';
+  expect(Number(durations.split(',')[0])).toBeGreaterThan(0.45);
+
+  // …and a per-step ease pick writes into stepEases.
+  await page.getByTestId('timeline-seg-step-2').click();
+  await page.getByTestId('timeline-ease-0').selectOption('back.out(1.6)');
+  await page.waitForTimeout(650);
+  expect(await templateJs()).toMatch(/var stepEases = \['back\.out\(1\.6\)'/);
 });
 
 test('timeline strip collapses to a slim bar and remembers it', async ({ page }) => {

@@ -86,8 +86,9 @@ interface TemplateState {
   replayNonce: number;
   /** The Control panel's latest live command (executed immediately by the simulator). */
   controlCommand: { action: PlayoutAction; nonce: number } | null;
-  /** The timeline view's scrub position (Era 6 · T1) — the simulator seeks the live preview. */
-  scrubCommand: { phase: 'in' | 'out'; time: number; nonce: number } | null;
+  /** The timeline view's scrub position (Era 6) — the simulator seeks the live preview.
+   *  Phase: 'in' | 'out' | 'step-N' (a Continue segment, N is the 2-based step number). */
+  scrubCommand: { phase: string; time: number; nonce: number } | null;
 
   setActiveTab: (tab: EditorTab) => void;
   setPreviewBg: (bg: PreviewBg) => void;
@@ -107,8 +108,8 @@ interface TemplateState {
   requestReplay: () => void;
   /** Drive the live preview from the Control panel (update/play/stop/next), immediately. */
   sendControl: (action: PlayoutAction) => void;
-  /** Seek the live preview's in/out timeline to a time (the timeline view's scrubber). */
-  sendScrub: (phase: 'in' | 'out', time: number) => void;
+  /** Seek the live preview's in/out/step timeline to a time (the timeline view's scrubber). */
+  sendScrub: (phase: string, time: number) => void;
   resetToDefault: () => void;
 
   setSampleValue: (field: string, value: string) => void;
