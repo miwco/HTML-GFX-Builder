@@ -31,14 +31,14 @@ export const lt09: TemplateVariant = defineVariant(
     uicolor: '3',
   },
   (o) => ({
-    // Structure: the standard .l3-box panel is the pill itself; the masked lines are
+    // Structure: the standard .lower-third-box panel is the pill itself; the masked lines are
     // its flex children, laid out in a row (name first, accent handle beside it).
     html: `    <!-- Gradient Pill: one glass capsule; the masked lines sit side by side inside it. -->
-    <div class="l3-box">
+    <div class="lower-third-box">
 ${lineMasks(o)}
     </div>`,
     css: `/* The pill: one glass capsule. The accent lives in the edge ring and the handle. */
-.l3-box {
+.lower-third-box {
   display: flex;                   /* name and handle sit side by side, not stacked */
   /* The line masks are overflow:hidden boxes, so a real flex baseline never reaches the
      text inside them — bottom-align the masks and nudge the handle's mask up instead. */
@@ -56,7 +56,7 @@ ${lineMasks(o)}
 
 /* Accent edge: a softened ring drawn by a pseudo-element — the border stays pure
    var(--accent) (so the Style panel retints it) and opacity does the softening. */
-.l3-box::after {
+.lower-third-box::after {
   content: '';                     /* pseudo-elements need content to render */
   position: absolute;              /* pinned over the pill, out of the flex flow */
   inset: 0;                        /* cover the whole capsule */
@@ -69,12 +69,12 @@ ${lineMasks(o)}
 /* The handle's mask: with flex-end the two line boxes bottom-align, which leaves the
    handle's baseline slightly below the name's (bigger type carries a deeper descender
    + half-leading). This lift is calibrated so the baselines coincide at 44px/22px. */
-.l3-mask:nth-child(2) {
+.lower-third-mask:nth-child(2) {
   margin-bottom: calc(3px * var(--scale));  /* raises the handle onto the name's baseline */
 }
 
 /* Name — the big line. */
-.l3-name {
+.lower-third-name {
   font-size: calc(44px * var(--scale));  /* headline size (2:1 against the handle) */
   font-weight: 800;                /* heaviest weight — contrast through weight, not more fonts */
   line-height: 1.15;               /* tight leading: big text needs less air between rows */
@@ -83,7 +83,7 @@ ${lineMasks(o)}
 }
 
 /* Handle — the small accent-colored line beside the name. */
-.l3-title {
+.lower-third-title {
   font-size: calc(22px * var(--scale));  /* clearly smaller than the name */
   font-weight: 500;                /* medium weight — quiet next to the 800 name */
   line-height: 1.2;                /* a touch more leading at small sizes */

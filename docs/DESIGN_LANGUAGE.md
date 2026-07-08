@@ -92,11 +92,11 @@ The animation **is** the taste. Rules:
 Text boxes **hug their content and wrap gracefully**; operators type any length.
 
 ```css
-.l3-box {
+.lower-third-box {
   width: fit-content;              /* the panel hugs the text */
   max-width: 800px;                /* never grow past this — wrap instead (~42% of 1920) */
 }
-.l3-name {
+.lower-third-name {
   overflow-wrap: break-word;       /* break very long unbroken words */
   text-wrap: balance;              /* wrapped lines get even lengths */
 }
@@ -115,8 +115,8 @@ use the tighter classic 120 px left inset for lower-left thirds). Zone sets the 
 
 ## 7. Generated-code style (readability & editability)
 
-- **Naming:** one short prefix per category — lower thirds use `l3` (`.l3`, `.l3-box`, `.l3-name`,
-  `.l3-title`, `.l3-kicker`, `.l3-accent`, `.l3-logo`). Functions are verbs:
+- **Naming:** one descriptive prefix per category — lower thirds use `lower-third` (`.lower-third`, `.lower-third-box`, `.lower-third-name`,
+  `.lower-third-title`, `.lower-third-kicker`, `.lower-third-accent`, `.lower-third-logo`). Functions are verbs:
   `buildInTimeline()`, `buildOutTimeline()`, `update(data)`, `play()`, `stop()`, `next()`.
 - **Comment every CSS property** (short, right-aligned style as in existing templates) and every
   JS section. Comments explain *what it does*, not *that it changed*.
@@ -164,7 +164,7 @@ Rules:
   it ("would these two appear in the same show?").
 - Reuse the exact token values above (e.g. sport's −8° skew, glass's blur 18) — don't improvise
   new ones per category.
-- Category structure contracts mirror `.l3`: `.card`, `.credits`, `.ticker` roots with the same
+- Category structure contracts mirror `.lower-third`: `.card`, `.credits`, `.ticker` roots with the same
   `:root` variable names, the same marked ANIMATION region, and the same auto-fit text rules.
 
 ## 9. Judging checklist (what reviewers score)

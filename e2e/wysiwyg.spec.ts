@@ -22,7 +22,7 @@ async function rootAnchor(page: Page): Promise<{ top: string; right: string; bot
   return page.frameLocator('iframe.preview-frame').locator('body').evaluate(() => {
     for (const sheet of Array.from(document.styleSheets)) {
       for (const rule of Array.from(sheet.cssRules)) {
-        if (rule instanceof CSSStyleRule && rule.selectorText === '.l3') {
+        if (rule instanceof CSSStyleRule && rule.selectorText === '.lower-third') {
           const s = rule.style;
           return { top: s.top, right: s.right, bottom: s.bottom, left: s.left };
         }
@@ -36,7 +36,7 @@ async function rootAnchor(page: Page): Promise<{ top: string; right: string; bot
 async function waitSettled(page: Page) {
   await expect
     .poll(async () =>
-      page.frameLocator('iframe.preview-frame').locator('.l3').evaluate((el) => getComputedStyle(el).opacity),
+      page.frameLocator('iframe.preview-frame').locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity),
     )
     .toBe('1');
 }

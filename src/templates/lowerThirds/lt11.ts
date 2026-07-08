@@ -35,16 +35,16 @@ export const lt11: TemplateVariant = defineVariant(
   },
   (o) => ({
     html: `    <!-- House Strap structure: [8px accent bar] | [void blur panel with the lines]. -->
-    <div class="l3-accent"></div>
-    <div class="l3-box">
+    <div class="lower-third-accent"></div>
+    <div class="lower-third-box">
 ${lineMasks(o)}
     </div>`,
     css: `${labelFontFaceCss(fontById('jetbrains-mono'))}
 
 /* The accent bar — 8px, fused to the panel's left edge, with the house's one glow.
    The glow follows the accent color (color-mix), so retinting keeps it coherent. */
-.l3-accent {
-  position: absolute;               /* pinned inside the positioned .l3 root */
+.lower-third-accent {
+  position: absolute;               /* pinned inside the positioned .lower-third root */
   left: 0;                          /* at the very left edge */
   top: 0;                           /* full panel height… */
   bottom: 0;                        /* …top to bottom */
@@ -55,7 +55,7 @@ ${lineMasks(o)}
 }
 
 /* The panel — the house void: near-black, translucent, softly blurring the video. */
-.l3-box {
+.lower-third-box {
   margin-left: calc(8px * var(--scale));    /* starts where the accent bar ends */
   padding: calc(24px * var(--scale)) calc(56px * var(--scale)) calc(24px * var(--scale)) calc(34px * var(--scale));
   background: var(--panel-bg);      /* void rgba(10,12,16,.86) by default */
@@ -65,7 +65,7 @@ ${lineMasks(o)}
 }
 
 /* Name line — the confident display moment. */
-.l3-name {
+.lower-third-name {
   font-size: calc(54px * var(--scale));  /* headline size (values are 1080p reference) */
   font-weight: 700;                 /* full display weight */
   line-height: 1.05;                /* big text sits tight */
@@ -74,8 +74,8 @@ ${lineMasks(o)}
 }
 
 /* Title line — the house label voice: mono, caps, tracked wide, in the accent color. */
-.l3-title,
-.l3-extra {
+.lower-third-title,
+.lower-third-extra {
   font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
   font-size: calc(22px * var(--scale));  /* label scale — clearly subordinate */
   font-weight: 500;                 /* medium keeps tracked caps crisp */

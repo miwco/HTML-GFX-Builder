@@ -62,11 +62,11 @@ test('h2r: GDD fields embedded, and the play() toggle drives entrance then exit'
   });
   await expect(view.locator('#f0')).toHaveText('H2R Works');
   await expect
-    .poll(async () => view.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
   await view.evaluate(() => (window as unknown as { play(): void }).play()); // toggle OFF — exit
   await expect
-    .poll(async () => view.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('0');
   await view.close();
 });
@@ -103,7 +103,7 @@ test('html overlay: self-contained, autoplays with the Data panel values, contro
   await view.setContent(html, { waitUntil: 'load' });
   await expect(view.locator('#f0')).toHaveText('Overlay Works'); // baked value, not the default
   await expect
-    .poll(async () => view.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1'); // play() ran on load
   await view.close();
 });
@@ -129,7 +129,7 @@ test('casparcg: one self-contained html that speaks JSON and CasparCG XML', asyn
   });
   await expect(view.locator('#f0')).toHaveText('Caspar Works');
   await expect
-    .poll(async () => view.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
   await view.close();
 });
@@ -184,7 +184,7 @@ test('ograf: a valid v1 Graphic whose Web Component passes the action contract',
     const afterUpdate = el.querySelector('#f0')?.textContent;
     const played = await el.playAction({});
     await new Promise((r) => setTimeout(r, 700));
-    const opacity = getComputedStyle(el.querySelector('.l3')!).opacity;
+    const opacity = getComputedStyle(el.querySelector('.lower-third')!).opacity;
     await el.stopAction({});
     await el.dispose();
     const cleared = el.innerHTML === '';

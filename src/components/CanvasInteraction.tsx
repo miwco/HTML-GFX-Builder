@@ -85,7 +85,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const scale = width / res.width; // screen px per canvas px
   // The structure contract: every generated template has one root `.{prefix}` holding a
   // `.{prefix}-box` — the same detection every live panel uses (model/structure.ts).
-  const prefix = detectPrefix(template.html) ?? 'l3';
+  const prefix = detectPrefix(template.html) ?? 'lower-third';
   const rootSelector = `.${prefix}`;
 
   const doc = () => iframeRef.current?.contentDocument ?? null;

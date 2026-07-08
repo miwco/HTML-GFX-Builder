@@ -38,18 +38,18 @@ export const lt12: TemplateVariant = defineVariant(
     // visual order — chip first — instead of via lineMasks() (field order stays f0/f1).
     const mask = (i: number) =>
       `      <!-- ${o.lines[i].title} (f${i}) — SPX writes this field's value straight into the element. -->\n` +
-      `      <div class="l3-mask"><span id="f${i}" class="${lineClass(i)}">${o.lines[i].sample}</span></div>`;
+      `      <div class="lower-third-mask"><span id="f${i}" class="${lineClass(i)}">${o.lines[i].sample}</span></div>`;
     const chip = o.lines.length > 1 ? mask(1) + '\n' : '';
 
     return {
       html: `    <!-- House Breaking: accent label chip stacked on the void headline panel. -->
-    <div class="l3-box">
+    <div class="lower-third-box">
 ${chip}${mask(0)}
     </div>`,
       css: `${labelFontFaceCss(fontById('jetbrains-mono'))}
 
 /* The stack — transparent itself: the chip and the panel carry their own surfaces. */
-.l3-box {
+.lower-third-box {
   display: flex;                   /* chip and headline stack… */
   flex-direction: column;          /* …top to bottom */
   align-items: flex-start;         /* both blocks hug the left edge */
@@ -57,7 +57,7 @@ ${chip}${mask(0)}
 }
 
 /* The label chip (f1) — a solid accent surface with dark mono ink and the house glow. */
-.l3-title {
+.lower-third-title {
   display: inline-block;           /* a chip, not a full-width bar */
   padding: calc(9px * var(--scale)) calc(26px * var(--scale));  /* compact plate around the label */
   background: var(--accent);       /* the one solid accent surface */
@@ -71,7 +71,7 @@ ${chip}${mask(0)}
 }
 
 /* The headline panel (f0) — the house void with the 8px bar as its left border. */
-.l3-name {
+.lower-third-name {
   display: inline-block;           /* the panel hugs the headline text */
   padding: calc(26px * var(--scale)) calc(60px * var(--scale)) calc(30px * var(--scale)) calc(32px * var(--scale));
   background: var(--panel-bg);     /* void rgba(10,12,16,.86) by default */

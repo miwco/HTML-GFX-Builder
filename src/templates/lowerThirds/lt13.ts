@@ -36,15 +36,15 @@ export const lt13: TemplateVariant = defineVariant(
   },
   (o) => ({
     html: `    <!-- House Interview structure: [8px accent bar] | [void panel: name / org / location]. -->
-    <div class="l3-accent"></div>
-    <div class="l3-box">
+    <div class="lower-third-accent"></div>
+    <div class="lower-third-box">
 ${lineMasks(o)}
     </div>`,
     css: `${labelFontFaceCss(fontById('jetbrains-mono'))}
 
 /* The accent bar — 8px, fused to the panel's left edge, with the house's one glow. */
-.l3-accent {
-  position: absolute;               /* pinned inside the positioned .l3 root */
+.lower-third-accent {
+  position: absolute;               /* pinned inside the positioned .lower-third root */
   left: 0;                          /* at the very left edge */
   top: 0;                           /* full panel height… */
   bottom: 0;                        /* …top to bottom */
@@ -55,7 +55,7 @@ ${lineMasks(o)}
 }
 
 /* The panel — the house void: near-black, translucent, softly blurring the video. */
-.l3-box {
+.lower-third-box {
   margin-left: calc(8px * var(--scale));    /* starts where the accent bar ends */
   padding: calc(24px * var(--scale)) calc(64px * var(--scale)) calc(26px * var(--scale)) calc(34px * var(--scale));
   background: var(--panel-bg);      /* void rgba(10,12,16,.86) by default */
@@ -65,7 +65,7 @@ ${lineMasks(o)}
 }
 
 /* Name (f0) — the strap's one heavy element. */
-.l3-name {
+.lower-third-name {
   font-size: calc(50px * var(--scale));  /* headline size (values are 1080p reference) */
   font-weight: 700;                 /* full display weight */
   line-height: 1.05;                /* big text sits tight */
@@ -74,7 +74,7 @@ ${lineMasks(o)}
 }
 
 /* Organisation (f1) — the quiet middle voice. */
-.l3-title {
+.lower-third-title {
   font-size: calc(28px * var(--scale));  /* clearly below the name */
   font-weight: 400;                 /* regular — hierarchy comes from the name's weight */
   line-height: 1.25;                /* room if the organisation wraps */
@@ -83,7 +83,7 @@ ${lineMasks(o)}
 }
 
 /* Location (f2) — the house label voice: mono caps, tracked, in the accent color. */
-.l3-extra {
+.lower-third-extra {
   font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
   font-size: calc(20px * var(--scale));  /* the smallest voice on the strap */
   font-weight: 500;                 /* medium keeps tracked caps crisp */

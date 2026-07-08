@@ -38,7 +38,7 @@ test('custom colors: a hex typed in the wizard lands in the generated :root', as
   await create(page);
   await expect
     .poll(async () =>
-      frame(page).locator('.l3-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
+      frame(page).locator('.lower-third-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
     )
     .toBe('rgb(255, 45, 120)');
 });
@@ -90,7 +90,7 @@ test('project brand: match toggle carries the look to another variant', async ({
   await expect(page.locator('.wz-match input')).toBeChecked();
   await create(page);
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate(() => {
+    .poll(async () => frame(page).locator('.lower-third').evaluate(() => {
       return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     }))
     .toBe('#00ff88');

@@ -63,7 +63,7 @@ test('motion: In-only preset swap keeps the exit and auto-replays', async ({ pag
   await expect(page.locator('.panel-body .hint').first()).toContainText('In Pop spring');
   // …and the auto-replay makes the graphic visible without pressing Play.
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity), { timeout: 6000 })
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity), { timeout: 6000 })
     .toBe('1');
 });
 

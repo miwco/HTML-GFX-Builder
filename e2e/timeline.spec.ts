@@ -24,7 +24,7 @@ test('design view: the canvas shows the settled graphic without pressing Play', 
   await createHairline(page);
   // No Play pressed — the settle-on-rebuild jump makes the graphic visible at rest.
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
   await expect(frame(page).locator('#f0')).toHaveText('Alexandra Riva');
 });
@@ -71,7 +71,7 @@ test('the playhead follows Play and the phase follows Stop', async ({ page }) =>
   await page.getByRole('button', { name: '■ Stop' }).click();
   await expect(page.locator('[data-testid="timeline"] button.tab.active')).toContainText('Out');
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('0');
 });
 
@@ -83,19 +83,19 @@ test('scrubbing pauses the preview mid-animation', async ({ page }) => {
   await scrub.focus();
   for (let i = 0; i < 80; i++) await page.keyboard.press('ArrowRight'); // well past the 0.60s out
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('0');
   await page.waitForTimeout(400); // paused means paused
-  await expect(frame(page).locator('.l3').first()).toHaveCSS('opacity', '0');
+  await expect(frame(page).locator('.lower-third').first()).toHaveCSS('opacity', '0');
   // Play reclaims the playhead and brings the graphic back.
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 
 test('T2: stretching a bar rewrites the duration literal in the marked region', async ({ page }) => {
-  await createHairline(page); // line-reveal: bar 1 = .l3-accent, duration 0.45 / animSpeed
+  await createHairline(page); // line-reveal: bar 1 = .lower-third-accent, duration 0.45 / animSpeed
   const inTab = page.getByTestId('timeline-seg-in');
   await expect(inTab).toContainText('In 0.95s');
 
@@ -116,7 +116,7 @@ test('T2: stretching a bar rewrites the duration literal in the marked region', 
     .frameLocator('iframe.preview-frame')
     .locator('body')
     .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
-  const accentDuration = js.match(/l3-accent[\s\S]*?duration:\s*([\d.]+)\s*\/\s*animSpeed/)?.[1];
+  const accentDuration = js.match(/lower-third-accent[\s\S]*?duration:\s*([\d.]+)\s*\/\s*animSpeed/)?.[1];
   expect(Number(accentDuration)).toBeGreaterThan(0.45);
 
   // Undo restores the original timing.
@@ -147,7 +147,7 @@ test('T2: moving a bar writes an explicit start position', async ({ page }) => {
   // And the graphic still plays to a settled visible state with the new choreography.
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 
@@ -164,14 +164,14 @@ test('T2.5: the ease picker writes and clears a per-tween ease literal', async (
   await expect(ease).toHaveValue('auto');
   await ease.selectOption('back.out(1.6)');
   await page.waitForTimeout(650);
-  const withEase = (await templateJs()).match(/tl\.fromTo\('\.l3-accent'[\s\S]*?\);/)?.[0] ?? '';
+  const withEase = (await templateJs()).match(/tl\.fromTo\('\.lower-third-accent'[\s\S]*?\);/)?.[0] ?? '';
   expect(withEase).toContain("ease: 'back.out(1.6)'");
   await expect(page.getByTestId('timeline-ease-1')).toHaveValue('back.out(1.6)');
 
   // Back to auto — the override is removed and the knob rules again.
   await page.getByTestId('timeline-ease-1').selectOption('auto');
   await page.waitForTimeout(650);
-  const cleared = (await templateJs()).match(/tl\.fromTo\('\.l3-accent'[\s\S]*?\);/)?.[0] ?? '';
+  const cleared = (await templateJs()).match(/tl\.fromTo\('\.lower-third-accent'[\s\S]*?\);/)?.[0] ?? '';
   expect(cleared).not.toContain("ease: 'back.out(1.6)'");
 });
 

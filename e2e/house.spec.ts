@@ -25,13 +25,13 @@ test('house strap: creates from the noacg family and plays', async ({ page }) =>
   await createFrom(page, 'Lower thirds', 'House Strap');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
   await expect(frame(page).locator('#f0')).toHaveText('Noa Haline');
   // The house label voice: the title line renders in the bundled mono face.
   await expect
     .poll(async () =>
-      frame(page).locator('.l3-title').evaluate((el) => getComputedStyle(el).fontFamily),
+      frame(page).locator('.lower-third-title').evaluate((el) => getComputedStyle(el).fontFamily),
     )
     .toContain('JetBrains Mono');
 });

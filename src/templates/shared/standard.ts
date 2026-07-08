@@ -61,7 +61,7 @@ export interface StandardMeta {
 
 export interface CategorySpec {
   type: TemplateType;
-  /** Class prefix for the structure contract ('l3', 'card', …). */
+  /** Class prefix for the structure contract ('lower-third', 'info-card', …). */
   prefix: string;
   /** One-line body comment describing the root element. */
   rootComment: string;

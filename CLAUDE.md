@@ -105,7 +105,7 @@ src/
                                 makeDefineVariant) + clock.ts (countdown engine: hidden minutes
                                 field → M:SS + {prefix}-done at zero; DOM-ready-safe) — every
                                 category builds on these
-                  lowerThirds/  lt01…lt13 on shared.ts (prefix 'l3') + animPresets.ts (6
+                  lowerThirds/  lt01…lt13 on shared.ts (prefix 'lower-third') + animPresets.ts (6
                                 marked-region GSAP presets, prefix-parameterized — they animate
                                 any category's .{prefix}-box structure)
                   infoCards/    card01…card05 (prefix 'card')
@@ -191,7 +191,7 @@ src/
                  zoneDecls patch the Style panel writes; dblclick a visible #fN → inline
                  edit → sample value + definition default via blocks/edit.ts
                  setFieldDefault; corner handle → live --scale preview + one patchCss
-                 write, clamped 0.5–2; root detected via class="(\w+)-box"), CanvasGuides,
+                 write, clamped 0.5–2; root detected via model/structure.ts detectPrefix), CanvasGuides,
                  PlayoutSimulator (owns the running preview timeline __activeTl; settles
                  the design view after every rebuild — progress(1, true) + a second
                  update(); auto-replays on replayNonce; playNext owns each Continue's
@@ -253,7 +253,7 @@ keep working via deterministic patches:
 - **Motion panel** — only touches the marked region
   (`/* == ANIMATION … == */ … /* == END ANIMATION == */`) and its three knob variables
   (`animSpeed`, `easeIn`, `easeOut`). Presets are per-category (`blocks/animPatch.ts
-  presetsForType`); the root prefix is detected from `class="(\w+)-box"`. Preset/steps swaps
+  presetsForType`); the root prefix is detected via `model/structure.ts` (hyphen-safe). Preset/steps swaps
   re-emit the region (undoable); user code outside the markers is never modified. The steps
   toggle only shows for line-based categories (lower thirds, info cards, scoreboards, corner
   bug) — continuous, clock, and data-driven formats hide it.

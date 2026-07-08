@@ -93,7 +93,7 @@ export function setAnimKnob(js: string, knob: 'animSpeed' | 'easeIn' | 'easeOut'
 export function presetConfigFromTemplate(template: SpxTemplate, steps: boolean): PresetConfig {
   const info = readAnimationInfo(template.js);
   // Every category uses the same structure contract with its own class prefix.
-  const prefix = detectPrefix(template.html) ?? 'l3';
+  const prefix = detectPrefix(template.html) ?? 'lower-third';
   // Visible text lines are the id="fN" elements wrapped in the standard line masks.
   const lineCount = Math.max(1, countLines(template.html));
   const fallbackId = info.inPresetId ?? info.outPresetId;

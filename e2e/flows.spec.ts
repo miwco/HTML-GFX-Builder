@@ -34,7 +34,7 @@ test('wizard: create a lower third with defaults', async ({ page }) => {
   // Play runs the entrance (root becomes visible).
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 
@@ -94,7 +94,7 @@ test('import graphics: image lands in the logo slot', async ({ page }) => {
   await page.locator('.wz-variant', { hasText: 'Number Badge' }).click();
   await createFromCurrentStep(page);
 
-  const logo = previewFrame(page).locator('.l3-logo');
+  const logo = previewFrame(page).locator('.lower-third-logo');
   await expect(logo).toBeVisible();
   await expect
     .poll(async () => logo.evaluate((el: HTMLImageElement) => el.src.startsWith('data:image/png')))
@@ -111,7 +111,7 @@ test('style panel: accent retints the live preview', async ({ page }) => {
   // The preview rebuilds (debounced) with the new accent on the hairline.
   await expect
     .poll(async () =>
-      previewFrame(page).locator('.l3-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
+      previewFrame(page).locator('.lower-third-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
     )
     .toBe('rgb(255, 45, 120)');
 });
@@ -128,7 +128,7 @@ test('motion panel: preset swap jumps to the JS tab and still plays', async ({ p
   await expect(frame.locator('#f0')).toBeAttached();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 

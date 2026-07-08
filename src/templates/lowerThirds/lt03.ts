@@ -32,14 +32,14 @@ export const lt03: TemplateVariant = defineVariant(
   },
   (o) => ({
     html: `    <!-- Structure: a vertical accent bar overlaying the panel's left edge, then the
-         panel (.l3-box) holding one mask-wrapped element per text line. -->
-    <div class="l3-accent"></div>
-    <div class="l3-box">
+         panel (.lower-third-box) holding one mask-wrapped element per text line. -->
+    <div class="lower-third-accent"></div>
+    <div class="lower-third-box">
 ${lineMasks(o)}
     </div>`,
 
     css: `/* The panel: a quiet dark card with generous padding and a hairline keyline. */
-.l3-box {
+.lower-third-box {
   background: var(--panel-bg);                     /* the panel color (retint via :root) */
   border: 1px solid rgba(255, 255, 255, 0.14);     /* hairline keyline lifts the panel off video */
   border-radius: calc(2px * var(--scale));         /* barely-there corner rounding (minimal style) */
@@ -47,7 +47,7 @@ ${lineMasks(o)}
 }
 
 /* The accent moment: a slim vertical bar hugging the panel's left edge, full height. */
-.l3-accent {
+.lower-third-accent {
   position: absolute;                              /* positioned over the panel's left edge */
   left: 0;                                         /* flush with the panel's left side */
   top: 0;                                          /* stretches from the panel's top… */
@@ -58,7 +58,7 @@ ${lineMasks(o)}
 }
 
 /* Line 1 — the name: big and confident, pure white. */
-.l3-name {
+.lower-third-name {
   font-size: calc(48px * var(--scale));            /* headline scale */
   font-weight: 700;                                /* bold carries the hierarchy */
   line-height: 1.1;                                /* tight — big text needs less leading */
@@ -67,7 +67,7 @@ ${lineMasks(o)}
 }
 
 /* Line 2 — the title: half the size, dimmed, clearly secondary. */
-.l3-title {
+.lower-third-title {
   font-size: calc(24px * var(--scale));            /* ~2:1 ratio under the name */
   font-weight: 400;                                /* regular weight keeps it quiet */
   line-height: 1.3;                                /* comfortable for a smaller line */
@@ -75,7 +75,7 @@ ${lineMasks(o)}
 }
 
 /* Line 3 (optional) — a small-caps kicker in the accent color. */
-.l3-extra {
+.lower-third-extra {
   font-size: calc(19px * var(--scale));            /* smallest line in the stack */
   font-weight: 600;                                /* semibold keeps small caps legible */
   line-height: 1.3;                                /* matches the title's rhythm */
@@ -85,7 +85,7 @@ ${lineMasks(o)}
 }
 
 /* Lines read as one unit: a small, even gap between them. */
-.l3-mask + .l3-mask {
+.lower-third-mask + .lower-third-mask {
   margin-top: calc(6px * var(--scale));            /* gap between stacked lines */
 }`,
 

@@ -7,7 +7,7 @@
 // returns null and the UI says so — the code always outranks the view.
 
 export interface TimelineTween {
-  /** Target list as written, cleaned for display (e.g. ".l3-box" or "#f0, #f1"). */
+  /** Target list as written, cleaned for display (e.g. ".lower-third-box" or "#f0, #f1"). */
   targets: string[];
   kind: 'set' | 'to' | 'fromTo';
   /** Animated property names (duration/stagger/ease bookkeeping stripped). */

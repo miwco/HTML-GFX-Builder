@@ -43,7 +43,7 @@ test('double-click edits text in place: live value + definition default, undoabl
   await createHairline(page);
   // The settled design view makes the name visible and double-clickable.
   await expect
-    .poll(async () => page.frameLocator('iframe.preview-frame').locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => page.frameLocator('iframe.preview-frame').locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 
   const p = await screenPointOf(page, '#f0');
@@ -71,7 +71,7 @@ test('double-click edits text in place: live value + definition default, undoabl
 test('Escape cancels an inline edit without changes', async ({ page }) => {
   await createHairline(page);
   await expect
-    .poll(async () => page.frameLocator('iframe.preview-frame').locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => page.frameLocator('iframe.preview-frame').locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 
   const p = await screenPointOf(page, '#f0');
