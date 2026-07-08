@@ -3,8 +3,8 @@
 // preset — it lives in the runtime's revealAnswer(), triggered by SPX Continue (next()).
 //
 // The quiz structure contract (see shared.ts):
-//   .qz (root, opacity:0) → .qz-box (the panel) → .qz-mask > #f0 (question)
-//     → .qz-options → four .qz-option rows (.qz-letter chip + #f1..#f4)
+//   .quiz (root, opacity:0) → .quiz-box (the panel) → .quiz-mask > #f0 (question)
+//     → .quiz-options → four .quiz-option rows (.quiz-letter chip + #f1..#f4)
 
 import type { AnimPresetId } from '../../model/wizard';
 import type { AnimPreset, PresetConfig } from '../lowerThirds/animPresets';
@@ -32,14 +32,14 @@ ${knobs(cfg)}
 // buildInTimeline(): choreographed entrance — box, then question, then the answer rows.
 function buildInTimeline() {
   var tl = gsap.timeline();
-  tl.set('.qz', { opacity: 1 });               // reveal the (CSS-hidden) graphic
-  tl.fromTo('.qz-box',                         // the panel: fade + a small rise
+  tl.set('.quiz', { opacity: 1 });               // reveal the (CSS-hidden) graphic
+  tl.fromTo('.quiz-box',                         // the panel: fade + a small rise
     { opacity: 0, y: 24 },
     { opacity: 1, y: 0, duration: 0.5 / animSpeed, ease: easeIn });
   tl.fromTo('#f0',                             // the question slides up from behind its mask
     { yPercent: 110 },
     { yPercent: 0, duration: 0.55 / animSpeed, ease: easeIn }, '-=0.25');
-  tl.fromTo('.qz-option',                      // the four answers walk in one after another
+  tl.fromTo('.quiz-option',                      // the four answers walk in one after another
     { x: -24, opacity: 0 },
     { x: 0, opacity: 1, duration: 0.45 / animSpeed, ease: easeIn, stagger: 0.1 / animSpeed },
     '-=0.2');
@@ -49,8 +49,8 @@ function buildInTimeline() {
 // buildOutTimeline(): quick exit — the whole panel lifts away, then the root hides.
 function buildOutTimeline() {
   var tl = gsap.timeline();
-  tl.to('.qz-box', { opacity: 0, y: -16, duration: 0.35 / animSpeed, ease: easeOut });
-  tl.set('.qz', { opacity: 0 });               // fully hidden; ready to play again
+  tl.to('.quiz-box', { opacity: 0, y: -16, duration: 0.35 / animSpeed, ease: easeOut });
+  tl.set('.quiz', { opacity: 0 });               // fully hidden; ready to play again
   return tl;
 }
 ${MARK_CLOSE}`,

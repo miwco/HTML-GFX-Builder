@@ -68,7 +68,7 @@ test('infographic: the stat counts up to its value', async ({ page }) => {
   // Mid-count the text is a smaller number; it must settle back on the target.
   await expect(value).toHaveText('87%', { timeout: 8000 });
   await expect
-    .poll(async () => frame(page).locator('.ig').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.infographic').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 
@@ -76,10 +76,10 @@ test('quiz: options bind and Next reveals the correct answer', async ({ page }) 
   await createFrom(page, 'Quiz graphics', 'Arena Quiz');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect(frame(page).locator('#f2')).toHaveText('Mars');
-  await expect(frame(page).locator('.qz-correct')).toHaveCount(0); // no reveal before next()
+  await expect(frame(page).locator('.quiz-correct')).toHaveCount(0); // no reveal before next()
   await page.getByRole('button', { name: '» Next' }).click();
-  const correct = frame(page).locator('.qz-option.qz-correct');
+  const correct = frame(page).locator('.quiz-option.quiz-correct');
   await expect(correct).toHaveCount(1);
   await expect(correct.locator('#f2')).toHaveText('Mars'); // f5 default 'B' -> option 2
-  await expect(frame(page).locator('.qz-dim')).toHaveCount(3);
+  await expect(frame(page).locator('.quiz-dim')).toHaveCount(3);
 });

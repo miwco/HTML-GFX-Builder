@@ -42,38 +42,38 @@ export const ig04: TemplateVariant = defineInfographicVariant(
     const answerText = o.lines[1]?.sample || 'YES';
     return {
       html: `    <!-- Poll Ring: one frosted panel — [question] over [ring around figure + answer]. -->
-    <div class="ig-box">
+    <div class="infographic-box">
       <!-- The question — the poll being answered (SPX writes field f2 here). -->
-      <div class="ig-question" id="f2">${QUESTION_SAMPLE}</div>
+      <div class="infographic-question" id="f2">${QUESTION_SAMPLE}</div>
       <!-- The ring block — SVG donut with the readout centered inside it. -->
-      <div class="ig-ring">
-        <svg class="ig-ring-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <div class="infographic-ring">
+        <svg class="infographic-ring-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
           <!-- The track — the dim full circle the accent ring draws over. -->
-          <circle class="ig-ring-track" cx="100" cy="100" r="86" />
+          <circle class="infographic-ring-track" cx="100" cy="100" r="86" />
           <!-- The fill — pathLength 100 makes the dash math read as percent:
                dashoffset 100 = empty, dashoffset 100 - percent = filled to that percent.
                The SVG-attribute rotation only moves the circle's start point from
                3 o'clock to 12 o'clock — geometry setup, not an animated CSS transform. -->
-          <circle class="ig-ring-fill" cx="100" cy="100" r="86" pathLength="100"
+          <circle class="infographic-ring-fill" cx="100" cy="100" r="86" pathLength="100"
                   stroke-dasharray="100" stroke-dashoffset="100"
                   transform="rotate(-90 100 100)" />
         </svg>
         <!-- The readout — stacked in the ring's hole: figure + % sign, answer below. -->
-        <div class="ig-readout">
-          <div class="ig-figure">
+        <div class="infographic-readout">
+          <div class="infographic-figure">
             <!-- The figure — the ring-fill preset counts this element's text from 0. -->
-            <span class="ig-value" id="f0">${valueText}</span>
+            <span class="infographic-value" id="f0">${valueText}</span>
             <!-- The % sign — its own static element so the counter never rewrites it. -->
-            <span class="ig-pct">%</span>
+            <span class="infographic-pct">%</span>
           </div>
           <!-- The answer — quiet tracking-wide caps under the figure. -->
-          <div class="ig-answer" id="f1">${answerText}</div>
+          <div class="infographic-answer" id="f1">${answerText}</div>
         </div>
       </div>
     </div>`,
 
       css: `/* The frosted panel — same glass language as the Frosted Card lower third. */
-.ig-box {
+.infographic-box {
   display: flex;                   /* a simple column: question over ring */
   flex-direction: column;          /* stacked top to bottom */
   align-items: center;             /* a centered poll — everything shares one axis */
@@ -87,7 +87,7 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 }
 
 /* The question — the panel's headline, wrapping to balanced centered rows. */
-.ig-question {
+.infographic-question {
   max-width: calc(480px * var(--scale));  /* wraps at a readable measure, like the bench look */
   margin-bottom: calc(30px * var(--scale));  /* clear air between question and ring — never touching */
   font-size: calc(30px * var(--scale));  /* headline size — the ring's figure still leads */
@@ -101,28 +101,28 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 }
 
 /* The ring block — the SVG donut with the readout anchored over its center. */
-.ig-ring {
+.infographic-ring {
   position: relative;              /* anchor for the absolutely-centered readout */
   width: calc(300px * var(--scale));   /* ring diameter — the hero of the design */
   height: calc(300px * var(--scale));  /* square: the SVG circle fills it exactly */
 }
 
 /* The SVG canvas — fills the block; no baseline gap below it. */
-.ig-ring-svg {
+.infographic-ring-svg {
   display: block;                  /* kill the inline-image baseline gap */
-  width: 100%;                     /* the .ig-ring box sets the real size */
+  width: 100%;                     /* the .infographic-ring box sets the real size */
   height: 100%;                    /* keep the 1:1 viewBox mapping */
 }
 
 /* The track — a dim translucent lane the accent ring draws over (glass family lane). */
-.ig-ring-track {
+.infographic-ring-track {
   fill: none;                      /* a ring, not a disc */
   stroke: rgba(255, 255, 255, 0.16);  /* translucent white lane on the glass */
   stroke-width: 12;                /* viewBox units — scales with the SVG */
 }
 
 /* The fill — the ring-fill preset tweens stroke-dashoffset 100 -> 100 - percent. */
-.ig-ring-fill {
+.infographic-ring-fill {
   fill: none;                      /* a ring, not a disc */
   stroke: var(--accent);           /* the ring is the accent moment of this graphic */
   stroke-width: 12;                /* same weight as the track — fill sits exactly on it */
@@ -131,7 +131,7 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 }
 
 /* The readout — centered in the ring's hole; figure on top, answer below. */
-.ig-readout {
+.infographic-readout {
   position: absolute;              /* pinned over the SVG */
   inset: 0;                        /* cover the whole ring block */
   display: flex;                   /* a small centered column */
@@ -141,14 +141,14 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 }
 
 /* The figure row — the counting number and its static % sign share one baseline. */
-.ig-figure {
+.infographic-figure {
   display: flex;                   /* number and % sit side by side */
   align-items: baseline;           /* the % rests on the number's baseline */
   gap: calc(4px * var(--scale));   /* a hair of air — beside the number, never inside it */
 }
 
 /* The number — huge, heavy, the single loudest thing on the panel. */
-.ig-value {
+.infographic-value {
   font-size: calc(76px * var(--scale));  /* hero size, sized to sit inside the ring's hole */
   font-weight: 800;                /* heaviest weight — contrast through weight, not more fonts */
   line-height: 1;                  /* no dead leading — the answer sets the gap below */
@@ -158,7 +158,7 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 }
 
 /* The % sign — small and accent-colored, clearly subordinate to the number. */
-.ig-pct {
+.infographic-pct {
   font-size: calc(34px * var(--scale));  /* under half the number — clear hierarchy */
   font-weight: 800;                /* matches the number's weight at its smaller size */
   line-height: 1;                  /* hugs its baseline */
@@ -166,7 +166,7 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 }
 
 /* The answer — quiet tracking-wide caps under the figure. */
-.ig-answer {
+.infographic-answer {
   margin-top: calc(8px * var(--scale));  /* small gap: figure + answer read as one unit */
   font-size: calc(18px * var(--scale));  /* small label size */
   font-weight: 700;                /* bold keeps small caps legible */

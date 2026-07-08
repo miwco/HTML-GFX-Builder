@@ -3,12 +3,12 @@
 //   f0 "Question" · f1–f4 "Answer A".."Answer D" · f5 "Correct answer" (dropdown A/B/C/D)
 //
 // Structure contract:
-//   <div class="qz">                 root — zone positioned; opacity:0 until play()
-//     <div class="qz-box">           the panel; presets tween this
-//       <div class="qz-mask"><span id="f0">…</span></div>      the question (mask-up reveal)
-//       <div class="qz-options">                               the four answer rows
-//         <div class="qz-option">
-//           <span class="qz-letter">A</span>                   static letter chip
+//   <div class="quiz">                 root — zone positioned; opacity:0 until play()
+//     <div class="quiz-box">           the panel; presets tween this
+//       <div class="quiz-mask"><span id="f0">…</span></div>      the question (mask-up reveal)
+//       <div class="quiz-options">                               the four answer rows
+//         <div class="quiz-option">
+//           <span class="quiz-letter">A</span>                   static letter chip
 //           <span id="f1">…</span>                             the answer text
 //         </div>
 //         …same for B/#f2, C/#f3, D/#f4…
@@ -18,8 +18,8 @@
 //   </div>
 //
 // The reveal: SPX's Continue button calls next(), which reads the letter in #f5, marks
-// that .qz-option with 'qz-correct' (accent treatment) and the other three with 'qz-dim'
-// (faded) — designs MUST style both classes. Presets tween .qz-box and .qz-option, so
+// that .quiz-option with 'quiz-correct' (accent treatment) and the other three with 'quiz-dim'
+// (faded) — designs MUST style both classes. Presets tween .quiz-box and .quiz-option, so
 // designs never put skew/rotation on those elements (paint it on ::before/::after layers).
 
 import type { SpxField, SpxTemplate } from '../../model/types';
@@ -46,16 +46,16 @@ import { quizPresetById } from './quizPresets';
 
 export interface QuizDesign {
   /**
-   * Inner HTML of .qz — must contain .qz-box with .qz-mask > span#f0 and .qz-options
-   * holding the four .qz-option rows (.qz-letter chip + span#f1..#f4).
+   * Inner HTML of .quiz — must contain .quiz-box with .quiz-mask > span#f0 and .quiz-options
+   * holding the four .quiz-option rows (.quiz-letter chip + span#f1..#f4).
    */
   html: string;
   /**
    * Variant CSS (panel, question, option rows, letter chips). Colors via :root vars only.
-   * MUST style .qz-correct (accent treatment) and .qz-dim (faded) for the reveal.
+   * MUST style .quiz-correct (accent treatment) and .quiz-dim (faded) for the reveal.
    */
   css: string;
-  /** Whether the design includes a .qz-accent element. */
+  /** Whether the design includes a .quiz-accent element. */
   hasAccent: boolean;
 }
 
@@ -96,10 +96,10 @@ ${setFieldValueJs}
 // clearReveal(): remove a previous reveal so the graphic is back to the neutral state
 // (fresh data, replay, or a second question all start un-revealed).
 function clearReveal() {
-  var options = document.querySelectorAll('.qz-option');
+  var options = document.querySelectorAll('.quiz-option');
   for (var i = 0; i < options.length; i++) {
-    options[i].classList.remove('qz-correct');
-    options[i].classList.remove('qz-dim');
+    options[i].classList.remove('quiz-correct');
+    options[i].classList.remove('quiz-dim');
   }
 }
 
@@ -116,16 +116,16 @@ function update(data) {
 }
 
 // revealAnswer(): the money moment — read the correct letter from the hidden #f5,
-// light that option up ('qz-correct'), fade the other three ('qz-dim'), and give the
+// light that option up ('quiz-correct'), fade the other three ('quiz-dim'), and give the
 // winner a small spring pop.
 function revealAnswer() {
   var letter = document.getElementById('f5').textContent.trim().toUpperCase();
   var index = 'ABCD'.indexOf(letter);        // A -> row 0, B -> row 1, …
-  var options = document.querySelectorAll('.qz-option');
+  var options = document.querySelectorAll('.quiz-option');
   if (index === -1 || !options[index]) return;  // unknown letter — do nothing
   clearReveal();                   // a second Continue press stays clean
   for (var i = 0; i < options.length; i++) {
-    options[i].classList.add(i === index ? 'qz-correct' : 'qz-dim');
+    options[i].classList.add(i === index ? 'quiz-correct' : 'quiz-dim');
   }
   // Pop the correct row: enter slightly enlarged, spring back to rest.
   gsap.fromTo(options[index],
@@ -170,7 +170,7 @@ export function assembleQuiz(meta: QuizMeta, design: QuizDesign, o: ResolvedOpti
     title: meta.name,
     definitionBlock: definitionScriptBlock(settings, QUIZ_FIELDS),
     body: `  <!-- Quiz root — the question, four answer rows, and the hidden correct letter. -->
-  <div class="qz">
+  <div class="quiz">
 ${design.html}
     <!-- Hidden correct-answer source — SPX writes field f5 here; next() reads it. -->
     <div id="f5" style="display: none">B</div>
@@ -186,27 +186,27 @@ ${font.face}
 ${resetCanvasCss(o.resolution)}
 
 /* ── Root position (anchor zone) ── */
-.qz {
+.quiz {
   position: absolute;
 ${zoneCssText(o.zone, o.nudge, o.resolution)}
   opacity: 0;                      /* hidden until play() runs the entrance */
 }
 
 /* ── Auto-fit: the panel hugs its content and wraps instead of overflowing. ── */
-.qz-box {
+.quiz-box {
   width: fit-content;              /* the panel hugs the question and answers */
   max-width: ${maxTextWidth}px;             /* never wider than this — text wraps instead */
   will-change: transform, opacity; /* hint the browser: this element animates */
 }
-.qz-mask {
+.quiz-mask {
   overflow: hidden;                /* the question animates in from behind this mask */
 }
-.qz-mask > span {
+.quiz-mask > span {
   display: inline-block;           /* so the question can move inside its mask */
   overflow-wrap: break-word;       /* break very long unbroken words */
   text-wrap: balance;              /* wrapped rows get even lengths */
 }
-.qz-option {
+.quiz-option {
   will-change: transform, opacity; /* the rows stagger in and pop on reveal */
 }
 
@@ -218,7 +218,7 @@ ${design.css}
   // 'auto' uses the preset's hand-tuned ease pair; a named easing preset overrides both phases.
   const ease = resolveEasing(o.animation.easing, preset.autoEase);
   const cfg: PresetConfig = {
-    prefix: 'qz',
+    prefix: 'quiz',
     lineCount: 5, // f0 question · f1–f4 answers (f5 is the hidden correct letter)
     hasAccent: design.hasAccent,
     steps: false, // the reveal is the second step — handled by next(), not the preset

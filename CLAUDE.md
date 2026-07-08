@@ -128,12 +128,12 @@ src/
                                 placeholder mark; bug02 = house live clock via
                                 StandardDesign.runtimeExtraJs — design-owned JS emitted
                                 BEFORE the marked ANIMATION region, DOM-ready guarded)
-                  infographics/ ig01…ig02 (prefix 'ig'; design owns fields + runtimeExtraJs;
+                  infographics/ ig01…ig06 (prefix 'infographic'; design owns fields + runtimeExtraJs;
                                 igPresets: count-up — suffix-preserving number tween — and
-                                bars-grow over #ig-bars .ig-bar-fill[data-value])
-                  quiz/         qz01 (prefix 'qz'; f0 question, f1-f4 options, hidden f5
+                                bars-grow over #infographic-bars .infographic-bar-fill[data-value])
+                  quiz/         qz01 (prefix 'quiz'; f0 question, f1-f4 options, hidden f5
                                 correct-answer dropdown; next() → revealAnswer() adds
-                                .qz-correct/.qz-dim, update() clears the reveal)
+                                .quiz-correct/.quiz-dim, update() clears the reveal)
   store/        templateStore.ts — zustand; template + UI state; undo history; lastChange
                 (per-tab changed-line ranges from every apply — the editor highlight);
                 replayNonce (Motion applies auto-replay via PlayoutSimulator); patchCss

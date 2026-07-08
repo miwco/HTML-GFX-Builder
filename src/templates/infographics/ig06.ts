@@ -42,22 +42,22 @@ export const ig06: TemplateVariant = defineInfographicVariant(
     const headingText = o.lines[1]?.sample || 'COMING UP TONIGHT';
 
     return {
-      // Structure: .ig-box is the panel; #ig-rows is rebuilt from the hidden #f0
+      // Structure: .infographic-box is the panel; #infographic-rows is rebuilt from the hidden #f0
       // source by rebuildInfographic() — exactly like ig02 rebuilds its bar rows.
       html: `    <!-- Schedule Board: one dark panel — caps heading, keyline rule, time/show rows. -->
-    <div class="ig-box">
+    <div class="infographic-box">
       <!-- Heading — the panel's accent tracking-caps kicker (SPX writes field f1 here). -->
-      <div class="ig-heading" id="f1">${headingText}</div>
+      <div class="infographic-heading" id="f1">${headingText}</div>
       <!-- The rule — a dim keyline under the heading, closing the header block. -->
-      <div class="ig-rule"></div>
+      <div class="infographic-rule"></div>
       <!-- Schedule rows — rendered by rebuildInfographic() from the hidden source below. -->
-      <div id="ig-rows"></div>
+      <div id="infographic-rows"></div>
     </div>
     <!-- Hidden schedule source — SPX writes field f0 here; JS renders it. One "time | show" per line. -->
     <div id="f0" style="display: none">${rowsText}</div>`,
 
       css: `/* The panel — restrained and near-black: the minimal family's quiet slab (lt01's sibling). */
-.ig-box {
+.infographic-box {
   min-width: calc(560px * var(--scale));  /* a board, not a strap — short show names keep air */
   box-sizing: border-box;          /* padding stays inside the measured width */
   padding: calc(30px * var(--scale)) calc(38px * var(--scale)) calc(14px * var(--scale));  /* generous air; rows carry their own bottom padding */
@@ -68,7 +68,7 @@ export const ig06: TemplateVariant = defineInfographicVariant(
 }
 
 /* Heading — the accent tracking-wide caps kicker, the panel's loudest color moment. */
-.ig-heading {
+.infographic-heading {
   font-size: calc(20px * var(--scale));  /* kicker scale — a label, not a headline */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.25;               /* compact label leading */
@@ -79,20 +79,20 @@ export const ig06: TemplateVariant = defineInfographicVariant(
 }
 
 /* The rule — a thin dim keyline under the heading, closing the header block. */
-.ig-rule {
+.infographic-rule {
   height: 1px;                     /* a true keyline — 1px at every resolution */
   margin-top: calc(18px * var(--scale));  /* air between the caps and the rule */
   background: rgba(255, 255, 255, 0.18);  /* dim, not accent — the color stays in the caps and dots */
 }
 
 /* The board — schedule rows stacked; each row carries its own separator. */
-#ig-rows {
+#infographic-rows {
   display: flex;                   /* a simple vertical stack */
   flex-direction: column;          /* one schedule row under another */
 }
 
 /* One schedule row: [bold time] [accent dot] [show name] on a shared text baseline. */
-.ig-row {
+.infographic-row {
   display: flex;                   /* time, dot and show share one line */
   align-items: baseline;           /* the two text sizes sit on one baseline */
   gap: calc(26px * var(--scale));  /* clear air between time, dot and show — never touching */
@@ -100,12 +100,12 @@ export const ig06: TemplateVariant = defineInfographicVariant(
 }
 
 /* Thin dim separators between rows (not above the first or below the last). */
-.ig-row + .ig-row {
+.infographic-row + .infographic-row {
   border-top: 1px solid rgba(255, 255, 255, 0.12);  /* keyline hairline between rows */
 }
 
 /* The time — bold and tabular so every row's digits line up in one column. */
-.ig-time {
+.infographic-time {
   flex-shrink: 0;                  /* a long show name never squeezes the time */
   min-width: calc(96px * var(--scale));  /* one shared column width — the dots align vertically */
   font-size: calc(30px * var(--scale));  /* the anchor of each row */
@@ -118,7 +118,7 @@ export const ig06: TemplateVariant = defineInfographicVariant(
 }
 
 /* The dot — a small, sharp dose of accent between time and show. */
-.ig-dot {
+.infographic-dot {
   flex-shrink: 0;                  /* the dot keeps its size whatever the text does */
   width: calc(7px * var(--scale)); /* small on purpose — a marker, not a bullet slab */
   height: calc(7px * var(--scale));  /* same as the width — a true circle */
@@ -129,7 +129,7 @@ export const ig06: TemplateVariant = defineInfographicVariant(
 }
 
 /* The show name — quiet against the bold time: smaller, lighter, dimmed. */
-.ig-show {
+.infographic-show {
   min-width: 0;                    /* allow the name to shrink and wrap inside flex */
   font-size: calc(23px * var(--scale));  /* clearly subordinate to the time */
   font-weight: 400;                /* regular; contrast comes from the bold time */
@@ -153,10 +153,10 @@ function escapeHtml(s) {
 }
 
 // rebuildInfographic(): parse the hidden #f0 source (one "time | show" per line)
-// and rebuild the #ig-rows schedule. Only the FIRST pipe splits the line, so a show
+// and rebuild the #infographic-rows schedule. Only the FIRST pipe splits the line, so a show
 // name may itself contain a "|". Lines without both parts are skipped, like ig02.
 function rebuildInfographic() {
-  var rows = document.getElementById('ig-rows');
+  var rows = document.getElementById('infographic-rows');
   var lines = document.getElementById('f0').textContent.split('\\n');
   var html = '';
   lines.forEach(function (raw) {
@@ -167,10 +167,10 @@ function rebuildInfographic() {
     var time = line.slice(0, split).trim();
     var show = line.slice(split + 1).trim();
     if (time === '' || show === '') return;        // skip half-empty rows
-    html += '<div class="ig-row">'
-          +   '<span class="ig-time">' + escapeHtml(time) + '</span>'
-          +   '<span class="ig-dot"></span>'
-          +   '<span class="ig-show">' + escapeHtml(show) + '</span>'
+    html += '<div class="infographic-row">'
+          +   '<span class="infographic-time">' + escapeHtml(time) + '</span>'
+          +   '<span class="infographic-dot"></span>'
+          +   '<span class="infographic-show">' + escapeHtml(show) + '</span>'
           + '</div>';
   });
   rows.innerHTML = html;

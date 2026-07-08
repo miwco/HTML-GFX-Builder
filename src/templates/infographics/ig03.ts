@@ -45,20 +45,20 @@ export const ig03: TemplateVariant = defineInfographicVariant(
     const titleText = o.lines[1]?.sample || 'LIVE TIMING';
 
     return {
-      // Structure: .ig-box holds the caps title and the tower; #ig-rows is rebuilt from
+      // Structure: .infographic-box holds the caps title and the tower; #infographic-rows is rebuilt from
       // the hidden #f0 source by rebuildInfographic() — exactly like a ticker's track.
       html: `    <!-- Timing Tower: caps title with an accent dash, then one leaning slab row per driver. -->
-    <div class="ig-box">
+    <div class="infographic-box">
       <!-- Title — the tower's caps kicker; its accent dash is painted by CSS (SPX writes field f1 here). -->
-      <div class="ig-title" id="f1">${titleText}</div>
+      <div class="infographic-title" id="f1">${titleText}</div>
       <!-- Timing rows — rendered by rebuildInfographic() from the hidden source below. -->
-      <div id="ig-rows"></div>
+      <div id="infographic-rows"></div>
     </div>
     <!-- Hidden standings source — SPX writes field f0 here; JS renders it. One "CODE gap" per line. -->
     <div id="f0" style="display: none">${towerText}</div>`,
 
       css: `/* The title — a small caps kicker over the tower, led by a chunky accent dash. */
-.ig-title {
+.infographic-title {
   display: flex;                   /* dash and text share one line */
   align-items: center;             /* the dash sits on the caps' optical middle */
   gap: calc(12px * var(--scale));  /* air between the dash and the text */
@@ -73,7 +73,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 }
 
 /* The dash — a small accent slab leaning the family -8deg (skew lives on ::before only). */
-.ig-title::before {
+.infographic-title::before {
   content: '';                     /* pseudo-elements render only with content set */
   flex-shrink: 0;                  /* a long title never squeezes the dash */
   width: calc(30px * var(--scale));  /* short on purpose — a mark, not a rule */
@@ -84,7 +84,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 
 /* The tower — rows stack tight; every row stretches to the widest one, so all the
    right-aligned gap figures share one clean right edge (no ragged column). */
-#ig-rows {
+#infographic-rows {
   display: flex;                   /* a simple vertical stack */
   flex-direction: column;          /* one timing row under another */
   gap: calc(4px * var(--scale));   /* hairline air — the tower reads as one unit */
@@ -93,7 +93,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 
 /* One timing row: [position chip][code ....... gap]. The row itself carries no lean —
    the 'rows-cascade' preset tweens it, so the slab is painted on ::after (the lt05 move). */
-.ig-row {
+.infographic-row {
   position: relative;              /* anchors the painted slab (::after) and the chip layer */
   z-index: 0;                      /* own stacking context — the negative slab layers stay inside this row */
   display: flex;                   /* chip, code and gap share one line */
@@ -103,7 +103,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 }
 
 /* The painted slab: the sport lean lives HERE, on a layer no preset ever tweens. */
-.ig-row::after {
+.infographic-row::after {
   content: '';                     /* pseudo-elements render only with content set */
   position: absolute;              /* fills the row exactly ... */
   inset: 0;                        /* ... edge to edge */
@@ -115,7 +115,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 
 /* The position chip — its accent is painted on ::before so it leans with the slab
    while the number inside stays straight. Full row height, fused to the left edge. */
-.ig-pos {
+.infographic-pos {
   position: relative;              /* anchors the accent layer (::before) */
   display: flex;                   /* centers the number ... */
   align-items: center;             /* ... vertically ... */
@@ -128,7 +128,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 }
 
 /* The chip's accent: same -8deg as the slab, so its left edge fuses with the row's. */
-.ig-pos::before {
+.infographic-pos::before {
   content: '';                     /* pseudo-elements render only with content set */
   position: absolute;              /* fills the chip exactly ... */
   inset: 0;                        /* ... edge to edge */
@@ -139,7 +139,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 
 /* The driver code — condensed bold caps, the row's primary reading line. Its vertical
    padding sets the row height (the chip stretches to match). */
-.ig-code {
+.infographic-code {
   align-self: center;              /* sit on the row's center line, not stretched */
   margin-left: calc(16px * var(--scale));  /* air between the chip and the code */
   margin-right: auto;              /* push the gap figure to the right edge */
@@ -155,7 +155,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 }
 
 /* The gap figure — right-aligned and dimmed, so the chips stay the color moment. */
-.ig-gap {
+.infographic-gap {
   align-self: center;              /* sit on the row's center line, not stretched */
   font-size: calc(20px * var(--scale));  /* clearly subordinate to the code */
   font-weight: 600;                /* semibold — legible without competing */
@@ -165,7 +165,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 }
 
 /* The leader's gap — the tower's single text-accent: the top row's figure lights up. */
-.ig-row:first-child .ig-gap {
+.infographic-row:first-child .infographic-gap {
   color: var(--accent);            /* "LEADER" reads in the accent color */
   font-weight: 700;                /* one step heavier to match its color voice */
 }`,
@@ -184,11 +184,11 @@ function escapeHtml(s) {
 }
 
 // rebuildInfographic(): parse the hidden #f0 source (one "CODE gap" driver per line)
-// and rebuild the #ig-rows tower. The first token of a line is the driver code and
+// and rebuild the #infographic-rows tower. The first token of a line is the driver code and
 // everything after it is the gap column ("+1.892", "LEADER", "1 LAP" — spaces allowed).
 // The position number is not typed: it is the line's rank in the list.
 function rebuildInfographic() {
-  var rows = document.getElementById('ig-rows');
+  var rows = document.getElementById('infographic-rows');
   var lines = document.getElementById('f0').textContent.split('\\n');
   var html = '';
   var pos = 0;                                   // rank counter — blank lines don't count
@@ -199,10 +199,10 @@ function rebuildInfographic() {
     var code = parts.shift();
     var gap = parts.join(' ');                   // re-join: gaps may contain spaces
     pos += 1;                                    // this line earns the next rank
-    html += '<div class="ig-row">'
-          +   '<span class="ig-pos">' + pos + '</span>'
-          +   '<span class="ig-code">' + escapeHtml(code) + '</span>'
-          +   '<span class="ig-gap">' + escapeHtml(gap) + '</span>'
+    html += '<div class="infographic-row">'
+          +   '<span class="infographic-pos">' + pos + '</span>'
+          +   '<span class="infographic-code">' + escapeHtml(code) + '</span>'
+          +   '<span class="infographic-gap">' + escapeHtml(gap) + '</span>'
           + '</div>';
   });
   rows.innerHTML = html;

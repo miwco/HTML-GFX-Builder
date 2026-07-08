@@ -56,7 +56,7 @@ const results = await page.evaluate(async (CATEGORY) => {
     row.checks.masks = isCredits ? tpl.html.includes('credits-track')
       : isTicker ? tpl.html.includes('ticker-track')
       : clockPrefix ? tpl.html.includes(`${clockPrefix}-clock`)
-      : isInfographic ? tpl.html.includes('ig-box') // designs own their fields — no mask contract
+      : isInfographic ? tpl.html.includes('infographic-box') // designs own their fields — no mask contract
       : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
 
     const rt = await runInFrame(tpl, async (w, d) => {
@@ -143,17 +143,17 @@ const results = await page.evaluate(async (CATEGORY) => {
       // Infographics carry their own data shape: bars, cascaded rows, a filling ring, or
       // a counting stat. Pass when the variant's shape demonstrably works.
       const r9 = await runInFrame(tpl, async (w, d) => {
-        if (d.getElementById('ig-bars')) {
+        if (d.getElementById('infographic-bars')) {
           w.update(JSON.stringify({ f0: 'Alpha | 80\nBeta | 55\nGamma | 30', f1: 'Results' }));
-          return { bars: d.getElementById('ig-bars').children.length };
+          return { bars: d.getElementById('infographic-bars').children.length };
         }
-        if (d.getElementById('ig-rows')) {
+        if (d.getElementById('infographic-rows')) {
           // Row designs rebuild from their textarea source (already holds a sample).
           w.update(JSON.stringify({}));
-          return { rows: d.getElementById('ig-rows').children.length };
+          return { rows: d.getElementById('infographic-rows').children.length };
         }
-        if (d.querySelector('.ig-ring-fill')) {
-          const ring = d.querySelector('.ig-ring-fill');
+        if (d.querySelector('.infographic-ring-fill')) {
+          const ring = d.querySelector('.infographic-ring-fill');
           const before = getComputedStyle(ring).strokeDashoffset;
           w.play();
           await new Promise((r) => setTimeout(r, 1400));
@@ -181,7 +181,7 @@ const results = await page.evaluate(async (CATEGORY) => {
         await new Promise((r) => setTimeout(r, 500));
         return {
           bound: d.getElementById('f2')?.textContent === 'Mars',
-          revealed: !!d.querySelector('.qz-correct'),
+          revealed: !!d.querySelector('.quiz-correct'),
         };
       });
       row.checks.autoFit = !r10.fatal && r10.errs.length === 0 && !!r10.bound && !!r10.revealed;
