@@ -1,6 +1,7 @@
 // Export target registry. Each target transforms the template into a downloadable zip
 // package: SPX (folder), HTML overlay (single autoplay html for OBS/vMix browser sources),
-// CasparCG (single self-contained html), OGraf (manifest + Web Component).
+// CasparCG (single self-contained html), OGraf (manifest + Web Component), LiveOS (the
+// OGraf package with NetOn.Live install steps — LiveOS's graphics engine is OGraf-compliant).
 
 import type JSZip from 'jszip';
 import type { SpxTemplate } from '../model/types';
@@ -27,5 +28,6 @@ import { htmlOverlayTarget } from './targets/htmlOverlay';
 import { h2rTarget } from './targets/h2r';
 import { casparTarget } from './targets/casparcg';
 import { ografTarget } from './targets/ograf';
+import { liveosTarget } from './targets/liveos';
 
-export const EXPORT_TARGETS: ExportTarget[] = [spxTarget, htmlOverlayTarget, h2rTarget, casparTarget, ografTarget];
+export const EXPORT_TARGETS: ExportTarget[] = [spxTarget, htmlOverlayTarget, h2rTarget, casparTarget, ografTarget, liveosTarget];

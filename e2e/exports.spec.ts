@@ -27,10 +27,10 @@ async function downloadTarget(page: Page, label: string): Promise<JSZip> {
   return JSZip.loadAsync(readFileSync(await download.path()));
 }
 
-test('export panel offers all five targets', async ({ page }) => {
+test('export panel offers all six targets', async ({ page }) => {
   await createHairline(page);
   await page.locator('.panel-tabs .tab', { hasText: 'Export' }).click();
-  for (const label of ['SPX export', 'HTML overlay (OBS / vMix)', 'H2R Graphics export', 'CasparCG export', 'OGraf (EBU) export']) {
+  for (const label of ['SPX export', 'HTML overlay (OBS / vMix)', 'H2R Graphics export', 'CasparCG export', 'OGraf (EBU) export', 'LiveOS (NetOn.Live) export']) {
     await expect(page.locator('.issue', { hasText: label })).toBeVisible();
   }
 });
@@ -132,6 +132,40 @@ test('casparcg: one self-contained html that speaks JSON and CasparCG XML', asyn
     .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
   await view.close();
+});
+
+test('liveos: the OGraf package with LiveOS instructions — same graphic, LiveOS README', async ({ page }) => {
+  await createHairline(page);
+  const liveosZip = await downloadTarget(page, 'LiveOS (NetOn.Live) export');
+
+  // The package IS an OGraf v1 Graphic (LiveOS's HTML5 graphics engine is OGraf-compliant):
+  // manifest + graphic.mjs + bundled GSAP, plus a LiveOS-specific README.
+  const names = Object.keys(liveosZip.files).filter((n) => !liveosZip.files[n].dir);
+  expect(names).toEqual(
+    expect.arrayContaining([
+      'hairline/README.md',
+      'hairline/graphic.mjs',
+      'hairline/hairline.ograf.json',
+      'hairline/lib/gsap.min.js',
+    ]),
+  );
+  const manifest = JSON.parse(await liveosZip.file('hairline/hairline.ograf.json')!.async('string'));
+  expect(manifest.$schema).toBe('https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json');
+  expect(manifest.main).toBe('graphic.mjs');
+  expect(manifest.schema.properties.f0.title).toBe('Name');
+  const readme = await liveosZip.file('hairline/README.md')!.async('string');
+  expect(readme).toContain('LiveOS');
+  expect(readme).toContain('OGraf');
+
+  // The Graphic itself must be byte-identical to the OGraf export — the driven OGraf
+  // contract test below covers this exact module, so the two targets can never drift.
+  const ografZip = await downloadTarget(page, 'OGraf (EBU) export');
+  expect(await liveosZip.file('hairline/graphic.mjs')!.async('string')).toBe(
+    await ografZip.file('hairline/graphic.mjs')!.async('string'),
+  );
+  expect(await liveosZip.file('hairline/hairline.ograf.json')!.async('string')).toBe(
+    await ografZip.file('hairline/hairline.ograf.json')!.async('string'),
+  );
 });
 
 test('ograf: a valid v1 Graphic whose Web Component passes the action contract', async ({ page }) => {

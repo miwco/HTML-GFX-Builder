@@ -567,6 +567,15 @@ read-only scheduled cloud agent. Not yet built — see the plan doc for the veri
       unrecognized `file-path` gddType (filelist → plain single-line path input). E2E now pins
       the `name` attribute. **Live-confirmed in the real H2R app (2026-07-08): fields render
       and text edits work.**
+- [x] **LiveOS export target (2026-07-09)** — NetOn.Live confirms the LiveOS HTML5 graphics
+      engine is OGraf-compliant (any OGraf template imports and plays directly), so the
+      target (`export/targets/liveos.ts`, registry id `liveos`) reuses the OGraf package
+      builder (`addOgrafPackage`, extracted in `targets/ograf.ts`) and wraps it with
+      LiveOS-specific install steps + success message. E2E pins the LiveOS and OGraf
+      exports to byte-identical graphic.mjs/manifest so the targets can never drift; the
+      driven OGraf contract test covers the shared module. Loopic's legacy `templates.json`
+      ingest stays unbuilt (schema not public — see EXPORT_TARGETS_RESEARCH.md). Still to
+      do: confirm against a real LiveOS install, like H2R was.
 - [ ] Data-driven/live content architecture (ticker/scoreboard controlled from a backend) — later
 
 ### Quality bar (always-on)

@@ -14,6 +14,7 @@ tool that renders a browser source runs the **HTML overlay** target.
 | SPX Graphics | Starter + Advanced/Pack exports (the strictest validation target) | ✅ |
 | CasparCG | Single self-contained .html + JSON/XML data shim | ✅ |
 | OGraf (EBU) | Manifest + graphic.mjs Web Component | ✅ |
+| LiveOS (NetOn.Live) | The OGraf package + LiveOS install README (engine is OGraf-compliant) | ✅ shipped 2026-07-09 |
 
 ## Researched next targets
 
@@ -34,18 +35,18 @@ Adapter shape (probably < a day):
   both on-air and off-air — may need a state toggle shim).
 Sources: h2r.graphics/docs/graphics/custom-html, h2r.graphics/posts/20260116-new-in-v3.
 
-### LiveOS (NetOn.Live) — MEDIUM priority, likely free via OGraf
+### LiveOS (NetOn.Live) — ✅ SHIPPED 2026-07-09 via OGraf
 
-Two ingest paths observed:
-1. **OGraf**: NetOn.Live showed "LiveOS OGraf HTML5 graphics" at NAB 2026 — if/when their
-   OGraf support ships broadly, **our existing OGraf export should load as-is**. This is the
-   open-standard path and the one to bet on.
-2. **templates.json**: Loopic's LiveOS integration exports a template HTML + a
-   `templates.json` metadata file into a LiveOS templates folder. The manifest schema is not
-   publicly documented; building this adapter needs LiveOS docs or a test instance.
-Action: acquire a LiveOS trial → test the OGraf package first; only build a templates.json
-adapter if OGraf ingest is missing/limited. Sources: docs.loopic.io (LiveOS integration),
-NetOn.Live NAB 2026 posts.
+NetOn.Live confirms the **LiveOS HTML5 graphics engine is OGraf-compliant — any OGraf HTML
+template can be directly imported and played out in LiveOS** (NAB 2026 announcements). The
+shipped target (`targets/liveos.ts`) therefore reuses the OGraf package builder
+(`addOgrafPackage` in `targets/ograf.ts`) byte-for-byte and adds a LiveOS-specific README +
+success message; the E2E pins the two targets to the identical graphic.mjs/manifest so they
+can never drift. The alternative ingest path — Loopic's legacy `templates.json` export into
+a LiveOS templates folder — remains publicly undocumented (checked 2026-07-09) and is NOT
+built; revisit only if a real LiveOS install rejects the OGraf package. Still open: verify
+against a live LiveOS instance/trial. Sources: docs.loopic.io (LiveOS integration),
+NetOn.Live NAB 2026 posts ("LiveOS OGraf HTML5 graphics").
 
 ### Singular.Live, Flowics (Vizrt), uno by Chyron — NOT ingest targets
 

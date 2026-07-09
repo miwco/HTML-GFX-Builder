@@ -176,7 +176,7 @@ src/
                 standalone controlpanel.html, same descriptors, inline), receiverScript.ts
                 (BroadcastChannel listener injected into exported index.html), liveData.ts
                 (editable published-CSV → update() polling block appended to template.js)
-  export/       registry.ts (5 targets, each with its own successMessage + ExportContext — the
+  export/       registry.ts (6 targets, each with its own successMessage + ExportContext — the
                 Data panel's sampleData rides along so serverless targets can bake it), slug.ts
                 (shared, avoids a cycle), selfContained.ts (single-file composer: inline
                 CSS/GSAP/JS/assets + extra body scripts), targets/spxStarter.ts (the one SPX
@@ -186,7 +186,10 @@ src/
                 receiver + controlpanel.html bundled), targets/h2r.ts (H2R Custom HTML: GDD
                 block from DataFields + play()-toggle shim), targets/casparcg.ts (selfContained
                 + JSON/XML data shim), targets/ograf.ts (EBU OGraf v1: manifest from DataFields
-                + graphic.mjs Web Component; AMD-guarded gsap loader), packetExport.ts (whole
+                + graphic.mjs Web Component; AMD-guarded gsap loader; addOgrafPackage
+                reused by targets/liveos.ts — LiveOS's HTML5 graphics engine is
+                OGraf-compliant, so that target is the same package with NetOn.Live
+                install steps in the README), packetExport.ts (whole
                 packet -> one zip, a Starter folder per graphic), common.ts (addSharedAssets,
                 addReferencedFonts, injectControlReceiver + addControlPanel, FONT_LICENSES.md)
   teach/        knowledge.ts + explain.ts — surfaced as Monaco HOVER tooltips in the editor
