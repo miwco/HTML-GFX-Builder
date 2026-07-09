@@ -93,8 +93,11 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   editingRef.current = editing;
   const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
-  // ── Selection model (editor UI state only — never written into the template) ──
-  const [selected, setSelected] = useState<string | null>(null);
+  // ── Selection model (editor UI state only — never written into the template).
+  // The selector lives in the STORE so the timeline strip highlights the same element
+  // (shared selection); everything derived from it stays local to this layer. ──
+  const selected = useTemplateStore((s) => s.selectedPart);
+  const setSelected = useTemplateStore((s) => s.setSelectedPart);
   /** The selected element's live rect in CANVAS px (rAF-tracked below). */
   const [selRect, setSelRect] = useState<CanvasRect | null>(null);
   /** The innermost part under the pointer — the "what would a click select" preview. */

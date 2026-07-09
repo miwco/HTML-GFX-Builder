@@ -486,6 +486,15 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       assignment on selection is deliberately NOT here (lands after both Era-6 tracks merge).
       E2E: canvas-selection (5 — select/name, hover, deselect ×2, climb+handle, edit/drag
       layering).
+- [x] **W4.2 shared selection (2026-07-09, the first convergence slice)** — the two Era-6
+      tracks meet: the canvas selection selector moved from component state into the store
+      (`selectedPart`), and both surfaces speak it. Clicking an element on the canvas washes
+      its overview row amber (label lit, inset edge); clicking a row's LABEL in the strip
+      selects that element on the canvas (outline + chip), clicking the selected label
+      deselects both. Only registry-part rows are handles (unregistered hand-tween rows stay
+      inert); still UI state only — no history, no template write. Next convergence slice:
+      the chip's "appears on press" action reusing applyStepChain. E2E: canvas-selection +1
+      (both directions + deselect, no code written).
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

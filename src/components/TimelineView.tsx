@@ -125,6 +125,9 @@ export default function TimelineView({ iframeRef }: Props) {
   const sendScrub = useTemplateStore((s) => s.sendScrub);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const requestReplay = useTemplateStore((s) => s.requestReplay);
+  // Shared selection (Era 6): the canvas and this strip highlight the SAME element.
+  const selectedPart = useTemplateStore((s) => s.selectedPart);
+  const setSelectedPart = useTemplateStore((s) => s.setSelectedPart);
 
   const model = useMemo(() => parseTimeline(template.js), [template.js]);
   // The category's class prefix + visible line count — for friendly labels and the »+ button.
@@ -726,14 +729,27 @@ export default function TimelineView({ iframeRef }: Props) {
           clock); part rows span every section. */}
       {!collapsed && (
         <div className="timeline-tracks timeline-ov" data-testid="timeline-overview">
-          {/* Left: the part names, outside the scroll. */}
+          {/* Left: the part names, outside the scroll. A registry part's label is the row's
+              selection handle — clicking it selects the element on the canvas too (shared
+              selection); clicking the selected one deselects. */}
           <div className="timeline-ov-labels">
             <div className="timeline-ov-corner" style={{ height: OV_HEAD_H }} aria-hidden="true" />
-            {overview.rowKeys.map((key) => (
-              <span className="timeline-label" key={key} title={key} style={{ height: ROW_H, lineHeight: `${ROW_H}px` }}>
-                {friendlyTarget(key)}
-              </span>
-            ))}
+            {overview.rowKeys.map((key) => {
+              const isPart = parts.some((p) => p.selector === key);
+              const isSelected = selectedPart === key;
+              return (
+                <span
+                  className={`timeline-label${isPart ? ' clickable' : ''}${isSelected ? ' selected' : ''}`}
+                  key={key}
+                  data-part={key}
+                  title={isPart ? `${key} — click to select this element (on the canvas too)` : key}
+                  style={{ height: ROW_H, lineHeight: `${ROW_H}px` }}
+                  onClick={isPart ? () => setSelectedPart(isSelected ? null : key) : undefined}
+                >
+                  {friendlyTarget(key)}
+                </span>
+              );
+            })}
           </div>
 
           {/* Middle: the zoomable, scrollable section canvas. */}
@@ -812,7 +828,11 @@ export default function TimelineView({ iframeRef }: Props) {
 
               {/* Part rows — bars across every section, on each section's local clock. */}
               {overview.rowKeys.map((key) => (
-                <div className="timeline-ov-row" key={key} style={{ height: ROW_H }}>
+                <div
+                  className={`timeline-ov-row${selectedPart === key ? ' selected' : ''}`}
+                  key={key}
+                  style={{ height: ROW_H }}
+                >
                   {rowBars(key).map((b) => {
                     const sec = overview.sections.find((s) => s.id === b.sectionId)!;
                     const isReveal = b.kind === 'reveal';

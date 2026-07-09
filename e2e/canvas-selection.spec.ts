@@ -168,3 +168,26 @@ test('selection layers cleanly under inline editing and never blocks drag-to-mov
   // The drag was a move, not a click: the selection survived it unchanged.
   await expect(page.getByTestId('selection-chip')).toContainText('Name');
 });
+
+test('selection is shared: a canvas click highlights the timeline row, a row label selects on canvas', async ({ page }) => {
+  await createHairline(page);
+  await waitSettled(page);
+
+  // Canvas → timeline: clicking the Name line highlights its overview row.
+  const p = await partPoint(page, '#f0');
+  await page.mouse.click(p.x, p.y);
+  await expect(page.locator('[data-part="#f0"]')).toHaveClass(/selected/);
+
+  // Timeline → canvas: clicking the Title row's label selects the element on the canvas.
+  await page.locator('[data-part="#f1"]').click();
+  await expect(page.getByTestId('selection-chip')).toContainText('Title');
+  await expect(page.getByTestId('canvas-selection')).toBeVisible();
+  await expect(page.locator('[data-part="#f1"]')).toHaveClass(/selected/);
+  await expect(page.locator('[data-part="#f0"]')).not.toHaveClass(/selected/);
+
+  // Clicking the selected label again deselects on BOTH surfaces; nothing was written.
+  await page.locator('[data-part="#f1"]').click();
+  await expect(page.getByTestId('canvas-selection')).toBeHidden();
+  await expect(page.locator('[data-part="#f1"]')).not.toHaveClass(/selected/);
+  await expect(page.locator('.change-dot')).toHaveCount(0);
+});

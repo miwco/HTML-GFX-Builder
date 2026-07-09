@@ -89,6 +89,10 @@ interface TemplateState {
   /** The timeline view's scrub position (Era 6) — the simulator seeks the live preview.
    *  Phase: 'in' | 'out' | 'step-N' (a Continue segment, N is the 2-based step number). */
   scrubCommand: { phase: string; time: number; nonce: number } | null;
+  /** The selected element (Era 6 shared selection): a TemplatePart selector, or null.
+   *  Canvas and timeline highlight the SAME element through this. Editor UI state only —
+   *  it is never written into the template and takes no history snapshot. */
+  selectedPart: string | null;
 
   setActiveTab: (tab: EditorTab) => void;
   setPreviewBg: (bg: PreviewBg) => void;
@@ -110,6 +114,8 @@ interface TemplateState {
   sendControl: (action: PlayoutAction) => void;
   /** Seek the live preview's in/out/step timeline to a time (the timeline view's scrubber). */
   sendScrub: (phase: string, time: number) => void;
+  /** Select an element by its TemplatePart selector (null deselects) — see selectedPart. */
+  setSelectedPart: (selector: string | null) => void;
   resetToDefault: () => void;
 
   setSampleValue: (field: string, value: string) => void;
@@ -167,6 +173,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   replayNonce: 0,
   controlCommand: null,
   scrubCommand: null,
+  selectedPart: null,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
@@ -231,6 +238,8 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   sendControl: (action) => set((s) => ({ controlCommand: { action, nonce: (s.controlCommand?.nonce ?? 0) + 1 } })),
 
   sendScrub: (phase, time) => set((s) => ({ scrubCommand: { phase, time, nonce: (s.scrubCommand?.nonce ?? 0) + 1 } })),
+
+  setSelectedPart: (selectedPart) => set({ selectedPart }),
 
   resetToDefault: () =>
     set(() => {

@@ -1577,3 +1577,14 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   letter-spacing: 0.06em;
   color: var(--text-dim);
 }
+
+/* ---------- Shared selection (Era 6 — canvas ↔ timeline highlight the same element) ---------- */
+/* A registry part's row label is its selection handle; the selected element's row gets a
+   quiet amber wash so the strip and the canvas visibly agree on what is selected. */
+.timeline-label.clickable { cursor: pointer; }
+.timeline-label.clickable:hover { color: var(--text); }
+.timeline-label.selected { color: var(--amber); }
+.timeline-ov-row.selected {
+  background: rgba(246, 166, 35, 0.07);
+  box-shadow: inset 2px 0 0 var(--amber);
+}

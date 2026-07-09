@@ -149,7 +149,9 @@ src/
                 (per-tab changed-line ranges from every apply — the editor highlight);
                 replayNonce (Motion applies auto-replay via PlayoutSimulator); patchCss
                 (Style-panel patches: highlight without history spam); sendScrub (timeline
-                view → simulator pauses the preview's in/out timeline at a time)
+                view → simulator pauses the preview's in/out timeline at a time);
+                selectedPart (the Era-6 SHARED SELECTION: one TemplatePart selector the
+                canvas and the timeline strip both highlight — UI state only, no history)
   preview/      composeDocument.ts — inlines CSS + GSAP + JS + assets into the iframe srcdoc
   blocks/       registry.ts (BuildingBlock[] — no Blocks tab anymore; this is the offline AI
                 stub's vocabulary), edit.ts (nextFieldId, addFieldToDefinition, …), cssVars.ts,
@@ -212,7 +214,8 @@ src/
                  selected part again climbs to its container, hover previews the name,
                  Escape or empty canvas deselects, the corner handle stays anchored
                  while the whole graphic is selected; selection is editor UI state
-                 ONLY, never written into the template),
+                 ONLY — the selector lives in store selectedPart so the timeline
+                 strip highlights the same element — never written into the template),
                  CanvasSelection (the presentational selection/hover overlay: amber
                  outline + a chip speaking part.label — the registry's words, same as
                  the timeline strip; chips hint only actions that already exist:
@@ -238,7 +241,9 @@ src/
                  (phaseId 'hold'), click parks on the settled look; »+Step disables with
                  a tooltip reason; an unparsable marked region gets an honest one-liner
                  (blank/imported templates get no strip) — one undoable apply +
-                 auto-replay per edit, the code always the truth),
+                 auto-replay per edit, the code always the truth; row LABELS are the
+                 shared-selection handles: clicking one selects that element on the
+                 canvas too (store selectedPart), the selected row washes amber),
                  SidePanel (six tabs: Data / Control / Style / Motion / AI / Export),
                  SampleDataPanel (sample values + add-field), ControlPanel (operator view from
                  control/ engine; live-drives the preview via store.sendControl → simulator;
