@@ -398,6 +398,17 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       regroups (`patchStepRegroup` rewrites groups+durations+eases as one undoable patch;
       emptied steps disappear with their timing; a »+ drop target splits a line into a new
       step). E2E: merge »3 into »2 → one press reveals both lines → split back out via »+.
+- [x] **T3.5 the moment-cards UX pass (2026-07-09, tester feedback: "how do I add steps?")** —
+      the strip now tells the playout story instead of assuming it: every segment is a MOMENT
+      CARD with its operator cue underneath (▶ In "on ▶ Play" · » 2 "on 1st » Next" · ■ Out
+      "on ■ Stop"); a read-only **● On air** card names the hold between the last reveal and
+      the exit (until ■ Stop / auto-out Ns / stays) and clicking it parks the preview on the
+      settled on-air look; step rows get an **"appears on" menu** (move a line to another
+      » Next press, or its own new one — patchStepRegroup minus the drag); »+ Step disables
+      with a tooltip reason instead of vanishing; an unparsable hand-edited region shows an
+      honest one-liner; the header ease readout speaks the vocabulary's names (raw GSAP pair
+      in the tooltip). Next (needs approval): converge the Motion panel into the In/Out cards
+      and make the On air card edit `settings.out`.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

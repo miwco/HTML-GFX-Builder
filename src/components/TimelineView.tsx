@@ -87,6 +87,17 @@ function ordinal(n: number): string {
   return `${n}th`;
 }
 
+/** A GSAP ease string in plain words: the vocabulary name when the curve is one of ours
+ *  ('expo.out' → 'Expo'), else the title-cased family ('power3.in' → 'Power3'). The raw
+ *  string stays available in tooltips. */
+function easeName(gsap: string, direction: 'in' | 'out'): string {
+  const known = EASINGS.find((e) => (direction === 'in' ? e.gsapIn : e.gsapOut) === gsap);
+  if (known) return known.name;
+  if (gsap === 'none') return 'Linear';
+  const family = gsap.split('.')[0];
+  return family.charAt(0).toUpperCase() + family.slice(1);
+}
+
 /** The per-tween ease options for a phase: the vocabulary's phase-correct half, deduped by
  *  the actual GSAP string (several presets share a curve), plus 'auto' (inherit the knob). */
 function easeOptionsFor(direction: 'in' | 'out'): { value: string; label: string }[] {
@@ -208,12 +219,27 @@ export default function TimelineView({ iframeRef }: Props) {
     { id: 'out', marker: '■', label: 'Out', duration: outPhase.duration, infinite: outPhase.infinite, kind: 'out' },
   ];
   const seg = segments.find((s) => s.id === phaseId) ?? segments[0];
+  // The ● On air pseudo-card between the steps and Out: the settled hold every graphic has.
+  // It isn't a timeline (nothing animates) — selecting it shows the settled on-air look.
+  const holdSelected = phaseId === 'hold';
   const total = Math.max(seg.duration, 0.001);
   const shown = Math.min(time, total);
   const frac = shown / total;
-  // How the layer leaves air (the SPX `out` setting) — playout truth next to the Out tab.
+  // How the layer leaves air (the SPX `out` setting) — playout truth on the On air card.
   const outMode = template.settings.out ?? 'manual';
   const outBadge = outMode === 'none' ? 'no out' : /^\d+$/.test(outMode) ? `auto ${outMode}ms` : null;
+  const holdSub =
+    outMode === 'none' ? 'stays — no out' : /^\d+$/.test(outMode) ? `auto-out ${Number(outMode) / 1000}s` : 'until ■ Stop';
+  /** The moment's cue, written under each card — the operator button that plays it. */
+  const segSub = (s: Segment): string =>
+    s.kind === 'in' ? 'on ▶ Play' : s.kind === 'out' ? 'on ■ Stop' : `on ${ordinal(s.stepIndex! + 1)} » Next`;
+
+  const pickHold = () => {
+    setPhaseId('hold');
+    setScrubbing(true); // park until the next Play/Next/Stop reclaims the strip
+    setTime(inPhase.duration);
+    sendScrub('in', inPhase.duration); // the settled end of the entrance IS the on-air look
+  };
 
   // ── T2/T3.2: draggable timing bars ─────────────────────────────────────────
   const snap = (n: number) => Math.round(n / SNAP) * SNAP;
@@ -315,6 +341,25 @@ export default function TimelineView({ iframeRef }: Props) {
     setPhaseId(`step-${dest + 2}`);
   };
 
+  /** The "appears on" menu (a step row's when-control): move a line to another » Next
+   *  press — or give it its own — with a plain dropdown. Exactly the patch that dropping
+   *  the row on a » tab writes, minus the drag. */
+  const moveLineTo = (target: string, toStep: number) => {
+    const fromStep = seg.stepIndex!;
+    if (toStep === fromStep) return;
+    const emptied = model.steps[fromStep].targets.length === 1;
+    // Moving the LAST step's only line to "a new press" would just re-create the same step.
+    if (toStep === model.steps.length && emptied && fromStep === model.steps.length - 1) return;
+    const js = patchStepRegroup(template.js, target, fromStep, toStep);
+    if (!js) return;
+    applyTemplate({ ...template, js });
+    requestReplay();
+    // Follow the moved line to its destination segment (indices shift when a step empties).
+    let dest = Math.min(toStep, model.steps.length);
+    if (emptied && fromStep < dest) dest -= 1;
+    setPhaseId(`step-${dest + 2}`);
+  };
+
   // ── The »+ Step button: grow the Continue chain without knowing the internals ─────
   // Steps off → turn step reveal on (the SAME patch as the Motion panel's checkbox).
   // Steps on → split the last multi-line reveal group into a new Continue step.
@@ -352,6 +397,7 @@ export default function TimelineView({ iframeRef }: Props) {
   };
 
   const scrubTo = (raw: number) => {
+    if (holdSelected) setPhaseId('in'); // dragging out of the hold scrubs the entrance
     // Range steps accumulate float error and can stall one step short of the end — snap the
     // last step to the exact phase end so end-of-phase set() calls (e.g. the final hide) render.
     const t = raw >= total - 0.011 ? total : raw;
@@ -428,11 +474,24 @@ export default function TimelineView({ iframeRef }: Props) {
                       : 'Add a Continue step — splits the last multi-line reveal so its last line gets its own » Next press'
                 }
               >
-                <span className="timeline-marker">»</span> + Step
+                <span className="timeline-seg-main"><span className="timeline-marker">»</span> + Step</span>
+                <span className="timeline-seg-sub" aria-hidden="true">another » Next</span>
+              </button>
+            )}
+            {/* ● On air — the hold between the last reveal and the exit, made visible. */}
+            {s.kind === 'out' && (
+              <button
+                className={`tab timeline-seg timeline-hold${holdSelected ? ' active' : ''}`}
+                onClick={pickHold}
+                title={`The hold — the graphic sits settled on air ${outBadge ? `(${outBadge})` : 'until ■ Stop'}; » steps play during it`}
+                data-testid="timeline-seg-hold"
+              >
+                <span className="timeline-seg-main"><span className="timeline-marker">●</span> On air</span>
+                <span className="timeline-seg-sub" aria-hidden="true">{holdSub}</span>
               </button>
             )}
             <button
-              className={`tab timeline-seg ${s.id === seg.id ? 'active' : ''}${
+              className={`tab timeline-seg ${s.id === phaseId ? 'active' : ''}${
                 regroup && s.kind === 'step' && regroup.overStep === s.stepIndex ? ' drop-target' : ''
               }`}
               onClick={() => pickSegment(s.id)}
@@ -446,11 +505,13 @@ export default function TimelineView({ iframeRef }: Props) {
               data-testid={`timeline-seg-${s.id}`}
               {...(s.kind === 'step' ? { 'data-step-drop': s.stepIndex } : {})}
             >
-              <span className="timeline-marker">{s.marker}</span> {s.label} {s.infinite ? '∞' : `${s.duration.toFixed(2)}s`}
+              <span className="timeline-seg-main">
+                <span className="timeline-marker">{s.marker}</span> {s.label} {s.infinite ? '∞' : `${s.duration.toFixed(2)}s`}
+              </span>
+              <span className="timeline-seg-sub" aria-hidden="true">{segSub(s)}</span>
             </button>
           </span>
         ))}
-        {outBadge && <span className="timeline-outmode">{outBadge}</span>}
         <input
           className="grow timeline-scrub"
           type="range"
@@ -465,11 +526,31 @@ export default function TimelineView({ iframeRef }: Props) {
         />
         <span className="mono muted timeline-time" data-testid="timeline-time">{shown.toFixed(2)}s</span>
         {!collapsed && (
-          <span className="hint timeline-knobs">×{model.animSpeed} · {model.easeIn} / {model.easeOut}</span>
+          <span
+            className="hint timeline-knobs"
+            title={`animSpeed ×${model.animSpeed} · easeIn ${model.easeIn} · easeOut ${model.easeOut}`}
+          >
+            ×{model.animSpeed} · {easeName(model.easeIn, 'in')} / {easeName(model.easeOut, 'out')}
+          </span>
         )}
       </div>
 
-      {!collapsed && (
+      {/* The hold has no tracks — nothing animates; say what happens instead. */}
+      {!collapsed && holdSelected && (
+        <div className="timeline-tracks">
+          <p className="timeline-hold-note" data-testid="timeline-hold-note">
+            The graphic holds here, settled,{' '}
+            {outMode === 'none'
+              ? 'and never leaves on its own (no out is set).'
+              : /^\d+$/.test(outMode)
+                ? `then leaves by itself after ${Number(outMode) / 1000}s.`
+                : 'until ■ Stop plays the exit.'}
+            {model.steps.length > 0 && ' Each » Next press plays during this hold.'}
+          </p>
+        </div>
+      )}
+
+      {!collapsed && !holdSelected && (
         <div className="timeline-tracks">
           {rows.map((tw, i) => {
             // While a bar is being dragged, render its live values instead of the parsed ones.
@@ -526,6 +607,24 @@ export default function TimelineView({ iframeRef }: Props) {
                     )}
                   </div>
                 </div>
+                {/* A step row's when-control: which » Next press this line appears on. */}
+                {step?.groupable && (
+                  <select
+                    className="timeline-appears"
+                    value={seg.stepIndex}
+                    onChange={(e) => moveLineTo(tw.targets[0], Number(e.target.value))}
+                    title="When this line appears — pick another » Next press to move it there"
+                    data-testid={`timeline-appears-${i}`}
+                  >
+                    {model.steps.map((_, k) => (
+                      <option key={k} value={k}>{`on ${ordinal(k + 1)} » Next`}</option>
+                    ))}
+                    {/* "Its own press" — hidden when that would re-create this same step. */}
+                    {!(step.targets.length === 1 && seg.stepIndex === model.steps.length - 1) && (
+                      <option value={model.steps.length}>on a new » Next</option>
+                    )}
+                  </select>
+                )}
                 {/* The tween's own ease; 'auto' inherits the phase knob. In a step segment
                     the ease belongs to the GROUP — one chip on the first row. */}
                 {tw.editable && (!step || i === 0) ? (
@@ -561,10 +660,10 @@ export default function TimelineView({ iframeRef }: Props) {
       )}
 
       {/* One line of context so the gestures are discoverable without hovering. */}
-      {!collapsed && (
+      {!collapsed && !holdSelected && (
         <p className="timeline-hint" data-testid="timeline-hint">
           {step
-            ? 'Plays on one » Next press — drag a row onto another » tab to move it, edge to stretch, menu for ease.'
+            ? 'Plays on one » Next press — the "on …" menu moves a line to another press (dragging its row onto a » tab works too).'
             : seg.kind === 'out'
               ? 'The exit (■ Stop) — drag a bar to retime it, drag its right edge to stretch, the menu sets its ease.'
               : 'The entrance (▶ Play) — drag a bar to retime it, drag its right edge to stretch, the menu sets its ease.'}

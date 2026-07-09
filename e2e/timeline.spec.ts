@@ -34,7 +34,7 @@ test('timeline strip lives under the preview and renders the preset structure', 
   // Under the preview (inside .preview-wrap), NOT in the Motion tab.
   const timeline = page.locator('.preview-wrap [data-testid="timeline"]');
   await expect(timeline).toBeVisible();
-  await expect(timeline).toContainText('expo.out'); // line-reveal's auto ease pair
+  await expect(timeline).toContainText('Expo'); // line-reveal's auto ease pair, in plain words
   const rows = timeline.locator('.timeline-row');
   await expect(rows).toHaveCount(3);
   // Rows are labelled in plain words (the raw selector lives in the tooltip)…
@@ -287,6 +287,43 @@ test('T3.3: dragging a line onto another step regroups the Continue chain (and b
   await expect(page.getByTestId('timeline-seg-step-3')).toBeVisible();
 });
 
+test('the appears-on menu regroups the Continue chain without dragging', async ({ page }) => {
+  // Soft Stack with steps: groups start as [['#f1'], ['#f2']].
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-variant', { hasText: 'Soft Stack' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.locator('.wz-step input[type="checkbox"]').check();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await page.waitForTimeout(650);
+
+  const templateJs = async () =>
+    page
+      .frameLocator('iframe.preview-frame')
+      .locator('body')
+      .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
+
+  // MERGE: on »3, the line's menu says which press it plays on — pick the 1st.
+  await page.getByTestId('timeline-seg-step-3').click();
+  await page.getByTestId('timeline-appears-0').selectOption('0');
+  await page.waitForTimeout(650);
+  expect(await templateJs()).toContain("var stepGroups = [['#f1', '#f2']];");
+  await expect(page.getByTestId('timeline-seg-step-3')).toHaveCount(0);
+
+  // SPLIT: open »2 (the auto-replay reclaimed the selection) — the group lists both
+  // lines now; give the second one its own new » Next press.
+  await page.getByTestId('timeline-seg-step-2').click();
+  await page.getByTestId('timeline-appears-1').selectOption('1');
+  await page.waitForTimeout(650);
+  expect(await templateJs()).toContain("var stepGroups = [['#f1'], ['#f2']];");
+  await expect(page.getByTestId('timeline-seg-step-3')).toBeVisible();
+});
+
 test('the »+ Step button turns steps on, then splits a group into another step', async ({ page }) => {
   await createHairline(page); // two lines, created WITHOUT steps
   const templateJs = async () =>
@@ -367,6 +404,24 @@ test('the »+ Step button splits the last multi-line reveal into its own step', 
   await page.waitForTimeout(650);
   expect(await templateJs()).toContain("var stepGroups = [['#f1'], ['#f2']];");
   await expect(page.getByTestId('timeline-seg-step-3')).toBeVisible();
+});
+
+test('the On air card names the hold and pauses the preview at the settled state', async ({ page }) => {
+  await createHairline(page);
+  const hold = page.getByTestId('timeline-seg-hold');
+  await expect(hold).toContainText('On air');
+  await expect(hold).toContainText('until ■ Stop'); // manual out — the default
+  await hold.click();
+  await expect(hold).toHaveClass(/active/);
+  // The tracks area explains the hold instead of charting tween rows.
+  await expect(page.getByTestId('timeline-hold-note')).toContainText('holds here');
+  // The preview shows the settled on-air look (the end of the entrance).
+  await expect
+    .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+  // A real run reclaims the strip from the hold selection.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect(hold).not.toHaveClass(/active/, { timeout: 3000 });
 });
 
 test('a hand-edited region the parser cannot read gets an honest note, not a vanished strip', async ({ page }) => {

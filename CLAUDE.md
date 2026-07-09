@@ -207,12 +207,18 @@ src/
                  the design view after every rebuild — progress(1, true) + a second
                  update(); auto-replays on replayNonce; playNext owns each Continue's
                  reveal tween as __activeTl step-N), TimelineView (collapsible strip
-                 under the preview: the playout segment chain ▶In · »2 · »3 · ■Out from
-                 blocks/timelineModel.ts — steps parsed from the stepGroups/stepDurations/
+                 under the preview: the playout chain as MOMENT CARDS ▶In · »2 · »3 ·
+                 »+Step · ●On air · ■Out from blocks/timelineModel.ts, each carrying its
+                 operator cue underneath (aria-hidden — getByRole('▶ Play') must stay
+                 unique in specs); ●On air is a read-only pseudo-card (phaseId 'hold')
+                 naming the settled hold + out mode, click = park on the settled look;
+                 »+Step disables with a tooltip reason instead of vanishing; an
+                 unparsable marked region gets an honest one-liner (blank/imported
+                 templates get no strip); steps parsed from the stepGroups/stepDurations/
                  stepEases knob arrays (legacy stepLines reads read-only); scrub pauses any
                  segment, live rAF playhead follows __activeTl; bars drag/stretch,
-                 per-tween/per-step ease chips, and step rows drag onto another » tab (or
-                 »+) to regroup what each Continue reveals →
+                 per-tween/per-step ease chips, and a step row's "appears on" menu (or
+                 dragging it onto another » tab / »+) regroups what each Continue reveals →
                  patchTweenTiming/patchTweenEase/patchStepTiming/patchStepEase/
                  patchStepRegroup rewrite literals in the marked region — one undoable
                  apply + auto-replay),

@@ -1180,7 +1180,13 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .timeline-collapse:hover { color: var(--text); background: transparent; border-color: transparent; }
 .timeline-time { font-size: 11px; min-width: 44px; text-align: right; }
 .timeline-knobs { white-space: nowrap; }
-.timeline-seg { white-space: nowrap; }
+/* Moment cards: the cue line ("on ▶ Play") sits under each segment's title, so the chain
+   reads as the operator's story — arrive, hold, reveal, leave. */
+.timeline-seg { white-space: nowrap; display: flex; flex-direction: column; align-items: flex-start; padding: 3px 8px; }
+.timeline-seg-main { line-height: 1.25; }
+.timeline-seg-sub { font-size: 8.5px; letter-spacing: 0.05em; color: var(--text-dim); line-height: 1.3; }
+/* Collapsed strip stays one slim line — the cue subtitles fold away with the tracks. */
+.timeline-strip.collapsed .timeline-seg-sub { display: none; }
 .timeline-marker { color: var(--amber); font-size: 10px; }
 .timeline-seg.drop-target {
   outline: 1.5px solid var(--amber);
@@ -1214,17 +1220,8 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   pointer-events: none;
   white-space: nowrap;
 }
-.timeline-outmode {
-  font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 1px 6px;
-  white-space: nowrap;
-}
+/* The hold's explainer — shown in the tracks area when ● On air is selected. */
+.timeline-hold-note { margin: 8px 0 4px; font-size: 11px; color: var(--text-dim); }
 
 .timeline-tracks {
   position: relative;
@@ -1323,6 +1320,20 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .timeline-ease:hover { color: var(--text); border-color: rgba(246, 166, 35, 0.4); }
 .timeline-ease-spacer { width: 96px; flex-shrink: 0; }
+/* The step row's when-control: which » Next press the line appears on. */
+.timeline-appears {
+  width: 118px;
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  padding: 1px 4px;
+  height: 18px;
+  background: rgba(232, 237, 242, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+.timeline-appears:hover { color: var(--text); border-color: rgba(246, 166, 35, 0.4); }
 .timeline-scrub { accent-color: var(--amber); }
 
 /* Cloud sync status pill (Era 5.2) */
