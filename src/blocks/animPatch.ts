@@ -3,7 +3,8 @@
 // easeOut) and (b) the region between the markers when swapping presets. Everything the
 // user wrote outside the markers is never modified.
 
-import { ANIMATION_MARK_CLOSE, ANIMATION_MARK_OPEN, ANIM_PRESETS, type AnimPreset, type PresetConfig } from '../templates/lowerThirds/animPresets';
+import { ANIMATION_MARK_CLOSE, ANIMATION_MARK_OPEN, ANIM_PRESETS, type AnimPreset, type PresetConfig, type StepChain } from '../templates/lowerThirds/animPresets';
+import { parseTimeline } from './timelineModel';
 import { CREDITS_PRESETS } from '../templates/endCredits/creditsPresets';
 import { TICKER_PRESETS } from '../templates/tickers/tickerPresets';
 import { SS_PRESETS } from '../templates/startingSoon/ssPresets';
@@ -90,6 +91,29 @@ export function setAnimKnob(js: string, knob: 'animSpeed' | 'easeIn' | 'easeOut'
   return js.replace(re, `var ${knob} = '${value}';`);
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/**
+ * Read the template's existing Continue chain as re-emittable RAW literals, filtered to the
+ * lines that still exist. Null when there is no (groupable) chain — the emitter then writes
+ * its defaults. This is what keeps a preset swap from resetting the user's regrouping.
+ */
+function stepChainFromTemplate(js: string, lineCount: number): StepChain | null {
+  const model = parseTimeline(js);
+  if (!model || model.steps.length === 0 || !model.steps.every((s) => s.groupable)) return null;
+  const valid = new Set(Array.from({ length: Math.max(0, lineCount - 1) }, (_, i) => `#f${i + 1}`));
+  const chain: StepChain = { groups: [], durations: [], eases: [] };
+  for (const step of model.steps) {
+    const targets = step.targets.filter((t) => valid.has(t));
+    if (targets.length === 0) continue; // its lines are gone — the press goes with them
+    chain.groups.push(targets);
+    // The model's values are post-division seconds; write back the pre-division literals.
+    chain.durations.push(String(round2(step.duration * model.animSpeed)));
+    chain.eases.push(step.ease === null ? 'easeIn' : `'${step.ease}'`);
+  }
+  return chain.groups.length > 0 ? chain : null;
+}
+
 /** Derive the PresetConfig for re-emitting the region from the current template code. */
 export function presetConfigFromTemplate(template: SpxTemplate, steps: boolean): PresetConfig {
   const info = readAnimationInfo(template.js);
@@ -104,6 +128,7 @@ export function presetConfigFromTemplate(template: SpxTemplate, steps: boolean):
     lineCount,
     hasAccent: template.html.includes(`${prefix}-accent`),
     steps: steps && lineCount > 1,
+    stepChain: steps ? stepChainFromTemplate(template.js, lineCount) ?? undefined : undefined,
     speed: info.speed,
     easeIn: info.easeIn ?? preset.autoEase.easeIn,
     easeOut: info.easeOut ?? preset.autoEase.easeOut,
@@ -124,10 +149,27 @@ export function setStepsMode(
   const cfg = presetConfigFromTemplate(template, on);
   const presetId = info.inPresetId ?? 'slide-fade';
   const js = swapAnimationPhase(template.js, presetId, cfg, 'in');
-  const steps = on && cfg.lineCount > 1 ? String(cfg.lineCount) : '1';
-  const settings = { ...template.settings, steps };
+  // SPX steps counts STATES: the entrance plus one per Continue press (reveal group).
+  const groupCount = cfg.steps ? (cfg.stepChain?.groups.length ?? cfg.lineCount - 1) : 0;
+  const settings = { ...template.settings, steps: String(groupCount + 1) };
   const html = replaceDefinitionInHtml(template.html, settings, template.fields);
   return { js, html, settings };
+}
+
+/**
+ * Re-sync the SPX `steps` setting after a patch that changed the Continue chain's LENGTH
+ * (regroups only rewrite JS literals — without this the definition advertises presses that
+ * no longer exist, and the OGraf export's stepCount goes wrong with it).
+ */
+export function withStepsSetting(
+  template: SpxTemplate,
+  js: string,
+): Pick<SpxTemplate, 'js' | 'html' | 'settings'> {
+  const groups = parseTimeline(js)?.steps.length ?? 0;
+  const steps = String(groups + 1);
+  if (template.settings.steps === steps) return { js, html: template.html, settings: template.settings };
+  const settings = { ...template.settings, steps };
+  return { js, html: replaceDefinitionInHtml(template.html, settings, template.fields), settings };
 }
 
 /** Replace the managed region with a freshly emitted block for `presetId`. */

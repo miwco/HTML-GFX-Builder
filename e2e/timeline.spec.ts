@@ -307,6 +307,15 @@ test('the appears-on menu regroups the Continue chain without dragging', async (
       .frameLocator('iframe.preview-frame')
       .locator('body')
       .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
+  const definitionSteps = async () =>
+    (
+      await page
+        .frameLocator('iframe.preview-frame')
+        .locator('body')
+        .evaluate(() => document.documentElement.outerHTML)
+    ).match(/"steps": "(\d+)"/)?.[1];
+
+  expect(await definitionSteps()).toBe('3'); // Play + two presses
 
   // MERGE: on »3, the line's menu says which press it plays on — pick press 1.
   await page.getByTestId('timeline-seg-step-3').click();
@@ -315,6 +324,8 @@ test('the appears-on menu regroups the Continue chain without dragging', async (
   await page.waitForTimeout(650);
   expect(await templateJs()).toContain("var stepGroups = [['#f1', '#f2']];");
   await expect(page.getByTestId('timeline-seg-step-3')).toHaveCount(0);
+  // The SPX definition follows the shorter chain — no dead Continue press on air.
+  expect(await definitionSteps()).toBe('2');
 
   // SPLIT: open »2 (the auto-replay reclaimed the selection) — the group lists both
   // lines now; give the second one its own new » Next press.
@@ -323,6 +334,52 @@ test('the appears-on menu regroups the Continue chain without dragging', async (
   await page.waitForTimeout(650);
   expect(await templateJs()).toContain("var stepGroups = [['#f1'], ['#f2']];");
   await expect(page.getByTestId('timeline-seg-step-3')).toBeVisible();
+  expect(await definitionSteps()).toBe('3');
+});
+
+test('a Motion preset swap keeps the regrouped Continue chain and its tuning', async ({ page }) => {
+  // Soft Stack with steps; merge »3 into »2 so the chain differs from the default emit.
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-variant', { hasText: 'Soft Stack' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.getByRole('button', { name: 'Next ›' }).click();
+  await page.locator('.wz-step input[type="checkbox"]').check();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await page.waitForTimeout(650);
+
+  const templateJs = async () =>
+    page
+      .frameLocator('iframe.preview-frame')
+      .locator('body')
+      .evaluate(() => document.getElementById('spx-template-js')?.textContent ?? '');
+
+  await page.getByTestId('timeline-seg-step-3').click();
+  await page.getByTestId('timeline-appears-0').selectOption('0');
+  await page.waitForTimeout(650);
+  expect(await templateJs()).toContain("var stepGroups = [['#f1', '#f2']];");
+
+  // Tune the merged press's ease so per-step tuning must survive the swap too.
+  await page.getByTestId('timeline-seg-step-2').click();
+  await page.getByTestId('timeline-ease-0').selectOption('back.out(1.6)');
+  await page.waitForTimeout(650);
+  expect(await templateJs()).toMatch(/var stepEases = \['back\.out\(1\.6\)'\]/);
+
+  // Swap the entrance preset in the Motion panel — the chain must NOT reset.
+  await page.getByRole('button', { name: 'Motion' }).click();
+  await page
+    .locator('.wz-anim')
+    .filter({ has: page.locator('strong', { hasText: /^Pop spring$/ }) })
+    .click();
+  await page.waitForTimeout(650);
+  const js = await templateJs();
+  expect(js).toContain('Pop spring');
+  expect(js).toContain("var stepGroups = [['#f1', '#f2']];");
+  expect(js).toMatch(/var stepEases = \['back\.out\(1\.6\)'\]/);
 });
 
 test('the »+ Step button turns steps on, then splits a group into another step', async ({ page }) => {
@@ -338,9 +395,11 @@ test('the »+ Step button turns steps on, then splits a group into another step'
   const addStep = page.getByTestId('timeline-seg-new');
   await expect(addStep).toBeVisible();
 
-  // Click 1: step reveal turns ON — same patch as the Motion panel's checkbox.
+  // Click 1: step reveal turns ON — same patch as the Motion panel's checkbox — and the
+  // strip announces that ▶ Play behaves differently now.
   await addStep.click();
   await expect(page.getByTestId('timeline-seg-step-2')).toBeVisible();
+  await expect(page.getByTestId('timeline-notice')).toContainText('Play now shows only the first line');
   await page.waitForTimeout(650);
   const js = await templateJs();
   expect(js).toContain("var stepGroups = [['#f1']];");

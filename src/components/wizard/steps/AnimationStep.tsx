@@ -201,8 +201,8 @@ export default function AnimationStep({ variant, draft, onDraft, onReplay }: Pro
             <span>
               <strong>Reveal in steps</strong>
               <span className="hint" style={{ display: 'block' }}>
-                Play shows the first line; each SPX <em>Continue</em> reveals the next one
-                (test it with the » Next button after creating).
+                ▶ Play shows only the first line; each press of » Next (SPX <em>Continue</em>)
+                reveals one more. Test it with the » Next button after creating.
               </span>
             </span>
           </label>

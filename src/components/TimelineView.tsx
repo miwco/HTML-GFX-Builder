@@ -9,7 +9,7 @@ import {
   patchTweenTiming,
   type TimelineTween,
 } from '../blocks/timelineModel';
-import { readAnimationInfo, setStepsMode } from '../blocks/animPatch';
+import { readAnimationInfo, setStepsMode, withStepsSetting } from '../blocks/animPatch';
 import { countLines, detectPrefix } from '../model/structure';
 import { EASINGS } from '../model/easings';
 import { loadPrefs, savePrefs } from '../model/prefs';
@@ -118,6 +118,7 @@ export default function TimelineView({ iframeRef }: Props) {
   // The category's class prefix + visible line count — for friendly labels and the »+ button.
   const prefix = useMemo(() => detectPrefix(template.html), [template.html]);
   const lineCount = useMemo(() => countLines(template.html), [template.html]);
+  const stepsOn = template.js.includes('function revealNextStep');
   const [phaseId, setPhaseId] = useState<string>('in');
   const [time, setTime] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
@@ -132,6 +133,21 @@ export default function TimelineView({ iframeRef }: Props) {
   const [regroup, setRegroup] = useState<RegroupDrag | null>(null);
   const regroupRef = useRef<RegroupDrag | null>(null);
   regroupRef.current = regroup;
+
+  // Announce the moment steps turn ON (via »+, the Motion checkbox, or undo/redo) — ▶ Play
+  // behaves differently from that moment on, and silent behavior changes tested badly.
+  const [stepsNotice, setStepsNotice] = useState(false);
+  const prevStepsOn = useRef(stepsOn);
+  useEffect(() => {
+    const was = prevStepsOn.current;
+    prevStepsOn.current = stepsOn;
+    if (stepsOn && !was) {
+      setStepsNotice(true);
+      const t = setTimeout(() => setStepsNotice(false), 8000);
+      return () => clearTimeout(t);
+    }
+    if (!stepsOn) setStepsNotice(false);
+  }, [stepsOn]);
 
   // Collapsed state: explicit preference wins; otherwise expanded on desktop, collapsed on phones.
   const isMobile = useIsMobile();
@@ -323,7 +339,8 @@ export default function TimelineView({ iframeRef }: Props) {
     if (r.overStep === model.steps.length && emptied && r.fromStep === model.steps.length - 1) return;
     const js = patchStepRegroup(template.js, r.target, r.fromStep, r.overStep);
     if (!js) return;
-    applyTemplate({ ...template, js });
+    // withStepsSetting: a merge/split changes the press count — the SPX definition follows.
+    applyTemplate({ ...template, ...withStepsSetting(template, js) });
     requestReplay();
     // Follow the moved line to its destination segment (indices shift when a step empties).
     let dest = Math.min(r.overStep, model.steps.length);
@@ -350,7 +367,7 @@ export default function TimelineView({ iframeRef }: Props) {
     if (toStep === model.steps.length && emptied && fromStep === model.steps.length - 1) return;
     const js = patchStepRegroup(template.js, target, fromStep, toStep);
     if (!js) return;
-    applyTemplate({ ...template, js });
+    applyTemplate({ ...template, ...withStepsSetting(template, js) });
     requestReplay();
     // Follow the moved line to its destination segment (indices shift when a step empties).
     let dest = Math.min(toStep, model.steps.length);
@@ -363,7 +380,6 @@ export default function TimelineView({ iframeRef }: Props) {
   // Steps on → split the last multi-line reveal group into a new Continue step.
   const stepsSupported =
     !['end-credits', 'ticker', 'starting-soon', 'countdown', 'infographic', 'quiz'].includes(template.type);
-  const stepsOn = template.js.includes('function revealNextStep');
   const splitFrom = (() => {
     for (let i = model.steps.length - 1; i >= 0; i--) {
       const s = model.steps[i];
@@ -389,7 +405,7 @@ export default function TimelineView({ iframeRef }: Props) {
       const group = model.steps[splitFrom];
       const js = patchStepRegroup(template.js, group.targets[group.targets.length - 1], splitFrom, model.steps.length);
       if (!js) return;
-      applyTemplate({ ...template, js });
+      applyTemplate({ ...template, ...withStepsSetting(template, js) });
     }
     requestReplay(); // play it — the new step is one » Next press away
   };
@@ -532,6 +548,14 @@ export default function TimelineView({ iframeRef }: Props) {
           </span>
         )}
       </div>
+
+      {/* The one-time announcement when steps turn on — ▶ Play changed its behavior. */}
+      {stepsNotice && !collapsed && (
+        <p className="timeline-notice" data-testid="timeline-notice">
+          Step reveal is on — ▶ Play now shows only the first line; each press of » Next
+          reveals one more.
+        </p>
+      )}
 
       {/* The hold has no tracks — nothing animates; say what happens instead. */}
       {!collapsed && holdSelected && (

@@ -1292,6 +1292,17 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   pointer-events: none;       /* the bar underneath owns the drag */
   user-select: none;
 }
+/* The one-time announcement when step reveal turns on (▶ Play changes behavior). */
+.timeline-notice {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: var(--amber);
+  background: rgba(246, 166, 35, 0.08);
+  border: 1px solid rgba(246, 166, 35, 0.25);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
 /* An inline text-action inside the hint line (e.g. "Turn off step reveal"). */
 .timeline-hint-action {
   background: transparent;

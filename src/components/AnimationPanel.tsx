@@ -204,7 +204,8 @@ export default function AnimationPanel() {
           <span>
             <strong>Reveal in steps</strong>
             <span className="hint" style={{ display: 'block' }}>
-              Play shows the first line; each SPX Continue (» Next) reveals the next one.
+              ▶ Play shows only the first line; each press of » Next (SPX Continue) reveals
+              one more.
             </span>
           </span>
         </label>

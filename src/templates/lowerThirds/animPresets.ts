@@ -16,6 +16,15 @@
 
 import type { AnimPresetId } from '../../model/wizard';
 
+/** A template's existing Continue chain, carried through re-emits so a preset swap never
+ *  resets the user's regrouping or per-step timing. Values are the RAW literals the arrays
+ *  are written with (durations pre-division, eases 'easeIn' or a quoted string). */
+export interface StepChain {
+  groups: string[][];
+  durations: string[];
+  eases: string[];
+}
+
 export interface PresetConfig {
   /** The category's class prefix ('lower-third', 'info-card', 'credits', 'ticker'). */
   prefix: string;
@@ -25,6 +34,8 @@ export interface PresetConfig {
   hasAccent: boolean;
   /** Multi-step mode: in-timeline shows line 1; each next() reveals one more line. */
   steps: boolean;
+  /** The current chain to preserve (when the template already has one); absent = defaults. */
+  stepChain?: StepChain;
   /** Initial animSpeed value (0.75 slower · 1 normal · 1.5 faster). */
   speed: number;
   /** GSAP ease string for entrance tweens (e.g. 'power3.out', 'back.out(1.6)'). */
@@ -71,10 +82,16 @@ var easeOut = '${cfg.easeOut}';${' '.repeat(Math.max(1, 17 - cfg.easeOut.length)
  *  literals (drag a line between step segments to regroup). */
 function stepsBlock(cfg: PresetConfig): string {
   if (!cfg.steps || cfg.lineCount < 2) return '';
-  const count = cfg.lineCount - 1;
-  const groups = Array.from({ length: count }, (_, i) => `['#f${i + 1}']`).join(', ');
-  const durations = Array.from({ length: count }, () => '0.45').join(', ');
-  const eases = Array.from({ length: count }, () => 'easeIn').join(', ');
+  // An existing chain (regrouped presses, tuned timings) survives the re-emit; without one,
+  // the default is one line per press in document order. Note hideStepLines/linesInIntro
+  // stay line-count-derived: every line 1..N-1 is in SOME group, so the union is identical.
+  const chain = cfg.stepChain && cfg.stepChain.groups.length > 0 ? cfg.stepChain : null;
+  const count = chain ? chain.groups.length : cfg.lineCount - 1;
+  const groups = chain
+    ? chain.groups.map((g) => `[${g.map((t) => `'${t}'`).join(', ')}]`).join(', ')
+    : Array.from({ length: count }, (_, i) => `['#f${i + 1}']`).join(', ');
+  const durations = (chain ? chain.durations : Array.from({ length: count }, () => '0.45')).join(', ');
+  const eases = (chain ? chain.eases : Array.from({ length: count }, () => 'easeIn')).join(', ');
   return `
 
 // Multi-step: the in animation shows only the first line; each Continue (next())

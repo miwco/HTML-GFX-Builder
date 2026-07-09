@@ -419,6 +419,17 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       approved separately (element→press assignment, derived part registry, cue-segmented
       strip): fix B1/B2 step-sync bugs next, generalize steps to non-text parts after the
       registry; timeline overview and canvas assignment wait for the Era-6 selection model.
+- [x] **T3.7 step-sync bug fixes (2026-07-09)** — two intent-corrupting bugs: (B1) regroups
+      only patched the JS, so a merge/split left a stale SPX `steps` count (a dead Continue
+      press on air, wrong OGraf stepCount) — every step-count-changing path now re-syncs the
+      definition via `withStepsSetting` (invariant: steps = groups + 1); (B2) any Motion
+      preset/easing apply re-emitted the default one-line-per-press chain, silently deleting
+      the user's regrouping — `presetConfigFromTemplate` now round-trips the existing
+      `stepGroups`/`stepDurations`/`stepEases` literals (filtered to lines that still exist)
+      and the emitters preserve them. Turning steps on now announces the behavior change on
+      the strip ("▶ Play now shows only the first line…"), and the steps checkbox copy in the
+      wizard + Motion panel uses the same press language. E2E: definition follows merge/split;
+      preset swap keeps a merged chain + tuned ease.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/
