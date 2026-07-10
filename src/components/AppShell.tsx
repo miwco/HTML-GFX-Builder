@@ -5,6 +5,7 @@ import PreviewFrame from './PreviewFrame';
 import PlayoutSimulator from './PlayoutSimulator';
 import TimelineView from './TimelineView';
 import SidePanel from './SidePanel';
+import Inspector from './Inspector';
 import PacketManager from './PacketManager';
 import CommunityGallery from './CommunityGallery';
 import ModerationQueue from './ModerationQueue';
@@ -47,6 +48,7 @@ export default function AppShell() {
   const template = useTemplateStore((s) => s.template);
   const openGallery = useTemplateStore((s) => s.openGallery);
   const undo = useTemplateStore((s) => s.undo);
+  const redo = useTemplateStore((s) => s.redo);
   const [packetsOpen, setPacketsOpen] = useState(false);
 
   // Community gallery (Era 5.5) — only offered when a backend is configured (offline shows nothing).
@@ -106,6 +108,12 @@ export default function AppShell() {
       saveLayout({ mode });
       return { ...l, mode };
     });
+  const toggleInspector = () =>
+    setLayout((l) => {
+      const inspectorCollapsed = !l.inspectorCollapsed;
+      saveLayout({ inspectorCollapsed });
+      return { ...l, inspectorCollapsed };
+    });
 
   // Drag dividers. Column splits use the tight [0.2,0.7] bounds; the preview HEIGHT split allows a
   // wider range so the preview can dominate. Persist on release only (not on every move).
@@ -124,13 +132,22 @@ export default function AppShell() {
     (r) => setLayout((l) => ({ ...l, bottomRatio: clampRatio(r, 0.2, 0.7) })),
     (r) => saveLayout({ bottomRatio: clampRatio(r, 0.2, 0.7) }),
   );
+  // The Inspector is the rightmost column of the full workspace width in both modes, so
+  // its ratio is measured from the RIGHT edge (1 - pointer fraction).
+  const inspectorWidth = useSplitter(
+    'x', workspaceRef,
+    (r) => setLayout((l) => ({ ...l, inspectorRatio: clampRatio(1 - r, 0.12, 0.35) })),
+    (r) => saveLayout({ inspectorRatio: clampRatio(1 - r, 0.12, 0.35) }),
+  );
 
-  // Global undo for block / AI / gallery actions. Skips Monaco and form fields so they
-  // keep their own native text undo.
+  // Global undo/redo for panel / timeline / AI actions: Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z (and
+  // Ctrl+Y, the Windows convention). Skips Monaco and form fields so they keep their own
+  // native text undo.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const isZ = e.key === 'z' || e.key === 'Z';
-      if (!isZ || !(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey) return;
+      const isY = e.key === 'y' || e.key === 'Y';
+      if ((!isZ && !isY) || !(e.ctrlKey || e.metaKey) || e.altKey) return;
       const el = document.activeElement as HTMLElement | null;
       const tag = el?.tagName;
       const inEditable =
@@ -141,11 +158,12 @@ export default function AppShell() {
         !!el?.isContentEditable;
       if (inEditable) return;
       e.preventDefault();
-      undo();
+      if (isY || e.shiftKey) redo();
+      else undo();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo]);
+  }, [undo, redo]);
 
   // The preview block, shared across the mobile and both desktop arrangements (only one
   // renders at a time, so the shared iframeRef is always attached to a single instance).
@@ -183,6 +201,16 @@ export default function AppShell() {
             title={layout.codeCollapsed ? 'Show the code editor' : 'Collapse the code editor to give the preview full width'}
           >
             {layout.codeCollapsed ? '▸ Show code' : '▾ Hide code'}
+          </button>
+        )}
+        {!isMobile && (
+          <button
+            className={layout.inspectorCollapsed ? '' : 'active'}
+            onClick={toggleInspector}
+            data-testid="toggle-inspector"
+            title={layout.inspectorCollapsed ? 'Show the Inspector (the selected element’s properties)' : 'Collapse the Inspector'}
+          >
+            ◨ Inspector
           </button>
         )}
         <button onClick={() => setPacketsOpen(true)} title="Save this show's graphics together + manage brand looks">
@@ -223,7 +251,29 @@ export default function AppShell() {
           ref={workspaceRef}
           style={{ gridTemplateRows: `${layout.previewRatio}fr 6px ${1 - layout.previewRatio}fr` }}
         >
-          <section className="pane preview-pane">{preview}</section>
+          <section className="pane preview-pane">
+            <div
+              className="preview-row"
+              style={{
+                display: 'grid',
+                height: '100%',
+                minHeight: 0,
+                gridTemplateColumns: layout.inspectorCollapsed
+                  ? '1fr'
+                  : `${1 - layout.inspectorRatio}fr 6px ${layout.inspectorRatio}fr`,
+              }}
+            >
+              <div className="preview-cell">{preview}</div>
+              {!layout.inspectorCollapsed && (
+                <>
+                  <Divider orient="v" splitter={inspectorWidth} testid="inspector-divider" />
+                  <section className="pane inspector-pane" data-testid="inspector-pane">
+                    <Inspector />
+                  </section>
+                </>
+              )}
+            </div>
+          </section>
           <Divider orient="h" splitter={previewHeight} testid="preview-divider" />
           <div
             className="bottom-row"
@@ -252,9 +302,17 @@ export default function AppShell() {
           className="workspace"
           ref={workspaceRef}
           style={{
-            gridTemplateColumns: layout.codeCollapsed
-              ? '1fr'
-              : `${layout.codeRatio}fr 6px ${1 - layout.codeRatio}fr`,
+            // code | preview+tools | Inspector — each optional region folds away cleanly.
+            gridTemplateColumns: [
+              ...(layout.codeCollapsed ? [] : [`${layout.codeRatio}fr`, '6px']),
+              `${Math.max(
+                0.15,
+                1 -
+                  (layout.codeCollapsed ? 0 : layout.codeRatio) -
+                  (layout.inspectorCollapsed ? 0 : layout.inspectorRatio),
+              )}fr`,
+              ...(layout.inspectorCollapsed ? [] : ['6px', `${layout.inspectorRatio}fr`]),
+            ].join(' '),
           }}
         >
           {!layout.codeCollapsed && (
@@ -269,6 +327,14 @@ export default function AppShell() {
             {preview}
             <SidePanel />
           </section>
+          {!layout.inspectorCollapsed && (
+            <>
+              <Divider orient="v" splitter={inspectorWidth} testid="inspector-divider" />
+              <section className="pane inspector-pane" data-testid="inspector-pane">
+                <Inspector />
+              </section>
+            </>
+          )}
         </div>
       )}
 

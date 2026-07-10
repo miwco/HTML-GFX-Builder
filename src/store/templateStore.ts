@@ -80,6 +80,8 @@ interface TemplateState {
   galleryOpen: boolean;
   /** Snapshots taken before each panel / AI / gallery apply, for one-click undo. */
   history: SpxTemplate[];
+  /** Undone snapshots, for redo. Any NEW edit clears it (the classic undo-tree cut). */
+  future: SpxTemplate[];
   /** The lines the last apply changed (drives the editor's change highlight). */
   lastChange: LastChange | null;
   /** Bumped by panels after an apply to make the playout simulator replay the graphic. */
@@ -108,6 +110,9 @@ interface TemplateState {
   applyTemplate: (template: SpxTemplate, opts?: { resetSampleData?: boolean }) => void;
   /** Restore the template from before the last apply. No-op when history is empty. */
   undo: () => void;
+  /** Re-apply the last undone snapshot. No-op when nothing was undone (or a new edit
+   *  happened since — new edits clear the redo stack). */
+  redo: () => void;
   /** Ask the playout simulator to replay the graphic (used after Motion applies). */
   requestReplay: () => void;
   /** Drive the live preview from the Control panel (update/play/stop/next), immediately. */
@@ -169,6 +174,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   guides: { safeAreas: false, grid: false },
   galleryOpen: true, // Show the template chooser on first load.
   history: [],
+  future: [],
   lastChange: null,
   replayNonce: 0,
   controlCommand: null,
@@ -187,6 +193,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
       return {
         template: next,
         validation: null,
+        future: [],
         lastChange: diffTemplates(s.template, next, (s.lastChange?.nonce ?? 0) + 1),
       };
     }),
@@ -195,10 +202,10 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   setHtml: (html) =>
     set((s) => {
       const template = withParsedFields({ ...s.template, html });
-      return { template, sampleData: syncSampleData(template, s.sampleData), validation: null, lastChange: null };
+      return { template, sampleData: syncSampleData(template, s.sampleData), validation: null, future: [], lastChange: null };
     }),
-  setCss: (css) => set((s) => ({ template: { ...s.template, css }, validation: null, lastChange: null })),
-  setJs: (js) => set((s) => ({ template: { ...s.template, js }, validation: null, lastChange: null })),
+  setCss: (css) => set((s) => ({ template: { ...s.template, css }, validation: null, future: [], lastChange: null })),
+  setJs: (js) => set((s) => ({ template: { ...s.template, js }, validation: null, future: [], lastChange: null })),
 
   applyTemplate: (template, opts) =>
     set((s) => {
@@ -210,8 +217,10 @@ export const useTemplateStore = create<TemplateState>((set) => ({
         sampleData: syncSampleData(synced, opts?.resetSampleData ? {} : s.sampleData),
         validation: null,
         galleryOpen: false,
-        // Snapshot the pre-apply template so the action can be undone.
+        // Snapshot the pre-apply template so the action can be undone; a fresh edit
+        // discards whatever was undone before it (the redo branch is gone).
         history: [...s.history, s.template].slice(-30),
+        future: [],
         // Highlight what changed in the editor — but not for whole-project swaps
         // (a new project changes everything; a highlight would just be noise).
         lastChange: opts?.resetSampleData
@@ -229,6 +238,21 @@ export const useTemplateStore = create<TemplateState>((set) => ({
         sampleData: syncSampleData(prev, s.sampleData),
         validation: null,
         history: s.history.slice(0, -1),
+        future: [...s.future, s.template].slice(-30),
+        lastChange: null,
+      };
+    }),
+
+  redo: () =>
+    set((s) => {
+      if (s.future.length === 0) return {};
+      const next = s.future[s.future.length - 1];
+      return {
+        template: next,
+        sampleData: syncSampleData(next, s.sampleData),
+        validation: null,
+        history: [...s.history, s.template].slice(-30),
+        future: s.future.slice(0, -1),
         lastChange: null,
       };
     }),

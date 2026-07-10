@@ -289,6 +289,13 @@ src/
                  the truth; row LABELS are the shared-selection handles: clicking one
                  (or a bar, without dragging) selects that element on the canvas too
                  (store selectedPart), the selected row washes amber),
+                 Inspector (Timeline v2 — the persistent panel RIGHT of the preview,
+                 the shared selection's third consumer: identity + resolved property
+                 values at the settled state via parseAnimData→importAnimData→
+                 resolveValue, plus an Animations tab naming which steps move the
+                 layer; read shell until the keyframe phase arms editing; its column
+                 lives in both desktop layout modes with a splitter + the topbar
+                 ◨ Inspector toggle — layout prefs inspectorRatio/inspectorCollapsed),
                  SidePanel (five tabs: Data / Control / Style / AI / Export),
                  SampleDataPanel (sample values + add-field), ControlPanel (operator view from
                  control/ engine; live-drives the preview via store.sendControl → simulator;
@@ -398,9 +405,11 @@ Key flows and patterns:
   `positionForNewElement`, tagged `data-gfx`, and styled with `textCssRule` (rich commented CSS).
   Animation is two tracks: **CSS** (`@keyframes` + class applied to the element) and **GSAP**
   (tween injected into `play()/stop()`).
-- **Undo:** `applyTemplate` snapshots the previous template; `undo()` restores it. Blocks, AI, and
-  gallery all flow through `applyTemplate`. Global **Ctrl/Cmd+Z** (AppShell) calls `undo()` unless
-  focus is in Monaco or a form field.
+- **Undo/redo:** `applyTemplate` snapshots the previous template; `undo()` restores it and pushes
+  the undone state onto `future`; `redo()` re-applies it. Any NEW edit (apply, patchCss, manual
+  typing) clears `future`. Blocks, AI, and gallery all flow through `applyTemplate`. Global
+  **Ctrl/Cmd+Z** / **Ctrl/Cmd+Shift+Z** (+ Ctrl+Y) in AppShell, unless focus is in Monaco or a
+  form field.
 - **Assets/branding:** uploads are base64 data URLs in `template.assets[]`; the preview inlines
   them, the exporter decodes them to real files under `assets/`. Brand colours are `:root` CSS
   variables.
