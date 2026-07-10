@@ -13,11 +13,11 @@ import {
   patchTweenToVars,
   patchTweenVars,
   splitTween,
-  TRANSFORM_IDENTITY,
-  TRANSFORM_PROPS,
+  DRAWER_IDENTITY,
+  DRAWER_PROPS,
   type OverviewSection,
   type TimelineTween,
-  type TransformProp,
+  type DrawerProp,
 } from '../blocks/timelineModel';
 import {
   presetConfigFromTemplate,
@@ -776,8 +776,8 @@ export default function TimelineView({ iframeRef }: Props) {
     const tw = idx >= 0 ? phase.tweens[idx] : null;
     const source = drawerPhase === 'out' ? tw?.toVars : tw?.fromVars;
     const values = Object.fromEntries(
-      TRANSFORM_PROPS.map((p) => [p, source?.[p] ?? TRANSFORM_IDENTITY[p]]),
-    ) as Record<TransformProp, number>;
+      DRAWER_PROPS.map((p) => [p, source?.[p] ?? DRAWER_IDENTITY[p]]),
+    ) as Record<DrawerProp, number>;
     return { idx, tw, values };
   };
 
@@ -785,7 +785,7 @@ export default function TimelineView({ iframeRef }: Props) {
    *  that phase (split a joint one / insert a fresh one), then patch the literals — enters-
    *  from on the In card (fromTo from-vars), leaves-to on the Out card (to() to-vars). One
    *  undoable apply + replay, exactly like the entrance drawer. */
-  const setLayerVar = (key: string, prop: TransformProp, value: number) => {
+  const setLayerVar = (key: string, prop: DrawerProp, value: number) => {
     if (!Number.isFinite(value)) return;
     const phase = drawerPhase;
     let js: string | null = template.js;
@@ -818,12 +818,13 @@ export default function TimelineView({ iframeRef }: Props) {
     return drawerPhase === 'out' ? true : !pressOf.has(key);
   };
   const drawerOpen = expandedPart && overview.rowKeys.includes(expandedPart) && canDrawer(expandedPart) ? expandedPart : null;
-  const DRAWER_FIELDS: { prop: TransformProp; label: string; step: number; min?: number; max?: number }[] = [
+  const DRAWER_FIELDS: { prop: DrawerProp; label: string; step: number; min?: number; max?: number }[] = [
     { prop: 'x', label: 'X', step: 1 },
     { prop: 'y', label: 'Y', step: 1 },
     { prop: 'scale', label: 'Scale', step: 0.05, min: 0 },
     { prop: 'opacity', label: 'Opacity', step: 0.1, min: 0, max: 1 },
     { prop: 'rotation', label: 'Rot°', step: 1 },
+    { prop: 'blur', label: 'Blur', step: 1, min: 0 }, // px — filter: blur(Npx)
   ];
 
   return (
@@ -986,8 +987,8 @@ export default function TimelineView({ iframeRef }: Props) {
                         }}
                         title={
                           drawerPhase === 'out'
-                            ? 'Basic animation — where this element leaves to (X, Y, scale, opacity, rotation)'
-                            : 'Basic animation — where this element enters from (X, Y, scale, opacity, rotation)'
+                            ? 'Basic animation — where this element leaves to (X, Y, scale, opacity, rotation, blur)'
+                            : 'Basic animation — where this element enters from (X, Y, scale, opacity, rotation, blur)'
                         }
                         data-testid={`timeline-expand-${key.replace(/[^\w-]/g, '')}`}
                       >

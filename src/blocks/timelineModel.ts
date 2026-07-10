@@ -30,12 +30,12 @@ export interface TimelineTween {
    * the phase knob (the `ease: easeIn/easeOut` variables or the timeline defaults).
    */
   ease: string | null;
-  /** T5: the numeric transform values in a fromTo's FROM object (the "enters from" state —
-   *  only the drawer-editable props; absent for set()/to() calls). */
-  fromVars?: Partial<Record<TransformProp, number>>;
-  /** T6: the numeric transform values in the LAST object (the "leaves to" state for an exit
+  /** T5: the drawer-editable values in a fromTo's FROM object (the "enters from" state —
+   *  transforms as numbers, blur as a px amount; absent for set()/to() calls). */
+  fromVars?: Partial<Record<DrawerProp, number>>;
+  /** T6: the drawer-editable values in the LAST object (the "leaves to" state for an exit
    *  to()/fromTo — drives the out drawer; absent for set() ticks). */
-  toVars?: Partial<Record<TransformProp, number>>;
+  toVars?: Partial<Record<DrawerProp, number>>;
 }
 
 /** T5 — the basic transform properties the per-layer drawer edits. Deliberately small:
@@ -44,6 +44,13 @@ export const TRANSFORM_PROPS = ['x', 'y', 'scale', 'opacity', 'rotation'] as con
 export type TransformProp = (typeof TRANSFORM_PROPS)[number];
 /** The settled state — a from-value equal to its identity is a no-op and gets removed. */
 export const TRANSFORM_IDENTITY: Record<TransformProp, number> = { x: 0, y: 0, scale: 1, opacity: 1, rotation: 0 };
+
+/** T6.2 — the full drawer vocabulary: the transforms plus `blur`. Blur is a filter effect,
+ *  not a transform, so it is edited as a px amount but serializes to `filter: 'blur(Npx)'`
+ *  (identity 0 = no blur). Everything else in the drawer is a plain numeric transform. */
+export const DRAWER_PROPS = ['x', 'y', 'scale', 'opacity', 'rotation', 'blur'] as const;
+export type DrawerProp = (typeof DRAWER_PROPS)[number];
+export const DRAWER_IDENTITY: Record<DrawerProp, number> = { x: 0, y: 0, scale: 1, opacity: 1, rotation: 0, blur: 0 };
 
 export interface TimelinePhase {
   id: 'in' | 'out';
@@ -224,8 +231,8 @@ function parseCall(kind: TimelineTween['kind'], args: string, animSpeed: number)
   const vars = objects[objects.length - 1] ?? '';
   const props = [...vars.matchAll(/(\w+)\s*:/g)].map((m) => m[1]).filter((p) => !BOOKKEEPING_PROPS.has(p));
 
-  // T5: the FROM object's drawer-editable transform values (fromTo only — a to() has none).
-  let fromVars: Partial<Record<TransformProp, number>> | undefined;
+  // T5/T6.2: the FROM object's drawer-editable values (fromTo only — a to() has none).
+  let fromVars: Partial<Record<DrawerProp, number>> | undefined;
   const fromObj = objects[0];
   if (kind === 'fromTo' && objects.length >= 2 && fromObj) {
     fromVars = {};
@@ -233,17 +240,21 @@ function parseCall(kind: TimelineTween['kind'], args: string, animSpeed: number)
       const m = fromObj.match(new RegExp(`(?:^|[,{\\s])${prop}:\\s*(-?[\\d.]+)`));
       if (m) fromVars[prop] = Number(m[1]);
     }
+    const fb = fromObj.match(/filter:\s*'blur\((-?[\d.]+)px\)'/);
+    if (fb) fromVars.blur = Number(fb[1]);
   }
 
-  // T6: the TO object's drawer-editable transform values — the "leaves to" state the out
-  // drawer edits (present for any animating tween; identity for props it doesn't move).
-  let toVars: Partial<Record<TransformProp, number>> | undefined;
+  // T6/T6.2: the TO object's drawer-editable values — the "leaves to" state the out drawer
+  // edits (present for any animating tween; identity for props it doesn't move).
+  let toVars: Partial<Record<DrawerProp, number>> | undefined;
   if (kind !== 'set') {
     toVars = {};
     for (const prop of TRANSFORM_PROPS) {
       const m = vars.match(new RegExp(`(?:^|[,{\\s])${prop}:\\s*(-?[\\d.]+)`));
       if (m) toVars[prop] = Number(m[1]);
     }
+    const tb = vars.match(/filter:\s*'blur\((-?[\d.]+)px\)'/);
+    if (tb) toVars.blur = Number(tb[1]);
   }
 
   const durationMatch = vars.match(/duration:\s*([\d.]+)\s*\/\s*animSpeed/);
@@ -390,6 +401,26 @@ function setObjProp(obj: string, prop: string, value: number | null): string {
   return obj.replace(/\s/g, '') === '{}'
     ? `{ ${prop}: ${value} }`
     : obj.replace(/\{\s*/, `{ ${prop}: ${value}, `);
+}
+
+/** Set, replace, or remove the blur filter inside a GSAP vars object literal. Blur lives as
+ *  `filter: 'blur(Npx)'` (a quoted string, not a bare number), so it needs its own writer;
+ *  a null px removes it and tidies the braces. */
+function setObjBlur(obj: string, px: number | null): string {
+  const has = /filter:\s*'blur\([^']*\)'/.test(obj);
+  if (px === null) {
+    if (!has) return obj;
+    return obj
+      .replace(/filter:\s*'blur\([^']*\)'\s*,\s*/, '')
+      .replace(/,\s*filter:\s*'blur\([^']*\)'/, '')
+      .replace(/filter:\s*'blur\([^']*\)'/, '')
+      .replace(/\{\s*,/, '{ ')
+      .replace(/,\s*\}/, ' }');
+  }
+  if (has) return obj.replace(/filter:\s*'blur\([^']*\)'/, `filter: 'blur(${px}px)'`);
+  return obj.replace(/\s/g, '') === '{}'
+    ? `{ filter: 'blur(${px}px)' }`
+    : obj.replace(/\{\s*/, `{ filter: 'blur(${px}px)', `);
 }
 
 /** Locate the Nth tl call of a phase's build function inside the marked region. */
@@ -637,7 +668,7 @@ export function patchTweenVars(
   js: string,
   phaseId: 'in' | 'out',
   tweenIndex: number,
-  changes: Partial<Record<TransformProp, number>>,
+  changes: Partial<Record<DrawerProp, number>>,
 ): string | null {
   const loc = locateCall(js, phaseId, tweenIndex);
   if (!loc) return null;
@@ -660,7 +691,19 @@ export function patchTweenVars(
   let toObj = objects[objects.length - 1][0];
   for (const [prop, raw] of Object.entries(changes)) {
     const value = round2(raw as number);
-    const identity = TRANSFORM_IDENTITY[prop as TransformProp];
+    const identity = DRAWER_IDENTITY[prop as DrawerProp];
+    if (prop === 'blur') {
+      // Enters from a blur, settling to blur(0px). Removing the from-blur also drops the
+      // managed settle counterpart, so a zeroed blur leaves the code clean.
+      if (value === 0) {
+        fromObj = setObjBlur(fromObj, null);
+        if (/filter:\s*'blur\(0px\)'/.test(toObj)) toObj = setObjBlur(toObj, null);
+      } else {
+        fromObj = setObjBlur(fromObj, value);
+        if (!/filter:/.test(toObj)) toObj = setObjBlur(toObj, 0);
+      }
+      continue;
+    }
     if (value === identity) {
       fromObj = setObjProp(fromObj, prop, null);
       // Only strip the TO counterpart when it IS the identity we manage (never a preset's
@@ -691,7 +734,7 @@ export function patchTweenVars(
 export function insertPartTween(
   js: string,
   selector: string,
-  changes: Partial<Record<TransformProp, number>>,
+  changes: Partial<Record<DrawerProp, number>>,
 ): string | null {
   const regionMatch = js.match(REGION_RE);
   if (!regionMatch || regionMatch.index === undefined) return null;
@@ -706,9 +749,14 @@ export function insertPartTween(
   const toPairs: string[] = [];
   for (const [prop, raw] of Object.entries(changes)) {
     const value = round2(raw as number);
-    if (value === TRANSFORM_IDENTITY[prop as TransformProp]) continue;
-    fromPairs.push(`${prop}: ${value}`);
-    toPairs.push(`${prop}: ${TRANSFORM_IDENTITY[prop as TransformProp]}`);
+    if (value === DRAWER_IDENTITY[prop as DrawerProp]) continue;
+    if (prop === 'blur') {
+      fromPairs.push(`filter: 'blur(${value}px)'`);
+      toPairs.push(`filter: 'blur(0px)'`); // materialises sharp
+    } else {
+      fromPairs.push(`${prop}: ${value}`);
+      toPairs.push(`${prop}: ${TRANSFORM_IDENTITY[prop as TransformProp]}`);
+    }
   }
   if (fromPairs.length === 0) return null; // all identity — nothing to animate
 
@@ -734,7 +782,7 @@ export function patchTweenToVars(
   js: string,
   phaseId: 'in' | 'out',
   tweenIndex: number,
-  changes: Partial<Record<TransformProp, number>>,
+  changes: Partial<Record<DrawerProp, number>>,
 ): string | null {
   const loc = locateCall(js, phaseId, tweenIndex);
   if (!loc) return null;
@@ -747,6 +795,10 @@ export function patchTweenToVars(
   let toObj = last[0];
   for (const [prop, raw] of Object.entries(changes)) {
     const value = round2(raw as number);
+    if (prop === 'blur') {
+      toObj = setObjBlur(toObj, value === 0 ? null : value); // leaves toward a blur (0 = none)
+      continue;
+    }
     const identity = TRANSFORM_IDENTITY[prop as TransformProp];
     toObj = setObjProp(toObj, prop, value === identity && prop !== 'opacity' ? null : value);
   }
@@ -764,7 +816,7 @@ export function patchTweenToVars(
 export function insertPartOutTween(
   js: string,
   selector: string,
-  changes: Partial<Record<TransformProp, number>>,
+  changes: Partial<Record<DrawerProp, number>>,
 ): string | null {
   const regionMatch = js.match(REGION_RE);
   if (!regionMatch || regionMatch.index === undefined) return null;
@@ -778,15 +830,15 @@ export function insertPartOutTween(
   // Setting a transform to its identity on a layer that has no exit tween is a no-op —
   // there is nothing to leave toward, so don't manufacture a bare fade.
   const meaningful = Object.entries(changes).some(
-    ([prop, raw]) => prop === 'opacity' || round2(raw as number) !== TRANSFORM_IDENTITY[prop as TransformProp],
+    ([prop, raw]) => prop === 'opacity' || round2(raw as number) !== DRAWER_IDENTITY[prop as DrawerProp],
   );
   if (!meaningful) return null;
 
   const pairs: string[] = [];
   for (const [prop, raw] of Object.entries(changes)) {
     const value = round2(raw as number);
-    if (value === TRANSFORM_IDENTITY[prop as TransformProp] && prop !== 'opacity') continue;
-    pairs.push(`${prop}: ${value}`);
+    if (value === DRAWER_IDENTITY[prop as DrawerProp] && prop !== 'opacity') continue;
+    pairs.push(prop === 'blur' ? `filter: 'blur(${value}px)'` : `${prop}: ${value}`);
   }
   if (!pairs.some((p) => p.startsWith('opacity'))) pairs.push('opacity: 0'); // it must actually leave
 

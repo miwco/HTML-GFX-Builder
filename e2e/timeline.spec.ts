@@ -806,6 +806,41 @@ test('the Out card grows a per-layer "leaves to" drawer that patches the exit an
   await expect.poll(f0y, { timeout: 3000 }).toBe('matrix(1, 0, 0, 1, 0, 0)'); // reset
 });
 
+test('the per-layer drawer edits blur (enters-from and leaves-to), and it resets on replay', async ({ page }) => {
+  await createHairline(page);
+  // Enters-from side: the In card's drawer carries a Blur field.
+  await page.getByTestId('timeline-expand-f0').click();
+  await expect(page.locator('.timeline-drawer-label')).toContainText('enters from');
+  await expect(page.getByTestId('timeline-from-blur')).toBeVisible();
+
+  // Leaves-to side: switch to the Out card (the drawer stays open on the same row) and set
+  // an 8px exit blur on the Name line.
+  await page.getByTestId('timeline-seg-out').click();
+  await expect(page.locator('.timeline-drawer-label')).toContainText('leaves to');
+  await page.getByTestId('timeline-to-blur').fill('8');
+  await page.getByTestId('timeline-to-blur').press('Enter');
+  await replayDone(page);
+
+  const js = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().template.js;
+  });
+  // #f0 now leaves toward an 8px blur inside the exit (filter is a string literal, not a
+  // bare number — the drawer serializes blur specially).
+  expect(js).toMatch(/function buildOutTimeline[\s\S]*tl\.to\('#f0',[^\n]*filter: 'blur\(8px\)'/);
+
+  // Deterministic: park the exit at its end — #f0 is blurred; a real replay clears it (the
+  // simulator's reset wipes leaked filter so the next entrance is clean).
+  const f0filter = () => frame(page).locator('#f0').evaluate((el) => getComputedStyle(el).filter);
+  await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    useTemplateStore.getState().sendScrub('out', 1);
+  });
+  await expect.poll(f0filter, { timeout: 3000 }).not.toBe('none');
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect.poll(f0filter, { timeout: 3000 }).toBe('none');
+});
+
 test('dark color-scheme reaches the app root and the preview stays transparent', async ({ page }) => {
   await createHairline(page);
   // The app declares itself dark, so native select popups render dark-on-dark readable.

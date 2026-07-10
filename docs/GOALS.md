@@ -574,6 +574,16 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       leak-free replay, auto-out in preview, in/out naming, the leaves-to drawer round-trip.
       (Also answered: the missing Login/Community menus were an env artifact — this worktree
       has no `.env`, so the app runs offline and both account surfaces stay hidden by design.)
+- [x] **T6.2 per-layer blur (2026-07-10, second tester round)** — the per-layer drawer gains
+      a Blur field on BOTH phases: enters-from materialises a layer out of a blur, leaves-to
+      dissolves it into one. Blur is the one non-transform in the drawer — it serializes to
+      `filter: 'blur(Npx)'` (a string literal, not a bare number), so it has its own reader/
+      writer (`setObjBlur`, a `DRAWER_PROPS`/`DRAWER_IDENTITY` vocabulary alongside the
+      transforms). All four drawer patchers handle it (patchTweenVars/patchTweenToVars edit
+      the from/to objects; insertPartTween gives a blur-in fromTo, insertPartOutTween a
+      blur-out to()), and splitTween still separates a joint tween first so only the grabbed
+      layer blurs. The simulator's reset already clears leaked filter, so blur leaves cleanly.
+      E2E: the drawer exposes blur on both cards and an exit blur round-trips + resets.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

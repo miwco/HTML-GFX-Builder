@@ -264,12 +264,14 @@ src/
                  hit-testing sees through); the gutter has each part's "appears on
                  press" menu + the selected moment's ease chips (patchTweenEase/
                  patchStepEase); each part row's ▸ arrow opens the PHASE-AWARE transform
-                 drawer (X/Y/scale/opacity/rotation): on ▶In it edits ENTERS-FROM (in
-                 tween from-values settling to identity — patchTweenVars, insertPartTween
+                 drawer (X/Y/scale/opacity/rotation + blur): on ▶In it edits ENTERS-FROM
+                 (in tween from-values settling to identity — patchTweenVars, insertPartTween
                  for partless layers), on ■Out it edits LEAVES-TO (out tween to-values —
                  patchTweenToVars, insertPartOutTween; opacity never auto-stripped so the
-                 exit still fades); root never gets a drawer, press-assigned parts have
-                 none on In but do on Out (leaving is independent of entering);
+                 exit still fades); blur is the one non-transform (serializes to
+                 filter:'blur(Npx)' via setObjBlur — enters-from materialises out of blur,
+                 leaves-to dissolves into it); root never gets a drawer, press-assigned
+                 parts have none on In but do on Out (leaving is independent of entering);
                  ●On air = pseudo-card (phaseId 'hold'), click parks on the settled
                  look; »+Step disables with a tooltip reason; THE STRIP IS THE ONE
                  MOTION SURFACE (the Motion side-tab is retired): the selected ▶In/■Out
