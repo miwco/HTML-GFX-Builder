@@ -719,6 +719,93 @@ test('the strip header speed knob writes animSpeed and auto-replays', async ({ p
     .toBe('1');
 });
 
+test('the Out card names the exit direction (Blur in → Blur out); the In card keeps entrance names', async ({ page }) => {
+  await createHairline(page);
+  const optionText = (id: string) =>
+    page.locator(`[data-testid="timeline-phase-preset"] option[value="${id}"]`).first().textContent();
+  // ▶ In card (selected by default): entrance names read as-is.
+  await expect(page.getByTestId('timeline-seg-in')).toHaveClass(/active/);
+  expect((await optionText('blur-in'))?.trim()).toBe('Blur in');
+  expect((await optionText('drop-in'))?.trim()).toBe('Drop in');
+  // ■ Out card: the same presets present their EXIT direction.
+  await page.getByTestId('timeline-seg-out').click();
+  expect((await optionText('blur-in'))?.trim()).toBe('Blur out');
+  expect((await optionText('drop-in'))?.trim()).toBe('Drop out');
+  // Direction-neutral names are unchanged (they read for both halves).
+  expect((await optionText('mask-wipe'))?.trim()).toBe('Mask wipe');
+});
+
+test('an exit never leaks its end state into the next playback (blur out → clean replay)', async ({ page }) => {
+  await createHairline(page); // In: Line reveal (no filter) — a cross-property mix with a Blur exit
+  const boxFilter = () =>
+    frame(page).locator('.lower-third-box').evaluate((el) => getComputedStyle(el).filter);
+  // Give the exit a Blur — it leaves filter:blur on the box that the entrance never resets.
+  await page.getByTestId('timeline-seg-out').click();
+  await page.getByTestId('timeline-phase-preset').selectOption('blur-in');
+  await replayDone(page);
+
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect.poll(boxFilter, { timeout: 3000 }).toBe('none'); // entrance settles clear
+  await page.getByRole('button', { name: '■ Stop' }).click();
+  await expect.poll(boxFilter, { timeout: 3000 }).not.toBe('none'); // exit blurs the box
+  // Replay: the graphic must start from the clean initial state, NOT the blurred exit state.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect.poll(boxFilter, { timeout: 3000 }).toBe('none');
+});
+
+test('auto-out (settings.out = N ms) leaves the graphic by itself in the preview', async ({ page }) => {
+  await createHairline(page);
+  const rootOpacity = () =>
+    frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity);
+  // Set a short auto-out on the ● On air card.
+  await page.getByTestId('timeline-seg-hold').click();
+  await page.getByTestId('timeline-out-mode').selectOption('auto');
+  await page.getByTestId('timeline-out-ms').fill('400');
+  await page.getByTestId('timeline-out-ms').press('Enter');
+  await page.waitForTimeout(700); // definition-change rebuild
+
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  // On air right after the entrance…
+  await expect.poll(rootOpacity, { timeout: 2000 }).toBe('1');
+  // …then it leaves by itself once the hold elapses (entrance ≈0.9s + 400ms hold + exit).
+  await expect.poll(rootOpacity, { timeout: 4000 }).toBe('0');
+});
+
+test('the Out card grows a per-layer "leaves to" drawer that patches the exit and resets cleanly', async ({ page }) => {
+  await createHairline(page);
+  await page.getByTestId('timeline-seg-out').click();
+  // Blur exit: it animates only the box, so a line has NO exit tween of its own — the
+  // leaves-to drawer must INSERT one (the clean insert path). (Line reveal's exit already
+  // moves the lines; that would be the split path — covered by the split-on-drag suite.)
+  await page.getByTestId('timeline-phase-preset').selectOption('blur-in');
+  await replayDone(page);
+  await page.getByTestId('timeline-seg-out').click(); // the replay reclaimed the selection
+
+  // The row arrow opens the leaves-to drawer (the exit-side twin of enters-from).
+  await page.getByTestId('timeline-expand-f0').click();
+  await expect(page.locator('.timeline-drawer-label')).toContainText('leaves to');
+  await page.getByTestId('timeline-to-y').fill('-40');
+  await page.getByTestId('timeline-to-y').press('Enter');
+  await replayDone(page);
+
+  const js = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().template.js;
+  });
+  // A real exit tween for #f0 now lives in buildOutTimeline (leaves toward y and fades).
+  expect(js).toMatch(/function buildOutTimeline[\s\S]*tl\.to\('#f0', \{ y: -40, opacity: 0/);
+
+  // The leave plays on Stop, and the replay starts from the clean resting state.
+  const f0y = () =>
+    frame(page).locator('#f0').evaluate((el) => getComputedStyle(el).transform);
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.waitForTimeout(1200);
+  await page.getByRole('button', { name: '■ Stop' }).click();
+  await expect.poll(f0y, { timeout: 3000 }).toContain('-40'); // moved on the way out
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await expect.poll(f0y, { timeout: 3000 }).toBe('matrix(1, 0, 0, 1, 0, 0)'); // reset
+});
+
 test('dark color-scheme reaches the app root and the preview stays transparent', async ({ page }) => {
   await createHairline(page);
   // The app declares itself dark, so native select popups render dark-on-dark readable.

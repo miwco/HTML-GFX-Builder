@@ -240,7 +240,12 @@ src/
                  PlayoutSimulator (owns the running preview timeline __activeTl; settles
                  the design view after every rebuild — progress(1, true) + a second
                  update(); auto-replays on replayNonce; playNext owns each Continue's
-                 reveal tween as __activeTl step-N), TimelineView (collapsible strip
+                 reveal tween as __activeTl step-N; resetGraphic clears GSAP inline props
+                 on the root subtree before every entrance so a prior exit never leaks
+                 its end state — e.g. a Blur exit's filter into a Slide entrance that
+                 never resets it; honors the SPX `out` = N ms setting by scheduling the
+                 exit after the entrance settles + the hold, cancelled by any manual
+                 play/stop/next/scrub), TimelineView (collapsible strip
                  under the preview: MOMENT CARDS ▶In · »1 · »2 · »+Step · ●On air · ■Out
                  (step cards numbered by PRESS; cue subtitles aria-hidden —
                  getByRole('▶ Play') must stay unique in specs) over the CUE-SEGMENTED
@@ -258,16 +263,20 @@ src/
                  bodies + cards are drop zones, dragged bars get pointer-events:none so
                  hit-testing sees through); the gutter has each part's "appears on
                  press" menu + the selected moment's ease chips (patchTweenEase/
-                 patchStepEase); each part row's ▸ arrow opens the ENTERS-FROM drawer
-                 (X/Y/scale/opacity/rotation from-values settling to identity —
-                 patchTweenVars edits from/to literals, insertPartTween adds a tween to
-                 partless layers; press-assigned parts and the root have no drawer);
+                 patchStepEase); each part row's ▸ arrow opens the PHASE-AWARE transform
+                 drawer (X/Y/scale/opacity/rotation): on ▶In it edits ENTERS-FROM (in
+                 tween from-values settling to identity — patchTweenVars, insertPartTween
+                 for partless layers), on ■Out it edits LEAVES-TO (out tween to-values —
+                 patchTweenToVars, insertPartOutTween; opacity never auto-stripped so the
+                 exit still fades); root never gets a drawer, press-assigned parts have
+                 none on In but do on Out (leaving is independent of entering);
                  ●On air = pseudo-card (phaseId 'hold'), click parks on the settled
                  look; »+Step disables with a tooltip reason; THE STRIP IS THE ONE
                  MOTION SURFACE (the Motion side-tab is retired): the selected ▶In/■Out
                  card's inspector row holds that phase's preset picker + easing choice
                  (swapAnimationPhase / setAnimKnob — phase-correct halves per the
-                 easing doctrine), the header holds the animSpeed knob, and the
+                 easing doctrine; the Out card names presets in their exit direction,
+                 Blur in → Blur out), the header holds the animSpeed knob, and the
                  selected ●On air card's note edits the SPX `out` setting (until-Stop /
                  auto-out N ms / stays — synced into the definition like
                  withStepsSetting); an unparsable marked region gets an honest

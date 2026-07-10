@@ -557,6 +557,23 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       Animation STEP is untouched (a different surface for a different moment). E2E: the
       motion specs re-pinned on the strip + new coverage (per-phase swap from a card, speed
       knob, out-mode sync, fallback).
+- [x] **T6.1 motion-surface tester fixes (2026-07-10, first round on the converged strip)** —
+      four issues from trying the build: (1) an EXIT could leak its end state into the next
+      playback — most visibly a Blur exit leaves filter:blur on the box that a non-blur
+      entrance never resets, so the replay started blurred; the simulator now `resetGraphic`s
+      (clears GSAP inline props on the root subtree) before every entrance, so play → hold →
+      exit → clean reset → play again always starts from the true initial state. (2) The SPX
+      `out` = N ms auto-out never fired in the editor preview (only export); the simulator now
+      schedules the exit after the entrance settles + the hold, cancelled by any manual
+      play/stop/next/scrub. (3) The In and Out cards showed identical preset labels; the Out
+      card now names presets in their exit direction (Blur in → Blur out, Drop in → Drop out;
+      direction-neutral names like Mask wipe unchanged). (4) The per-layer transform drawer
+      was entrance-only; it is now PHASE-AWARE — enters-from on the In card, leaves-to on the
+      Out card (patchTweenToVars edits the exit's to-vars, insertPartOutTween gives a partless
+      layer its own exit tween; opacity never auto-stripped so the exit still fades). E2E:
+      leak-free replay, auto-out in preview, in/out naming, the leaves-to drawer round-trip.
+      (Also answered: the missing Login/Community menus were an env artifact — this worktree
+      has no `.env`, so the app runs offline and both account surfaces stay hidden by design.)
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/

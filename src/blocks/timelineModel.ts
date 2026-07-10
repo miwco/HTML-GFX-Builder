@@ -33,6 +33,9 @@ export interface TimelineTween {
   /** T5: the numeric transform values in a fromTo's FROM object (the "enters from" state —
    *  only the drawer-editable props; absent for set()/to() calls). */
   fromVars?: Partial<Record<TransformProp, number>>;
+  /** T6: the numeric transform values in the LAST object (the "leaves to" state for an exit
+   *  to()/fromTo — drives the out drawer; absent for set() ticks). */
+  toVars?: Partial<Record<TransformProp, number>>;
 }
 
 /** T5 — the basic transform properties the per-layer drawer edits. Deliberately small:
@@ -232,6 +235,17 @@ function parseCall(kind: TimelineTween['kind'], args: string, animSpeed: number)
     }
   }
 
+  // T6: the TO object's drawer-editable transform values — the "leaves to" state the out
+  // drawer edits (present for any animating tween; identity for props it doesn't move).
+  let toVars: Partial<Record<TransformProp, number>> | undefined;
+  if (kind !== 'set') {
+    toVars = {};
+    for (const prop of TRANSFORM_PROPS) {
+      const m = vars.match(new RegExp(`(?:^|[,{\\s])${prop}:\\s*(-?[\\d.]+)`));
+      if (m) toVars[prop] = Number(m[1]);
+    }
+  }
+
   const durationMatch = vars.match(/duration:\s*([\d.]+)\s*\/\s*animSpeed/);
   const staggerMatch = vars.match(/stagger:\s*([\d.]+)\s*\/\s*animSpeed/);
   // A quoted ease is a per-tween override; `ease: easeIn/easeOut` inherits the phase knob.
@@ -256,6 +270,7 @@ function parseCall(kind: TimelineTween['kind'], args: string, animSpeed: number)
     editable: kind !== 'set' && !!durationMatch,
     ease: easeMatch ? easeMatch[1] : null,
     fromVars,
+    toVars,
   };
 }
 
@@ -284,6 +299,7 @@ function parsePhase(id: TimelinePhase['id'], body: string, animSpeed: number): T
       editable: parsed.editable,
       ease: parsed.ease,
       fromVars: parsed.fromVars,
+      toVars: parsed.toVars,
     });
   }
   return {
@@ -355,6 +371,26 @@ function parseSteps(region: string, animSpeed: number): TimelineStep[] {
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Set, replace, or remove one numeric prop inside a GSAP vars object literal (shared by the
+ *  enters-from and leaves-to drawer patchers). A null value removes the prop and tidies the
+ *  adjacent comma/braces so the emitted literal stays clean. */
+function setObjProp(obj: string, prop: string, value: number | null): string {
+  if (value === null) {
+    return obj
+      .replace(new RegExp(`\\b${prop}:\\s*-?[\\d.]+\\s*,\\s*`), '')
+      .replace(new RegExp(`,\\s*\\b${prop}:\\s*-?[\\d.]+`), '')
+      .replace(new RegExp(`\\b${prop}:\\s*-?[\\d.]+`), '')
+      .replace(/\{\s*,/, '{ ')
+      .replace(/,\s*\}/, ' }');
+  }
+  if (new RegExp(`\\b${prop}:\\s*-?[\\d.]+`).test(obj)) {
+    return obj.replace(new RegExp(`\\b${prop}:\\s*-?[\\d.]+`), `${prop}: ${value}`);
+  }
+  return obj.replace(/\s/g, '') === '{}'
+    ? `{ ${prop}: ${value} }`
+    : obj.replace(/\{\s*/, `{ ${prop}: ${value}, `);
+}
 
 /** Locate the Nth tl call of a phase's build function inside the marked region. */
 function locateCall(js: string, phaseId: 'in' | 'out', tweenIndex: number) {
@@ -620,38 +656,19 @@ export function patchTweenVars(
   const objects = [...call.matchAll(/\{[^{}]*\}/g)];
   if (objects.length < 2) return null;
 
-  const setProp = (obj: string, prop: string, value: number | null): string => {
-    if (value === null) {
-      // Remove the prop (and one adjacent comma), then tidy any leftover braces.
-      return obj
-        .replace(new RegExp(`\\b${prop}:\\s*-?[\\d.]+\\s*,\\s*`), '')
-        .replace(new RegExp(`,\\s*\\b${prop}:\\s*-?[\\d.]+`), '')
-        .replace(new RegExp(`\\b${prop}:\\s*-?[\\d.]+`), '')
-        .replace(/\{\s*,/, '{ ')
-        .replace(/,\s*\}/, ' }');
-    }
-    if (new RegExp(`\\b${prop}:\\s*-?[\\d.]+`).test(obj)) {
-      return obj.replace(new RegExp(`\\b${prop}:\\s*-?[\\d.]+`), `${prop}: ${value}`);
-    }
-    // Insert after the opening brace (an empty {} gets its first pair).
-    return obj.replace(/\s/g, '') === '{}'
-      ? `{ ${prop}: ${value} }`
-      : obj.replace(/\{\s*/, `{ ${prop}: ${value}, `);
-  };
-
   let fromObj = objects[0][0];
   let toObj = objects[objects.length - 1][0];
   for (const [prop, raw] of Object.entries(changes)) {
     const value = round2(raw as number);
     const identity = TRANSFORM_IDENTITY[prop as TransformProp];
     if (value === identity) {
-      fromObj = setProp(fromObj, prop, null);
+      fromObj = setObjProp(fromObj, prop, null);
       // Only strip the TO counterpart when it IS the identity we manage (never a preset's
       // own differing to-value).
-      if (new RegExp(`\\b${prop}:\\s*${identity}(?![\\d.])`).test(toObj)) toObj = setProp(toObj, prop, null);
+      if (new RegExp(`\\b${prop}:\\s*${identity}(?![\\d.])`).test(toObj)) toObj = setObjProp(toObj, prop, null);
     } else {
-      fromObj = setProp(fromObj, prop, value);
-      if (!new RegExp(`\\b${prop}:`).test(toObj)) toObj = setProp(toObj, prop, identity);
+      fromObj = setObjProp(fromObj, prop, value);
+      if (!new RegExp(`\\b${prop}:`).test(toObj)) toObj = setObjProp(toObj, prop, identity);
     }
   }
 
@@ -700,6 +717,80 @@ export function insertPartTween(
     { ${toPairs.join(', ')}, duration: 0.5 / animSpeed },
     0  // enters with the graphic (layer-drawer added)
   );
+  `;
+  const newBody = body.slice(0, returnAt) + insert + body.slice(returnAt);
+  const bodyStart = bodyMatch.index + bodyMatch[0].indexOf(body);
+  const newRegion = region.slice(0, bodyStart) + newBody + region.slice(bodyStart + body.length);
+  return js.slice(0, regionMatch.index) + newRegion + js.slice(regionMatch.index + region.length);
+}
+
+/**
+ * T6: set one out tween's "leaves to" transform values — the per-layer drawer, exit side.
+ * Edits the LAST object literal (the exit's to-vars). A transform prop equal to its identity
+ * is removed (a no-op leave direction), but opacity is never stripped — it is the fade that
+ * makes the exit actually leave. Returns null when the tween is a set() or unlocatable.
+ */
+export function patchTweenToVars(
+  js: string,
+  phaseId: 'in' | 'out',
+  tweenIndex: number,
+  changes: Partial<Record<TransformProp, number>>,
+): string | null {
+  const loc = locateCall(js, phaseId, tweenIndex);
+  if (!loc) return null;
+  const call = loc.call;
+  if (/^tl\.set\(/.test(call)) return null;
+
+  const objects = [...call.matchAll(/\{[^{}]*\}/g)];
+  if (objects.length === 0) return null;
+  const last = objects[objects.length - 1];
+  let toObj = last[0];
+  for (const [prop, raw] of Object.entries(changes)) {
+    const value = round2(raw as number);
+    const identity = TRANSFORM_IDENTITY[prop as TransformProp];
+    toObj = setObjProp(toObj, prop, value === identity && prop !== 'opacity' ? null : value);
+  }
+
+  const patched = call.slice(0, last.index!) + toObj + call.slice(last.index! + last[0].length);
+  return spliceCall(loc, patched);
+}
+
+/**
+ * T6: give a part its own EXIT tween when it has none — the out drawer's insert path. The
+ * part leaves toward the given transform offset and fades (opacity 0 unless the caller set
+ * it), entering at position 0 of buildOutTimeline so it runs with the rest of the exit. The
+ * root's own hide (the trailing set) still fires after, so nothing lingers.
+ */
+export function insertPartOutTween(
+  js: string,
+  selector: string,
+  changes: Partial<Record<TransformProp, number>>,
+): string | null {
+  const regionMatch = js.match(REGION_RE);
+  if (!regionMatch || regionMatch.index === undefined) return null;
+  const region = regionMatch[0];
+  const bodyMatch = region.match(fnBodyRe('buildOutTimeline'));
+  if (!bodyMatch || bodyMatch.index === undefined) return null;
+  const body = bodyMatch[1];
+  const returnAt = body.lastIndexOf('return tl;');
+  if (returnAt === -1) return null;
+
+  // Setting a transform to its identity on a layer that has no exit tween is a no-op —
+  // there is nothing to leave toward, so don't manufacture a bare fade.
+  const meaningful = Object.entries(changes).some(
+    ([prop, raw]) => prop === 'opacity' || round2(raw as number) !== TRANSFORM_IDENTITY[prop as TransformProp],
+  );
+  if (!meaningful) return null;
+
+  const pairs: string[] = [];
+  for (const [prop, raw] of Object.entries(changes)) {
+    const value = round2(raw as number);
+    if (value === TRANSFORM_IDENTITY[prop as TransformProp] && prop !== 'opacity') continue;
+    pairs.push(`${prop}: ${value}`);
+  }
+  if (!pairs.some((p) => p.startsWith('opacity'))) pairs.push('opacity: 0'); // it must actually leave
+
+  const insert = `tl.to('${selector}', { ${pairs.join(', ')}, duration: 0.35 / animSpeed }, 0);  // leaves with the exit (layer-drawer added)
   `;
   const newBody = body.slice(0, returnAt) + insert + body.slice(returnAt);
   const bodyStart = bodyMatch.index + bodyMatch[0].indexOf(body);

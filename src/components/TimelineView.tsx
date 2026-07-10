@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useMemo, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import {
   buildOverview,
+  insertPartOutTween,
   insertPartTween,
   parseTimeline,
   patchStepEase,
@@ -9,6 +10,7 @@ import {
   patchStepTiming,
   patchTweenEase,
   patchTweenTiming,
+  patchTweenToVars,
   patchTweenVars,
   splitTween,
   TRANSFORM_IDENTITY,
@@ -125,6 +127,14 @@ function actionLabel(tween: Pick<TimelineTween, 'kind' | 'props'>): string {
     if (tween.props.some((p) => re.test(p)) && !verbs.includes(verb)) verbs.push(verb);
   }
   return verbs.slice(0, 2).join(' + ');
+}
+
+/** A preset's name spoken for the phase it drives: on the exit card a "… in" preset reads
+ *  as "… out" (Blur in → Blur out, Drop in → Drop out), so the In and Out cards never show
+ *  the same label for opposite motion. Direction-neutral names (Mask wipe, Fade) are left
+ *  as-is — they read correctly for both halves. The preset id is unchanged. */
+function phasePresetLabel(name: string, phase: 'in' | 'out'): string {
+  return phase === 'out' ? name.replace(/ in$/i, ' out') : name;
 }
 
 /** A GSAP ease string in plain words: the vocabulary name when the curve is one of ours
@@ -755,43 +765,57 @@ export default function TimelineView({ iframeRef }: Props) {
     return idx === -1 ? null : { index: idx, ease: phase.tweens[idx].ease };
   };
 
-  // ── T5: the per-layer "enters from" drawer — basic transforms, kept deliberately small ──
+  // ── T5/T6: the per-layer transform drawer — basic values, kept deliberately small. It is
+  //    PHASE-AWARE: on the ▶ In card it edits where a layer ENTERS FROM (the in tween's
+  //    from-vars); on the ■ Out card it edits where the layer LEAVES TO (the out tween's
+  //    to-vars). A » step / the hold has no per-layer transforms, so it stays on the entrance.
+  const drawerPhase: 'in' | 'out' = seg.kind === 'out' ? 'out' : 'in';
   const drawerFor = (key: string) => {
-    const idx = inPhase.tweens.findIndex((tw) => tw.kind !== 'set' && tw.editable && tw.targets.includes(key));
-    const tw = idx >= 0 ? inPhase.tweens[idx] : null;
+    const phase = drawerPhase === 'out' ? outPhase : inPhase;
+    const idx = phase.tweens.findIndex((tw) => tw.kind !== 'set' && tw.editable && tw.targets.includes(key));
+    const tw = idx >= 0 ? phase.tweens[idx] : null;
+    const source = drawerPhase === 'out' ? tw?.toVars : tw?.fromVars;
     const values = Object.fromEntries(
-      TRANSFORM_PROPS.map((p) => [p, tw?.fromVars?.[p] ?? TRANSFORM_IDENTITY[p]]),
+      TRANSFORM_PROPS.map((p) => [p, source?.[p] ?? TRANSFORM_IDENTITY[p]]),
     ) as Record<TransformProp, number>;
     return { idx, tw, values };
   };
 
-  /** Write one "enters from" value: ensure the part has its OWN entrance tween (split a
-   *  joint one / insert a fresh one), then patch the from/to literals — one undoable apply. */
-  const setEnterFrom = (key: string, prop: TransformProp, value: number) => {
+  /** Write one drawer value for the SELECTED phase: ensure the part has its own tween in
+   *  that phase (split a joint one / insert a fresh one), then patch the literals — enters-
+   *  from on the In card (fromTo from-vars), leaves-to on the Out card (to() to-vars). One
+   *  undoable apply + replay, exactly like the entrance drawer. */
+  const setLayerVar = (key: string, prop: TransformProp, value: number) => {
     if (!Number.isFinite(value)) return;
+    const phase = drawerPhase;
     let js: string | null = template.js;
     const { idx, tw } = drawerFor(key);
     if (idx === -1 || !tw) {
-      js = insertPartTween(js, key, { [prop]: value });
+      js = phase === 'out' ? insertPartOutTween(js, key, { [prop]: value }) : insertPartTween(js, key, { [prop]: value });
     } else {
       let target = idx;
       if (tw.targets.length > 1) {
-        js = splitTween(js, 'in', idx);
+        js = splitTween(js, phase, idx);
         if (!js) return;
         target = idx + tw.targets.indexOf(key);
       }
-      js = patchTweenVars(js, 'in', target, { [prop]: value });
+      js = phase === 'out'
+        ? patchTweenToVars(js, 'out', target, { [prop]: value })
+        : patchTweenVars(js, 'in', target, { [prop]: value });
     }
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
     requestReplay();
   };
 
-  // Which rows can open the drawer: registry parts entering WITH the graphic (an assigned
-  // part's entry belongs to its » press) — the root's entrance is the preset's whole job.
+  // Which rows can open the drawer: registry parts, never the root (the root's motion is the
+  // preset's whole job). On the In card an assigned part's entrance belongs to its » press,
+  // so it is excluded; on the Out card leaving is independent of when it entered, so any
+  // registry part qualifies.
   const canDrawer = (key: string) => {
     const part = parts.find((p) => p.selector === key);
-    return !!part && part.kind !== 'root' && !pressOf.has(key);
+    if (!part || part.kind === 'root') return false;
+    return drawerPhase === 'out' ? true : !pressOf.has(key);
   };
   const drawerOpen = expandedPart && overview.rowKeys.includes(expandedPart) && canDrawer(expandedPart) ? expandedPart : null;
   const DRAWER_FIELDS: { prop: TransformProp; label: string; step: number; min?: number; max?: number }[] = [
@@ -951,7 +975,8 @@ export default function TimelineView({ iframeRef }: Props) {
                     style={{ height: ROW_H, lineHeight: `${ROW_H}px` }}
                     onClick={isPart ? () => setSelectedPart(isSelected ? null : key) : undefined}
                   >
-                    {/* T5 — the layer's basic animation controls live behind this arrow. */}
+                    {/* T5/T6 — the layer's basic animation controls live behind this arrow;
+                        on the In card it edits enters-from, on the Out card leaves-to. */}
                     {canDrawer(key) ? (
                       <button
                         className="timeline-expand"
@@ -959,7 +984,11 @@ export default function TimelineView({ iframeRef }: Props) {
                           e.stopPropagation();
                           setExpandedPart(drawerOpen === key ? null : key);
                         }}
-                        title="Basic animation — where this element enters from (X, Y, scale, opacity, rotation)"
+                        title={
+                          drawerPhase === 'out'
+                            ? 'Basic animation — where this element leaves to (X, Y, scale, opacity, rotation)'
+                            : 'Basic animation — where this element enters from (X, Y, scale, opacity, rotation)'
+                        }
                         data-testid={`timeline-expand-${key.replace(/[^\w-]/g, '')}`}
                       >
                         {drawerOpen === key ? '▾' : '▸'}
@@ -974,7 +1003,7 @@ export default function TimelineView({ iframeRef }: Props) {
                       className="timeline-label timeline-drawer-label"
                       style={{ height: DRAWER_H, lineHeight: `${DRAWER_H}px` }}
                     >
-                      ↳ enters from
+                      {drawerPhase === 'out' ? '↳ leaves to' : '↳ enters from'}
                     </span>
                   )}
                 </span>
@@ -1157,8 +1186,9 @@ export default function TimelineView({ iframeRef }: Props) {
                       );
                     })}
                   </div>
-                  {/* T5 — the expanded layer's basic animation controls (sticky, not on the
-                      time axis: these are properties, not bars). */}
+                  {/* T5/T6 — the expanded layer's basic transform controls (sticky, not on the
+                      time axis: these are properties, not bars). enters-from on the In card,
+                      leaves-to on the Out card — the same fields, the phase decides the patch. */}
                   {drawerOpen === key && (
                     <div className="timeline-ov-row timeline-drawer" style={{ height: DRAWER_H }}>
                       <div className="timeline-drawer-fields">
@@ -1169,18 +1199,18 @@ export default function TimelineView({ iframeRef }: Props) {
                               <span>{f.label}</span>
                               <input
                                 type="number"
-                                key={`${key}-${f.prop}-${value}`}
+                                key={`${drawerPhase}-${key}-${f.prop}-${value}`}
                                 defaultValue={value}
                                 step={f.step}
                                 min={f.min}
                                 max={f.max}
-                                data-testid={`timeline-from-${f.prop}`}
+                                data-testid={`timeline-${drawerPhase === 'out' ? 'to' : 'from'}-${f.prop}`}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
                                 }}
                                 onBlur={(e) => {
                                   const v = Number(e.currentTarget.value);
-                                  if (Number.isFinite(v) && v !== value) setEnterFrom(key, f.prop, v);
+                                  if (Number.isFinite(v) && v !== value) setLayerVar(key, f.prop, v);
                                 }}
                               />
                             </label>
@@ -1361,7 +1391,7 @@ export default function TimelineView({ iframeRef }: Props) {
             )}
             {categoryPresets.map((p) => (
               <option key={p.id} value={p.id} title={p.description}>
-                {p.name}
+                {phasePresetLabel(p.name, seg.kind as 'in' | 'out')}
               </option>
             ))}
           </select>
