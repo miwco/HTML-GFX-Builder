@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
+import { detectPrefix } from '../model/structure';
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement>;
@@ -18,7 +19,10 @@ export type SpxWindow = Window & {
   stop?: () => void;
   next?: () => void;
   update?: (data: string) => void;
-  gsap?: { killTweensOf: (target: string) => void };
+  gsap?: {
+    killTweensOf: (target: string) => void;
+    set: (targets: unknown, vars: Record<string, unknown>) => void;
+  };
   buildInTimeline?: () => GsapTimeline;
   buildOutTimeline?: () => GsapTimeline;
   /** Steps templates: reveal the next Continue line; returns the tween (null when done). */
@@ -41,6 +45,22 @@ function killAll(w: SpxWindow) {
   w.__activeTl = null;
   w.__scrubTl = null;
   w.gsap?.killTweensOf('*');
+}
+
+/** Return the graphic to its clean CSS resting state before a fresh entrance. An exit can
+ *  leave inline props the next entrance never resets — most visibly when the phases are a
+ *  mix (a Blur exit leaves filter:blur on the box; a Slide entrance never touches filter,
+ *  so the replay starts already blurred). Clearing GSAP's inline props on the root subtree
+ *  reverts every leaked property to the stylesheet, and the in-timeline's fromTo calls
+ *  re-establish their own starting state from there. clearProps only removes properties
+ *  GSAP itself set, so update()-written text and inline widths are untouched. */
+function resetGraphic(w: SpxWindow) {
+  if (!w.gsap) return;
+  const prefix = detectPrefix(useTemplateStore.getState().template.html);
+  if (!prefix) return;
+  const root = w.document.querySelector('.' + prefix);
+  if (!root) return;
+  w.gsap.set([root, ...root.querySelectorAll('*')], { clearProps: 'all' });
 }
 
 /**
@@ -69,17 +89,39 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
 
   // Which Continue press we are on (1 = the entrance) — drives the step playhead phase ids.
   const stepRef = useRef(1);
+  // A pending auto-out timer (the SPX `out` = N ms setting): the graphic leaves by itself
+  // after the hold. Any manual play/stop/next/scrub or a rebuild-replay cancels it.
+  const autoOutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearAutoOut = () => {
+    if (autoOutRef.current) clearTimeout(autoOutRef.current);
+    autoOutRef.current = null;
+  };
+
+  /** Schedule the automatic exit when the template's `out` setting is a millisecond value:
+   *  the graphic holds for that long AFTER the entrance settles, then plays out — the same
+   *  "play in → hold → play out" the ● On air card promises, made real in the preview. */
+  const scheduleAutoOut = (inDurationMs: number) => {
+    clearAutoOut();
+    const out = useTemplateStore.getState().template.settings.out ?? '';
+    if (!/^\d+$/.test(out)) return; // 'manual' (until Stop) or 'none' (stays) — no timer
+    autoOutRef.current = setTimeout(() => playOut(), inDurationMs + Number(out));
+  };
 
   /** Run the entrance (Play): data in, then the in-timeline — simulator-owned. */
   const playIn = () => {
     const w = win();
     if (!w) return;
     stepRef.current = 1; // a fresh play restarts the Continue chain
-    w.update?.(latestData());
+    clearAutoOut();
     if (typeof w.buildInTimeline === 'function') {
       killAll(w);
-      w.__activeTl = { phase: 'in', tl: w.buildInTimeline() };
+      resetGraphic(w); // wipe any inline props a prior exit left, so the entrance is clean
+      w.update?.(latestData());
+      const tl = w.buildInTimeline();
+      w.__activeTl = { phase: 'in', tl };
+      scheduleAutoOut(tl.duration() * 1000);
     } else {
+      w.update?.(latestData());
       w.play?.(); // no builder contract (blank/imported) — the template's own play()
     }
   };
@@ -88,6 +130,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
   const playNext = () => {
     const w = win();
     if (!w) return;
+    clearAutoOut(); // the operator is driving the reveal chain — don't auto-leave under them
     if (typeof w.revealNextStep === 'function') {
       const tw = w.revealNextStep();
       if (tw) {
@@ -103,6 +146,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
   const playOut = () => {
     const w = win();
     if (!w) return;
+    clearAutoOut();
     if (typeof w.buildOutTimeline === 'function') {
       killAll(w);
       w.__activeTl = { phase: 'out', tl: w.buildOutTimeline() };
@@ -117,6 +161,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     if (!w || typeof w.buildInTimeline !== 'function') return; // blank/imported: stays blank
     if (w.__activeTl || w.__scrubTl || w.__settled) return; // running, paused, or already settled
     w.__settled = true;
+    resetGraphic(w); // a same-document settle after an exit must not inherit its leftovers
     w.update?.(latestData());
     const tl = w.buildInTimeline();
     tl.pause();
@@ -149,6 +194,9 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     return () => clearTimeout(handle);
   }, [replayNonce]);
 
+  // Cancel any pending auto-out when the simulator unmounts (project close, route change).
+  useEffect(() => () => clearAutoOut(), []);
+
   // Live control: the Control panel drives the preview immediately (the template hasn't
   // changed, so no rebuild wait). Routed through the same simulator-owned paths.
   useEffect(() => {
@@ -170,6 +218,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     if (!scrubCommand) return;
     const w = win();
     if (!w || typeof w.buildInTimeline !== 'function') return;
+    clearAutoOut(); // parking on a scrubbed moment must not auto-leave under the user
     if (!w.__scrubTl || w.__scrubTl.phase !== scrubCommand.phase) {
       killAll(w);
       w.update?.(latestData());
