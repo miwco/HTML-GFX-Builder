@@ -176,10 +176,6 @@
     }
     .card code { font-family: var(--mono); font-size: 12.5px; color: var(--paper); background: rgba(232,237,242,0.06); padding: 1px 6px; border-radius: 4px; }
 
-    /* ── Live row ── */
-    .live { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
-    .live .chip { text-transform: none; letter-spacing: 0.04em; font-size: 13px; padding: 9px 16px; }
-
     /* ── Bottom CTA ── */
     .bottom {
       margin: 96px 0 0; padding: 56px 24px; text-align: center;
@@ -204,8 +200,8 @@
 
     /* ═══ Motion system (src/landing/) ═══
        The rules below are the motion language's CSS half: masked headline lines, the
-       pre-paint hero gate, hover microinteractions, and the two live mockups (hero demo
-       + scroll story). All animation is transforms/opacity; GSAP owns the timing. */
+       pre-paint hero gate, hover microinteractions, the on-air showcase, and the
+       pipeline rail. All animation is transforms/opacity; GSAP owns the timing. */
 
     /* Masked headline lines — the reveal slides the inner span up through the mask.
        The tiny padding/margin pair keeps descenders (g, p) out of the clip. */
@@ -222,7 +218,7 @@
     html.js-motion .hero .lede,
     html.js-motion .hero .cta-row > *,
     html.js-motion .platforms > *,
-    html.js-motion .demo { opacity: 0; }
+    html.js-motion .showcase { opacity: 0; }
 
     /* ── Microinteractions (CSS-only, 0.15–0.25s) ── */
     .btn { transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease; }
@@ -236,172 +232,154 @@
     .shot img { transition: transform 0.4s ease; }
     .shot:hover img { transform: scale(1.02); }
     .chip { transition: color 0.2s ease, border-color 0.2s ease; }
-    .platforms .chip:hover, .live .chip:hover { color: var(--paper); border-color: rgba(232, 237, 242, 0.24); }
+    .platforms .chip:hover, .pl-targets .chip:hover { color: var(--paper); border-color: rgba(232, 237, 242, 0.24); }
 
-    /* ── Hero demo: a miniature of the real editor (code left, stage + timeline right) ── */
-    .demo {
+    /* ── Hero showcase: a program monitor cycling real broadcast graphics.
+       Deliberately NOT an editor mockup — only the on-air output. ── */
+    .showcase {
       margin-top: 48px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
       background: var(--panel); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
     }
-    .demo-top { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-    .demo-mark { display: flex; flex-direction: column; gap: 2px; width: 14px; }
-    .demo-mark i { display: block; height: 3px; border-radius: 1px; }
-    .demo-mark i:nth-child(1) { width: 100%; background: var(--amber); }
-    .demo-mark i:nth-child(2) { width: 66%; background: var(--paper); opacity: 0.8; }
-    .demo-mark i:nth-child(3) { width: 40%; background: rgba(232, 237, 242, 0.3); }
-    .demo-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; color: var(--faint); }
-    .demo-pill {
+    .show-top { display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .show-live { display: flex; align-items: center; gap: 7px; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.22em; color: var(--dim); }
+    .show-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--rec); box-shadow: 0 0 8px rgba(229, 72, 77, 0.7); }
+    .show-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; color: var(--faint); }
+    .show-pill {
       margin-left: auto; font-family: var(--mono); font-size: 10px; font-weight: 700;
       letter-spacing: 0.18em; padding: 4px 10px; border-radius: 4px;
       color: var(--faint); border: 1px solid var(--line);
       transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
     }
-    .demo-pill.on { background: var(--amber); color: #14100a; border-color: var(--amber); box-shadow: 0 0 18px rgba(246, 166, 35, 0.45); }
-    .demo-body { display: grid; grid-template-columns: 5fr 7fr; }
-    .demo-code {
-      margin: 0; padding: 16px 20px; font-family: var(--mono); font-size: 12px; line-height: 1.8;
-      color: var(--dim); border-right: 1px solid var(--line); overflow: hidden;
-      background: rgba(10, 12, 16, 0.55);
-    }
-    .demo-ln { display: block; white-space: pre; border-radius: 3px; padding: 0 6px; margin: 0 -6px; }
-    .c-cm { color: var(--faint); }
-    .c-str { color: var(--amber); }
-    .demo-stage {
-      position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+    .show-pill.on { background: var(--amber); color: #14100a; border-color: var(--amber); box-shadow: 0 0 18px rgba(246, 166, 35, 0.45); }
+    .show-stage {
+      position: relative; aspect-ratio: 21 / 9; overflow: hidden;
       background: radial-gradient(70% 60% at 50% 15%, rgba(246, 166, 35, 0.05), transparent 65%), #0d1016;
     }
-    .demo-safe { position: absolute; inset: 5.5%; border: 1px dashed rgba(232, 237, 242, 0.07); border-radius: 2px; pointer-events: none; }
-    .demo-l3 { position: absolute; left: 7%; bottom: 11%; display: flex; gap: 12px; align-items: stretch; }
-    .demo-l3-bar { width: 4px; border-radius: 2px; background: var(--amber); box-shadow: 0 0 14px rgba(246, 166, 35, 0.55); }
-    .demo-l3-txt {
+    .show-safe { position: absolute; inset: 5.5%; border: 1px dashed rgba(232, 237, 242, 0.07); border-radius: 2px; pointer-events: none; }
+    .show-clock { position: absolute; top: 9%; right: 7%; font-family: var(--mono); font-size: clamp(10px, 1.2vw, 13px); letter-spacing: 0.12em; color: var(--dim); }
+    .show-strip { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid var(--line); }
+    .show-chip {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; white-space: nowrap;
+      padding: 4px 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--faint);
+      transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+    .show-chip.on { color: var(--amber); border-color: rgba(246, 166, 35, 0.5); background: rgba(246, 166, 35, 0.08); }
+
+    /* The graphics themselves. Without JS (or with reduced motion) exactly one settled
+       frame shows: the lower third. GSAP cycles them via inline styles when motion is on. */
+    .gfx { position: absolute; opacity: 0; }
+    .gfx-l3 { opacity: 1; }
+    html.js-motion .gfx { opacity: 0; }
+    .gfx-mask { display: block; overflow: hidden; }
+
+    .gfx-l3 { left: 6%; bottom: 13%; display: flex; gap: 12px; align-items: stretch; }
+    .gfx-l3-bar { width: 4px; border-radius: 2px; background: var(--amber); box-shadow: 0 0 14px rgba(246, 166, 35, 0.55); }
+    .gfx-l3-txt {
       display: flex; flex-direction: column; justify-content: center; gap: 2px;
       background: rgba(13, 16, 22, 0.86); border: 1px solid rgba(232, 237, 242, 0.08);
       padding: 10px 18px 11px; border-radius: 4px;
     }
-    .demo-mask { display: block; overflow: hidden; }
-    .demo-l3-name { display: block; font-weight: 700; font-size: clamp(15px, 1.9vw, 21px); letter-spacing: -0.01em; }
-    .demo-l3-role {
+    .gfx-l3-name { display: block; font-weight: 700; font-size: clamp(15px, 1.9vw, 22px); letter-spacing: -0.01em; }
+    .gfx-l3-role {
       display: block; font-family: var(--mono); font-size: clamp(9px, 1.1vw, 11px);
       letter-spacing: 0.22em; text-transform: uppercase; color: var(--amber);
     }
-    .demo-clock { position: absolute; top: 8%; right: 7%; font-family: var(--mono); font-size: clamp(10px, 1.2vw, 13px); letter-spacing: 0.12em; color: var(--dim); }
-    .demo-tl { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
-    .demo-cues { display: flex; gap: 6px; }
-    .demo-cue {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; white-space: nowrap;
-      padding: 4px 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--faint);
-      transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+
+    .gfx-ticker {
+      left: 0; right: 0; bottom: 0; display: flex; align-items: stretch;
+      border-top: 1px solid rgba(232, 237, 242, 0.08); background: rgba(13, 16, 22, 0.92);
     }
-    .demo-cue.on { color: var(--amber); border-color: rgba(246, 166, 35, 0.5); background: rgba(246, 166, 35, 0.08); }
-    .demo-track { position: relative; display: block; flex: 1; height: 22px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: rgba(10, 12, 16, 0.5); }
-    .demo-seg { position: absolute; top: 4px; bottom: 4px; border-radius: 3px; background: rgba(246, 166, 35, 0.16); }
-    .demo-seg-hold { background: rgba(232, 237, 242, 0.06); }
-    .demo-playhead { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: var(--amber); box-shadow: 0 0 8px rgba(246, 166, 35, 0.8); }
+    .gfx-ticker-tag {
+      display: flex; align-items: center; padding: 9px 14px; background: var(--amber); color: #14100a;
+      font-family: var(--mono); font-size: clamp(9px, 1vw, 11px); font-weight: 700; letter-spacing: 0.18em;
+    }
+    .gfx-ticker-win { overflow: hidden; flex: 1; display: flex; align-items: center; }
+    .gfx-ticker-track {
+      display: flex; gap: 36px; white-space: nowrap; padding-left: 24px;
+      font-family: var(--mono); font-size: clamp(10px, 1.2vw, 13px); letter-spacing: 0.06em; color: var(--paper);
+    }
+    .gfx-ticker-track em { font-style: normal; margin-left: 6px; }
+    .gfx-ticker-track .up { color: #4ac47a; }
+    .gfx-ticker-track .dn { color: #e57a7d; }
+
+    .gfx-title { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; text-align: center; }
+    .gfx-title-kicker { display: block; font-family: var(--mono); font-size: clamp(9px, 1.2vw, 12px); letter-spacing: 0.32em; color: var(--amber); }
+    .gfx-title-main { display: block; font-size: clamp(26px, 4.4vw, 52px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.06; }
+    .gfx-title-rule { display: block; width: min(220px, 28%); height: 2px; margin: 7px 0; border-radius: 1px; background: var(--amber); box-shadow: 0 0 12px rgba(246, 166, 35, 0.5); }
+    .gfx-title-sub { display: block; font-family: var(--mono); font-size: clamp(9px, 1.1vw, 11px); letter-spacing: 0.24em; color: var(--dim); }
+
+    .gfx-score {
+      top: 9%; left: 6%; display: flex; align-items: center; gap: 10px;
+      background: rgba(13, 16, 22, 0.92); border: 1px solid rgba(232, 237, 242, 0.08);
+      border-radius: 6px; padding: 8px 16px;
+    }
+    .gfx-score-team { font-family: var(--mono); font-size: clamp(10px, 1.2vw, 13px); font-weight: 700; letter-spacing: 0.14em; color: var(--dim); }
+    .gfx-score-num { font-size: clamp(15px, 2vw, 22px); font-weight: 700; }
+    .gfx-score-sep { color: var(--faint); font-weight: 700; }
+    .gfx-score-min { font-family: var(--mono); font-size: clamp(9px, 1.1vw, 11px); color: var(--amber); letter-spacing: 0.12em; margin-left: 6px; }
+
+    .gfx-count { inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; }
+    .gfx-count-label { display: block; font-family: var(--mono); font-size: clamp(9px, 1.2vw, 12px); letter-spacing: 0.32em; color: var(--amber); }
+    .gfx-count-time { display: block; font-family: var(--mono); font-size: clamp(34px, 5.6vw, 66px); font-weight: 700; letter-spacing: 0.04em; line-height: 1; }
+    .gfx-count-sub { display: block; font-family: var(--mono); font-size: clamp(9px, 1.1vw, 11px); letter-spacing: 0.24em; color: var(--dim); }
+
     @media (max-width: 720px) {
-      .demo-body { grid-template-columns: 1fr; }
-      .demo-code { display: none; }
+      .show-stage { aspect-ratio: 16 / 9; }
+      .show-title { display: none; }
     }
 
-    /* ── Scroll story: sticky mini-editor + step copy ── */
-    .story-grid { display: grid; grid-template-columns: minmax(280px, 5fr) 7fr; gap: 48px; margin-top: 24px; align-items: start; }
-    .story-step {
-      min-height: 56vh; display: flex; flex-direction: column; justify-content: center;
-      padding: 24px 0 24px 26px; border-left: 2px solid var(--line);
-      transition: border-color 0.3s ease, opacity 0.3s ease; opacity: 0.35;
+    /* ── Pipeline: text-first workflow along a broadcast-rundown rail. The amber fill
+       tracks scroll progress (src/landing/pipeline.ts); phase nodes light as passed. ── */
+    .pl-flow { position: relative; margin-top: 44px; padding-left: 44px; }
+    .pl-rail { position: absolute; left: 7px; top: 10px; bottom: 10px; width: 2px; border-radius: 1px; background: var(--line); }
+    .pl-rail-fill { position: absolute; inset: 0; border-radius: 1px; background: var(--amber); box-shadow: 0 0 10px rgba(246, 166, 35, 0.45); transform: scaleY(0); transform-origin: 50% 0; }
+    html:not(.js-motion) .pl-rail-fill { transform: none; }
+    .pl-phase { position: relative; padding: 4px 0 60px; transition: opacity 0.3s ease; }
+    .pl-phase:last-child { padding-bottom: 8px; }
+    html.js-motion .pl-phase:not(.is-active) { opacity: 0.78; }
+    .pl-node {
+      position: absolute; left: -44px; top: 8px; width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--line); background: var(--void); box-sizing: border-box;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
     }
-    html:not(.js-motion) .story-step { opacity: 1; }
-    .story-step.is-active { opacity: 1; border-color: var(--amber); }
-    .story-step .n { font-family: var(--mono); font-size: 12px; color: var(--amber); letter-spacing: 0.2em; }
-    .story-step h3 { font-size: 22px; margin: 10px 0 8px; }
-    .story-step p { color: var(--dim); font-size: 15px; max-width: 400px; }
-    .story-stick { position: sticky; top: calc(50vh - 180px); }
-
-    .smock {
-      /* Literal (not var(--amber)) so GSAP can read and interpolate the start color. */
-      --sm-accent: #f6a623;
-      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
-      background: var(--panel); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    .pl-phase.is-passed .pl-node { border-color: var(--amber); background: rgba(246, 166, 35, 0.15); box-shadow: 0 0 12px rgba(246, 166, 35, 0.4); }
+    .pl-tag { font-family: var(--mono); font-size: 12px; letter-spacing: 0.24em; color: var(--amber); }
+    .pl-tag em { font-style: normal; color: var(--faint); margin-right: 8px; }
+    .pl-phase h3 { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin: 10px 0 8px; }
+    .pl-lede { color: var(--dim); max-width: 580px; font-size: 15.5px; }
+    .pl-items { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 20px; }
+    .pl-item {
+      border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 15px;
+      background: linear-gradient(180deg, rgba(232, 237, 242, 0.02), transparent 60%), rgba(20, 25, 34, 0.5);
+      transition: border-color 0.2s ease, transform 0.2s ease;
     }
-    .smock-top { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-    .smock-tab {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
-      padding: 4px 10px; border-radius: 4px; border: 1px solid transparent; color: var(--faint);
-      transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    .pl-item:hover { border-color: rgba(232, 237, 242, 0.16); transform: translateY(-1px); }
+    .pl-item h4 { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .pl-item p { font-size: 13.5px; color: var(--dim); margin-top: 5px; }
+    /* Honesty tag: features on the roadmap are marked, never presented as shipped. */
+    .pl-item.pl-planned { border-style: dashed; }
+    .pl-soon {
+      font-family: var(--mono); font-size: 9px; font-weight: 400; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--faint); border: 1px dashed rgba(232, 237, 242, 0.25); padding: 2px 7px; border-radius: 4px;
     }
-    .smock-tab.on { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); background: rgba(246, 166, 35, 0.07); }
-    .smock-body { display: grid; grid-template-columns: 8fr 5fr; }
-    .smock-stage {
-      position: relative; aspect-ratio: 16 / 10; overflow: hidden;
-      background: radial-gradient(70% 60% at 50% 15%, rgba(246, 166, 35, 0.05), transparent 65%), #0d1016;
+    .pl-targets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+    .pl-note { margin-top: 16px; font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.04em; }
+    .pl-closer {
+      margin: 76px 0 4px; text-align: center;
+      font-size: clamp(22px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.01em; line-height: 1.4;
     }
-    .smock-safe { position: absolute; inset: 5.5%; border: 1px dashed rgba(232, 237, 242, 0.07); border-radius: 2px; pointer-events: none; }
-    .smock-l3 { position: absolute; left: 8%; bottom: 24%; display: flex; gap: 10px; align-items: stretch; }
-    .smock-l3-bar { width: 4px; border-radius: 2px; background: var(--sm-accent); box-shadow: 0 0 12px rgba(246, 166, 35, 0.35); }
-    .smock-l3-txt {
-      display: flex; flex-direction: column; justify-content: center; gap: 2px;
-      background: rgba(13, 16, 22, 0.86); border: 1px solid rgba(232, 237, 242, 0.08);
-      padding: 8px 14px 9px; border-radius: 4px;
-    }
-    .smock-l3-name { display: block; font-weight: 700; font-size: clamp(13px, 1.5vw, 17px); letter-spacing: -0.01em; }
-    .smock-mask { display: block; overflow: hidden; }
-    .smock-l3-role {
-      display: block; font-family: var(--mono); font-size: clamp(8px, 1vw, 10px);
-      letter-spacing: 0.22em; text-transform: uppercase; color: var(--sm-accent);
-    }
-    .smock-strap {
-      position: absolute; left: 8%; bottom: 9%;
-      font-family: var(--mono); font-size: clamp(8px, 1vw, 10px); letter-spacing: 0.18em;
-      color: var(--paper); background: rgba(13, 16, 22, 0.86);
-      border: 1px solid rgba(232, 237, 242, 0.08); border-left: 3px solid var(--sm-accent);
-      padding: 5px 12px; border-radius: 3px;
-    }
-    .smock-panel { position: relative; border-left: 1px solid var(--line); min-height: 200px; }
-    .smock-p { position: absolute; inset: 0; padding: 16px; opacity: 0; visibility: hidden; display: flex; flex-direction: column; gap: 12px; align-content: flex-start; }
-    /* No-JS / reduced motion: the code layer stands for the panel ("the code is real"). */
-    html:not(.js-motion) .smock-p-code, html.js-motion .smock-p-style { opacity: 1; visibility: visible; }
-    .smock-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--faint); }
-    .smock-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .smock-meta { font-family: var(--mono); font-size: 11px; color: var(--dim); letter-spacing: 0.04em; }
-    .smock-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; box-shadow: 0 0 0 2px transparent; transition: box-shadow 0.25s ease; }
-    .smock-dot.on { box-shadow: 0 0 0 2px var(--paper); }
-    .smock-codeblock { font-family: var(--mono); font-size: 11.5px; line-height: 1.8; color: var(--dim); }
-    .smock-ln { display: block; white-space: pre; }
-    .smock-typed { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; color: var(--amber); }
-    .smock-caret { display: inline-block; width: 7px; height: 13px; margin-left: 1px; background: var(--amber); opacity: 0; vertical-align: baseline; }
-    .smock-tlrow { position: relative; height: 16px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; display: block; }
-    .smock-tlrow em { position: absolute; left: 6px; top: 1px; font-style: normal; font-family: var(--mono); font-size: 9px; color: var(--faint); letter-spacing: 0.1em; }
-    .smock-tlrow i { position: absolute; top: 3px; bottom: 3px; border-radius: 2px; background: rgba(246, 166, 35, 0.35); }
-    .smock-track { position: relative; display: block; height: 6px; border-radius: 3px; background: rgba(232, 237, 242, 0.07); overflow: hidden; }
-    .smock-ph { position: absolute; inset: 0; background: var(--amber); transform: scaleX(0); transform-origin: 0 50%; }
-    html:not(.js-motion) .smock-ph { transform: scaleX(0.6); }
-    .smock-btn {
-      font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;
-      padding: 6px 12px; border: 1px solid var(--line); border-radius: 5px; color: var(--dim);
-    }
-    .smock-btn-continue { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
-    .smock-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-    .smock-chip {
-      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
-      padding: 4px 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--dim);
-    }
-    .smock-tick { font-family: var(--mono); font-size: 11px; color: #4ac47a; letter-spacing: 0.06em; }
-
-    @media (max-width: 860px) {
-      .story-grid { grid-template-columns: 1fr; gap: 20px; }
-      .story-stick { order: -1; top: 10px; z-index: 2; }
-      .story-step { min-height: 0; padding-top: 34px; padding-bottom: 34px; }
-    }
+    .pl-closer span { display: inline-block; margin: 0 0.18em; }
+    .pl-closer .x { color: var(--amber); }
     @media (max-width: 640px) {
-      .smock-body { grid-template-columns: 1fr; }
-      /* Keep the sticky mockup compact so the step copy owns most of a phone screen. */
-      .smock-stage { aspect-ratio: 16 / 7; }
-      .smock-panel { border-left: 0; border-top: 1px solid var(--line); min-height: 132px; }
+      .pl-flow { padding-left: 30px; }
+      .pl-rail { left: 5px; }
+      .pl-node { left: -30px; width: 12px; height: 12px; top: 10px; }
     }
 
     /* Motion never runs for reduced-motion visitors (the module gates itself too). */
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      .btn, .btn .arr, .card, .shot img, .demo-pill, .demo-cue, .smock-tab, .smock-dot { transition: none; }
+      .btn, .btn .arr, .card, .shot img, .show-pill, .show-chip, .pl-node, .pl-item { transition: none; }
     }
   </style>
 </head>
@@ -449,43 +427,62 @@
         <span class="chip">more coming</span>
       </div>
 
-      <!-- The live demo: a miniature of the real editor playing an actual lower third on
-           a loop — cue IN, hold on air, operator pushes new data, cue OUT (src/landing/
-           demo.ts). Decorative for assistive tech; the real editor is one click away. -->
-      <div class="demo" aria-hidden="true">
-        <div class="demo-top">
-          <span class="demo-mark"><i></i><i></i><i></i></span>
-          <span class="demo-title">evening-news / lower-third</span>
-          <span class="demo-pill">READY</span>
+      <!-- The showcase: a program monitor cycling through the kinds of graphics NoaCG
+           makes — lower third, ticker, title card, scoreboard, countdown (src/landing/
+           demo.ts). Only on-air output, no editor mockup. Decorative for assistive tech. -->
+      <div class="showcase" aria-hidden="true">
+        <div class="show-top">
+          <span class="show-live"><i></i>PGM</span>
+          <span class="show-title">graphics made with NoaCG Studio</span>
+          <span class="show-pill">READY</span>
         </div>
-        <div class="demo-body">
-          <pre class="demo-code"><code><span class="demo-ln c-cm">/* == ANIMATION == */</span><span class="demo-ln">const tl = gsap.timeline();</span><span class="demo-ln" data-ln="play">tl.fromTo(box, { x: -60, autoAlpha: 0 },</span><span class="demo-ln">  { x: 0, autoAlpha: 1, duration: 0.6,</span><span class="demo-ln">    ease: <span class="c-str">'power3.out'</span> });</span><span class="demo-ln"> </span><span class="demo-ln c-cm">// SPX pushes operator data in:</span><span class="demo-ln" data-ln="update">function update(data) {</span><span class="demo-ln">  setFieldValue(<span class="c-str">'f0'</span>, data.f0); <span class="c-cm">// name</span></span><span class="demo-ln">  setFieldValue(<span class="c-str">'f1'</span>, data.f1); <span class="c-cm">// title</span></span><span class="demo-ln">}</span><span class="demo-ln" data-ln="stop">function stop() { tl.reverse(); }</span></code></pre>
-          <div class="demo-side">
-            <div class="demo-stage">
-              <span class="demo-safe"></span>
-              <div class="demo-l3">
-                <i class="demo-l3-bar"></i>
-                <div class="demo-l3-txt">
-                  <span class="demo-mask"><span class="demo-l3-name">Maya Lindqvist</span></span>
-                  <span class="demo-mask"><span class="demo-l3-role">Political Correspondent</span></span>
-                </div>
-              </div>
-              <span class="demo-clock">19:42:07</span>
-            </div>
-            <div class="demo-tl">
-              <span class="demo-cues">
-                <span class="demo-cue" data-cue="in">▶ In</span>
-                <span class="demo-cue" data-cue="hold">● On air</span>
-                <span class="demo-cue" data-cue="out">■ Out</span>
-              </span>
-              <span class="demo-track">
-                <i class="demo-seg" style="left:0;width:15%"></i>
-                <i class="demo-seg demo-seg-hold" style="left:15%;width:75%"></i>
-                <i class="demo-seg" style="left:90%;width:10%"></i>
-                <i class="demo-playhead"></i>
-              </span>
+        <div class="show-stage">
+          <span class="show-safe"></span>
+          <span class="show-clock">19:42:07</span>
+
+          <div class="gfx gfx-l3">
+            <i class="gfx-l3-bar"></i>
+            <div class="gfx-l3-txt">
+              <span class="gfx-mask"><span class="gfx-l3-name">Maya Lindqvist</span></span>
+              <span class="gfx-mask"><span class="gfx-l3-role">Political Correspondent</span></span>
             </div>
           </div>
+
+          <div class="gfx gfx-ticker">
+            <span class="gfx-ticker-tag">MARKETS</span>
+            <span class="gfx-ticker-win">
+              <span class="gfx-ticker-track"><span>OMXH25 <em class="up">+0.42%</em></span><span>NDX <em class="dn">−0.16%</em></span><span>DAX <em class="up">+0.88%</em></span><span>EUR/USD <em class="dn">−0.21%</em></span><span>BRENT <em class="up">+1.04%</em></span><span>GOLD <em class="up">+0.35%</em></span><span>BTC/USD <em class="dn">−1.48%</em></span></span>
+            </span>
+          </div>
+
+          <div class="gfx gfx-title">
+            <span class="gfx-mask"><span class="gfx-title-kicker">ELECTIONS 2026</span></span>
+            <span class="gfx-mask"><span class="gfx-title-main">The Results Show</span></span>
+            <i class="gfx-title-rule"></i>
+            <span class="gfx-mask"><span class="gfx-title-sub">LIVE FROM THE STUDIO · 20:00</span></span>
+          </div>
+
+          <div class="gfx gfx-score">
+            <span class="gfx-score-team">HEL</span>
+            <span class="gfx-mask gfx-score-num"><span class="gfx-score-a">2</span></span>
+            <span class="gfx-score-sep">–</span>
+            <span class="gfx-mask gfx-score-num"><span class="gfx-score-b">1</span></span>
+            <span class="gfx-score-team">TKU</span>
+            <span class="gfx-score-min">78'</span>
+          </div>
+
+          <div class="gfx gfx-count">
+            <span class="gfx-mask"><span class="gfx-count-label">STARTING SOON</span></span>
+            <span class="gfx-mask"><span class="gfx-count-time">05:00</span></span>
+            <span class="gfx-mask"><span class="gfx-count-sub">THE MORNING DESK · WEEKDAYS 07:00</span></span>
+          </div>
+        </div>
+        <div class="show-strip">
+          <span class="show-chip">Lower third</span>
+          <span class="show-chip">Markets ticker</span>
+          <span class="show-chip">Title card</span>
+          <span class="show-chip">Scoreboard</span>
+          <span class="show-chip">Countdown</span>
         </div>
       </div>
 
@@ -542,138 +539,144 @@
         </div>
       </section>
 
-      <!-- The scroll story: the mini-editor on the right stays pinned (CSS sticky) and
-           morphs to match each step as it scrolls past (src/landing/story.ts). -->
-      <section class="story" id="story">
+      <!-- The pipeline: text-first — no product-UI mockups. A rundown rail fills as you
+           scroll and each phase's node lights when passed (src/landing/pipeline.ts). -->
+      <section class="pipeline" id="pipeline">
         <p class="kicker" data-reveal>The whole pipeline</p>
-        <h2 data-reveal>One graphic, start to on-air.</h2>
+        <h2 data-reveal>From idea to on-air. All of it.</h2>
         <p class="sub" data-reveal>
-          Panels, code, timeline, logic, and export all edit the same file — nothing hides
-          behind a scene model. Scroll through what that feels like.
+          Most tools stop at a pretty graphic. In a real production the graphic also has to
+          be operated — cued, updated, fed live data — and then run on whatever playout
+          system your studio uses. NoaCG covers the entire journey.
         </p>
-        <div class="story-grid">
-          <div class="story-steps">
-            <div class="story-step is-active">
-              <span class="n">01 — DESIGN VISUALLY</span>
-              <h3>Style it from live panels</h3>
-              <p>
-                Colors, fonts, position, scale — picked in panels, written as real CSS you
-                can read. Swap the accent and the whole graphic follows.
-              </p>
-            </div>
-            <div class="story-step">
-              <span class="n">02 — EDIT THE CODE</span>
-              <h3>Open the code any time</h3>
-              <p>
-                Every graphic is clean, commented HTML/CSS/JS. Change a line and the
-                preview reacts — the panels never hide anything from you.
-              </p>
-            </div>
-            <div class="story-step">
-              <span class="n">03 — ANIMATE ON THE TIMELINE</span>
-              <h3>Direct the motion</h3>
-              <p>
-                Entrances, holds, and exits on a real timeline — broadcast-tuned presets,
-                editable down to the tween.
-              </p>
-            </div>
-            <div class="story-step">
-              <span class="n">04 — ADD LOGIC</span>
-              <h3>Make it operable</h3>
-              <p>
-                Multi-step graphics, auto-generated operator panels, live data from Google
-                Sheets — a Continue press reveals the next step on air.
-              </p>
-            </div>
-            <div class="story-step">
-              <span class="n">05 — EXPORT ANYWHERE</span>
-              <h3>Run it in your studio</h3>
-              <p>
-                One validated, plug-and-play package per target: OBS, vMix, SPX Graphics,
-                CasparCG, OGraf — fonts and images bundled, offline-ready.
-              </p>
-            </div>
-          </div>
-          <div class="story-stick">
-            <div class="smock" aria-hidden="true">
-              <div class="smock-top">
-                <span class="smock-tab on">Style</span>
-                <span class="smock-tab">Code</span>
-                <span class="smock-tab">Timeline</span>
-                <span class="smock-tab">Control</span>
-                <span class="smock-tab">Export</span>
-              </div>
-              <div class="smock-body">
-                <div class="smock-stage">
-                  <span class="smock-safe"></span>
-                  <div class="smock-l3">
-                    <i class="smock-l3-bar"></i>
-                    <div class="smock-l3-txt">
-                      <span class="smock-l3-name">Alex Rivera</span>
-                      <span class="smock-mask"><span class="smock-l3-role">Anchor · Live</span></span>
-                    </div>
-                  </div>
-                  <div class="smock-strap">RESULTS UPDATE · STEP 2 OF 2</div>
-                </div>
-                <aside class="smock-panel">
-                  <div class="smock-p smock-p-style">
-                    <span class="smock-lbl">Style</span>
-                    <span class="smock-row">
-                      <i class="smock-dot on" style="background:#f6a623"></i>
-                      <i class="smock-dot" style="background:#4ac47a"></i>
-                      <i class="smock-dot" style="background:#38bdf8"></i>
-                      <i class="smock-dot" style="background:#e5484d"></i>
-                    </span>
-                    <span class="smock-meta">Space Grotesk · scale 1.0</span>
-                  </div>
-                  <div class="smock-p smock-p-code">
-                    <span class="smock-lbl">template.js</span>
-                    <code class="smock-codeblock"><span class="smock-ln c-cm">// operator data → DOM</span><span class="smock-ln">f1.textContent =</span><span class="smock-ln">  <span class="smock-typed" data-text="'Anchor · Live'">'Anchor · Live'</span><i class="smock-caret"></i>;</span></code>
-                  </div>
-                  <div class="smock-p smock-p-tl">
-                    <span class="smock-lbl">Timeline</span>
-                    <span class="smock-tlrow"><em>bar</em><i style="left:2%;width:20%"></i></span>
-                    <span class="smock-tlrow"><em>name</em><i style="left:9%;width:26%"></i></span>
-                    <span class="smock-tlrow"><em>role</em><i style="left:16%;width:26%"></i></span>
-                    <span class="smock-track"><i class="smock-ph"></i></span>
-                  </div>
-                  <div class="smock-p smock-p-logic">
-                    <span class="smock-lbl">Control</span>
-                    <span class="smock-row">
-                      <span class="smock-btn">▶ Play</span>
-                      <span class="smock-btn smock-btn-continue">» Continue</span>
-                      <span class="smock-btn">■ Stop</span>
-                    </span>
-                    <span class="smock-meta">2 steps · Google Sheets feed</span>
-                  </div>
-                  <div class="smock-p smock-p-export">
-                    <span class="smock-lbl">Export</span>
-                    <span class="smock-row smock-chips">
-                      <span class="smock-chip">OBS</span><span class="smock-chip">vMix</span><span class="smock-chip">SPX</span><span class="smock-chip">CasparCG</span><span class="smock-chip">OGraf</span><span class="smock-chip">H2R</span>
-                    </span>
-                    <span class="smock-tick">✓ validated · plug-and-play</span>
-                  </div>
-                </aside>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      <section>
-        <p class="kicker" data-reveal>Run it live</p>
-        <h2 data-reveal>Not just pretty — operable.</h2>
-        <p class="sub" data-reveal>
-          Every graphic ships with an auto-generated operator control panel. Drive it from another
-          browser tab, an OBS dock, or another device over the cloud — and feed it live data.
-        </p>
-        <div class="live" data-reveal-group>
-          <span class="chip">Operator control panels</span>
-          <span class="chip">Remote control from any device</span>
-          <span class="chip">Google Sheets as a live source</span>
-          <span class="chip">Audience send-in with moderation</span>
-          <span class="chip">Multi-step graphics (Continue)</span>
+        <div class="pl-flow">
+          <div class="pl-rail" aria-hidden="true"><i class="pl-rail-fill"></i></div>
+
+          <div class="pl-phase">
+            <span class="pl-node" aria-hidden="true"></span>
+            <p class="pl-tag" data-reveal><em>01</em> START</p>
+            <h3 data-reveal>Create your graphic</h3>
+            <p class="pl-lede" data-reveal>
+              Begin wherever it suits you — every path ends in the same clean, editable code.
+            </p>
+            <div class="pl-items" data-reveal-group>
+              <div class="pl-item">
+                <h4>Template wizard</h4>
+                <p>Pick from 43 broadcast-grade templates and shape yours with guided choices — no code required.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Describe it to AI</h4>
+                <p>Say what you want; AI writes the whole graphic as clean, commented code you own.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Bring your brand</h4>
+                <p>Import your colors, fonts, and logo — new graphics pick up your look automatically.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Blank canvas</h4>
+                <p>Start from a clean, minimal template and build every line yourself.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-phase">
+            <span class="pl-node" aria-hidden="true"></span>
+            <p class="pl-tag" data-reveal><em>02</em> EDIT</p>
+            <h3 data-reveal>Build and customize</h3>
+            <p class="pl-lede" data-reveal>
+              Mix workflows freely — visual, code, timeline. They all edit the same file, live,
+              and nothing hides behind a scene model.
+            </p>
+            <div class="pl-items" data-reveal-group>
+              <div class="pl-item">
+                <h4>Visual editing</h4>
+                <p>Drag, resize, and edit text directly on the canvas — every gesture writes readable code.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Real code</h4>
+                <p>Open the always-available editor: clean, commented HTML, CSS, and JavaScript.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Timeline animation</h4>
+                <p>Entrances, holds, and exits — tuned per layer, preset or hand-crafted.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Multi-step reveals</h4>
+                <p>Graphics that advance stage by stage, one Continue press at a time.</p>
+              </div>
+              <div class="pl-item pl-planned">
+                <h4>Node logic <span class="pl-soon">planned</span></h4>
+                <p>Advanced logic and interactive behaviour in a visual node editor.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-phase">
+            <span class="pl-node" aria-hidden="true"></span>
+            <p class="pl-tag" data-reveal><em>03</em> OPERATE</p>
+            <h3 data-reveal>Run it in a live show</h3>
+            <p class="pl-lede" data-reveal>
+              A graphic isn't finished when it looks good — someone has to drive it on air.
+              Every graphic comes ready to operate, not just ready to play.
+            </p>
+            <div class="pl-items" data-reveal-group>
+              <div class="pl-item">
+                <h4>Operator control panel</h4>
+                <p>Auto-generated for every graphic: cue it, update it, step it — zero extra work.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Editable live data</h4>
+                <p>Change names, scores, and text on air without touching the file.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Google Sheets feed</h4>
+                <p>Point a graphic at a sheet and update content from anywhere, live.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Remote control</h4>
+                <p>Drive it from another tab, an OBS dock, or another device over the cloud.</p>
+              </div>
+              <div class="pl-item">
+                <h4>Audience send-in</h4>
+                <p>Collect moderated viewer messages straight into an on-air graphic.</p>
+              </div>
+              <div class="pl-item pl-planned">
+                <h4>More data sources <span class="pl-soon">coming</span></h4>
+                <p>APIs, dashboards, and automated feeds for hands-off graphics.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-phase">
+            <span class="pl-node" aria-hidden="true"></span>
+            <p class="pl-tag" data-reveal><em>04</em> EXPORT</p>
+            <h3 data-reveal>Use it anywhere</h3>
+            <p class="pl-lede" data-reveal>
+              One click builds a validated, plug-and-play package for the system you already
+              use — fonts and images bundled, fully offline, no lock-in. It's your code.
+            </p>
+            <div class="pl-targets" data-reveal-group>
+              <span class="chip on">OBS</span>
+              <span class="chip on">vMix</span>
+              <span class="chip on">SPX Graphics</span>
+              <span class="chip on">CasparCG</span>
+              <span class="chip on">OGraf</span>
+              <span class="chip on">H2R</span>
+              <span class="chip on">LiveOS</span>
+              <span class="chip on">HTML overlay</span>
+            </div>
+            <p class="pl-note" data-reveal>Every package is validated before export — it just works.</p>
+          </div>
         </div>
+
+        <p class="pl-closer" data-reveal-group aria-label="Create it. Edit it. Animate it. Control it. Export it anywhere.">
+          <span aria-hidden="true">Create it.</span>
+          <span aria-hidden="true">Edit it.</span>
+          <span aria-hidden="true">Animate it.</span>
+          <span aria-hidden="true">Control it.</span>
+          <span class="x" aria-hidden="true">Export it anywhere.</span>
+        </p>
       </section>
 
       <section>

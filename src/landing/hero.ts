@@ -49,13 +49,13 @@ export function runHeroEntrance(onDemoLanded: () => void): void {
       { y: 0, opacity: 1, duration: 0.45, stagger: 0.035 },
       0.86,
     )
-    // The product preview lands last: subtle scale-up, the biggest surface on screen.
+    // The showcase monitor lands last: subtle scale-up, the biggest surface on screen.
     .fromTo(
-      '.demo',
+      '.showcase',
       { y: 26, scale: 0.97, opacity: 0 },
       { y: 0, scale: 1, opacity: 1, duration: 1.0, ease: EASE.major },
       0.95,
     )
-    // Start the demo loop just as the panel settles, so it goes "on air" seamlessly.
+    // Start the graphics loop just as the panel settles, so it goes on air seamlessly.
     .call(onDemoLanded, undefined, 1.45);
 }

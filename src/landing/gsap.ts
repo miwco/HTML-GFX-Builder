@@ -17,6 +17,7 @@ export interface Timeline {
   fromTo(target: Target, fromVars: Vars, toVars: Vars, position?: Position): Timeline;
   set(target: Target, vars: Vars, position?: Position): Timeline;
   call(callback: () => void, params?: unknown[], position?: Position): Timeline;
+  add(child: Timeline, position?: Position): Timeline;
   play(from?: Position): Timeline;
   pause(): Timeline;
   restart(includeDelay?: boolean): Timeline;

@@ -7,8 +7,8 @@
 import { gsap } from './gsap';
 import { initReveals } from './lang';
 import { runHeroEntrance } from './hero';
-import { initDemo } from './demo';
-import { initStory } from './story';
+import { initShowcase } from './demo';
+import { initPipeline } from './pipeline';
 
 declare global {
   interface Window {
@@ -22,10 +22,10 @@ const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
 if (!reduce.matches && typeof gsap !== 'undefined') {
   window.__noacgMotion = true;
 
-  const demo = initDemo();
-  runHeroEntrance(() => demo?.start());
+  const showcase = initShowcase();
+  runHeroEntrance(() => showcase?.start());
   initReveals();
-  initStory();
+  initPipeline();
 
   // If the user switches reduced-motion on mid-visit, stop everything and settle the
   // page: kill all tweens, drop the inline styles GSAP wrote, un-gate the hero.
@@ -33,7 +33,7 @@ if (!reduce.matches && typeof gsap !== 'undefined') {
     if (!e.matches) return;
     gsap.globalTimeline.clear();
     gsap.set(
-      'header *, .hero *, .platforms > *, .demo, .demo *, [data-reveal], [data-reveal-group] > *, .smock *',
+      'header *, .hero *, .platforms > *, .showcase, .showcase *, [data-reveal], [data-reveal-group] > *, .pl-rail-fill',
       { clearProps: 'all' },
     );
     document.documentElement.classList.remove('js-motion');
