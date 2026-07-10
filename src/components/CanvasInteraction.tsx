@@ -6,6 +6,7 @@ import { getCssVariable, setCssVariable } from '../blocks/cssVars';
 import type { Zone9 } from '../model/wizard';
 import { detectPrefix, getTemplateParts, type TemplatePart } from '../model/structure';
 import { parseTimeline } from '../blocks/timelineModel';
+import { parseAnimData } from '../blocks/animData';
 import { changePartPress } from '../blocks/stepAssign';
 import CanvasSelection, { type CanvasRect } from './CanvasSelection';
 
@@ -122,9 +123,19 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   //    under the same conditions (steps on, chain groupable, part eligible), writing the
   //    same patch (blocks/stepAssign.ts changePartPress). The code stays the one truth. ──
   const timelineModel = useMemo(() => parseTimeline(template.js), [template.js]);
-  const stepsOn = template.js.includes('function revealNextStep');
-  const chainGroupable =
-    !!timelineModel && timelineModel.steps.length > 0 && timelineModel.steps.every((s) => s.groupable);
+  // Timeline v2: on a data-block template the press chain is the steps' reveals lists.
+  const dataModel = useMemo(() => parseAnimData(template.js), [template.js]);
+  const presses = useMemo(
+    () =>
+      dataModel
+        ? dataModel.steps.slice(1, -1).map((s) => s.reveals ?? [])
+        : timelineModel?.steps.map((s) => s.targets) ?? null,
+    [dataModel, timelineModel],
+  );
+  const stepsOn = dataModel ? dataModel.steps.length > 2 : template.js.includes('function revealNextStep');
+  const chainGroupable = dataModel
+    ? (presses?.length ?? 0) > 0
+    : !!timelineModel && timelineModel.steps.length > 0 && timelineModel.steps.every((s) => s.groupable);
   const firstLine = parts.find((p) => p.kind === 'line')?.selector;
   const pressEligible =
     stepsOn &&
@@ -137,11 +148,11 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     selectedPart.selector !== firstLine;
   /** Which press the selected part is on (-1 = appears with ▶ Play). */
   const selectedPress = pressEligible
-    ? timelineModel!.steps.findIndex((s) => s.targets.includes(selectedPart!.selector))
+    ? presses!.findIndex((targets) => targets.includes(selectedPart!.selector))
     : -1;
 
   const changePress = (toPress: number) => {
-    if (!selectedPart || !timelineModel) return;
+    if (!selectedPart || (!timelineModel && !dataModel)) return;
     const change = changePartPress(template, parts, timelineModel, selectedPart.selector, selectedPress, toPress);
     if (!change) return;
     applyTemplate({ ...template, ...change.patch }); // one undoable apply — same as the gutter
@@ -554,16 +565,16 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
                       data-testid="canvas-appears"
                     >
                       <option value={-1}>appears with ▶ Play</option>
-                      {timelineModel!.steps.map((_, k) => (
+                      {presses!.map((_, k) => (
                         <option key={k} value={k}>{`appears on press ${k + 1}`}</option>
                       ))}
                       {/* The last press's only part moving to "a new press" would re-create
                           the same press — the gutter hides the option; so does the chip. */}
                       {!(
-                        selectedPress === timelineModel!.steps.length - 1 &&
+                        selectedPress === presses!.length - 1 &&
                         selectedPress >= 0 &&
-                        timelineModel!.steps[selectedPress].targets.length === 1
-                      ) && <option value={timelineModel!.steps.length}>appears on a new press</option>}
+                        presses![selectedPress].length === 1
+                      ) && <option value={presses!.length}>appears on a new press</option>}
                     </select>
                   ) : undefined,
                 }

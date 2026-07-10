@@ -4,7 +4,10 @@ import { getTemplateParts } from '../model/structure';
 import { parseAnimData, spliceAnimData, type AnimData } from '../blocks/animData';
 import { importAnimData } from '../blocks/animImport';
 import { deleteKeyframe, setKeyframe } from '../blocks/animEdit';
+import { applyPresetData, presetDonor } from '../blocks/presetApply';
+import { presetsForType } from '../blocks/animPatch';
 import { activationStep, animatedProps, resolveValue, stepSeconds } from '../blocks/animEval';
+import type { AnimPresetId } from '../model/wizard';
 import { phaseIdOf } from './StepTimeline';
 
 // Timeline v2 Phase 2/4 (docs/TIMELINE_V2_PLAN.md) — the Inspector: the persistent,
@@ -47,10 +50,13 @@ const blurPx = (v: number | string | null): number | null => {
 export default function Inspector() {
   const template = useTemplateStore((s) => s.template);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
+  const requestReplay = useTemplateStore((s) => s.requestReplay);
   const sendScrub = useTemplateStore((s) => s.sendScrub);
   const selectedPart = useTemplateStore((s) => s.selectedPart);
   const playhead = useTemplateStore((s) => s.playhead);
   const [tab, setTab] = useState<'properties' | 'animations'>('properties');
+  const [presetId, setPresetId] = useState<AnimPresetId | ''>('');
+  const [presetPhase, setPresetPhase] = useState<'in' | 'out' | 'both'>('in');
 
   const parts = useMemo(
     () => getTemplateParts(template.html, template.fields),
@@ -227,6 +233,65 @@ export default function Inspector() {
 
       {tab === 'animations' && (
         <div className="inspector-body" data-testid="inspector-animations">
+          {/* Phase 5 — presets as keyframe generators (data templates): pick a motion
+              style, choose the direction, Apply writes ordinary keyframes. The whole
+              graphic when the root is selected; just this layer otherwise ("In" targets
+              the step where THIS layer becomes active). Declared properties only — a
+              manually keyed rotation survives a slide preset. */}
+          {native && (
+            <div className="inspector-preset" data-testid="inspector-preset">
+              <select
+                className="inspector-preset-select"
+                value={presetId}
+                onChange={(e) => setPresetId(e.target.value as AnimPresetId)}
+                title={
+                  part.kind === 'root'
+                    ? "The whole graphic's motion style"
+                    : `A motion style for ${part.label} — In lands in the step where it first appears`
+                }
+                data-testid="inspector-preset-select"
+              >
+                <option value="" disabled>
+                  Choose a motion style…
+                </option>
+                {presetsForType(template.type).map((p) => (
+                  <option key={p.id} value={p.id} title={p.description}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              <span className="inspector-preset-phase" role="group" aria-label="Apply to">
+                {(['in', 'out', 'both'] as const).map((ph) => (
+                  <button
+                    key={ph}
+                    className={`tab ${presetPhase === ph ? 'active' : ''}`}
+                    onClick={() => setPresetPhase(ph)}
+                    data-testid={`inspector-preset-${ph}`}
+                  >
+                    {ph === 'in' ? 'In' : ph === 'out' ? 'Out' : 'Both'}
+                  </button>
+                ))}
+              </span>
+              <button
+                className="inspector-preset-apply"
+                disabled={!presetId}
+                onClick={() => {
+                  if (!native || !presetId) return;
+                  const donor = presetDonor(template, native, presetId);
+                  const scope = part.kind === 'root' ? 'all' : part.selector;
+                  const next = donor && applyPresetData(native, donor, presetPhase, scope);
+                  const js = next && spliceAnimData(template.js, next);
+                  if (!js || js === template.js) return;
+                  applyTemplate({ ...template, js });
+                  requestReplay(); // presets are motion — play them
+                }}
+                title="Write this style's keyframes into the chosen direction (undo with Ctrl+Z)"
+                data-testid="inspector-preset-apply"
+              >
+                Apply
+              </button>
+            </div>
+          )}
           {data ? (
             (() => {
               const rows = data.steps

@@ -182,6 +182,97 @@ test('v2 keyframes: dragging a diamond retimes it; Delete removes it; undo resto
   expect(await times()).toEqual(before);
 });
 
+test('v2 presets: In and Out apply independently; undeclared manual keyframes survive', async ({ page }) => {
+  test.setTimeout(60_000);
+  await createHairline(page);
+  await page.getByTestId('timeline-v2-convert').click();
+  await page.waitForTimeout(650);
+  await page.getByTestId('toggle-inspector').click();
+
+  // Give #f0 a MANUAL rotation keyframe — no preset declares rotation, so it must survive.
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  await page.getByTestId('inspector-kf-rotation').click();
+  await page.waitForTimeout(400);
+
+  // Select the WHOLE GRAPHIC and apply Pop spring to the In only.
+  await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    useTemplateStore.getState().setSelectedPart('.lower-third');
+  });
+  await page.getByTestId('inspector').getByRole('button', { name: 'Animations' }).click();
+  await page.getByTestId('inspector-preset-select').selectOption('pop-spring');
+  await page.getByTestId('inspector-preset-in').click();
+  await page.getByTestId('inspector-preset-apply').click();
+  await page.waitForTimeout(650);
+  let data = await animData(page);
+  // Pop spring's entrance landed (the box scales in)…
+  expect(Object.keys(data!.steps[0].layers['.lower-third-box'])).toContain('scale');
+  // …the exit is untouched (line-reveal's yPercent drop, no scale)…
+  expect(data!.steps[1].layers['.lower-third-box']?.scale).toBeUndefined();
+  // …and the manual rotation keyframe survived (undeclared by the preset).
+  expect(data!.steps[0].layers['#f0'].rotation).toBeDefined();
+
+  // Apply Blur to the Out only — the In keeps Pop spring.
+  await page.getByTestId('inspector-preset-select').selectOption('blur-in');
+  await page.getByTestId('inspector-preset-out').click();
+  await page.getByTestId('inspector-preset-apply').click();
+  await page.waitForTimeout(650);
+  data = await animData(page);
+  expect(Object.keys(data!.steps[1].layers['.lower-third-box'])).toContain('filter'); // blur exit
+  expect(Object.keys(data!.steps[0].layers['.lower-third-box'])).toContain('scale'); // pop entrance kept
+  expect(data!.steps[0].layers['.lower-third-box'].filter).toBeUndefined(); // no blur leak into In
+});
+
+test('v2 presets: a single layer takes a preset into ITS activation step (In is layer-relative)', async ({ page }) => {
+  await createHairline(page, true); // #f1 reveals on press 1 (step index 1)
+  await page.getByTestId('timeline-v2-convert').click();
+  await page.waitForTimeout(650);
+  await page.getByTestId('toggle-inspector').click();
+  // Select the revealed Title line and apply a preset to its In.
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f1"]').click();
+  await page.getByTestId('inspector').getByRole('button', { name: 'Animations' }).click();
+  await page.getByTestId('inspector-preset-select').selectOption('blur-in');
+  await page.getByTestId('inspector-preset-in').click();
+  await page.getByTestId('inspector-preset-apply').click();
+  await page.waitForTimeout(650);
+  const data = await animData(page);
+  // Blur-in's LINE choreography (a y + opacity rise — the blur filter is the box's move)
+  // landed in STEP 2, the layer's reveal step — not the entrance. The reveal's own
+  // yPercent track survives untouched (undeclared by the preset's line motion).
+  expect(data!.steps[1].reveals).toContain('#f1');
+  expect(Object.keys(data!.steps[1].layers['#f1'])).toEqual(
+    expect.arrayContaining(['y', 'opacity', 'yPercent']),
+  );
+  expect(data!.steps[0].layers['#f1']?.y).toBeUndefined();
+  expect(data!.steps[0].layers['#f1']?.opacity).toBeUndefined();
+});
+
+test('v2: the canvas chip moves a layer between presses on a data template', async ({ page }) => {
+  await createHairline(page, true);
+  await page.getByTestId('timeline-v2-convert').click();
+  await page.waitForTimeout(650);
+  // Select the revealed line, then send it back to ▶ Play via the chip's appears-on menu
+  // (the same changePartPress contract, now routed through the data mutator).
+  await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    useTemplateStore.getState().setSelectedPart('#f1');
+  });
+  const appears = page.getByTestId('canvas-appears');
+  await expect(appears).toBeVisible();
+  await appears.selectOption('-1');
+  await page.waitForTimeout(650);
+  const data = await animData(page);
+  // Back with ▶ Play: the press is gone, the entrance animates the line again, and the
+  // SPX definition follows the shorter chain.
+  expect(data!.steps).toHaveLength(2);
+  expect(Object.keys(data!.steps[0].layers)).toContain('#f1');
+  const steps = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().template.settings.steps;
+  });
+  expect(steps).toBe('1');
+});
+
 test('v2: the dock toggle swaps surfaces and persists; classic remains the default', async ({ page }) => {
   await createHairline(page); // helper already toggled INTO v2
   await expect(page.getByTestId('timeline-v2')).toBeVisible();

@@ -9,6 +9,8 @@ import {
   swapAnimationPhase,
   type AnimPhase,
 } from '../../blocks/animPatch';
+import { parseAnimData, spliceAnimData } from '../../blocks/animData';
+import { applyPresetData, presetDonor } from '../../blocks/presetApply';
 import { resolveEasing } from '../../model/easings';
 import type {
   AnimPresetId,
@@ -155,10 +157,22 @@ export function buildDraftTemplate(variant: TemplateVariant, draft: WizardDraft)
   const outId = draft.animation.outPresetId;
   if (!outId || outId === inId) return template;
   const outPreset = anyPresetById(outId);
+  const easeOut = resolveEasing(draft.animation.easing, outPreset.autoEase).easeOut;
+
+  // Timeline v2 categories create as data blocks — the exit mix is a preset application
+  // onto the Out step (the same generator the Inspector's Animations tab uses).
+  const data = parseAnimData(template.js);
+  if (data) {
+    const donor = presetDonor(template, data, outId, { easeOut });
+    const mixed = donor && applyPresetData(data, donor, 'out', 'all');
+    const js = mixed && spliceAnimData(template.js, mixed);
+    return js ? { ...template, js } : template;
+  }
+
   const cfg = {
     // Keeps the emitted speed and entrance ease; only the exit ease follows the new preset.
     ...presetConfigFromTemplate(template, draft.animation.steps),
-    easeOut: resolveEasing(draft.animation.easing, outPreset.autoEase).easeOut,
+    easeOut,
   };
   return { ...template, js: swapAnimationPhase(template.js, outId, cfg, 'out') };
 }

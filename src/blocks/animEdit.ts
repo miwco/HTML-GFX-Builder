@@ -4,7 +4,7 @@
 // the edit real, undoable code. Times are on the step's SPEED-RELATIVE clock (the stored
 // numbers), rounded to the same 3 decimals the serializer writes.
 
-import type { AnimData, AnimKeyframe } from './animData';
+import type { AnimData, AnimKeyframe, AnimLayerTracks, AnimStep } from './animData';
 
 /** Two stored times match within half a serializer step. */
 const EPS = 0.005;
@@ -101,6 +101,90 @@ export function moveLayerKeyframes(
     moved = true;
   }
   return moved ? next : data;
+}
+
+/** The reveal channel's default motion — the same keyframes the importer writes for a
+ *  legacy press (mask lines slide up within their mask; everything else fades and rises). */
+function channelTracks(channel: 'mask' | 'rise', duration: number): AnimLayerTracks {
+  return channel === 'mask'
+    ? { yPercent: [{ time: 0, value: 110 }, { time: duration, value: 0 }] }
+    : {
+        opacity: [{ time: 0, value: 0 }, { time: duration, value: 1 }],
+        y: [{ time: 0, value: 14 }, { time: duration, value: 0 }],
+      };
+}
+
+/** Which press a layer is revealed by (-1 = it appears with ▶ Play). */
+export function layerPress(data: AnimData, selector: string): number {
+  for (let i = 1; i < data.steps.length - 1; i++) {
+    if (data.steps[i].reveals?.includes(selector)) return i - 1;
+  }
+  return -1;
+}
+
+/**
+ * Phase 5 — move WHEN a layer appears (the data twin of the legacy step chain's
+ * changePartPress): -1 = with ▶ Play, k = an existing » press, presses-count = a brand-new
+ * press before Out. Moving between presses carries the layer's tuned reveal keyframes;
+ * entering or leaving the press world writes the channel's default motion (the entrance
+ * choreography belongs to the step it plays in). Emptied presses disappear; default step
+ * names renumber. Returns null when the move is a no-op.
+ */
+export function setLayerActivation(
+  data: AnimData,
+  selector: string,
+  toPress: number,
+  channel: 'mask' | 'rise',
+): AnimData | null {
+  const next = clone(data);
+  const fromPress = layerPress(next, selector);
+  const presses = next.steps.length - 2;
+  const target = Math.min(toPress, presses); // presses = "a new press"
+  if (target === fromPress) return null;
+  if (target < -1 || target > presses) return null;
+
+  // Remove the layer from where it currently animates in.
+  const fromIdx = fromPress === -1 ? 0 : fromPress + 1;
+  const carried = fromPress > -1 ? next.steps[fromIdx].layers[selector] : undefined;
+  delete next.steps[fromIdx].layers[selector];
+  if (fromPress > -1) {
+    next.steps[fromIdx].reveals = (next.steps[fromIdx].reveals ?? []).filter((s) => s !== selector);
+  }
+
+  if (target === -1) {
+    // Back to "appears with ▶ Play": the entrance gets the channel's default motion.
+    next.steps[0].layers[selector] = channelTracks(channel, 0.45);
+  } else {
+    let destIdx = target + 1;
+    if (target === presses) {
+      // A brand-new press, just before Out.
+      const step: AnimStep = {
+        name: `Step ${next.steps.length}`,
+        duration: 0.45,
+        ease: next.steps[0].ease,
+        reveals: [],
+        layers: {},
+      };
+      next.steps.splice(next.steps.length - 1, 0, step);
+      destIdx = next.steps.length - 2;
+    }
+    const dest = next.steps[destIdx];
+    (dest.reveals ??= []).push(selector);
+    dest.layers[selector] = carried ?? channelTracks(channel, Math.min(0.45, dest.duration));
+    const maxT = Math.max(...Object.values(dest.layers[selector]).flat().map((k) => k.time));
+    if (dest.duration < maxT) dest.duration = round(maxT);
+  }
+
+  // A press that neither reveals nor animates anything is a dead Continue — drop it.
+  for (let i = next.steps.length - 2; i >= 1; i--) {
+    const s = next.steps[i];
+    if ((s.reveals ?? []).length === 0 && Object.keys(s.layers).length === 0) next.steps.splice(i, 1);
+  }
+  // Default names follow their position (a user's rename is left alone).
+  for (let i = 1; i < next.steps.length - 1; i++) {
+    if (/^Step \d+$/.test(next.steps[i].name)) next.steps[i].name = `Step ${i + 1}`;
+  }
+  return next;
 }
 
 /** Delete EVERY property keyframe of a layer at one time — the aggregate diamond's Delete. */

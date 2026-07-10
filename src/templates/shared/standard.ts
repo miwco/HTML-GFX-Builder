@@ -25,6 +25,8 @@ import {
   zoneCssText,
 } from './base';
 import { presetById, type PresetConfig } from '../lowerThirds/animPresets';
+import { importAnimData } from '../../blocks/animImport';
+import { replaceRegionWithAnimData } from './animRuntime';
 
 export interface StandardDesign {
   /** Inner HTML of the .<prefix> root (accent + box with masked lines). */
@@ -68,6 +70,10 @@ export interface CategorySpec {
   rootComment: string;
   /** The auto-fit width cap for this category (cards may be wider than straps). */
   maxTextWidth?: (res: Resolution) => number;
+  /** Timeline v2: emit the marked region as the NOACG_ANIM data block + interpreter
+   *  instead of legacy choreography — categories flip one by one (lower thirds first).
+   *  The preset still authors the motion; the parity-proven importer converts its emit. */
+  dataRegion?: boolean;
 }
 
 /** Class name for the Nth line of a category (0 = heading/name, 1 = title/body, 2+ = extra). */
@@ -163,7 +169,7 @@ ${design.css}
   const extraJs = design.runtimeExtraJs?.trim();
   const js = runtimeJs(meta.name, extraJs ? `${extraJs}\n\n${preset.emit(presetCfg)}` : preset.emit(presetCfg));
 
-  return {
+  const template: SpxTemplate = {
     name: meta.name,
     type: cat.type,
     resolution: o.resolution,
@@ -183,6 +189,16 @@ ${design.css}
       styles: {},
     })),
   };
+
+  // Timeline v2 flip: convert the freshly emitted legacy region into the data block +
+  // interpreter (the golden parity harness pins the two as identical). A conversion
+  // failure keeps the legacy emit — never a broken template.
+  if (cat.dataRegion) {
+    const data = importAnimData(template);
+    const converted = data ? replaceRegionWithAnimData(template.js, data) : null;
+    if (converted) template.js = converted;
+  }
+  return template;
 }
 
 /** The authoring factory: a category gets its own defineVariant with everything wired. */

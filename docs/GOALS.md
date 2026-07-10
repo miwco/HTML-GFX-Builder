@@ -584,10 +584,14 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       blur-out to()), and splitTween still separates a joint tween first so only the grabbed
       layer blurs. The simulator's reset already clears leaked filter, so blur leaves cleanly.
       E2E: the drawer exposes blur on both cards and an exit blur round-trips + resets.
-- [ ] **T7 Timeline v2 — the step timeline (RATIFIED 2026-07-10; phases 1-4 landed:
-      engine + parity harness, Inspector column + redo, the read-first ribbon, and
-      keyframe editing with the undoable "use keyframes" conversion — the creation flip
-      and presets-as-generators are Phase 5)** — the
+- [ ] **T7 Timeline v2 — the step timeline (RATIFIED 2026-07-10; phases 1-5 landed:
+      engine + parity harness, Inspector column + redo, the read-first ribbon, keyframe
+      editing with the undoable "use keyframes" conversion, and presets as keyframe
+      generators — the Animations tab applies In/Out/Both with declared-props-only
+      replacement and layer-relative In targeting; the canvas chip's press control works
+      on data templates through setLayerActivation. The lower-thirds CREATION default
+      still emits legacy (dataRegion machinery is in place; it flips together with the
+      classic-strip spec migration). Next: Phase 6 steps-as-clips editing)** — the
       CapCut-style rethink: steps as clips, a real playhead/ruler, an Inspector panel,
       proper keyframes, presets as keyframe generators with In/Out/Both. The audit
       concluded the parse-by-construction patcher architecture is at end of life for this

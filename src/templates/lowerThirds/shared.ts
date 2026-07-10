@@ -33,6 +33,11 @@ const L3_CATEGORY: CategorySpec = {
   type: 'lower-third',
   prefix: 'lower-third',
   rootComment: 'Lower third. Hidden until play(); positioned by the .lower-third rule in the CSS.',
+  // Timeline v2: lower thirds flip to the data-block region first. The machinery is in
+  // place (assembleStandard converts via the parity-proven importer); the default flips
+  // together with the classic-strip spec migration — until then, "use keyframes" on the
+  // timeline converts any lower third on demand, undoably.
+  dataRegion: false,
 };
 
 /** Class name for the Nth line (line 0 = name, 1 = title, 2 = kicker/extra). */

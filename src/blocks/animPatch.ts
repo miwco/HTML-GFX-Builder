@@ -232,6 +232,9 @@ export function withStepsSetting(
 
 /** Replace the managed region with a freshly emitted block for `presetId`. */
 export function swapAnimationPreset(js: string, presetId: AnimPresetId, cfg: PresetConfig): string {
+  // A data-block region (Timeline v2) is edited through blocks/presetApply — the legacy
+  // splicers must never write choreography into the interpreter.
+  if (js.includes('var NOACG_ANIM')) return js;
   const start = js.indexOf(ANIMATION_MARK_OPEN);
   const end = js.indexOf(ANIMATION_MARK_CLOSE);
   if (start === -1 || end === -1) return js;
@@ -339,6 +342,7 @@ function tagOutPhase(tail: string, name: string): string {
  * (pass the current value in cfg for the phase that isn't being swapped).
  */
 export function swapAnimationPhase(js: string, presetId: AnimPresetId, cfg: PresetConfig, phase: AnimPhase): string {
+  if (js.includes('var NOACG_ANIM')) return js; // data regions: blocks/presetApply owns this
   if (phase === 'both') return swapAnimationPreset(js, presetId, cfg);
 
   const start = js.indexOf(ANIMATION_MARK_OPEN);

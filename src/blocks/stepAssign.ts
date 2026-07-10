@@ -8,6 +8,9 @@ import type { SpxTemplate } from '../model/types';
 import type { TemplatePart } from '../model/structure';
 import { applyStepChain, currentStepChain, withStepsSetting } from './animPatch';
 import { patchStepRegroup, type TimelineModel } from './timelineModel';
+import { parseAnimData, spliceAnimData } from './animData';
+import { setLayerActivation } from './animEdit';
+import { replaceDefinitionInHtml } from '../model/spxDefinition';
 
 export interface PressChange {
   /** The template fields to apply (spread over the current template). */
@@ -33,12 +36,32 @@ export interface PressChange {
 export function changePartPress(
   template: SpxTemplate,
   parts: TemplatePart[],
-  model: TimelineModel,
+  model: TimelineModel | null,
   selector: string,
   fromPress: number,
   toPress: number,
 ): PressChange | null {
   if (toPress === fromPress) return null;
+
+  // Timeline v2: a data-block template's press chain is the steps' reveals — one data
+  // move (setLayerActivation) plus the SPX steps re-sync, same PressChange shape out.
+  const dataModel = parseAnimData(template.js);
+  if (dataModel) {
+    const channel = parts.find((p) => p.selector === selector)?.channel ?? 'rise';
+    const next = setLayerActivation(dataModel, selector, toPress, channel);
+    if (!next) return null;
+    const js = spliceAnimData(template.js, next);
+    if (!js) return null;
+    const settings = { ...template.settings, steps: String(next.steps.length - 1) };
+    const html = replaceDefinitionInHtml(template.html, settings, template.fields);
+    const pressesAfter = next.steps.length - 2;
+    return {
+      patch: { js, html, settings },
+      destStep: toPress === -1 ? null : Math.min(toPress, pressesAfter - 1),
+      stepsAfter: pressesAfter,
+    };
+  }
+  if (!model) return null;
 
   if (fromPress === -1) {
     // Assign an on-with-the-graphic part to a press (a new one when toPress points past
