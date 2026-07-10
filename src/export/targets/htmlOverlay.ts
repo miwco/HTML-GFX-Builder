@@ -13,8 +13,27 @@ import { hasRealtimeControl } from '../../control/realtimeControl';
 import type { ExportContext, ExportTarget } from '../registry';
 
 /** The autoplay block appended after the template's JS. Teachable ES5, same voice as the
- *  generated template code. `baked` carries the Data panel's values at export time. */
-function autoplayScript(baked: Record<string, string>): string {
+ *  generated template code. `baked` carries the Data panel's values at export time;
+ *  `outMs` is the SPX `out` setting when it is an auto-out delay (null otherwise) — the
+ *  overlay honors it exactly like the editor preview and a real playout server do. */
+function autoplayScript(baked: Record<string, string>, outMs: number | null): string {
+  const autoOut =
+    outMs !== null
+      ? `
+    // The template's out setting is ${outMs} ms: hold that long AFTER the entrance
+    // settles, then leave by itself (a Stop from controlpanel.html still works sooner).
+    // The entrance length is measured from a paused throwaway timeline.
+    var entranceMs = 0;
+    if (typeof window.buildInTimeline === 'function') {
+      var probe = window.buildInTimeline();
+      probe.pause();
+      entranceMs = probe.duration() * 1000;
+      probe.kill();
+    }
+    setTimeout(function () {
+      if (typeof window.stop === 'function') window.stop();
+    }, entranceMs + ${outMs});`
+      : '';
   return `// ── Autoplay for browser sources (OBS / vMix) ────────────────────────────
 // A playout server (SPX, CasparCG) calls update() and play() itself. A plain
 // browser source has no operator, so this block does it on page load: fill the
@@ -36,7 +55,7 @@ function autoplayScript(baked: Record<string, string>): string {
   }
   window.addEventListener('load', function () {
     if (typeof window.update === 'function') window.update(JSON.stringify(startData()));
-    if (typeof window.play === 'function') window.play();
+    if (typeof window.play === 'function') window.play();${autoOut}
   });
 })();`;
 }
@@ -93,9 +112,11 @@ export const htmlOverlayTarget: ExportTarget = {
     const name = slug(template.name);
     const root = zip.folder(name)!;
     // Receiver first (it lands before </body>), then the compose inlines everything and
-    // appends the autoplay block after the template JS.
+    // appends the autoplay block after the template JS. An auto-out `out` setting rides
+    // along so the overlay leaves by itself — same behavior as the editor preview.
     const withReceiver = { ...template, html: injectControlReceiver(template.html, template) };
-    root.file(`${name}.html`, composeSelfContainedHtml(withReceiver, [autoplayScript(ctx?.sampleData ?? {})]));
+    const outMs = /^\d+$/.test(template.settings.out ?? '') ? Number(template.settings.out) : null;
+    root.file(`${name}.html`, composeSelfContainedHtml(withReceiver, [autoplayScript(ctx?.sampleData ?? {}, outMs)]));
     addControlPanel(root, template);
     root.file('README.md', overlayReadme(template));
     return zip;

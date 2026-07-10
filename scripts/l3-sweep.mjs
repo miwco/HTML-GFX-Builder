@@ -80,8 +80,13 @@ const results = await page.evaluate(async (CATEGORY) => {
       for (let k = 0; k < 3 && presetOk; k++) {
         const easing = EASINGS[e++ % EASINGS.length];
         const t2 = v.create({ animation: { presetId: p, easing } });
-        if (!t2.js.includes("var easeIn = '") || !t2.js.includes("var easeOut = '")) {
-          presetOk = false; row.issues.push('easing vars missing for ' + p + '/' + easing); break;
+        // Timeline v2 categories emit the data block ("ease" fields inside NOACG_ANIM);
+        // legacy categories still carry the knob variables.
+        const easingPresent = t2.js.includes('var NOACG_ANIM')
+          ? /"ease":\s*"/.test(t2.js)
+          : t2.js.includes("var easeIn = '") && t2.js.includes("var easeOut = '");
+        if (!easingPresent) {
+          presetOk = false; row.issues.push('easing missing for ' + p + '/' + easing); break;
         }
         const r2 = await runInFrame(t2, async (w) => { w.play(); await new Promise((r) => setTimeout(r, 40)); w.stop(); return {}; });
         if (r2.fatal || r2.errs.length) { presetOk = false; row.issues.push('preset ' + p + '/' + easing + ': ' + (r2.fatal || r2.errs[0])); }
