@@ -29,6 +29,22 @@
     })();
   </script>
 
+  <!-- Motion gate: the entrance choreography needs the hero pre-hidden BEFORE first
+       paint. The class is only added when motion is wanted (never for
+       prefers-reduced-motion), and a fallback timer removes it if the motion module
+       fails to boot — no JS, old browser, blocked chunk — so content can never stay
+       hidden. The motion module itself is loaded at the end of <body>. -->
+  <script>
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      var root = document.documentElement;
+      root.classList.add('js-motion');
+      setTimeout(function () {
+        if (!window.__noacgMotion) root.classList.remove('js-motion');
+      }, 2500);
+    })();
+  </script>
+
   <style>
     /* NoaCG Studio landing — brand system: dark control-room ground, one amber "on-air"
        accent, restrained glow (NoaCG-Brand-Kit/BRAND-MANUAL.md §3). */
@@ -106,7 +122,7 @@
     .btn-ghost:hover { border-color: rgba(232, 237, 242, 0.25); }
 
     /* ── Hero ── */
-    .hero { padding: 84px 0 30px; max-width: 780px; }
+    .hero { padding: 64px 0 26px; max-width: 780px; }
     .kicker {
       font-family: var(--mono); font-size: 13px; font-weight: 500;
       letter-spacing: 0.28em; text-transform: uppercase; color: var(--amber);
@@ -121,7 +137,7 @@
     .cta-note { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.04em; }
 
     /* ── Platform chips ── */
-    .platforms { display: flex; flex-wrap: wrap; gap: 10px; padding: 40px 0 8px; align-items: center; }
+    .platforms { display: flex; flex-wrap: wrap; gap: 10px; padding: 32px 0 6px; align-items: center; }
     .platforms .lbl { font-family: var(--mono); font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--faint); margin-right: 8px; }
     .chip {
       font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.12em;
@@ -185,6 +201,208 @@
       .hero { padding-top: 48px; }
       header nav a.gh { display: none; }
     }
+
+    /* ═══ Motion system (src/landing/) ═══
+       The rules below are the motion language's CSS half: masked headline lines, the
+       pre-paint hero gate, hover microinteractions, and the two live mockups (hero demo
+       + scroll story). All animation is transforms/opacity; GSAP owns the timing. */
+
+    /* Masked headline lines — the reveal slides the inner span up through the mask.
+       The tiny padding/margin pair keeps descenders (g, p) out of the clip. */
+    h1 .hl { display: block; overflow: hidden; padding-bottom: 0.12em; margin-bottom: -0.12em; }
+    h1 .hl-in { display: block; }
+
+    /* Pre-paint gate: only ever present when the inline <head> script decided motion is
+       on; GSAP's inline styles take over from these the moment the timeline starts. */
+    html.js-motion header .mark i,
+    html.js-motion header .wordmark,
+    html.js-motion header nav > *,
+    html.js-motion .hero .kicker,
+    html.js-motion .hero .hl-in,
+    html.js-motion .hero .lede,
+    html.js-motion .hero .cta-row > *,
+    html.js-motion .platforms > *,
+    html.js-motion .demo { opacity: 0; }
+
+    /* ── Microinteractions (CSS-only, 0.15–0.25s) ── */
+    .btn { transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color 0.18s ease; }
+    .btn:active { transform: translateY(0) scale(0.98); }
+    .btn .arr { display: inline-block; margin-left: 6px; transition: transform 0.18s ease; }
+    .btn:hover .arr { transform: translateX(3px); }
+    .card { transition: transform 0.22s ease, border-color 0.22s ease; }
+    .card:hover { transform: translateY(-2px); border-color: rgba(232, 237, 242, 0.18); }
+    .shot { transition: border-color 0.22s ease; }
+    .shot:hover { border-color: rgba(232, 237, 242, 0.2); }
+    .shot img { transition: transform 0.4s ease; }
+    .shot:hover img { transform: scale(1.02); }
+    .chip { transition: color 0.2s ease, border-color 0.2s ease; }
+    .platforms .chip:hover, .live .chip:hover { color: var(--paper); border-color: rgba(232, 237, 242, 0.24); }
+
+    /* ── Hero demo: a miniature of the real editor (code left, stage + timeline right) ── */
+    .demo {
+      margin-top: 48px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      background: var(--panel); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+    .demo-top { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .demo-mark { display: flex; flex-direction: column; gap: 2px; width: 14px; }
+    .demo-mark i { display: block; height: 3px; border-radius: 1px; }
+    .demo-mark i:nth-child(1) { width: 100%; background: var(--amber); }
+    .demo-mark i:nth-child(2) { width: 66%; background: var(--paper); opacity: 0.8; }
+    .demo-mark i:nth-child(3) { width: 40%; background: rgba(232, 237, 242, 0.3); }
+    .demo-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; color: var(--faint); }
+    .demo-pill {
+      margin-left: auto; font-family: var(--mono); font-size: 10px; font-weight: 700;
+      letter-spacing: 0.18em; padding: 4px 10px; border-radius: 4px;
+      color: var(--faint); border: 1px solid var(--line);
+      transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .demo-pill.on { background: var(--amber); color: #14100a; border-color: var(--amber); box-shadow: 0 0 18px rgba(246, 166, 35, 0.45); }
+    .demo-body { display: grid; grid-template-columns: 5fr 7fr; }
+    .demo-code {
+      margin: 0; padding: 16px 20px; font-family: var(--mono); font-size: 12px; line-height: 1.8;
+      color: var(--dim); border-right: 1px solid var(--line); overflow: hidden;
+      background: rgba(10, 12, 16, 0.55);
+    }
+    .demo-ln { display: block; white-space: pre; border-radius: 3px; padding: 0 6px; margin: 0 -6px; }
+    .c-cm { color: var(--faint); }
+    .c-str { color: var(--amber); }
+    .demo-stage {
+      position: relative; aspect-ratio: 16 / 9; overflow: hidden;
+      background: radial-gradient(70% 60% at 50% 15%, rgba(246, 166, 35, 0.05), transparent 65%), #0d1016;
+    }
+    .demo-safe { position: absolute; inset: 5.5%; border: 1px dashed rgba(232, 237, 242, 0.07); border-radius: 2px; pointer-events: none; }
+    .demo-l3 { position: absolute; left: 7%; bottom: 11%; display: flex; gap: 12px; align-items: stretch; }
+    .demo-l3-bar { width: 4px; border-radius: 2px; background: var(--amber); box-shadow: 0 0 14px rgba(246, 166, 35, 0.55); }
+    .demo-l3-txt {
+      display: flex; flex-direction: column; justify-content: center; gap: 2px;
+      background: rgba(13, 16, 22, 0.86); border: 1px solid rgba(232, 237, 242, 0.08);
+      padding: 10px 18px 11px; border-radius: 4px;
+    }
+    .demo-mask { display: block; overflow: hidden; }
+    .demo-l3-name { display: block; font-weight: 700; font-size: clamp(15px, 1.9vw, 21px); letter-spacing: -0.01em; }
+    .demo-l3-role {
+      display: block; font-family: var(--mono); font-size: clamp(9px, 1.1vw, 11px);
+      letter-spacing: 0.22em; text-transform: uppercase; color: var(--amber);
+    }
+    .demo-clock { position: absolute; top: 8%; right: 7%; font-family: var(--mono); font-size: clamp(10px, 1.2vw, 13px); letter-spacing: 0.12em; color: var(--dim); }
+    .demo-tl { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-top: 1px solid var(--line); }
+    .demo-cues { display: flex; gap: 6px; }
+    .demo-cue {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; white-space: nowrap;
+      padding: 4px 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--faint);
+      transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+    .demo-cue.on { color: var(--amber); border-color: rgba(246, 166, 35, 0.5); background: rgba(246, 166, 35, 0.08); }
+    .demo-track { position: relative; display: block; flex: 1; height: 22px; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; background: rgba(10, 12, 16, 0.5); }
+    .demo-seg { position: absolute; top: 4px; bottom: 4px; border-radius: 3px; background: rgba(246, 166, 35, 0.16); }
+    .demo-seg-hold { background: rgba(232, 237, 242, 0.06); }
+    .demo-playhead { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; background: var(--amber); box-shadow: 0 0 8px rgba(246, 166, 35, 0.8); }
+    @media (max-width: 720px) {
+      .demo-body { grid-template-columns: 1fr; }
+      .demo-code { display: none; }
+    }
+
+    /* ── Scroll story: sticky mini-editor + step copy ── */
+    .story-grid { display: grid; grid-template-columns: minmax(280px, 5fr) 7fr; gap: 48px; margin-top: 24px; align-items: start; }
+    .story-step {
+      min-height: 56vh; display: flex; flex-direction: column; justify-content: center;
+      padding: 24px 0 24px 26px; border-left: 2px solid var(--line);
+      transition: border-color 0.3s ease, opacity 0.3s ease; opacity: 0.35;
+    }
+    html:not(.js-motion) .story-step { opacity: 1; }
+    .story-step.is-active { opacity: 1; border-color: var(--amber); }
+    .story-step .n { font-family: var(--mono); font-size: 12px; color: var(--amber); letter-spacing: 0.2em; }
+    .story-step h3 { font-size: 22px; margin: 10px 0 8px; }
+    .story-step p { color: var(--dim); font-size: 15px; max-width: 400px; }
+    .story-stick { position: sticky; top: calc(50vh - 180px); }
+
+    .smock {
+      /* Literal (not var(--amber)) so GSAP can read and interpolate the start color. */
+      --sm-accent: #f6a623;
+      border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+      background: var(--panel); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+    }
+    .smock-top { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .smock-tab {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+      padding: 4px 10px; border-radius: 4px; border: 1px solid transparent; color: var(--faint);
+      transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+    }
+    .smock-tab.on { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); background: rgba(246, 166, 35, 0.07); }
+    .smock-body { display: grid; grid-template-columns: 8fr 5fr; }
+    .smock-stage {
+      position: relative; aspect-ratio: 16 / 10; overflow: hidden;
+      background: radial-gradient(70% 60% at 50% 15%, rgba(246, 166, 35, 0.05), transparent 65%), #0d1016;
+    }
+    .smock-safe { position: absolute; inset: 5.5%; border: 1px dashed rgba(232, 237, 242, 0.07); border-radius: 2px; pointer-events: none; }
+    .smock-l3 { position: absolute; left: 8%; bottom: 24%; display: flex; gap: 10px; align-items: stretch; }
+    .smock-l3-bar { width: 4px; border-radius: 2px; background: var(--sm-accent); box-shadow: 0 0 12px rgba(246, 166, 35, 0.35); }
+    .smock-l3-txt {
+      display: flex; flex-direction: column; justify-content: center; gap: 2px;
+      background: rgba(13, 16, 22, 0.86); border: 1px solid rgba(232, 237, 242, 0.08);
+      padding: 8px 14px 9px; border-radius: 4px;
+    }
+    .smock-l3-name { display: block; font-weight: 700; font-size: clamp(13px, 1.5vw, 17px); letter-spacing: -0.01em; }
+    .smock-mask { display: block; overflow: hidden; }
+    .smock-l3-role {
+      display: block; font-family: var(--mono); font-size: clamp(8px, 1vw, 10px);
+      letter-spacing: 0.22em; text-transform: uppercase; color: var(--sm-accent);
+    }
+    .smock-strap {
+      position: absolute; left: 8%; bottom: 9%;
+      font-family: var(--mono); font-size: clamp(8px, 1vw, 10px); letter-spacing: 0.18em;
+      color: var(--paper); background: rgba(13, 16, 22, 0.86);
+      border: 1px solid rgba(232, 237, 242, 0.08); border-left: 3px solid var(--sm-accent);
+      padding: 5px 12px; border-radius: 3px;
+    }
+    .smock-panel { position: relative; border-left: 1px solid var(--line); min-height: 200px; }
+    .smock-p { position: absolute; inset: 0; padding: 16px; opacity: 0; visibility: hidden; display: flex; flex-direction: column; gap: 12px; align-content: flex-start; }
+    /* No-JS / reduced motion: the code layer stands for the panel ("the code is real"). */
+    html:not(.js-motion) .smock-p-code, html.js-motion .smock-p-style { opacity: 1; visibility: visible; }
+    .smock-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--faint); }
+    .smock-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .smock-meta { font-family: var(--mono); font-size: 11px; color: var(--dim); letter-spacing: 0.04em; }
+    .smock-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; box-shadow: 0 0 0 2px transparent; transition: box-shadow 0.25s ease; }
+    .smock-dot.on { box-shadow: 0 0 0 2px var(--paper); }
+    .smock-codeblock { font-family: var(--mono); font-size: 11.5px; line-height: 1.8; color: var(--dim); }
+    .smock-ln { display: block; white-space: pre; }
+    .smock-typed { display: inline-block; overflow: hidden; white-space: nowrap; vertical-align: bottom; color: var(--amber); }
+    .smock-caret { display: inline-block; width: 7px; height: 13px; margin-left: 1px; background: var(--amber); opacity: 0; vertical-align: baseline; }
+    .smock-tlrow { position: relative; height: 16px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; display: block; }
+    .smock-tlrow em { position: absolute; left: 6px; top: 1px; font-style: normal; font-family: var(--mono); font-size: 9px; color: var(--faint); letter-spacing: 0.1em; }
+    .smock-tlrow i { position: absolute; top: 3px; bottom: 3px; border-radius: 2px; background: rgba(246, 166, 35, 0.35); }
+    .smock-track { position: relative; display: block; height: 6px; border-radius: 3px; background: rgba(232, 237, 242, 0.07); overflow: hidden; }
+    .smock-ph { position: absolute; inset: 0; background: var(--amber); transform: scaleX(0); transform-origin: 0 50%; }
+    html:not(.js-motion) .smock-ph { transform: scaleX(0.6); }
+    .smock-btn {
+      font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; white-space: nowrap;
+      padding: 6px 12px; border: 1px solid var(--line); border-radius: 5px; color: var(--dim);
+    }
+    .smock-btn-continue { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
+    .smock-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .smock-chip {
+      font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 4px 9px; border: 1px solid var(--line); border-radius: 4px; color: var(--dim);
+    }
+    .smock-tick { font-family: var(--mono); font-size: 11px; color: #4ac47a; letter-spacing: 0.06em; }
+
+    @media (max-width: 860px) {
+      .story-grid { grid-template-columns: 1fr; gap: 20px; }
+      .story-stick { order: -1; top: 10px; z-index: 2; }
+      .story-step { min-height: 0; padding-top: 34px; padding-bottom: 34px; }
+    }
+    @media (max-width: 640px) {
+      .smock-body { grid-template-columns: 1fr; }
+      /* Keep the sticky mockup compact so the step copy owns most of a phone screen. */
+      .smock-stage { aspect-ratio: 16 / 7; }
+      .smock-panel { border-left: 0; border-top: 1px solid var(--line); min-height: 132px; }
+    }
+
+    /* Motion never runs for reduced-motion visitors (the module gates itself too). */
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .btn, .btn .arr, .card, .shot img, .demo-pill, .demo-cue, .smock-tab, .smock-dot { transition: none; }
+    }
   </style>
 </head>
 <body>
@@ -201,7 +419,11 @@
     <main>
       <div class="hero">
         <p class="kicker">Free · Browser-based · No sign-up to try</p>
-        <h1>Broadcast graphics, <em>built in minutes.</em></h1>
+        <!-- Each .hl is an overflow mask; the entrance slides .hl-in up through it. -->
+        <h1>
+          <span class="hl"><span class="hl-in">Broadcast graphics,</span></span>
+          <span class="hl"><span class="hl-in"><em>built in minutes.</em></span></span>
+        </h1>
         <p class="lede">
           NoaCG Studio is a free tool for creating premium HTML broadcast graphics — lower thirds,
           tickers, scoreboards, timers, title cards — and running them anywhere: OBS, vMix,
@@ -209,7 +431,7 @@
           the result is clean, editable code you own.
         </p>
         <div class="cta-row">
-          <a class="btn btn-amber" href="/app">Open the editor — it's free</a>
+          <a class="btn btn-amber" href="/app">Open the editor — it's free<span class="arr" aria-hidden="true">→</span></a>
           <a class="btn btn-ghost" href="#how">How it works</a>
           <span class="cta-note">No account needed to create &amp; export</span>
         </div>
@@ -227,7 +449,47 @@
         <span class="chip">more coming</span>
       </div>
 
-      <div class="shots">
+      <!-- The live demo: a miniature of the real editor playing an actual lower third on
+           a loop — cue IN, hold on air, operator pushes new data, cue OUT (src/landing/
+           demo.ts). Decorative for assistive tech; the real editor is one click away. -->
+      <div class="demo" aria-hidden="true">
+        <div class="demo-top">
+          <span class="demo-mark"><i></i><i></i><i></i></span>
+          <span class="demo-title">evening-news / lower-third</span>
+          <span class="demo-pill">READY</span>
+        </div>
+        <div class="demo-body">
+          <pre class="demo-code"><code><span class="demo-ln c-cm">/* == ANIMATION == */</span><span class="demo-ln">const tl = gsap.timeline();</span><span class="demo-ln" data-ln="play">tl.fromTo(box, { x: -60, autoAlpha: 0 },</span><span class="demo-ln">  { x: 0, autoAlpha: 1, duration: 0.6,</span><span class="demo-ln">    ease: <span class="c-str">'power3.out'</span> });</span><span class="demo-ln"> </span><span class="demo-ln c-cm">// SPX pushes operator data in:</span><span class="demo-ln" data-ln="update">function update(data) {</span><span class="demo-ln">  setFieldValue(<span class="c-str">'f0'</span>, data.f0); <span class="c-cm">// name</span></span><span class="demo-ln">  setFieldValue(<span class="c-str">'f1'</span>, data.f1); <span class="c-cm">// title</span></span><span class="demo-ln">}</span><span class="demo-ln" data-ln="stop">function stop() { tl.reverse(); }</span></code></pre>
+          <div class="demo-side">
+            <div class="demo-stage">
+              <span class="demo-safe"></span>
+              <div class="demo-l3">
+                <i class="demo-l3-bar"></i>
+                <div class="demo-l3-txt">
+                  <span class="demo-mask"><span class="demo-l3-name">Maya Lindqvist</span></span>
+                  <span class="demo-mask"><span class="demo-l3-role">Political Correspondent</span></span>
+                </div>
+              </div>
+              <span class="demo-clock">19:42:07</span>
+            </div>
+            <div class="demo-tl">
+              <span class="demo-cues">
+                <span class="demo-cue" data-cue="in">▶ In</span>
+                <span class="demo-cue" data-cue="hold">● On air</span>
+                <span class="demo-cue" data-cue="out">■ Out</span>
+              </span>
+              <span class="demo-track">
+                <i class="demo-seg" style="left:0;width:15%"></i>
+                <i class="demo-seg demo-seg-hold" style="left:15%;width:75%"></i>
+                <i class="demo-seg" style="left:90%;width:10%"></i>
+                <i class="demo-playhead"></i>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="shots" data-reveal-group>
         <figure class="shot">
           <img src="/landing/shot-strap.png" alt="A lower third graphic: name and title on a dark panel with an amber accent bar" loading="lazy" width="960" height="540" />
           <figcaption>Lower third <code>house strap</code></figcaption>
@@ -243,13 +505,13 @@
       </div>
 
       <section id="how">
-        <p class="kicker">How it works</p>
-        <h2>Choose, tweak, go on air.</h2>
-        <p class="sub">
+        <p class="kicker" data-reveal>How it works</p>
+        <h2 data-reveal>Choose, tweak, go on air.</h2>
+        <p class="sub" data-reveal>
           A guided wizard builds the whole graphic from choices — no code required. Professionals
           can open the always-available editor and take full control of the same file.
         </p>
-        <div class="grid3">
+        <div class="grid3" data-reveal-group>
           <div class="card">
             <span class="n">01 — CREATE</span>
             <h3>Start from 43 broadcast-grade templates</h3>
@@ -280,14 +542,132 @@
         </div>
       </section>
 
+      <!-- The scroll story: the mini-editor on the right stays pinned (CSS sticky) and
+           morphs to match each step as it scrolls past (src/landing/story.ts). -->
+      <section class="story" id="story">
+        <p class="kicker" data-reveal>The whole pipeline</p>
+        <h2 data-reveal>One graphic, start to on-air.</h2>
+        <p class="sub" data-reveal>
+          Panels, code, timeline, logic, and export all edit the same file — nothing hides
+          behind a scene model. Scroll through what that feels like.
+        </p>
+        <div class="story-grid">
+          <div class="story-steps">
+            <div class="story-step is-active">
+              <span class="n">01 — DESIGN VISUALLY</span>
+              <h3>Style it from live panels</h3>
+              <p>
+                Colors, fonts, position, scale — picked in panels, written as real CSS you
+                can read. Swap the accent and the whole graphic follows.
+              </p>
+            </div>
+            <div class="story-step">
+              <span class="n">02 — EDIT THE CODE</span>
+              <h3>Open the code any time</h3>
+              <p>
+                Every graphic is clean, commented HTML/CSS/JS. Change a line and the
+                preview reacts — the panels never hide anything from you.
+              </p>
+            </div>
+            <div class="story-step">
+              <span class="n">03 — ANIMATE ON THE TIMELINE</span>
+              <h3>Direct the motion</h3>
+              <p>
+                Entrances, holds, and exits on a real timeline — broadcast-tuned presets,
+                editable down to the tween.
+              </p>
+            </div>
+            <div class="story-step">
+              <span class="n">04 — ADD LOGIC</span>
+              <h3>Make it operable</h3>
+              <p>
+                Multi-step graphics, auto-generated operator panels, live data from Google
+                Sheets — a Continue press reveals the next step on air.
+              </p>
+            </div>
+            <div class="story-step">
+              <span class="n">05 — EXPORT ANYWHERE</span>
+              <h3>Run it in your studio</h3>
+              <p>
+                One validated, plug-and-play package per target: OBS, vMix, SPX Graphics,
+                CasparCG, OGraf — fonts and images bundled, offline-ready.
+              </p>
+            </div>
+          </div>
+          <div class="story-stick">
+            <div class="smock" aria-hidden="true">
+              <div class="smock-top">
+                <span class="smock-tab on">Style</span>
+                <span class="smock-tab">Code</span>
+                <span class="smock-tab">Timeline</span>
+                <span class="smock-tab">Control</span>
+                <span class="smock-tab">Export</span>
+              </div>
+              <div class="smock-body">
+                <div class="smock-stage">
+                  <span class="smock-safe"></span>
+                  <div class="smock-l3">
+                    <i class="smock-l3-bar"></i>
+                    <div class="smock-l3-txt">
+                      <span class="smock-l3-name">Alex Rivera</span>
+                      <span class="smock-mask"><span class="smock-l3-role">Anchor · Live</span></span>
+                    </div>
+                  </div>
+                  <div class="smock-strap">RESULTS UPDATE · STEP 2 OF 2</div>
+                </div>
+                <aside class="smock-panel">
+                  <div class="smock-p smock-p-style">
+                    <span class="smock-lbl">Style</span>
+                    <span class="smock-row">
+                      <i class="smock-dot on" style="background:#f6a623"></i>
+                      <i class="smock-dot" style="background:#4ac47a"></i>
+                      <i class="smock-dot" style="background:#38bdf8"></i>
+                      <i class="smock-dot" style="background:#e5484d"></i>
+                    </span>
+                    <span class="smock-meta">Space Grotesk · scale 1.0</span>
+                  </div>
+                  <div class="smock-p smock-p-code">
+                    <span class="smock-lbl">template.js</span>
+                    <code class="smock-codeblock"><span class="smock-ln c-cm">// operator data → DOM</span><span class="smock-ln">f1.textContent =</span><span class="smock-ln">  <span class="smock-typed" data-text="'Anchor · Live'">'Anchor · Live'</span><i class="smock-caret"></i>;</span></code>
+                  </div>
+                  <div class="smock-p smock-p-tl">
+                    <span class="smock-lbl">Timeline</span>
+                    <span class="smock-tlrow"><em>bar</em><i style="left:2%;width:20%"></i></span>
+                    <span class="smock-tlrow"><em>name</em><i style="left:9%;width:26%"></i></span>
+                    <span class="smock-tlrow"><em>role</em><i style="left:16%;width:26%"></i></span>
+                    <span class="smock-track"><i class="smock-ph"></i></span>
+                  </div>
+                  <div class="smock-p smock-p-logic">
+                    <span class="smock-lbl">Control</span>
+                    <span class="smock-row">
+                      <span class="smock-btn">▶ Play</span>
+                      <span class="smock-btn smock-btn-continue">» Continue</span>
+                      <span class="smock-btn">■ Stop</span>
+                    </span>
+                    <span class="smock-meta">2 steps · Google Sheets feed</span>
+                  </div>
+                  <div class="smock-p smock-p-export">
+                    <span class="smock-lbl">Export</span>
+                    <span class="smock-row smock-chips">
+                      <span class="smock-chip">OBS</span><span class="smock-chip">vMix</span><span class="smock-chip">SPX</span><span class="smock-chip">CasparCG</span><span class="smock-chip">OGraf</span><span class="smock-chip">H2R</span>
+                    </span>
+                    <span class="smock-tick">✓ validated · plug-and-play</span>
+                  </div>
+                </aside>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section>
-        <p class="kicker">Run it live</p>
-        <h2>Not just pretty — operable.</h2>
-        <p class="sub">
+        <p class="kicker" data-reveal>Run it live</p>
+        <h2 data-reveal>Not just pretty — operable.</h2>
+        <p class="sub" data-reveal>
           Every graphic ships with an auto-generated operator control panel. Drive it from another
           browser tab, an OBS dock, or another device over the cloud — and feed it live data.
         </p>
-        <div class="live">
+        <div class="live" data-reveal-group>
           <span class="chip">Operator control panels</span>
           <span class="chip">Remote control from any device</span>
           <span class="chip">Google Sheets as a live source</span>
@@ -297,9 +677,9 @@
       </section>
 
       <section>
-        <p class="kicker">Honest engineering</p>
-        <h2>The code is yours. Forever.</h2>
-        <p class="sub">
+        <p class="kicker" data-reveal>Honest engineering</p>
+        <h2 data-reveal>The code is yours. Forever.</h2>
+        <p class="sub" data-reveal>
           Nothing hides behind a visual-only scene model: every graphic is real HTML, CSS, and
           JavaScript — clean, commented, and editable. The app is open source (AGPL), self-hostable,
           and works fully offline. Creating, editing, and exporting are free, always; an account
@@ -310,9 +690,9 @@
   </div>
 
   <div class="bottom">
-    <h2>Make your next graphic in the browser.</h2>
-    <div class="cta-row" style="margin-top: 26px;">
-      <a class="btn btn-amber" href="/app">Open the editor — free, no sign-up</a>
+    <h2 data-reveal>Make your next graphic in the browser.</h2>
+    <div class="cta-row" style="margin-top: 26px;" data-reveal>
+      <a class="btn btn-amber" href="/app">Open the editor — free, no sign-up<span class="arr" aria-hidden="true">→</span></a>
     </div>
   </div>
 
@@ -326,5 +706,9 @@
       </span>
     </footer>
   </div>
+
+  <!-- The GSAP motion system (hero entrance, live demo, reveals, scroll story).
+       Gated on prefers-reduced-motion; the page works fully without it. -->
+  <script type="module" src="/src/landing/motion.ts"></script>
 </body>
 </html>

@@ -197,6 +197,16 @@ src/
                 install steps in the README), packetExport.ts (whole
                 packet -> one zip, a Starter folder per graphic), common.ts (addSharedAssets,
                 addReferencedFonts, injectControlReceiver + addControlPanel, FONT_LICENSES.md)
+  landing/      the public landing page's GSAP motion system (index.html loads motion.ts as
+                a module script): gsap.ts (evaluates the vendored UMD via ?raw — it can't
+                be ESM-imported, its global branch throws in strict mode), lang.ts (the
+                motion language: EASE/DUR tokens + data-reveal/data-reveal-group
+                IntersectionObserver reveals), hero.ts (entrance timeline), demo.ts (the
+                looping mini-editor lower-third demo, paused offscreen), story.ts (the
+                sticky scroll story — CSS sticky + rAF scroll state, no ScrollTrigger).
+                Everything gates on prefers-reduced-motion; the page stays fully readable
+                with no JS (the js-motion pre-hide class is added pre-paint by an inline
+                script and removed again if the module fails to boot)
   teach/        knowledge.ts + explain.ts — surfaced as Monaco HOVER tooltips in the editor
                 (registered in CodeEditor.tsx; there is no Learn tab), cssReference.ts
   assets/       gsap.min.js (bundled), assetUtils.ts (data-URL assets)
