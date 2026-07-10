@@ -9,11 +9,14 @@ export interface UserPrefs {
   defaultExportTarget: string;
   /** The preview timeline strip's collapsed state. null = auto (expanded desktop, collapsed mobile). */
   timelineCollapsed: boolean | null;
+  /** Timeline v2 (the step timeline) — opt-in while it grows phase by phase. */
+  timelineV2: boolean;
 }
 
 const DEFAULTS: UserPrefs = {
   defaultExportTarget: '', // empty = the registry's first target
   timelineCollapsed: null,
+  timelineV2: false,
 };
 
 export function loadPrefs(): UserPrefs {

@@ -3,7 +3,7 @@ import { useTemplateStore } from '../store/templateStore';
 import CodeEditor from './CodeEditor';
 import PreviewFrame from './PreviewFrame';
 import PlayoutSimulator from './PlayoutSimulator';
-import TimelineView from './TimelineView';
+import TimelineDock from './StepTimeline';
 import SidePanel from './SidePanel';
 import Inspector from './Inspector';
 import PacketManager from './PacketManager';
@@ -171,7 +171,7 @@ export default function AppShell() {
   const preview = (
     <div className="preview-wrap">
       <PreviewFrame iframeRef={iframeRef} />
-      <TimelineView iframeRef={iframeRef} />
+      <TimelineDock iframeRef={iframeRef} />
       <PlayoutSimulator iframeRef={iframeRef} />
     </div>
   );

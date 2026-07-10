@@ -1526,6 +1526,94 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .timeline-zoom-btn:hover { color: var(--text); border-color: rgba(246, 166, 35, 0.4); background: transparent; }
 
+/* ---------- Timeline v2 — the step timeline (read-first; opt-in via the dock chip) ---------- */
+.timeline-dock { position: relative; }
+.timeline-dock-toggle {
+  position: absolute;
+  top: -1px;
+  right: 14px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  padding: 1px 7px;
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  border-top: none;
+}
+.timeline-dock-toggle:hover { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
+.tlv2-body { display: flex; align-items: stretch; gap: 8px; margin-top: 2px; }
+.tlv2-labels { display: flex; flex-direction: column; flex-shrink: 0; width: 102px; }
+.tlv2-scroll { flex: 1; min-width: 0; overflow-x: auto; }
+.tlv2-canvas { position: relative; cursor: crosshair; }
+.tlv2-ruler { position: relative; border-bottom: 1px solid rgba(232, 237, 242, 0.1); }
+.tlv2-tick {
+  position: absolute;
+  bottom: 0;
+  border-left: 1px solid rgba(232, 237, 242, 0.14);
+  padding-left: 3px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 8.5px;
+  color: var(--text-dim);
+  height: 7px;
+  line-height: 0.4;
+  white-space: nowrap;
+}
+.tlv2-tick.whole { height: 11px; }
+.tlv2-clips { position: absolute; left: 0; right: 0; }
+.tlv2-clip {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border: 1px solid rgba(246, 166, 35, 0.35);
+  border-radius: 4px;
+  background: rgba(246, 166, 35, 0.08);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  color: var(--text);
+  padding: 1px 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tlv2-clip.active { border-color: var(--amber); background: rgba(246, 166, 35, 0.16); }
+.tlv2-cue { color: var(--amber); }
+.tlv2-clip-dur { color: var(--text-dim); font-size: 9px; }
+.tlv2-hold {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  text-align: center;
+  font-size: 9px;
+  color: var(--text-dim);
+  line-height: 18px;
+  background: repeating-linear-gradient(-45deg, rgba(232, 237, 242, 0.06) 0 4px, transparent 4px 9px);
+  border-radius: 3px;
+}
+.tlv2-row { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(232, 237, 242, 0.05); }
+.tlv2-row.selected { background: rgba(246, 166, 35, 0.06); }
+.tlv2-diamond {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--amber);
+  font-size: 9px;
+  text-shadow: 0 0 4px rgba(246, 166, 35, 0.5);
+  pointer-events: none;
+}
+.tlv2-reveal { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 9px; pointer-events: none; }
+.tlv2-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(232, 237, 242, 0.85);
+  box-shadow: 0 0 6px rgba(232, 237, 242, 0.35);
+  pointer-events: none;
+}
+.tlv2-side { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; align-items: center; }
+.tlv2-time { font-size: 10px; color: var(--text-dim); }
+
 /* ---------- Inspector (Timeline v2 — the selection's properties, right of the preview) ---------- */
 .inspector-pane { overflow-y: auto; min-width: 0; }
 .inspector { padding: 10px 12px; }
