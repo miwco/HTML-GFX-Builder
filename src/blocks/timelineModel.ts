@@ -36,6 +36,10 @@ export interface TimelineTween {
   /** T6: the drawer-editable values in the LAST object (the "leaves to" state for an exit
    *  to()/fromTo — drives the out drawer; absent for set() ticks). */
   toVars?: Partial<Record<DrawerProp, number>>;
+  /** Timeline v2 importer: EVERY animated value in the FROM/TO objects (numbers and
+   *  quoted strings, bookkeeping stripped) — the legacy→data converter reads these. */
+  fromAll?: Record<string, number | string>;
+  toAll?: Record<string, number | string>;
 }
 
 /** T5 — the basic transform properties the per-layer drawer edits. Deliberately small:
@@ -257,14 +261,31 @@ function parseCall(kind: TimelineTween['kind'], args: string, animSpeed: number)
     if (tb) toVars.blur = Number(tb[1]);
   }
 
+  // Timeline v2 importer: capture every `key: number` / `key: 'string'` pair of an
+  // object literal (bookkeeping stripped) — the full from/to values, not just the
+  // drawer subset above.
+  const allPairs = (obj: string | undefined): Record<string, number | string> => {
+    const out: Record<string, number | string> = {};
+    if (!obj) return out;
+    for (const m of obj.matchAll(/(\w+)\s*:\s*(?:'([^']*)'|(-?[\d.]+))/g)) {
+      if (BOOKKEEPING_PROPS.has(m[1])) continue;
+      out[m[1]] = m[2] !== undefined ? m[2] : Number(m[3]);
+    }
+    return out;
+  };
+  const fromAll = kind === 'fromTo' && objects.length >= 2 ? allPairs(objects[0]) : undefined;
+  const toAll = kind !== 'set' ? allPairs(vars) : allPairs(objects[objects.length - 1]);
+
   const durationMatch = vars.match(/duration:\s*([\d.]+)\s*\/\s*animSpeed/);
   const staggerMatch = vars.match(/stagger:\s*([\d.]+)\s*\/\s*animSpeed/);
   // A quoted ease is a per-tween override; `ease: easeIn/easeOut` inherits the phase knob.
   const easeMatch = vars.match(/ease:\s*'([^']+)'/);
 
   // The position argument sits after the LAST object literal: '-=N' (overlap) or an
-  // absolute `N / animSpeed` / bare number (what T2 writes).
-  const tail = args.slice(args.lastIndexOf('}') + 1);
+  // absolute `N / animSpeed` / bare number (what T2 writes). Inline comments between the
+  // object and the position arg are stripped first — mask-wipe's exit writes
+  // `{...},  // …and wipe closed\n  '-=0.1');` and the overlap must still be seen.
+  const tail = args.slice(args.lastIndexOf('}') + 1).replace(/\/\/[^\n]*/g, '');
   const overlapMatch = tail.match(/,\s*'-=([\d.]+)'/);
   const absoluteMatch = tail.match(/,\s*([\d.]+)(\s*\/\s*animSpeed)?/);
 
@@ -282,6 +303,8 @@ function parseCall(kind: TimelineTween['kind'], args: string, animSpeed: number)
     ease: easeMatch ? easeMatch[1] : null,
     fromVars,
     toVars,
+    fromAll,
+    toAll,
   };
 }
 
@@ -311,6 +334,8 @@ function parsePhase(id: TimelinePhase['id'], body: string, animSpeed: number): T
       ease: parsed.ease,
       fromVars: parsed.fromVars,
       toVars: parsed.toVars,
+      fromAll: parsed.fromAll,
+      toAll: parsed.toAll,
     });
   }
   return {
