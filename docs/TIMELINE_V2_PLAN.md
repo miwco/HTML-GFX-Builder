@@ -2,7 +2,12 @@
 
 **Status: phases 1-7 LANDED (2026-07-11), plus the lower-thirds creation flip and a
 CapCut-conventions polish pass (playhead cap + auto-follow scroll, deep zoom, per-keyframe
-and per-step ease menus, ◀◆▶ keyframe navigation, label drag-scrubbing). Phase 8
+and per-step ease menus, ◀◆▶ keyframe navigation, label drag-scrubbing). A follow-up round
+added the CapCut flagship move - dragging a selected, position-armed layer on the CANVAS
+keys x/y at the playhead (e2e/canvas-keyframe.spec.ts) - selection auto-opening the
+Inspector, and the workspace rework: in code-left mode the tool panels span the full width
+under the preview + Inspector row, and the step timeline gained its larger editing scale
+(28px rows, 12px labels; the classic strip keeps its compact scale). Phase 8
 (deleting the literal patchers and the classic strip) is DEFERRED BY DESIGN until the
 remaining categories migrate off the legacy region — info cards, scoreboards, corner bug,
 starting-soon, game timers, quiz next (standard contract, the importer already handles

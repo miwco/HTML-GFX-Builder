@@ -309,27 +309,23 @@ export default function AppShell() {
                 <Divider orient="v" splitter={bottomWidth} testid="bottom-divider" />
               </>
             )}
-            <section className="pane">
+            <section className="pane" data-testid="panel-pane">
               <SidePanel />
             </section>
           </div>
         </div>
       ) : (
+        // code-left: code on the left; the right region stacks the preview row (stage +
+        // timeline | Inspector) over the FULL-WIDTH tool panels. The Inspector column is
+        // exactly as tall as the preview block, so no dead corner sits under it, and the
+        // panels get the whole width beside the code column.
         <div
           className="workspace"
           ref={workspaceRef}
           style={{
-            // code | preview+tools | Inspector — each optional region folds away cleanly.
-            gridTemplateColumns: [
-              ...(layout.codeCollapsed ? [] : [`${layout.codeRatio}fr`, '6px']),
-              `${Math.max(
-                0.15,
-                1 -
-                  (layout.codeCollapsed ? 0 : layout.codeRatio) -
-                  (layout.inspectorCollapsed ? 0 : layout.inspectorRatio),
-              )}fr`,
-              ...(layout.inspectorCollapsed ? [] : ['6px', `${layout.inspectorRatio}fr`]),
-            ].join(' '),
+            gridTemplateColumns: layout.codeCollapsed
+              ? '1fr'
+              : `${layout.codeRatio}fr 6px ${1 - layout.codeRatio}fr`,
           }}
         >
           {!layout.codeCollapsed && (
@@ -340,18 +336,37 @@ export default function AppShell() {
               <Divider orient="v" splitter={codeWidth} testid="workspace-divider" />
             </>
           )}
-          <section className="pane">
-            {preview}
-            <SidePanel />
-          </section>
-          {!layout.inspectorCollapsed && (
-            <>
-              <Divider orient="v" splitter={inspectorWidth} testid="inspector-divider" />
-              <section className="pane inspector-pane" data-testid="inspector-pane">
-                <Inspector />
-              </section>
-            </>
-          )}
+          <div className="workspace-right">
+            <div
+              className="preview-row"
+              style={{
+                gridTemplateColumns: layout.inspectorCollapsed
+                  ? '1fr'
+                  : (() => {
+                      // inspectorRatio is a fraction of the WORKSPACE width (both desktop
+                      // modes share the pref and the splitter measures the workspace);
+                      // this row spans only the right region — convert, and keep the
+                      // preview at least 40% of the row.
+                      const rightFrac = layout.codeCollapsed ? 1 : 1 - layout.codeRatio;
+                      const ins = Math.min(0.6, layout.inspectorRatio / rightFrac);
+                      return `${1 - ins}fr 6px ${ins}fr`;
+                    })(),
+              }}
+            >
+              <div className="preview-cell">{preview}</div>
+              {!layout.inspectorCollapsed && (
+                <>
+                  <Divider orient="v" splitter={inspectorWidth} testid="inspector-divider" />
+                  <section className="pane inspector-pane" data-testid="inspector-pane">
+                    <Inspector />
+                  </section>
+                </>
+              )}
+            </div>
+            <section className="pane panel-pane" data-testid="panel-pane">
+              <SidePanel />
+            </section>
+          </div>
         </div>
       )}
 

@@ -53,6 +53,9 @@ async function armPosition(page: Page) {
   await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
   // A new selection auto-opens the Inspector — wait for the pane, not the toggle.
   await expect(page.getByTestId('inspector-pane')).toBeVisible();
+  // Zoom out so the clip's midpoint sits safely inside the narrowed scroll viewport.
+  await page.getByTestId('tlv2-zoom-out').click();
+  await page.getByTestId('tlv2-zoom-out').click();
   const clip = (await page.getByTestId('tlv2-clip-0').boundingBox())!;
   await page.mouse.click(clip.x + clip.width * 0.5, clip.y + 40);
   await expect

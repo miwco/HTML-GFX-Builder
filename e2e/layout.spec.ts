@@ -60,6 +60,39 @@ test('dragging the divider resizes the columns, and the ratio persists', async (
   expect(Math.abs(codeReload - codeAfter)).toBeLessThan(30);
 });
 
+test('code-left: the tool panels span the full width under preview and Inspector — no dead corner', async ({ page }) => {
+  await createHairline(page);
+  await page.getByTestId('toggle-inspector').click();
+  await expect(page.getByTestId('inspector-pane')).toBeVisible();
+
+  const panel = (await page.getByTestId('panel-pane').boundingBox())!;
+  const insp = (await page.getByTestId('inspector-pane').boundingBox())!;
+  const stage = (await page.locator('.preview-stage').boundingBox())!;
+  const code = (await page.getByTestId('code-pane').boundingBox())!;
+  // The Inspector column ends exactly where the panel row begins — nothing dead under it.
+  expect(insp.y + insp.height).toBeLessThanOrEqual(panel.y + 2);
+  // The panel row spans the whole right region: from the code column's edge to the
+  // Inspector's right edge.
+  expect(panel.x).toBeGreaterThanOrEqual(code.x + code.width - 2);
+  expect(panel.x + panel.width).toBeGreaterThanOrEqual(insp.x + insp.width - 4);
+  // The Inspector still sits right of the preview, never over it.
+  expect(insp.x).toBeGreaterThanOrEqual(stage.x + stage.width - 2);
+});
+
+test('the step timeline reads at an editing scale — comfortable rows and labels', async ({ page }) => {
+  await createHairline(page);
+  await expect(page.getByTestId('timeline-v2')).toBeVisible();
+  // Layer rows are real editing targets, not a status readout.
+  const row = (await page.locator('.tlv2-row').first().boundingBox())!;
+  expect(row.height).toBeGreaterThanOrEqual(26);
+  // Row labels read at UI size (the classic strip keeps its compact 10.5px scale).
+  const labelSize = await page
+    .locator('.tlv2-labels .timeline-label')
+    .first()
+    .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(labelSize).toBeGreaterThanOrEqual(12);
+});
+
 test('"preview on top" mode makes the preview full-width, above code, and persists', async ({ page }) => {
   await createHairline(page);
   const workspaceW = (await page.locator('.workspace').boundingBox())!.width;

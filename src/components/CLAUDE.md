@@ -6,12 +6,18 @@ in src/blocks/CLAUDE.md.
 
 ## Shell & editor
 
-- **AppShell** - the workspace layout: code left; preview stacked over the tool tabs in the
-  middle; the Inspector column right (both desktop layout modes) - the stage's aspect-ratio
-  comes from the template resolution. Binds global Ctrl/Cmd+Z to undo() and
-  Ctrl/Cmd+Shift+Z (+ Ctrl+Y) to redo() (skipped when focus is in Monaco or a form field).
-  Desktop layout modes + splitters persist via model/layout.ts; useIsMobile/useSplitter
-  support the mobile and resizable layouts.
+- **AppShell** - the workspace layout. code-left mode: code on the left; the RIGHT REGION
+  stacks the preview row (stage + timeline | Inspector) over the FULL-WIDTH tool panels -
+  the Inspector column is exactly as tall as the preview block (its content scrolls within),
+  so no dead corner sits under it and the panels get the whole width beside the code column.
+  preview-top mode: full-width preview row (stage | Inspector) over a code | panels row.
+  The stage's aspect-ratio comes from the template resolution. `inspectorRatio` is a
+  fraction of the WORKSPACE width in both modes (code-left converts it to a row-relative
+  fraction when rendering). A NEW selection (any surface) auto-opens a collapsed Inspector;
+  an explicit ◨ collapse holds while the selection stays the same. Binds global Ctrl/Cmd+Z
+  to undo() and Ctrl/Cmd+Shift+Z (+ Ctrl+Y) to redo() (skipped when focus is in Monaco or a
+  form field). Desktop layout modes + splitters persist via model/layout.ts;
+  useIsMobile/useSplitter support the mobile and resizable layouts.
 - **CodeEditor** - Monaco + change-highlight decorations + change dots on inactive tabs the last
   apply touched + hover explanations (the teach/ module registers its tooltips here; there is no
   Learn tab).
@@ -25,6 +31,12 @@ in src/blocks/CLAUDE.md.
   corner handle -> live --scale preview, diagonal-aware, clamped 0.25-4. Every gesture commits as
   ONE undoable applyTemplate and jumps the editor to the changed tab, highlighted; the root is
   detected via model/structure.ts detectPrefix.
+  CANVAS POSITION KEYFRAMING (Timeline v2): on a data-block template, dragging the SELECTED
+  non-root layer whose Position X AND Y are both armed writes/updates its x/y keyframes at the
+  parked playhead - live GSAP x/y preview while dragging, ONE undoable apply on release (the
+  same animEdit + spliceAnimData path the Inspector edits through, re-parked after the
+  rebuild), Escape springs it back. Unarmed layers, the root, and legacy templates keep the
+  classic gestures exactly (root drag = zone patch). Pinned by e2e/canvas-keyframe.spec.ts.
   The SELECTION model: a click selects the innermost TemplatePart under the point
   (registry-driven closest-ancestor hit test, rect-containment fallback); clicking the selected
   part again climbs to its container; hover previews the name; Escape or empty canvas deselects;
@@ -70,12 +82,15 @@ in src/blocks/CLAUDE.md.
   data-block template the Properties tab EDITS: each property carries a ◇/◆ diamond - arm it
   to stamp a keyframe at the store playhead, edit an armed value to auto-key there, click a
   diamond sitting ON a keyframe to remove it; ‹ › navigate the layer's keyframes, labels
-  drag-scrub the value, and blur is the one non-transform (its keyframes live on `filter` as
-  'blur(Npx)'). The Animations tab names which steps move the layer and holds the preset
+  drag-scrub the value, blur is the one non-transform (its keyframes live on `filter` as
+  'blur(Npx)'), and arming BOTH Position X and Y also unlocks the canvas position-keyframe
+  drag (see CanvasInteraction). The Animations tab names which steps move the layer and holds the preset
   picker (preset + In/Out/Both + Apply - blocks/presetApply.ts). Legacy templates get a
   read-only shell (the timeline's convert chip arms editing). Its column lives in both
   desktop layout modes with a splitter + the topbar ◨ Inspector toggle (layout prefs
-  inspectorRatio/inspectorCollapsed); it defaults open only on wide screens (>= 1500 px).
+  inspectorRatio/inspectorCollapsed); it defaults open only on wide screens (>= 1500 px),
+  and any NEW selection auto-opens it (an explicit collapse holds while the selection is
+  unchanged - see AppShell).
 - **TimelineView** - the classic collapsible strip under the preview; since Timeline v2 it
   serves LEGACY-REGION categories only (data-block templates get StepTimeline via
   TimelineDock, and lower thirds now create as data blocks). MOMENT CARDS

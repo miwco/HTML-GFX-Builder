@@ -30,10 +30,12 @@ import type { SpxWindow } from './PlayoutSimulator';
 // phases. Opt-in via the dock toggle below; templates without readable animation data
 // keep the classic strip.
 
-const RULER_H = 18;
-const CLIPS_H = 24;
-const ROW_H = 20;
-const HOLD_PX = 26; // the un-clocked hold break (manual/none) — a fixed visual pause
+// The editing scale: rows and type sized for comfortable keyframe work (the timeline is
+// the primary motion surface, not a status readout — targets earn real estate).
+const RULER_H = 20;
+const CLIPS_H = 30;
+const ROW_H = 28;
+const HOLD_PX = 30; // the un-clocked hold break (manual/none) — a fixed visual pause
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement>;

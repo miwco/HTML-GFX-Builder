@@ -102,6 +102,11 @@ test('v2 keyframes: convert, arm at the playhead, auto-key, interpolate — the 
   // Open the Inspector, select the Name line, park the playhead early in Enter.
   await page.getByTestId('toggle-inspector').click();
   await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  // Zoom out so the WHOLE Enter clip fits the narrowed scroll viewport (Inspector open,
+  // editing-scale labels) — later clicks at 70% must land on the ribbon, not past its edge.
+  await page.getByTestId('tlv2-zoom-out').click();
+  await page.getByTestId('tlv2-zoom-out').click();
+  await page.getByTestId('tlv2-zoom-out').click();
   const clip = (await page.getByTestId('tlv2-clip-0').boundingBox())!;
   await page.mouse.click(clip.x + 8, clip.y + 40);
 

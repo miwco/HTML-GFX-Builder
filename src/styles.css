@@ -216,6 +216,22 @@ body.resizing-cols { user-select: none; cursor: col-resize; }
 .workspace-divider-h.dragging { background: var(--accent); }
 body.resizing-rows { user-select: none; cursor: row-resize; }
 
+/* code-left: the right region stacks the preview row (stage + timeline | Inspector) over the
+   FULL-WIDTH tool panels. The row's height comes from the preview block, so the Inspector
+   column ends exactly where the panels begin — no dead corner under it. */
+.workspace-right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.workspace-right .preview-row { flex: 0 0 auto; display: grid; min-width: 0; }
+.workspace-right .preview-cell { min-width: 0; display: flex; flex-direction: column; }
+.workspace-right .preview-row > .preview-cell:not(:only-child) { border-right: 1px solid var(--border); }
+.workspace-right .panel-pane { flex: 1; min-height: 0; border-right: none; border-top: 1px solid var(--border); }
+/* The full-width panel row keeps a readable measure — forms don't stretch to a 1600px
+   line just because the row spans the workspace. */
+.workspace-right .panel-body > * { max-width: 1080px; }
+/* The Inspector matches the preview block's height exactly (the row is sized by the
+   preview alone); its own content scrolls within that height. */
+.workspace-right .inspector-pane { position: relative; }
+.workspace-right .inspector-pane > .inspector { position: absolute; inset: 0; overflow-y: auto; }
+
 /* "Preview on top": a full-width preview across the top (row 1), a horizontal divider (row 2), and a
    code | panels row below (row 3, its own column grid). The preview FILLS its region (canvas centered,
    letterboxed) rather than the tight 52vh cap the code-left mode keeps. Rows come from an inline
@@ -1543,7 +1559,11 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .timeline-dock-toggle:hover { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
 .tlv2-body { display: flex; align-items: stretch; gap: 8px; margin-top: 2px; }
-.tlv2-labels { display: flex; flex-direction: column; flex-shrink: 0; width: 102px; }
+/* The v2 editing scale: wider labels + larger type than the classic strip — this is the
+   primary motion surface and its targets earn real estate (the classic strip keeps its
+   compact readout scale). */
+.tlv2-labels { display: flex; flex-direction: column; flex-shrink: 0; width: 150px; }
+.tlv2 .timeline-label { width: 150px; font-size: 12px; }
 .tlv2-scroll { flex: 1; min-width: 0; overflow-x: auto; }
 .tlv2-canvas { position: relative; cursor: crosshair; }
 .tlv2-ruler { position: relative; border-bottom: 1px solid rgba(232, 237, 242, 0.1); }
@@ -1553,13 +1573,13 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   border-left: 1px solid rgba(232, 237, 242, 0.14);
   padding-left: 3px;
   font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 8.5px;
+  font-size: 10px;
   color: var(--text-dim);
-  height: 7px;
+  height: 8px;
   line-height: 0.4;
   white-space: nowrap;
 }
-.tlv2-tick.whole { height: 11px; }
+.tlv2-tick.whole { height: 13px; }
 .tlv2-clips { position: absolute; left: 0; right: 0; }
 .tlv2-clip {
   position: absolute;
@@ -1569,24 +1589,24 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   border-radius: 4px;
   background: rgba(246, 166, 35, 0.08);
   font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text);
-  padding: 1px 6px;
+  padding: 3px 8px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .tlv2-clip.active { border-color: var(--amber); background: rgba(246, 166, 35, 0.16); }
 .tlv2-cue { color: var(--amber); }
-.tlv2-clip-dur { color: var(--text-dim); font-size: 9px; }
+.tlv2-clip-dur { color: var(--text-dim); font-size: 10px; }
 .tlv2-hold {
   position: absolute;
   top: 3px;
   bottom: 3px;
   text-align: center;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text-dim);
-  line-height: 18px;
+  line-height: 24px;
   background: repeating-linear-gradient(-45deg, rgba(232, 237, 242, 0.06) 0 4px, transparent 4px 9px);
   border-radius: 3px;
 }
@@ -1597,7 +1617,7 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   top: 50%;
   transform: translate(-50%, -50%);
   color: var(--amber);
-  font-size: 9px;
+  font-size: 12px;
   text-shadow: 0 0 4px rgba(246, 166, 35, 0.5);
   pointer-events: none;
 }
@@ -1609,7 +1629,7 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .timeline-dock-chips { position: absolute; top: -1px; right: 14px; display: inline-flex; gap: 6px; }
 .timeline-dock-chips .timeline-dock-toggle { position: static; }
 .timeline-dock-toggle.convert { color: var(--amber); border-color: rgba(246, 166, 35, 0.45); }
-.tlv2-reveal { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 9px; pointer-events: none; }
+.tlv2-reveal { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 11px; pointer-events: none; }
 .tlv2-playhead {
   position: absolute;
   top: 0;
@@ -1623,9 +1643,9 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .tlv2-playhead-cap {
   position: absolute;
   top: 0;
-  width: 11px;
-  height: 12px;
-  transform: translateX(-6px);
+  width: 13px;
+  height: 14px;
+  transform: translateX(-7px);
   background: rgba(232, 237, 242, 0.9);
   clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%);
   cursor: ew-resize;
@@ -1633,7 +1653,7 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .tlv2-playhead-cap:hover { background: var(--amber); }
 .tlv2-side { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; align-items: center; }
-.tlv2-time { font-size: 10px; color: var(--text-dim); }
+.tlv2-time { font-size: 11px; color: var(--text-dim); }
 /* Phase 6 — steps as clips: the duration handle, the context menu, the hold popover. */
 .tlv2-clip-handle {
   position: absolute;
@@ -1650,10 +1670,10 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .tlv2-hold.editable:hover { color: var(--amber); }
 .tlv2-add-step { font-size: 10px; letter-spacing: 0.03em; color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
 .tlv2-speed {
-  width: 54px;
-  height: 18px;
+  width: 62px;
+  height: 22px;
   font-family: "JetBrains Mono", Consolas, monospace;
-  font-size: 9.5px;
+  font-size: 10.5px;
   padding: 0 2px;
   background: var(--bg);
   border: 1px solid var(--border);

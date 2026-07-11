@@ -150,8 +150,9 @@ src/
                bench at publish AND import), useIsModerator.ts
   showchat/    audience send-in: SendIn page (?chat=<slug>), ModerationPanel, chatGraphicBlock
                (polling graphic block), chatData.ts
-  components/ * the React app: AppShell (code | preview | Inspector), CodeEditor (Monaco),
-               canvas direct manipulation + selection, PlayoutSimulator, the timeline dock
+  components/ * the React app: AppShell (code | preview+Inspector row over full-width
+               panels; a new selection auto-opens the Inspector), CodeEditor (Monaco),
+               canvas direct manipulation + selection + position keyframing, PlayoutSimulator, the timeline dock
                (StepTimeline for data-block templates, the classic TimelineView for legacy
                ones), Inspector (properties + keyframes + Animations), the five-tab SidePanel
                (Data / Control / Style / AI / Export - Motion lives on the timeline), wizard/,
