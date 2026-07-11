@@ -115,6 +115,23 @@ export default function AppShell() {
       return { ...l, inspectorCollapsed };
     });
 
+  // Selecting an element ANYWHERE (canvas click, timeline row label, diamond click) is a
+  // request to inspect it — a NEW selection un-collapses the Inspector. An explicit ◨
+  // collapse is respected for as long as the selection stays the same; the next different
+  // selection opens it again. Deselecting never opens or closes anything.
+  const selectedPart = useTemplateStore((s) => s.selectedPart);
+  const prevSelectedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevSelectedRef.current;
+    prevSelectedRef.current = selectedPart;
+    if (isMobile || !selectedPart || selectedPart === prev) return;
+    setLayout((l) => {
+      if (!l.inspectorCollapsed) return l;
+      saveLayout({ inspectorCollapsed: false });
+      return { ...l, inspectorCollapsed: false };
+    });
+  }, [selectedPart, isMobile]);
+
   // Drag dividers. Column splits use the tight [0.2,0.7] bounds; the preview HEIGHT split allows a
   // wider range so the preview can dominate. Persist on release only (not on every move).
   const codeWidth = useSplitter(

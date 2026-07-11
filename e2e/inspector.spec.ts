@@ -78,6 +78,25 @@ test('inspector: canvas clicks drive it too (select it to affect it)', async ({ 
   await expect(page.getByTestId('inspector-part-label')).toHaveText('Name');
 });
 
+test('inspector: a new selection opens it; an explicit collapse holds until the selection changes', async ({ page }) => {
+  await createHairline(page);
+  // At this viewport (< 1500 px) the Inspector starts collapsed.
+  await expect(page.getByTestId('inspector-pane')).toHaveCount(0);
+  // Selecting a layer (timeline row label here — canvas clicks and diamond clicks run
+  // through the same store selection) un-collapses it.
+  await page.locator('.timeline-label[data-part="#f0"]').click();
+  await expect(page.getByTestId('inspector-pane')).toBeVisible();
+  await expect(page.getByTestId('inspector-part-label')).toHaveText('Name');
+  // An explicit ◨ collapse is respected while the selection stays the same.
+  await page.getByTestId('toggle-inspector').click();
+  await expect(page.getByTestId('inspector-pane')).toHaveCount(0);
+  await page.waitForTimeout(250);
+  await expect(page.getByTestId('inspector-pane')).toHaveCount(0);
+  // A DIFFERENT selection is a new request to inspect — it opens again.
+  await page.locator('.timeline-label[data-part="#f1"]').click();
+  await expect(page.getByTestId('inspector-pane')).toBeVisible();
+});
+
 test('redo: Ctrl+Shift+Z restores an undone edit; a new edit clears the redo branch', async ({ page }) => {
   await createHairline(page);
   // The speed knob writes the data block's speed field (one undoable apply per pick).

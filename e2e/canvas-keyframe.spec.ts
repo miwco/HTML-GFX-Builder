@@ -18,14 +18,6 @@ async function createHairline(page: Page) {
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
 }
 
-/** Open the Inspector if it isn't already (a fresh selection may auto-open it). */
-async function openInspector(page: Page) {
-  if ((await page.getByTestId('inspector-pane').count()) === 0) {
-    await page.getByTestId('toggle-inspector').click();
-  }
-  await expect(page.getByTestId('inspector-pane')).toBeVisible();
-}
-
 /** Parse the live template's animation data in the page. */
 async function animData(page: Page) {
   return page.evaluate(async () => {
@@ -59,7 +51,8 @@ async function centerOf(page: Page, selector: string) {
 /** Select the Name line, park the playhead mid-Enter, and arm Position X + Y. */
 async function armPosition(page: Page) {
   await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
-  await openInspector(page);
+  // A new selection auto-opens the Inspector — wait for the pane, not the toggle.
+  await expect(page.getByTestId('inspector-pane')).toBeVisible();
   const clip = (await page.getByTestId('tlv2-clip-0').boundingBox())!;
   await page.mouse.click(clip.x + clip.width * 0.5, clip.y + 40);
   await expect

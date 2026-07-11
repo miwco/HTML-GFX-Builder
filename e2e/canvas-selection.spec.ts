@@ -96,16 +96,19 @@ test('hovering a selectable element previews its name; leaving clears it', async
 test('clicking empty canvas or pressing Escape deselects', async ({ page }) => {
   await createHairline(page);
   await waitSettled(page);
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
 
   const p = await partPoint(page, '#f0');
   await page.mouse.click(p.x, p.y);
   await expect(page.getByTestId('canvas-selection')).toBeVisible();
 
-  await page.mouse.click(layer.x + layer.width / 2, layer.y + layer.height * 0.1);
+  // The first selection auto-opened the Inspector and narrowed the stage — read the
+  // canvas fresh, and probe empty canvas at 25% width (the stage toolbar floats top-right).
+  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
+  await page.mouse.click(layer.x + layer.width * 0.25, layer.y + layer.height * 0.1);
   await expect(page.getByTestId('canvas-selection')).toBeHidden();
 
-  await page.mouse.click(p.x, p.y);
+  const p2 = await partPoint(page, '#f0');
+  await page.mouse.click(p2.x, p2.y);
   await expect(page.getByTestId('canvas-selection')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('canvas-selection')).toBeHidden();
@@ -121,14 +124,18 @@ test('clicking the selected part again climbs to its container; the whole graphi
   await expect(page.getByTestId('selection-chip')).toContainText('Panel');
 
   await page.waitForTimeout(600); // spaced clicks — this is selection climbing, not a dblclick
-  await page.mouse.click(p.x, p.y);
+  // The first selection auto-opened the Inspector and narrowed the stage — recompute.
+  const p2 = await partPoint(page, '.lower-third-box', 12, 0.3);
+  await page.mouse.click(p2.x, p2.y);
   const chip = page.getByTestId('selection-chip');
   await expect(chip).toContainText('Whole graphic');
   await expect(chip).toContainText('Corner handle resizes');
 
   // The root's one existing action stays reachable: the handle holds even off-hover.
+  // Empty canvas is probed at 25% width — the stage toolbar floats top-RIGHT, and the
+  // auto-opened Inspector narrows the stage enough for it to reach the horizontal center.
   const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  await page.mouse.move(layer.x + layer.width / 2, layer.y + layer.height * 0.1);
+  await page.mouse.move(layer.x + layer.width * 0.25, layer.y + layer.height * 0.1);
   await expect(page.getByTestId('scale-handle')).toBeVisible();
   await expect(page.getByTestId('canvas-hover')).toBeHidden(); // hover cleared, selection held
 
