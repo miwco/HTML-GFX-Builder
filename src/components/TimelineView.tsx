@@ -38,7 +38,7 @@ import { useIsMobile } from './useIsMobile';
 import type { SpxWindow } from './PlayoutSimulator';
 
 interface Props {
-  iframeRef: RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
 }
 
 /** One playout segment on the strip: the entrance, a Continue step, or the exit. */

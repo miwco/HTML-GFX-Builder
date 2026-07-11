@@ -38,7 +38,7 @@ const ROW_H = 28;
 const HOLD_PX = 30; // the un-clocked hold break (manual/none) — a fixed visual pause
 
 interface Props {
-  iframeRef: RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
 }
 
 /** The dock: the classic strip and the v2 timeline share the slot under the preview.

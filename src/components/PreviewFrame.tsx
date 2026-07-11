@@ -5,7 +5,7 @@ import CanvasGuides from './CanvasGuides';
 import CanvasInteraction from './CanvasInteraction';
 
 interface Props {
-  iframeRef: RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
 }
 
 const RELOAD_DEBOUNCE_MS = 350;

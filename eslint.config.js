@@ -31,10 +31,10 @@ export default tseslint.config(
       // their parameters for readability even when unused; keep the underscore escape hatch.
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       // The React-Compiler-era rules flag two deliberate house patterns: state mirrored into a
-      // ref during render (the drag/phase machinery in TimelineView/PlayoutSimulator reads it
-      // from window-level event handlers) and reset-state-on-open effects (dialogs/wizard).
-      // Revisit both when the React 19 / Compiler upgrade happens; the classic rules-of-hooks
-      // and exhaustive-deps stay on.
+      // ref during render (the drag/phase machinery in the timeline components reads it from
+      // window-level event handlers) and reset-state-on-open effects (dialogs/wizard). Both
+      // remain legal on React 19; re-enable these rules only as part of a dedicated refactor
+      // (or React Compiler adoption). The classic rules-of-hooks and exhaustive-deps stay on.
       'react-hooks/refs': 'off',
       'react-hooks/set-state-in-effect': 'off',
     },

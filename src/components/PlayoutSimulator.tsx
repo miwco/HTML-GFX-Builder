@@ -3,7 +3,7 @@ import { useTemplateStore } from '../store/templateStore';
 import { detectPrefix } from '../model/structure';
 
 interface Props {
-  iframeRef: RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
 }
 
 type GsapTimeline = {

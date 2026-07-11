@@ -15,7 +15,7 @@ import { phaseIdOf } from './StepTimeline';
 import type { SpxWindow } from './PlayoutSimulator';
 
 interface Props {
-  iframeRef: RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
   /** On-screen size of the canvas (template resolution × current scale), in CSS pixels. */
   width: number;
   height: number;
