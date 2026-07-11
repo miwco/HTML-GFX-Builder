@@ -13,8 +13,12 @@ in src/blocks/CLAUDE.md.
   preview-top mode: full-width preview row (stage | Inspector) over a code | panels row.
   The stage's aspect-ratio comes from the template resolution. `inspectorRatio` is a
   fraction of the WORKSPACE width in both modes (code-left converts it to a row-relative
-  fraction when rendering). A NEW selection (any surface) auto-opens a collapsed Inspector;
-  an explicit ◨ collapse holds while the selection stays the same. Binds global Ctrl/Cmd+Z
+  fraction when rendering). A NEW selection (any surface) auto-opens a collapsed Inspector -
+  DEFERRED half a second past the double-click window: any new pointer press cancels the
+  pending open and a live canvas gesture (store canvasGestureActive) skips it at fire time,
+  so the workspace never resizes between the two clicks of a text double-click or under a
+  drag (e2e/inline-edit.spec.ts pins this). An explicit ◨ collapse holds while the selection
+  stays the same. Binds global Ctrl/Cmd+Z
   to undo() and Ctrl/Cmd+Shift+Z (+ Ctrl+Y) to redo() (skipped when focus is in Monaco or a
   form field). Desktop layout modes + splitters persist via model/layout.ts;
   useIsMobile/useSplitter support the mobile and resizable layouts.

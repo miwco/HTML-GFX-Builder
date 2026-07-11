@@ -28,5 +28,9 @@ templateStore.ts (zustand) holds the template plus editor UI state.
 - **playhead / setPlayhead** - the step timeline's parked playhead `{ step, t }` (step index +
   local time in effective seconds). UI state only - no history; the Inspector stamps
   keyframes at it.
+- **canvasGestureActive / setCanvasGestureActive** - true while a canvas gesture is in flight
+  (inline edit, root/layer/scale drag; published by CanvasInteraction). AppShell's deferred
+  Inspector auto-open checks it at fire time so the workspace never resizes under a gesture.
+  UI state only - no history.
 - **activePanel** (`SidePanel` type) - the side panel's tab: FIVE ids
   (data/control/style/ai/export). Motion is not a tab - it lives on the timeline.

@@ -103,6 +103,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const requestReplay = useTemplateStore((s) => s.requestReplay);
   const playhead = useTemplateStore((s) => s.playhead);
   const sendScrub = useTemplateStore((s) => s.sendScrub);
+  const setCanvasGestureActive = useTemplateStore((s) => s.setCanvasGestureActive);
 
   const [drag, setDrag] = useState<DragState | null>(null);
   const [layerDrag, setLayerDrag] = useState<LayerDrag | null>(null);
@@ -122,6 +123,13 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const editingRef = useRef<EditState | null>(null);
   editingRef.current = editing;
   const editInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+
+  // Publish "a gesture is live" to the store: the Inspector's deferred auto-open (AppShell)
+  // must never resize the workspace while the pointer is mid-gesture or the inline editor is
+  // open — the canvas (and the edit overlay anchored to it) would shift under the user.
+  useEffect(() => {
+    setCanvasGestureActive(Boolean(drag || layerDrag || scaleDrag || editing));
+  }, [drag, layerDrag, scaleDrag, editing, setCanvasGestureActive]);
 
   // ── Selection model (editor UI state only — never written into the template).
   // The selector lives in the STORE so the timeline strip highlights the same element

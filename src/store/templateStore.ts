@@ -98,6 +98,10 @@ interface TemplateState {
   /** The step timeline's parked playhead (step index + local time in effective seconds).
    *  The Inspector stamps keyframes here. UI state only — no history, never in code. */
   playhead: { step: number; t: number } | null;
+  /** True while a canvas gesture is in flight (inline edit, root/layer/scale drag). The
+   *  Inspector's deferred auto-open skips while this is set — a workspace resize would move
+   *  the canvas under the pointer mid-gesture. UI state only — no history. */
+  canvasGestureActive: boolean;
 
   setActiveTab: (tab: EditorTab) => void;
   setPreviewBg: (bg: PreviewBg) => void;
@@ -126,6 +130,8 @@ interface TemplateState {
   setSelectedPart: (selector: string | null) => void;
   /** Park the step timeline's playhead (see playhead). */
   setPlayhead: (playhead: { step: number; t: number } | null) => void;
+  /** Mark a canvas gesture as started/ended (see canvasGestureActive). */
+  setCanvasGestureActive: (active: boolean) => void;
   resetToDefault: () => void;
 
   setSampleValue: (field: string, value: string) => void;
@@ -186,6 +192,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   scrubCommand: null,
   selectedPart: null,
   playhead: null,
+  canvasGestureActive: false,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
@@ -272,6 +279,8 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   setSelectedPart: (selectedPart) => set({ selectedPart }),
 
   setPlayhead: (playhead) => set({ playhead }),
+
+  setCanvasGestureActive: (canvasGestureActive) => set({ canvasGestureActive }),
 
   resetToDefault: () =>
     set(() => {

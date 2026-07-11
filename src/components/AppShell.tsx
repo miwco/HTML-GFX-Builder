@@ -119,17 +119,36 @@ export default function AppShell() {
   // request to inspect it — a NEW selection un-collapses the Inspector. An explicit ◨
   // collapse is respected for as long as the selection stays the same; the next different
   // selection opens it again. Deselecting never opens or closes anything.
+  //
+  // The open is DEFERRED past the double-click window and stands down for gestures: opening
+  // the Inspector resizes the workspace, and doing that mid-interaction moves the canvas
+  // under the pointer — most visibly on a text double-click, where the first click selects
+  // and an instant open would shift the element before the second click lands. So the open
+  // waits half a second, any new pointer press cancels it (the user is still gesturing),
+  // and a gesture that is live when the timer fires (inline edit, canvas drag) skips it.
+  // The layout only ever moves when the user's hands are still; the next new selection
+  // offers the Inspector again.
   const selectedPart = useTemplateStore((s) => s.selectedPart);
   const prevSelectedRef = useRef<string | null>(null);
   useEffect(() => {
     const prev = prevSelectedRef.current;
     prevSelectedRef.current = selectedPart;
     if (isMobile || !selectedPart || selectedPart === prev) return;
-    setLayout((l) => {
-      if (!l.inspectorCollapsed) return l;
-      saveLayout({ inspectorCollapsed: false });
-      return { ...l, inspectorCollapsed: false };
-    });
+    const cancel = () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointerdown', cancel, true);
+    };
+    const timer = setTimeout(() => {
+      cancel();
+      if (useTemplateStore.getState().canvasGestureActive) return;
+      setLayout((l) => {
+        if (!l.inspectorCollapsed) return l;
+        saveLayout({ inspectorCollapsed: false });
+        return { ...l, inspectorCollapsed: false };
+      });
+    }, 500); // the OS double-click window — a quiet half-second means the gesture is over
+    window.addEventListener('pointerdown', cancel, true);
+    return cancel;
   }, [selectedPart, isMobile]);
 
   // Drag dividers. Column splits use the tight [0.2,0.7] bounds; the preview HEIGHT split allows a
