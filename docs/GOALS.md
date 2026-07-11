@@ -679,6 +679,18 @@ read-only scheduled cloud agent. Not yet built — see the plan doc for the veri
       driven OGraf contract test covers the shared module. Loopic's legacy `templates.json`
       ingest stays unbuilt (schema not public — see EXPORT_TARGETS_RESEARCH.md). Still to
       do: confirm against a real LiveOS install, like H2R was.
+- [x] **Video & image rendering (2026-07-12)** — export any graphic as finished MEDIA from the
+      Export tab: MP4 / transparent WebM / transparent PNG still / PNG-sequence ZIP / ProRes
+      4444 MOV, rendered by Remotion driving the graphic's OWN runtime (no per-graphic
+      compositions, no rewritten animations). A virtual clock makes every frame a pure
+      function of the manifest (countdowns/marquees/count-ups render exactly as live;
+      repeat renders are byte-identical); the user picks the TOTAL duration, measured
+      animation time is preserved, and the remainder becomes hold. Local executor for
+      dev/self-host; hosted path = Vercel Sandbox (@remotion/vercel) + Blob with per-job
+      secret auth, tier quotas (ProRes/sequence sign-in-gated), the render_jobs ledger
+      (migration 0007), and a cleanup cron. Contract: `src/render/CLAUDE.md` +
+      `docs/RENDER.md`. Still to do: live-verify the sandbox path on a real deployment
+      (needs the Blob store + env vars), like H2R was.
 - [ ] Data-driven/live content architecture (ticker/scoreboard controlled from a backend) — later
 
 ### Quality bar (always-on)

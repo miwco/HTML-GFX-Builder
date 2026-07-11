@@ -172,16 +172,30 @@ export const RENDER_RUNTIME_JS = `// ---- NoaCG render runtime: virtual clock + 
     return s >= CONTINUOUS_S ? { ms: 0, continuous: true } : { ms: Math.round(s * 1000), continuous: false };
   }
 
-  /** Wipe every GSAP-set inline prop and rewrite truthful field values — the editor's
-   *  proven reset recipe, so measurement probes leave no trace on frame 0. */
-  function resetDom(dataStr) {
-    try {
-      window.gsap.killTweensOf('*');
-      if (document.body) {
-        var all = [document.body].concat(Array.prototype.slice.call(document.body.querySelectorAll('*')));
-        window.gsap.set(all, { clearProps: 'all' });
-      }
-    } catch (e) {}
+  /** Snapshot every element's inline style attribute — the pre-probe truth. Restoring
+   *  the attribute verbatim is semantics-free and strictly correct, unlike GSAP's
+   *  clearProps (which can wipe AUTHORED inline styles — e.g. the display:none data
+   *  holders — once a probe tween has touched the element). */
+  function snapshotInlineStyles() {
+    var all = document.querySelectorAll('*');
+    var snap = [];
+    for (var i = 0; i < all.length; i++) snap.push([all[i], all[i].getAttribute('style')]);
+    return snap;
+  }
+  function restoreInlineStyles(snap) {
+    for (var i = 0; i < snap.length; i++) {
+      var el = snap[i][0];
+      var s = snap[i][1];
+      if (s === null) el.removeAttribute('style');
+      else el.setAttribute('style', s);
+    }
+  }
+
+  /** Return the document to its exact pre-probe inline-style state and rewrite truthful
+   *  field values, so measurement leaves no trace on frame 0. */
+  function resetDom(dataStr, styleSnap) {
+    try { window.gsap.killTweensOf('*'); } catch (e) {}
+    try { restoreInlineStyles(styleSnap); } catch (e) {}
     try { if (typeof window.update === 'function') window.update(dataStr); } catch (e) { report('update: ' + (e && e.message)); }
   }
 
@@ -194,6 +208,7 @@ export const RENDER_RUNTIME_JS = `// ---- NoaCG render runtime: virtual clock + 
               runtimeVersion: ${RENDER_RUNTIME_VERSION} };
     try { if (typeof window.update === 'function') window.update(dataStr); } catch (e) { report('update: ' + (e && e.message)); }
     if (!m.hasBuilders) return m;
+    var styleSnap = snapshotInlineStyles();
     var probes = [];
     try {
       var tlIn = window.buildInTimeline();
@@ -216,7 +231,7 @@ export const RENDER_RUNTIME_JS = `// ---- NoaCG render runtime: virtual clock + 
       }
     } catch (e) { report('measure: ' + (e && e.message)); }
     for (var i = 0; i < probes.length; i++) { try { probes[i].kill(); } catch (e) {} }
-    resetDom(dataStr);
+    resetDom(dataStr, styleSnap);
     return m;
   }
 

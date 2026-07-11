@@ -144,7 +144,12 @@ or TimelineView via TimelineDock) plus the Inspector.
 - **StylePanel** - reads/writes the :root style contract (src/templates/CLAUDE.md): colors,
   font swap, zone re-anchoring, post-creation font import.
 - **AIPromptPanel**; **ExportPanel** (validation inline; remembers the last-picked target via
-  model/prefs.ts).
+  model/prefs.ts). Below the zip targets it mounts **render/RenderPanel** — the Video & image
+  section (MP4/WebM/PNG/sequence/ProRes via the render API) — ONLY when `isRenderConfigured()`
+  (VITE_RENDER_API): unconfigured builds grow zero render UI, and ProRes/sequence gate on
+  `needsSignIn` like AI does. Its measured In/Hold/Out breakdown re-runs when the template or
+  sample data changes; job state lives in src/render/renderJobStore.ts (sessionStorage resume).
+  Contracts in src/render/CLAUDE.md; specs in e2e/render.spec.ts (stubbed API).
 - **PacketManager** (📦 topbar modal), **CommunityGallery** (🌐), **ModerationQueue** (🛡),
   **SyncStatus**, **Homebase** (signed-in dashboard: all saved graphics across packets, one
   store with 📦 Packets), **SettingsDialog** (AI key/model + workflow defaults from

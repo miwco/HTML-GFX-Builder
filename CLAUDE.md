@@ -3,9 +3,9 @@
 Guidance for AI agents working in this repo. Keep it accurate - update it when architecture or
 conventions change. This root file holds the product identity, the non-negotiables, and the
 working practices; **deep per-area contracts live in nested CLAUDE.md files** in `src/model`,
-`src/templates`, `src/store`, `src/blocks`, `src/export`, `src/landing`, and `src/components` -
-they load automatically when you work on files there, and you should read the relevant one
-before editing that area from outside it.
+`src/templates`, `src/store`, `src/blocks`, `src/export`, `src/render`, `src/landing`, and
+`src/components` - they load automatically when you work on files there, and you should read
+the relevant one before editing that area from outside it.
 
 ## What this is
 
@@ -134,6 +134,13 @@ src/
                polling block appended to template.js)
   export/ *    the export registry - 6 targets (SPX starter, HTML overlay for OBS/vMix, H2R,
                CasparCG, OGraf, LiveOS) + whole-packet export + packaging conventions
+  render/ *    video/image rendering contracts: the versioned RenderManifest, the
+               duration/HOLD schedule model, tier limits (ALL configurable numbers live
+               there), the virtual-clock runtime (__noacgRender - every frame a pure
+               function of the manifest), the render-document composer, and the UI-side
+               client + job store. The service is api/render/*; the renderer is
+               render-worker/. Feature-gated by VITE_RENDER_API; architecture + ops in
+               docs/RENDER.md
   landing/ *   the landing page's GSAP motion system. POLICY: the landing never fakes product
                UI - on-air output and real screenshots only; roadmap features are tagged
                planned/coming, never shown as shipped
@@ -159,9 +166,16 @@ src/
                auth/
 public/fonts/  the 7 bundled woff2 fonts (served at /fonts, copied into exports;
                jetbrains-mono.woff2 doubles as the app UI's mono face)
-scripts/       dev-port.mjs (per-checkout port), l3-sweep.mjs (catalog sweep - see Verifying)
+scripts/       dev-port.mjs (per-checkout port), l3-sweep.mjs (catalog sweep - see Verifying),
+               renderDevPlugin.mjs (mounts api/render on the dev server), render-smoke.mjs +
+               make-render-manifest.mjs (render verification - see docs/RENDER.md)
 docs/          GOALS.md (north star + milestones), DESIGN_LANGUAGE.md (taste rulebook),
-               SPX_TEMPLATE_FORMAT.md (SPX contract)
+               SPX_TEMPLATE_FORMAT.md (SPX contract), RENDER.md (video/image rendering)
+api/           the render service's Vercel functions (start/status/cancel/complete/cleanup +
+               the local-output file route) with the JobStore + RenderExecutor seams in
+               api/_lib; typechecked by tsconfig.api.json inside the build gate
+render-worker/ the Remotion renderer - its own exact-pinned package so the dependency (and
+               its non-OSI license) never enters the AGPL app bundle
 ```
 
 ### Auth posture (the open editor)

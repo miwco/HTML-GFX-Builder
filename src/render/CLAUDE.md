@@ -33,7 +33,11 @@ measure, buildManifest, config) may use anything the app uses.
   against virtual time; GSAP is driven by gsap.updateRoot(t) after GSAP_DETACH_JS removes
   its ticker hook. Injection order (composeRenderDocument owns it): runtime FIRST, then
   GSAP, then the detach snippet, then styles, then template JS. Seeks are monotonic - the
-  host hard-resets (fresh iframe) for backward seeks.
+  host hard-resets (fresh iframe) for backward seeks. Measurement reset is
+  SNAPSHOT/RESTORE of every element's inline style attribute, NOT gsap clearProps -
+  clearProps wipes AUTHORED inline styles once a probe touched the element, un-hiding
+  the display:none data holders (the quiz's correct-answer div aired as a stray "B"
+  until this bit).
 - **composeRenderDocument.ts** - the render document: preview-style inlining + bundled
   fonts fetched from /fonts as data URLs + polling blocks (LIVE DATA / SHOW CHAT / REMOTE
   CONTROL) stripped. color-scheme must MATCH the Remotion host page (default light) or
@@ -45,3 +49,17 @@ measure, buildManifest, config) may use anything the app uses.
   epochMs; snapshots data).
 - **config.ts** - isRenderConfigured() (VITE_RENDER_API) - the ONE feature-detection
   point; unset = zero render UI (offline posture, same as backend/config.ts).
+- **types.ts** - job-state/DTO wire contract between the UI and api/render (PURE, like
+  manifest/schedule/limits).
+- **client.ts** - startRender/fetchStatus/cancelRender/downloadHref: the backend-agnostic
+  seam (attaches the Supabase JWT; the server resolves tiers). The UI never knows WHAT
+  renders - local executor or Vercel Sandbox.
+- **renderJobStore.ts** - the active job's zustand slice: serialized polling, terminal
+  stop, sessionStorage resume across reloads. One job per session.
+
+The service lives in `api/render/*` (fetch-style handlers, also mounted on the dev server
+by scripts/renderDevPlugin.mjs) with seams in `api/_lib` (JobStore: memory | Supabase
+render_jobs; RenderExecutor: local child process | Vercel Sandbox via @remotion/vercel).
+The renderer is `render-worker/` (own pinned package - the Remotion dependency never
+enters the app bundle). Full architecture + ops: docs/RENDER.md. Verify render changes
+with `node scripts/render-smoke.mjs` (dev server running) - the real local full loop.

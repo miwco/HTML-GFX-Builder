@@ -13,6 +13,7 @@ export default tseslint.config(
       '**/node_modules/',
       '.claude/',
       '.render-dev/',
+      'render-worker/bundle/', // webpack output (render-worker/bundle.mjs), not source
       'src/assets/gsap.min.js',
       'example_projects/', // vendored SPX reference packs, not ours to lint
       'playwright-report/',
