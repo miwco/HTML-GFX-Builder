@@ -1,0 +1,48 @@
+# The same gate a developer runs locally, on every push: npm run build (typecheck + lint +
+# vite build) and the full offline e2e suite. The suite pins offline mode itself
+# (playwright.config.ts webServer.env), so no secrets are needed here — and none should be
+# added: the live/authed flows run under playwright.live.config.ts, maintainer-only.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (typecheck + lint + bundle)
+        run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E suite
+        run: npm run test:e2e
+
+      # The list reporter prints failures to the log; the per-test error context,
+      # screenshots, and DOM snapshots land in test-results/ — keep them for debugging.
+      - name: Upload failure evidence
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7

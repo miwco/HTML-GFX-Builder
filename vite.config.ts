@@ -37,7 +37,8 @@ export default defineConfig(({ command }) => {
     plugins: [react(), appCleanUrl()],
     // strictPort: the port is this checkout's identity (playwright + the dev scripts derive
     // the same number), so failing loudly beats silently drifting onto a neighbour's port.
-    server: { port: devPort(), strictPort: true, open: true },
+    // open: skipped on CI runners — there is no browser to open, only Playwright's.
+    server: { port: devPort(), strictPort: true, open: !process.env.CI },
     build: {
       target: 'es2020',
       outDir: 'dist',
