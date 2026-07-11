@@ -80,9 +80,12 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
 ## The legacy patchers (animPatch / stepAssign / timelineModel)
 
 These literal patchers still serve the categories that have NOT migrated to the data region
-(info cards, scoreboards, corner bug, and the rest; lower thirds create as data blocks).
-Deleting them and the classic strip is Phase 8 of docs/TIMELINE_V2_PLAN.md - deferred by
-design until the remaining categories migrate.
+(info cards, starting soon, game timers, quiz, credits, tickers, infographics — lower
+thirds, corner bug, and scoreboards create as data blocks), plus every SAVED legacy
+template until its owner presses "use keyframes". Deleting them and the classic strip is
+Phase 8 of docs/TIMELINE_V2_PLAN.md - deferred by design until the remaining categories
+migrate (the blockers per category are documented in src/templates/CLAUDE.md and the plan's
+status block).
 
 ## animPatch.ts - the marked ANIMATION region
 

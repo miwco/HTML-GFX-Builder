@@ -7,13 +7,20 @@ added the CapCut flagship move - dragging a selected, position-armed layer on th
 keys x/y at the playhead (e2e/canvas-keyframe.spec.ts) - selection auto-opening the
 Inspector, and the workspace rework: in code-left mode the tool panels span the full width
 under the preview + Inspector row, and the step timeline gained its larger editing scale
-(28px rows, 12px labels; the classic strip keeps its compact scale). Phase 8
+(28px rows, 12px labels; the classic strip keeps its compact scale), then the timeline
+refit-on-resize + density-aware labels, and the second migration wave: CORNER BUG and
+SCOREBOARDS create as data blocks (convertToDataRegion in shared/standard.ts). Phase 8
 (deleting the literal patchers and the classic strip) is DEFERRED BY DESIGN until the
-remaining categories migrate off the legacy region — info cards, scoreboards, corner bug,
-starting-soon, game timers, quiz next (standard contract, the importer already handles
-them); credits/tickers/infographics last (their endless loops need a loop representation
-in the data model first). The classic strip's spec suite now runs on info cards
-(Hairline Card) so both surfaces stay covered until then.**
+remaining categories migrate off the legacy region. The migration audit corrected the
+original "standard contract" assumption: STARTING SOON and GAME TIMERS embed
+tl.call(startClock/stopClock) inside the region — the keyframe model has no call
+representation and the importer silently drops them, so they need a lifecycle-hook design
+first; QUIZ's Continue is wrapper-driven (next() → revealAnswer, settings.steps='2' with
+no data step) — the steps derivation would rewrite steps to '1' on the first edit and
+break the reveal, so it needs a wrapper-steps representation; credits/tickers/infographics
+still need the loop representation. INFO CARDS flip LAST of all: they host the classic
+strip's spec suite (Hairline Card), and after this wave no other legacy category supports
+the steps toggle — the suite retires together with the strip in Phase 8.**
 
 **Ratified (2026-07-10) with twelve review adjustments, integrated below.**
 The governing principle, stated at ratification:

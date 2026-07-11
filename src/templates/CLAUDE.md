@@ -9,13 +9,24 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
 ## Shared assemblers (every category builds on these)
 
 - **shared/base.ts** - generic assembler pieces: :root vars, zones, auto-fit, runtime scaffold.
-- **shared/standard.ts** - CategorySpec, assembleStandard, makeDefineVariant.
-  `CategorySpec.dataRegion` is the Timeline v2 flip: when true, assembleStandard converts the
-  freshly emitted legacy ANIMATION region into the NOACG_ANIM data block + interpreter through
-  the parity-proven importer (blocks/animImport.ts) at create - the preset still authors the
-  motion; a conversion failure keeps the legacy emit, never a broken template. Lower thirds
-  are flipped (`dataRegion: true`); the other categories stay legacy until they migrate
+- **shared/standard.ts** - CategorySpec, assembleStandard, makeDefineVariant, and
+  `convertToDataRegion` - the Timeline v2 flip: convert a freshly assembled template's legacy
+  ANIMATION region into the NOACG_ANIM data block + interpreter through the parity-proven
+  importer (blocks/animImport.ts) at create. The preset still authors the motion; only the
+  marked region converts (category-owned runtime around it - score pops, clock painters -
+  stays); a conversion failure keeps the legacy emit, never a broken template.
+  `CategorySpec.dataRegion` triggers it inside assembleStandard; self-assembled categories
+  (scoreboards) call it directly. FLIPPED: lower thirds, corner bug, scoreboards.
+  BLOCKED on data-model gaps (do NOT flip by flag alone): starting soon + game timers embed
+  `tl.call(startClock/stopClock)` in the region (the keyframe model has no call
+  representation - the importer silently drops them, killing the countdown); quiz's Continue
+  is wrapper-driven (`next()` -> revealAnswer with settings.steps='2' but NO data step - the
+  timeline's steps derivation would rewrite steps to '1' on the first edit and break the
+  reveal). Info cards flip LAST: they host the classic strip's spec suite until Phase 8
   (docs/TIMELINE_V2_PLAN.md).
+  A wrapper that needs the motion speed must read it via a `motionSpeed()` helper (NOACG_ANIM
+  .speed, else legacy animSpeed, else 1) - never the bare animSpeed global (scoreboards/quiz
+  do this already).
 - **shared/animRuntime.ts** - the emitted ES5 interpreter (Timeline v2), identical in every
   data-driven template: reads the NOACG_ANIM literal and defines the SAME builder globals the
   whole platform depends on (buildInTimeline / buildOutTimeline / revealNextStep), so the
@@ -47,12 +58,13 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
   .starting-soon-pulse breathing + clock via shared/clock.ts, minutes in f2).
 - **gameTimers/** - gt01…gt02 (prefix 'game-timer', type 'countdown'; timer-run pop +
   timer-line-reveal; minutes in f1; .game-timer-done styles time-up).
-- **scoreboards/** - sb01…sb02 (prefix 'scoreboard'; fixed 4-field contract f0-f3 as
-  scoreboard-masks so the standard presets drive them; update() pops a score's mask when it
-  changes on air).
-- **cornerBug/** - bug01…bug02 (prefix 'corner-bug', standard assembler, logo slot + placeholder
-  mark; bug02 = house live clock via StandardDesign.runtimeExtraJs - design-owned JS emitted
-  BEFORE the marked ANIMATION region, DOM-ready guarded).
+- **scoreboards/** - sb01…sb02 (prefix 'scoreboard', data blocks via convertToDataRegion;
+  fixed 4-field contract f0-f3 as scoreboard-masks so the standard presets drive them;
+  update() pops a score's mask when it changes on air - speed via motionSpeed()).
+- **cornerBug/** - bug01…bug02 (prefix 'corner-bug', standard assembler, `dataRegion: true`,
+  logo slot + placeholder mark; bug02 = house live clock via StandardDesign.runtimeExtraJs -
+  design-owned JS emitted BEFORE the marked ANIMATION region, DOM-ready guarded, survives the
+  data conversion untouched).
 - **infographics/** - ig01…ig06 (prefix 'infographic'; design owns fields + runtimeExtraJs;
   igPresets: count-up - a suffix-preserving number tween - and bars-grow over #infographic-bars
   `.infographic-bar-fill[data-value]`).
