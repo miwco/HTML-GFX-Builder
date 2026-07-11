@@ -25,6 +25,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@emnapi/core": "^1.11.2",
+    "@emnapi/runtime": "^1.11.2",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.61.1",
     "@types/file-saver": "^2.0.7",
