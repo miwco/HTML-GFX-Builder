@@ -30,6 +30,10 @@ before merging).
   report the conflicting files rather than guessing.
 - Do not remove any worktree or branch until the merge commit is confirmed to contain it
   (`git branch --merged main`).
+- Never touch other worktrees' work. Merge only the ONE requested branch; its merge brings
+  in only that branch's commits and must never overwrite or discard work living on other
+  worktrees' branches. Do not `git checkout`/`switch`/`restore` files across worktrees, and
+  never run a destructive command (`reset`, `clean`, `checkout -- .`) in any checkout.
 
 ## Phase 1 - Assess (read-only, report findings before touching anything)
 
@@ -58,23 +62,36 @@ Then present a short plan: what will be merged, how many commits, predicted conf
 files (if any), and what verification will run. Proceed only if the picture is clean;
 otherwise surface the problems and wait for the user.
 
-## Phase 2 - Prepare
+## Phase 2 - Prepare (update main, then integrate it INTO the branch)
+
+The order matters: bring the latest main into the WORKTREE branch first, so all conflict
+resolution and testing happen on the branch. Main only ever receives an already-integrated,
+already-tested branch - it is never the place conflicts get resolved.
 
 1. If the source worktree has uncommitted changes: ask the user - commit them there
    (with a proper message), or leave them out? Never silently stash.
-2. Update main in its checkout: `git pull --ff-only origin main`.
-3. If main moved, rebase is NOT required, but re-check the conflict prediction from
-   Phase 1 against the new main.
+2. Update main in its checkout from the remote: `git pull --ff-only origin main`.
+3. In the SOURCE branch's worktree, integrate the freshly-updated main into the branch:
+   `git merge main` (from inside that worktree). This is where the branch catches up to
+   main - not the other way around.
 
-## Phase 3 - Merge and verify
+## Phase 3 - Resolve, test, then merge into main
 
-1. From main's checkout: `git merge <branch>` (default fast-forward is fine for linear
-   history; use `--no-ff` only if the user wants an explicit merge commit).
-2. If conflicts: resolve only the ones that are mechanically obvious (e.g. both sides
-   appended to the same list); for anything semantic, `git merge --abort` and report.
-3. Verify: `npm run build` in the root checkout. If the merged work is user-facing,
-   also run the relevant e2e specs or check the affected flow in the browser per
-   CLAUDE.md's "Verifying changes". A red build means fix-or-abort, never push.
+1. Resolve any conflicts from the `git merge main` in the worktree, carefully. Resolve
+   only what is mechanically obvious; for anything semantic, stop and show the user the
+   conflicting hunks rather than guessing. If it is not confidently resolvable,
+   `git merge --abort` and report. This all happens on the BRANCH, so main is untouched
+   while you work.
+2. Verify on the integrated branch: run `npm run build` in the worktree. If the work is
+   user-facing, also run the relevant e2e specs or check the affected flow in the browser
+   per CLAUDE.md's "Verifying changes". A red build means fix-or-abort - do not proceed to
+   main.
+3. Only once the branch is green and contains the latest main, merge it into main from
+   main's checkout: `git merge <branch>`. Because the branch already includes main, this
+   is a clean fast-forward - it brings in only this branch's commits and cannot overwrite
+   unrelated work living on OTHER worktrees' branches (that work is not part of this
+   branch's history). If this merge is somehow not a fast-forward, stop and re-examine
+   before committing anything.
 
 ## Phase 4 - Finish and clean up
 
