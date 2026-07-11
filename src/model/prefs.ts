@@ -11,12 +11,15 @@ export interface UserPrefs {
   timelineCollapsed: boolean | null;
   /** Timeline v2 (the step timeline) — opt-in while it grows phase by phase. */
   timelineV2: boolean;
+  /** Last-used video/image render settings (Export tab). null = the panel's defaults. */
+  renderSettings: { format: string; scale: number; fps: number | null; durationSec: number } | null;
 }
 
 const DEFAULTS: UserPrefs = {
   defaultExportTarget: '', // empty = the registry's first target
   timelineCollapsed: null,
   timelineV2: false,
+  renderSettings: null,
 };
 
 export function loadPrefs(): UserPrefs {

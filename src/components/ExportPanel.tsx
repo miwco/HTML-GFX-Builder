@@ -3,6 +3,8 @@ import { saveAs } from 'file-saver';
 import { EXPORT_TARGETS } from '../export/registry';
 import { slug } from '../export/common';
 import { loadPrefs, savePrefs } from '../model/prefs';
+import { isRenderConfigured } from '../render/config';
+import RenderPanel from './render/RenderPanel';
 import { useTemplateStore } from '../store/templateStore';
 import { validateTemplate } from '../validation/validateTemplate';
 
@@ -130,6 +132,10 @@ export default function ExportPanel() {
           </div>
         ))}
       </div>
+
+      {/* Video/image rendering — only on deployments with a render backend (VITE_RENDER_API).
+          Unconfigured (offline/self-host default) builds show nothing here. */}
+      {isRenderConfigured() && <RenderPanel />}
     </div>
   );
 }

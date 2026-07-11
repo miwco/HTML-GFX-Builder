@@ -31,6 +31,9 @@ export default defineConfig({
     // Supabase creds for live testing). Env vars set here take priority over .env files in Vite,
     // so these empty values win and the app behaves as the no-backend tool the specs assume.
     // Auth/sync live paths are verified separately (supabase/README.md checklist).
-    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '' },
+    // VITE_RENDER_API is pinned ON: the render section is part of the offline surface the
+    // suite covers (the local executor renders with zero backend — the self-host mode).
+    // Render specs stub /api/render/* with page.route, so no real render runs in CI.
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_RENDER_API: '1' },
   },
 });
