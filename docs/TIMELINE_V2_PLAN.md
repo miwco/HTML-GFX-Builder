@@ -328,6 +328,98 @@ property's diamonds on the row. No After Effects-style per-property subrows in v
     drag-state machinery. Much of this shipped THIS WEEK — sunk cost is not a reason to
     keep an architecture that fights the product.
 
+## 3b. Step calls — lifecycle hooks in the data model (DRAFT, awaiting ratification)
+
+The migration audit (2026-07-11) found the keyframe model cannot carry the clock
+categories: starting soon and game timers embed `tl.call(startClock)` /
+`tl.call(stopClock)` inside the marked region, and the importer silently drops call
+lines — converting those templates would kill the countdown. This section drafts the
+representation that unblocks them. **Explicitly out of scope:** quiz's wrapper-driven
+Continue (a steps-representation question, not a lifecycle one) and the loop categories'
+endless timelines.
+
+### The data
+
+A step gains an optional `calls` list — side effects on the step's local clock, exactly
+where keyframes already live:
+
+```json
+{ "name": "Enter", "duration": 0.9, "ease": "expo.out",
+  "calls": [ { "time": 0.85, "call": "startClock" } ],
+  "layers": { "#f0": { "yPercent": [ ... ] } }
+}
+```
+
+- `call` is the NAME of a global function defined in the template's own JS (the clock
+  engine, a design-owned runtime — code that already lives outside the markers). Strict
+  JSON stays strict: a bare identifier string (`/^[A-Za-z_$][A-Za-z0-9_$]*$/`), never an
+  expression, never arguments. Anything off-shape fails structural validation and the
+  block degrades to "hand-crafted" honestly, like any other malformed data.
+- `time` is on the step's speed-relative clock, same as keyframe times; the serializer
+  writes one call per line, key order `time, call`; the step's canonical key order
+  becomes `name, duration, ease, reveals, calls, layers`.
+- Schema version stays 1 — the field is additive and optional, and every template
+  carries its own interpreter, so there is no cross-version runtime to appease.
+
+### The runtime (interpreter)
+
+`buildStepTimeline` places each call with GSAP's own primitive, resolved by name at fire
+time so hand edits and load order never matter, and a missing function is a silent no-op:
+
+```js
+// Step calls: named template functions fire at their moment on the step's clock
+// (the clock engine's startClock/stopClock — the timeline never owns that logic).
+for (var c = 0; c < (step.calls || []).length; c++) {
+  (function (name, at) {
+    tl.call(function () {
+      var fn = window[name];
+      if (typeof fn === 'function') fn();
+    }, null, at / speed);
+  })(step.calls[c].call, step.calls[c].time);
+}
+```
+
+No `eval`, no `new Function` — a `window[name]` lookup keeps the community bench clean.
+Scrub/settle semantics inherit GSAP's exactly (the simulator's `progress(1, true)`
+already suppresses callbacks on settle), so preview behavior matches the legacy emit by
+construction — the calls run through the SAME mechanism they run through today.
+
+### The editor
+
+- **animEval**: untouched — calls carry no values to resolve.
+- **animEdit mutators**: `resizeStep` 'preserve' clamps shrinking at the last keyframe
+  OR call time (a call pushed past the duration would silently never fire); 'stretch'
+  scales call times proportionally like keyframes. `duplicateStep` copies calls verbatim
+  (data is data — no hidden magic; startClock is idempotent by design). `deleteStep`
+  drops them with the step. New `moveCall` / `deleteCall` mutators only if the UI ever
+  edits them — v1 does not.
+- **The timeline renders calls, read-only**: a small `ƒ` tick on the step clip at the
+  call's time, its title naming the function ("calls startClock() here — edit it in the
+  code"). The timeline must not hide code truths, but editing stays in the code in v1.
+- **Validation**: a warning (not an error) when a named function is not defined in
+  template.js — same spirit as the dangling-selector check.
+
+### The importer and presets
+
+- `parseTimeline` learns `tl.call(fnName)` and `tl.call(fnName, null, position)` as a
+  zero-duration entry in the same sequential position math as tweens (today it skips the
+  line, which is positionally safe but loses the call). The converter emits it as a step
+  call at the resolved local time. This is the ONE parser change, and it is additive.
+- Preset generators (`presetApply`) carry step calls through 'all'-scope applies (the
+  donor's calls replace the target's); per-layer applies never touch them — calls are
+  step-level data, not layer motion.
+- The golden parity harness extends to the clock categories: legacy emit vs converted
+  data must produce identical settled states AND identical clock lifecycles (started
+  after entrance, frozen before exit).
+
+### What this deliberately does not do
+
+No arguments, no expressions, no arbitrary JS in data (the no-eval posture is absolute);
+no per-layer calls; no editor UI for authoring calls in v1 (presets and the importer
+write them; pros edit the JSON line). If a future category needs parameters, the answer
+is a named wrapper function in the template's own code — the data stays a name and a
+time.
+
 ## 4. Keep / Refactor / Replace / Remove
 
 **Keep (unchanged or near-unchanged):**
