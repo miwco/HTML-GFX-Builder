@@ -9,8 +9,9 @@ import gsapSource from '../assets/gsap.min.js?raw';
 import { inlineAssetRefs, isDataUrl } from '../assets/assetUtils';
 import type { SpxTemplate } from '../model/types';
 
-/** Remove <link>/<script> tags that point at local template files we will inline instead. */
-function stripLocalAssetTags(html: string): string {
+/** Remove <link>/<script> tags that point at local template files we will inline instead.
+ *  (Exported: render/composeRenderDocument composes its own self-contained document.) */
+export function stripLocalAssetTags(html: string): string {
   return html
     // <link rel="stylesheet" href="css/..."> and similar relative stylesheets
     .replace(/<link\b[^>]*href=["'](?:\.\/)?(?:css\/|js\/)[^"']*["'][^>]*>/gi, '')
