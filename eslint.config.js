@@ -51,6 +51,18 @@ export default tseslint.config(
     },
   },
 
+  // The render API functions (Vercel serverless; fetch-style handlers under Node).
+  {
+    files: ['api/**/*.ts'],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+    rules: {
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+
   // The Remotion render worker (its own package; the composition runs in a browser bundle,
   // the .mjs entrypoints under Node).
   {
