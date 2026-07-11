@@ -97,17 +97,54 @@ export default {
     };
     await store.create(job);
 
-    try {
-      const executor = await getExecutor();
-      const { executorRef } = await executor.start(job, manifest, { workerSecret });
-      await store.update(job.id, { state: 'provisioning', executorRef });
-    } catch (err) {
-      await store.update(job.id, {
-        state: 'failed',
-        error: { code: 'provision_error', message: 'Could not start the render service — try again in a minute.' },
-      });
+    const executor = await getExecutor();
+    const launch = async () => {
+      const { executorRef, immediateOutput } = await executor.start(job, manifest, { workerSecret });
+      if (immediateOutput) {
+        const expiresAt = Date.now() + RENDER_CONFIG.outputTtlMs[tier];
+        await store.update(
+          job.id,
+          {
+            state: 'complete',
+            executorRef,
+            expiresAt,
+            output: { ...immediateOutput, downloadUrl: immediateOutput.url, expiresAt: new Date(expiresAt).toISOString() },
+          },
+          { guardNonTerminal: true },
+        );
+      } else {
+        await store.update(job.id, { state: 'provisioning', executorRef }, { guardNonTerminal: true });
+      }
+    };
+    const markLaunchFailed = async (err: unknown) => {
       console.error('render start failed:', err);
-      return apiError('unavailable', 'Could not start the render service — try again in a minute.', 503);
+      await store.update(
+        job.id,
+        { state: 'failed', error: { code: 'provision_error', message: 'Could not start the render service — try again in a minute.' } },
+        { guardNonTerminal: true },
+      );
+    };
+
+    if (executor.id === 'sandbox') {
+      // Sandbox provisioning takes minutes — answer 202 now and launch in the background.
+      // waitUntil keeps the function alive on Vercel; the Vite dev middleware has no such
+      // API, but its process outlives requests anyway, so a plain floating promise works.
+      const launching = launch().catch(markLaunchFailed);
+      try {
+        const { waitUntil } = await import('@vercel/functions');
+        waitUntil(launching);
+      } catch {
+        void launching;
+      }
+    } else {
+      // The local executor starts in milliseconds — launch inline so a broken setup
+      // answers 503 instead of a job that silently fails.
+      try {
+        await launch();
+      } catch (err) {
+        await markLaunchFailed(err);
+        return apiError('unavailable', 'Could not start the render service — try again in a minute.', 503);
+      }
     }
 
     const resBody: StartRenderResponse = {

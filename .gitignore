@@ -30,3 +30,6 @@ compare-out/
 # Generated per-checkout by scripts/dev-port.mjs (postinstall): each worktree gets its own
 # dev-server port, so this file must never be shared through git.
 .claude/launch.json
+
+# Remotion deploy bundle (built by render-worker/bundle.mjs in the Vercel build step)
+render-worker/bundle/

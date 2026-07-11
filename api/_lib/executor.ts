@@ -19,12 +19,24 @@ export interface ExecutorProgress {
   totalFrames?: number;
   outputBytes?: number;
   error?: JobError;
+  /** Executors that learn the final URL from their own progress channel (the sandbox's
+   *  Blob upload) deliver it here; finalizeOutput() is the fallback. */
+  output?: { url: string; bytes: number; contentType: string };
+}
+
+export interface ExecutorStartResult {
+  executorRef: string;
+  /** Set when the render finished inside start() itself (sandbox stills) — the launcher
+   *  marks the job complete directly instead of waiting for progress polls. */
+  immediateOutput?: { url: string; bytes: number; contentType: string };
 }
 
 export interface RenderExecutor {
   id: 'local' | 'sandbox';
-  /** Launch the render detached; returns the executor handle stored on the job. */
-  start(job: JobRecord, manifest: RenderManifest, secrets: { workerSecret: string }): Promise<{ executorRef: string }>;
+  /** Launch the render detached; returns the executor handle stored on the job.
+   *  Sandbox launches take minutes (VM provisioning) — api/render/start runs them under
+   *  waitUntil AFTER answering 202, never on the request path. */
+  start(job: JobRecord, manifest: RenderManifest, secrets: { workerSecret: string }): Promise<ExecutorStartResult>;
   /** The worker's latest progress snapshot; null when unreadable (booting or gone). */
   readProgress(job: JobRecord): Promise<ExecutorProgress | null>;
   /** Resolve the finished file's download info (called once when progress says complete). */

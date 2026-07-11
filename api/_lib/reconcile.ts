@@ -50,7 +50,15 @@ export async function reconcileJob(job: JobRecord, store: JobStore, executor: Re
   const progress = await executor.readProgress(job);
   if (progress) {
     if (progress.state === 'complete') {
-      const output = await executor.finalizeOutput(job);
+      const output = progress.output
+        ? {
+            url: progress.output.url,
+            downloadUrl: progress.output.url,
+            bytes: progress.output.bytes,
+            contentType: progress.output.contentType,
+            expiresAt: null,
+          }
+        : await executor.finalizeOutput(job);
       if (output) {
         const expiresAt = now + RENDER_CONFIG.outputTtlMs[job.tier];
         const updated = await store.update(
