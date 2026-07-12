@@ -8,7 +8,7 @@ import { detectPrefix, getTemplateParts, type TemplatePart } from '../model/stru
 import { parseTimeline } from '../blocks/timelineModel';
 import { parseAnimData, spliceAnimData } from '../blocks/animData';
 import { setKeyframe } from '../blocks/animEdit';
-import { activationStep, animatedProps } from '../blocks/animEval';
+import { activationStep } from '../blocks/animEval';
 import { changePartPress } from '../blocks/stepAssign';
 import CanvasSelection, { type CanvasRect } from './CanvasSelection';
 import { phaseIdOf } from './StepTimeline';
@@ -42,20 +42,20 @@ interface EditState {
   rect: { left: number; top: number; width: number; height: number };
 }
 
-/** A position-keyframe drag on the SELECTED layer (data-block templates, X/Y armed):
- *  live GSAP x/y preview while dragging, one x+y keyframe pair at the playhead on release. */
+/** A position-keyframe drag on the SELECTED layer(s) — data-block templates. The drag
+ *  itself arms: live GSAP x/y preview while dragging, and release commits ONE undoable
+ *  apply writing every dragged layer's x+y keyframes at the playhead. Layers contained
+ *  in another dragged layer are excluded (the parent's transform carries them). */
 interface LayerDrag {
-  selector: string;
+  /** The layers moving together, each with its GSAP x/y at drag start (canvas px). */
+  layers: { selector: string; baseX: number; baseY: number }[];
   /** Pointer start, in screen px. */
   startX: number;
   startY: number;
-  /** The layer's GSAP x/y at drag start (canvas px — the value the keyframes build on). */
-  baseX: number;
-  baseY: number;
   /** Current pointer delta, in canvas px. */
   dx: number;
   dy: number;
-  /** Past the threshold — the layer follows live and release commits keyframes. */
+  /** Past the threshold — the layers follow live and release commits keyframes. */
   active: boolean;
 }
 
@@ -196,17 +196,17 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     ? presses!.findIndex((targets) => targets.includes(selectedPart!.selector))
     : -1;
 
-  // ── Canvas position keyframing (Timeline v2): dragging the SELECTED layer writes its
-  //    x/y keyframes at the parked playhead — but ONLY when the user armed BOTH position
-  //    properties in the Inspector (◆ on Position X and Y). Everything else keeps the
-  //    classic gestures exactly: the root drags to a zone patch, unarmed layers don't
-  //    drag on their own, and legacy-region templates never reach this path (no data
-  //    block to key into). ──
-  const kfDraggable = useMemo(() => {
-    if (!dataModel || !selectedPart || selectedPart.kind === 'root') return false;
-    const armed = animatedProps(dataModel, selectedPart.selector);
-    return armed.includes('x') && armed.includes('y');
-  }, [dataModel, selectedPart]);
+  // ── Canvas position keyframing (the interaction model, amendment 3): with a parked
+  //    playhead, dragging any SELECTED non-root layer moves the whole selection and
+  //    writes each layer's x/y keyframes at that moment — the drag itself arms, no
+  //    Inspector setup needed. The root keeps the zone drag (a graphic's home position
+  //    is a design decision, not motion), unselected layers don't drag on their own,
+  //    and legacy-region templates never reach this path (no data block to key into). ──
+  const kfSelectors = useMemo(() => {
+    if (!dataModel) return [];
+    return selectedParts.filter((sel) => parts.find((p) => p.selector === sel)?.kind !== 'root');
+  }, [dataModel, selectedParts, parts]);
+  const kfDraggable = kfSelectors.length > 0;
 
   /** Where the drag's keyframes land: the parked playhead, else the layer's settled
    *  state (the end of its activation step) — the same target the Inspector stamps. */
@@ -220,25 +220,28 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
 
   const gsapOf = () => (iframeRef.current?.contentWindow as SpxWindow | null)?.gsap ?? null;
 
-  /** Put the dragged layer back where the drag found it (Escape / cancelled gesture). */
+  /** Put the dragged layers back where the drag found them (Escape / cancelled gesture). */
   const resetLayerDrag = (ld: LayerDrag) => {
-    const el = doc()?.querySelector<HTMLElement>(ld.selector);
-    if (el) gsapOf()?.set(el, { x: ld.baseX, y: ld.baseY });
+    const g = gsapOf();
+    for (const layer of ld.layers) {
+      const el = doc()?.querySelector<HTMLElement>(layer.selector);
+      if (el) g?.set(el, { x: layer.baseX, y: layer.baseY });
+    }
   };
 
-  /** Commit a layer drag: ONE undoable apply writing the x and y keyframes at the
-   *  playhead (the same animEdit + spliceAnimData path the Inspector and the step
-   *  timeline edit through), then re-park the preview there after the rebuild. */
+  /** Commit a layer drag: ONE undoable apply writing every dragged layer's x and y
+   *  keyframes at the playhead (the same animEdit + spliceAnimData path the Inspector
+   *  and the step timeline edit through), then re-park the preview after the rebuild. */
   const commitLayerDrag = (ld: LayerDrag) => {
     if (!dataModel) return;
-    const at = keyframePlace(ld.selector);
-    if (!at) return;
-    const x = Math.round((ld.baseX + ld.dx) * 100) / 100;
-    const y = Math.round((ld.baseY + ld.dy) * 100) / 100;
-    const next = setKeyframe(
-      setKeyframe(dataModel, at.step, ld.selector, 'x', at.tRel, x),
-      at.step, ld.selector, 'y', at.tRel, y,
-    );
+    let next = dataModel;
+    for (const layer of ld.layers) {
+      const at = keyframePlace(layer.selector);
+      if (!at) continue;
+      const x = Math.round((layer.baseX + ld.dx) * 100) / 100;
+      const y = Math.round((layer.baseY + ld.dy) * 100) / 100;
+      next = setKeyframe(setKeyframe(next, at.step, layer.selector, 'x', at.tRel, x), at.step, layer.selector, 'y', at.tRel, y);
+    }
     const js = spliceAnimData(template.js, next);
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
@@ -417,19 +420,27 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (editing) return; // the editor overlay handles its own events
     const p = toCanvas(e);
-    // The keyframe drag has first claim: pointer down ON the selected, position-armed
-    // layer starts it (works outside the root too — block parts live there).
-    if (kfDraggable && selected) {
-      const sel = doc()?.querySelector<HTMLElement>(selected);
-      if (sel && sel.getClientRects().length > 0 && inRect(p, sel.getBoundingClientRect())) {
+    // The keyframe drag has first claim: pointer down ON any selected non-root layer
+    // moves the whole selection (works outside the root too — block parts live there).
+    if (kfDraggable) {
+      const d = doc();
+      const els = kfSelectors
+        .map((sel) => ({ sel, el: d?.querySelector<HTMLElement>(sel) ?? null }))
+        .filter((x): x is { sel: string; el: HTMLElement } => !!x.el && x.el.getClientRects().length > 0);
+      if (els.some((x) => inRect(p, x.el.getBoundingClientRect()))) {
         e.currentTarget.setPointerCapture(e.pointerId);
         const g = gsapOf();
+        // Layers contained in another dragged layer ride along on the parent's
+        // transform — keying them too would move them twice.
+        const top = els.filter((x) => !els.some((o) => o !== x && o.el.contains(x.el)));
         setLayerDrag({
-          selector: selected,
+          layers: top.map((x) => ({
+            selector: x.sel,
+            baseX: Number(g?.getProperty?.(x.el, 'x') ?? 0),
+            baseY: Number(g?.getProperty?.(x.el, 'y') ?? 0),
+          })),
           startX: e.clientX,
           startY: e.clientY,
-          baseX: Number(g?.getProperty?.(sel, 'x') ?? 0),
-          baseY: Number(g?.getProperty?.(sel, 'y') ?? 0),
           dx: 0,
           dy: 0,
           active: false,
@@ -492,15 +503,18 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     }
     const ld = layerDragRef.current;
     if (ld) {
-      // The selected layer follows the pointer live (a GSAP x/y set on the preview —
+      // The selected layers follow the pointer live (a GSAP x/y set on the preview —
       // the same channels the keyframes will drive; the commit lands on release).
       const dx = (e.clientX - ld.startX) / scale;
       const dy = (e.clientY - ld.startY) / scale;
       const active = ld.active || Math.hypot(e.clientX - ld.startX, e.clientY - ld.startY) > DRAG_THRESHOLD;
       setLayerDrag({ ...ld, dx, dy, active });
       if (active) {
-        const el = doc()?.querySelector<HTMLElement>(ld.selector);
-        if (el) gsapOf()?.set(el, { x: ld.baseX + dx, y: ld.baseY + dy });
+        const g = gsapOf();
+        for (const layer of ld.layers) {
+          const el = doc()?.querySelector<HTMLElement>(layer.selector);
+          if (el) g?.set(el, { x: layer.baseX + dx, y: layer.baseY + dy });
+        }
       }
       return;
     }
@@ -517,12 +531,11 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     // position-armed layer reads as grabbable everywhere (its drag keys x/y).
     const p = toCanvas(e);
     const overKfLayer =
-      kfDraggable && selected
-        ? (() => {
-            const el = doc()?.querySelector<HTMLElement>(selected);
-            return !!el && el.getClientRects().length > 0 && inRect(p, el.getBoundingClientRect());
-          })()
-        : false;
+      kfDraggable &&
+      kfSelectors.some((sel) => {
+        const el = doc()?.querySelector<HTMLElement>(sel);
+        return !!el && el.getClientRects().length > 0 && inRect(p, el.getBoundingClientRect());
+      });
     const r = rootEl()?.getBoundingClientRect();
     if (overKfLayer) setCursor('grab');
     if (r && inRect(p, r)) {
@@ -775,13 +788,15 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
                   // (the press control replaces the passive hint when both would show).
                   hint: pressEligible
                     ? undefined
-                    : kfDraggable
-                      ? 'Drag to key its position'
-                      : selectedPart.kind === 'line'
-                        ? 'Double-click to edit'
-                        : selectedPart.kind === 'root'
-                          ? 'Corner handle resizes'
-                          : undefined,
+                    : kfDraggable && selectedPart.kind === 'line'
+                      ? 'Double-click edits · drag moves'
+                      : kfDraggable && selectedPart.kind !== 'root'
+                        ? 'Drag to key its position'
+                        : selectedPart.kind === 'line'
+                          ? 'Double-click to edit'
+                          : selectedPart.kind === 'root'
+                            ? 'Corner handle resizes'
+                            : undefined,
                   action: pressEligible ? (
                     <select
                       className="canvas-appears"
@@ -863,10 +878,12 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
       )}
 
       {/* The position-keyframe drag's hint: live x/y, committed at the playhead. */}
-      {layerDrag?.active && (
+      {layerDrag?.active && layerDrag.layers.length > 0 && (
         <div className="move-hint">
-          x {Math.round(layerDrag.baseX + layerDrag.dx)} · y {Math.round(layerDrag.baseY + layerDrag.dy)} — release
-          to key position at the playhead · Esc cancels
+          {layerDrag.layers.length > 1 ? `${layerDrag.layers.length} layers · ` : ''}
+          x {Math.round(layerDrag.layers[0].baseX + layerDrag.dx)} · y{' '}
+          {Math.round(layerDrag.layers[0].baseY + layerDrag.dy)} — release to key position at the playhead · Esc
+          cancels
         </div>
       )}
 

@@ -1,10 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Canvas position keyframing (Timeline v2): dragging the SELECTED layer on the canvas
-// writes/updates its x and y keyframes at the parked playhead — ONE undoable apply on
-// release — but only when BOTH position properties are armed in the Inspector. Everything
-// else keeps the classic gestures exactly: a drag starting anywhere on the graphic
-// re-anchors the ROOT via the zone patch, and Escape cancels without touching the code.
+// Canvas position keyframing (the interaction model, amendment 3): with a parked
+// playhead, dragging a SELECTED non-root layer on a data-block template writes/updates
+// its x and y keyframes at that moment — the drag itself arms, ONE undoable apply per
+// gesture, and a multi-selection drags together with each layer keying its own pair.
+// The classic gestures survive underneath: with nothing selected, a drag starting on
+// the graphic re-anchors the ROOT via the zone patch, and Escape cancels cleanly.
 
 async function createHairline(page: Page) {
   await page.goto('/app');
@@ -34,8 +35,7 @@ async function historyLen(page: Page) {
   });
 }
 
-/** An element's center in PAGE coordinates (the canvas layer overlays the stage 1:1),
- *  plus the screen-px→canvas-px scale for delta math. */
+/** An element's center in PAGE coordinates plus the screen→canvas scale. */
 async function centerOf(page: Page, selector: string) {
   const frame = page.frameLocator('iframe.preview-frame');
   await expect(frame.locator(selector)).toBeVisible();
@@ -48,12 +48,11 @@ async function centerOf(page: Page, selector: string) {
   return { x: stage.x + rect.x * scale, y: stage.y + rect.y * scale, scale };
 }
 
-/** Select the Name line, park the playhead mid-Enter, and arm Position X + Y. */
-async function armPosition(page: Page) {
+/** Select the Name line via its row label and park the playhead mid-Enter. */
+async function selectAndPark(page: Page) {
   await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
-  // A new selection auto-opens the Inspector — wait for the pane, not the toggle.
-  await expect(page.getByTestId('inspector-pane')).toBeVisible();
-  // Zoom out so the clip's midpoint sits safely inside the narrowed scroll viewport.
+  await expect(page.getByTestId('inspector-pane')).toBeVisible({ timeout: 3000 });
+  // Zoom out so the clip midpoint sits inside the narrowed scroll viewport.
   await page.getByTestId('tlv2-zoom-out').click();
   await page.getByTestId('tlv2-zoom-out').click();
   const clip = (await page.getByTestId('tlv2-clip-0').boundingBox())!;
@@ -66,22 +65,18 @@ async function armPosition(page: Page) {
       }),
     )
     .toBeGreaterThan(0.2);
-  await page.getByTestId('inspector-kf-x').click();
-  await page.waitForTimeout(800); // apply + debounced rebuild + re-park
-  await page.getByTestId('inspector-kf-y').click();
-  await page.waitForTimeout(800);
 }
 
-test('dragging an armed layer keys x/y at the playhead — one undoable apply', async ({ page }) => {
+test('dragging a selected layer keys x/y at the playhead — the drag itself arms', async ({ page }) => {
   await createHairline(page);
-  await armPosition(page);
+  await selectAndPark(page);
   const playheadBefore = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     return useTemplateStore.getState().playhead;
   });
   const before = await historyLen(page);
 
-  // Drag the Name line 80 px right and 30 px down on screen.
+  // No Inspector arming, no setup: drag the Name line 80 px right and 30 px down.
   const c = await centerOf(page, '#f0');
   await page.mouse.move(c.x, c.y);
   await page.mouse.down();
@@ -89,39 +84,56 @@ test('dragging an armed layer keys x/y at the playhead — one undoable apply', 
   await page.mouse.up();
   await page.waitForTimeout(800);
 
-  // The x/y keyframes at the playhead moved to the dragged position (canvas px).
+  // The drag CREATED both position tracks at the playhead's moment.
   const data = await animData(page);
   const tracks = data!.steps[0].layers['#f0'];
   expect(tracks.x).toHaveLength(1);
   expect(tracks.y).toHaveLength(1);
   expect(Number(tracks.x[0].value)).toBeCloseTo(80 / c.scale, 0);
   expect(Number(tracks.y[0].value)).toBeCloseTo(30 / c.scale, 0);
-  // The keyframes sit at the parked playhead's moment.
   expect(Math.abs(tracks.x[0].time - playheadBefore!.t)).toBeLessThan(0.02);
 
-  // ONE undoable apply for the whole gesture; the playhead stayed parked.
+  // ONE undoable apply for the whole gesture; the playhead stayed parked; undo clears both.
   expect(await historyLen(page)).toBe(before + 1);
   const playheadAfter = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     return useTemplateStore.getState().playhead;
   });
   expect(playheadAfter).toEqual(playheadBefore);
-
-  // Undo removes both keyframes again (the pair went in as one edit).
   await page.keyboard.press('Control+z');
   await expect
     .poll(async () => {
       const d = await animData(page);
       const t = d!.steps[0].layers['#f0'];
-      return Number(t.x?.[0]?.value ?? 0) + Number(t.y?.[0]?.value ?? 0);
+      return (t.x?.length ?? 0) + (t.y?.length ?? 0);
     })
     .toBe(0);
 });
 
-test('without armed X/Y the drag keeps the classic root zone patch — no keyframes', async ({ page }) => {
+test('a multi-selection drags together — every layer keys its own pair, one apply', async ({ page }) => {
   await createHairline(page);
-  // Select the Name line but do NOT arm position — the classic gesture must win.
-  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  await selectAndPark(page);
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f1"]').click({ modifiers: ['Shift'] });
+  const before = await historyLen(page);
+
+  const c = await centerOf(page, '#f0');
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x + 60, c.y - 20, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(800);
+
+  const data = await animData(page);
+  for (const key of ['#f0', '#f1']) {
+    const tracks = data!.steps[0].layers[key];
+    expect(Number(tracks.x[0].value)).toBeCloseTo(60 / c.scale, 0);
+    expect(Number(tracks.y[0].value)).toBeCloseTo(-20 / c.scale, 0);
+  }
+  expect(await historyLen(page)).toBe(before + 1); // the whole group is one undo step
+});
+
+test('with nothing selected, the drag still re-anchors the root (zone patch)', async ({ page }) => {
+  await createHairline(page);
   const jsBefore = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     return useTemplateStore.getState().template.js;
@@ -134,21 +146,18 @@ test('without armed X/Y the drag keeps the classic root zone patch — no keyfra
   await page.mouse.up();
   await page.waitForTimeout(650);
 
-  // The animation data is untouched; the gesture landed as a CSS zone patch instead.
   const after = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     const s = useTemplateStore.getState();
     return { js: s.template.js, cssChanged: !!s.lastChange?.ranges.css };
   });
-  expect(after.js).toBe(jsBefore);
+  expect(after.js).toBe(jsBefore); // no keyframes — the gesture was a root move
   expect(after.cssChanged).toBe(true);
-  const data = await animData(page);
-  expect(data!.steps[0].layers['#f0'].x).toBeUndefined();
 });
 
-test('Escape cancels a layer drag — nothing written, the layer springs back', async ({ page }) => {
+test('Escape cancels a layer drag — nothing written, the layers spring back', async ({ page }) => {
   await createHairline(page);
-  await armPosition(page);
+  await selectAndPark(page);
   const before = await historyLen(page);
   const jsBefore = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');

@@ -35,18 +35,24 @@ in src/blocks/CLAUDE.md.
   corner handle -> live --scale preview, diagonal-aware, clamped 0.25-4. Every gesture commits as
   ONE undoable applyTemplate and jumps the editor to the changed tab, highlighted; the root is
   detected via model/structure.ts detectPrefix.
-  CANVAS POSITION KEYFRAMING (Timeline v2): on a data-block template, dragging the SELECTED
-  non-root layer whose Position X AND Y are both armed writes/updates its x/y keyframes at the
-  parked playhead - live GSAP x/y preview while dragging, ONE undoable apply on release (the
-  same animEdit + spliceAnimData path the Inspector edits through, re-parked after the
-  rebuild), Escape springs it back. Unarmed layers, the root, and legacy templates keep the
-  classic gestures exactly (root drag = zone patch). Pinned by e2e/canvas-keyframe.spec.ts.
-  The SELECTION model: a click selects the innermost TemplatePart under the point
-  (registry-driven closest-ancestor hit test, rect-containment fallback); clicking the selected
-  part again climbs to its container; hover previews the name; Escape or empty canvas deselects;
-  the corner handle stays anchored while the whole graphic is selected. Selection is editor UI
-  state ONLY - the selector lives in store selectedPart so the timeline and the Inspector
-  track the same element - never written into the template.
+  CANVAS POSITION KEYFRAMING (docs/TIMELINE_INTERACTION_MODEL.md, amendment 3): on a
+  data-block template, dragging any SELECTED non-root layer moves the WHOLE selection (layers
+  contained in another dragged layer are excluded - the parent's transform carries them) and,
+  on release, ONE undoable apply writes each layer's x/y keyframes at the parked playhead -
+  the drag itself arms, no Inspector setup. Live GSAP x/y preview while dragging (the same
+  animEdit + spliceAnimData path the Inspector edits through, re-parked after the rebuild);
+  Escape springs everything back. The root keeps the zone drag, unselected layers don't drag
+  on their own, and legacy templates keep the classic gestures exactly. Pinned by
+  e2e/canvas-keyframe.spec.ts.
+  The SELECTION model (multi, docs/TIMELINE_INTERACTION_MODEL.md): a click selects the
+  innermost TemplatePart under the point (registry-driven closest-ancestor hit test,
+  rect-containment fallback); clicking the sole selected part again climbs to its container;
+  SHIFT-click toggles membership; a drag on EMPTY canvas draws a lasso selecting every
+  rendered non-root part it touches (the root is excluded by design); hover previews the
+  name; Escape or empty canvas deselects. Selection is editor UI state ONLY - it lives in
+  store selectedParts (ordered, first = primary in selectedPart) so the timeline and the
+  Inspector track the same elements - never written into the template. Pinned by
+  e2e/multi-select.spec.ts.
 - **CanvasSelection** - the presentational selection/hover overlay: amber outline + a chip
   speaking part.label - the registry's words, same as the timeline strip. Chips hint only
   actions that already exist: dblclick-to-edit on text lines, corner resize on the root. An

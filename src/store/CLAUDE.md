@@ -22,9 +22,12 @@ templateStore.ts (zustand) holds the template plus editor UI state.
 - **patchCss** - Style-panel patches: highlight without history spam.
 - **sendScrub** - timeline view -> simulator pauses the preview's in/out timeline at a time.
 - **sendControl** - the Control panel live-drives the preview through the simulator.
-- **selectedPart** - the SHARED SELECTION (Era 6): one TemplatePart selector that the canvas,
-  the timeline, and the Inspector all highlight. UI state only - no history, never written
-  into the template.
+- **selectedParts / selectedPart** - the SHARED SELECTION (multi since the interaction
+  model, docs/TIMELINE_INTERACTION_MODEL.md): an ordered list of TemplatePart selectors the
+  canvas, the timeline, and the Inspector all highlight; selectedPart is the PRIMARY
+  (first) and every setter keeps the two in sync. setSelectedPart replaces, setSelectedParts
+  replaces wholesale (the lasso), toggleSelectedPart is shift-click. UI state only - no
+  history, never written into the template.
 - **playhead / setPlayhead** - the step timeline's parked playhead `{ step, t }` (step index +
   local time in effective seconds). UI state only - no history; the Inspector stamps
   keyframes at it.
