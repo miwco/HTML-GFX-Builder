@@ -33,3 +33,9 @@ compare-out/
 
 # Remotion deploy bundle (built by render-worker/bundle.mjs in the Vercel build step)
 render-worker/bundle/
+
+# Vercel CLI link pointer (project/org id - local only)
+.vercel/
+
+.vercel
+.env*.local
