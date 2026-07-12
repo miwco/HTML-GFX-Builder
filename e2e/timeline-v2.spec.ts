@@ -499,6 +499,65 @@ test('v2 polish: keyframe and step eases from the menus; ◀ ▶ jumps; label sc
   expect(values.some((v: number | string) => v === 40 || v === 150)).toBe(true); // 0+40 or 110+40
 });
 
+test('v2 keyframe sets: shift-click, group nudge, delete, copy/paste at the playhead', async ({ page }) => {
+  await createHairline(page);
+  // Open the Inspector up front so the auto-open never resizes the stage mid-test.
+  await page.getByTestId('toggle-inspector').click();
+  await page.getByTestId('tlv2-zoom-out').click();
+  await page.getByTestId('tlv2-zoom-out').click();
+
+  const times = async () =>
+    page.evaluate(async () => {
+      const { useTemplateStore } = await import('/src/store/templateStore.ts');
+      const { parseAnimData } = await import('/src/blocks/animData.ts');
+      const d = parseAnimData(useTemplateStore.getState().template.js)!;
+      return (d.steps[0].layers['#f0']?.yPercent ?? []).map((k: { time: number }) => k.time);
+    });
+  const original = await times();
+  expect(original).toHaveLength(2);
+
+  // Build the set: click the first diamond, shift-click the second.
+  const kfs = page.getByTestId('tlv2-kf-f0');
+  await kfs.first().click();
+  await kfs.nth(1).click({ modifiers: ['Shift'] });
+
+  // ← → nudge the WHOLE set together, one undoable apply.
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(700);
+  let now = await times();
+  expect(now[0]).toBeCloseTo(original[0] + 0.05, 2);
+  expect(now[1]).toBeCloseTo(original[1] + 0.05, 2);
+
+  // Copy the set, then Delete removes BOTH moments in one apply.
+  await page.keyboard.press('Control+c');
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(700);
+  expect(await times()).toHaveLength(0);
+
+  // Park the playhead near the entrance start and paste: the group lands with its
+  // earliest keyframe at the playhead, internal spacing preserved.
+  const clip = (await page.getByTestId('tlv2-clip-0').boundingBox())!;
+  await page.mouse.click(clip.x + 8, clip.y + 40);
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        const { useTemplateStore } = await import('/src/store/templateStore.ts');
+        return useTemplateStore.getState().playhead?.t ?? -1;
+      }),
+    )
+    .toBeGreaterThanOrEqual(0);
+  const playhead = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().playhead!;
+  });
+  await page.keyboard.press('Control+v');
+  await page.waitForTimeout(700);
+  now = await times();
+  expect(now).toHaveLength(2);
+  expect(now[0]).toBeCloseTo(playhead.t, 1);
+  expect(now[1] - now[0]).toBeCloseTo(original[1] - original[0], 2);
+});
+
 test('v2 property rows: a layer expands into per-property sub-rows with their own diamonds', async ({ page }) => {
   await createHairline(page);
   // The Name line animates yPercent — its caret expands one sub-row for that track.

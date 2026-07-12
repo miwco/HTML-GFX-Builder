@@ -12,6 +12,7 @@ import {
   moveLayerKeyframes,
   renameStep,
   resizeStep,
+  setKeyframe,
   setKeyframeEase,
   setStepEase,
 } from '../blocks/animEdit';
@@ -422,27 +423,67 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
   };
 
   // ── Keyframe interactions (data-block templates only): drag a diamond to retime —
-  //    every property at that moment on a layer row, just ITS property on a sub-row;
-  //    click selects it; Delete removes it.
+  //    every property at that moment on a layer row, just ITS property on a sub-row.
+  //    Click selects, shift-click builds a SET, a drag moves the whole set together,
+  //    Delete removes it, Ctrl+C/V copies and pastes at the playhead.
   interface KfRef { key: string; step: number; tRel: number; prop?: string }
-  const [kfSel, setKfSel] = useState<KfRef | null>(null);
-  const [kfDrag, setKfDrag] = useState<(KfRef & { x: number; moved: boolean }) | null>(null);
+  const sameRef = (a: KfRef, b: KfRef) =>
+    a.key === b.key && a.step === b.step && a.prop === b.prop && Math.abs(a.tRel - b.tRel) < 0.005;
+  const [kfSels, setKfSels] = useState<KfRef[]>([]);
+  const kfSelsRef = useRef(kfSels);
+  kfSelsRef.current = kfSels;
+  const isKfSelected = (ref: KfRef) => kfSels.some((s) => sameRef(s, ref));
+  /** One drag moves every selected diamond by the same delta; only the grabbed one
+   *  tracks the pointer live (the rest shift by dxPx and land together on release). */
+  const [kfDrag, setKfDrag] = useState<{ refs: KfRef[]; grabbed: KfRef; startX: number; x: number; shift: boolean; alt: boolean; moved: boolean } | null>(null);
   const kfDragRef = useRef<typeof kfDrag>(null);
   kfDragRef.current = kfDrag;
+  /** Copied keyframes: selector + property + time offset from the earliest + value/ease.
+   *  Session-local; paste lands the group at the playhead's moment. */
+  const kfClipboard = useRef<{ selector: string; prop: string; dt: number; value: number | string; ease?: string }[]>([]);
+
+  /** Magnetic snap for a dragged diamond: the playhead, step edges, and every OTHER
+   *  keyframe within ~7px win over the raw pointer (Alt bypasses — free placement). */
+  const snapKfX = (px: number, alt: boolean, exclude: KfRef[]): number => {
+    if (alt) return px;
+    const candidates: number[] = [headX];
+    for (const seg of segs) candidates.push(seg.x, seg.x + seg.w);
+    for (const r of rows) {
+      for (const d of diamondsFor(r.key)) {
+        if (!exclude.some((x) => x.key === r.key && x.step === d.step && Math.abs(x.tRel - d.tRel) < 0.005)) {
+          candidates.push(d.x);
+        }
+      }
+    }
+    let best = px;
+    let bestDist = 7;
+    for (const c of candidates) {
+      const dist = Math.abs(px - c);
+      if (dist < bestDist) {
+        best = c;
+        bestDist = dist;
+      }
+    }
+    return best;
+  };
 
   const startKfDrag = (e: React.PointerEvent, ref: KfRef, x: number) => {
     if (!editable) return;
     e.stopPropagation();
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    setKfDrag({ ...ref, x, moved: false });
+    // Grabbing an unselected diamond re-anchors the selection (shift keeps the set) —
+    // grabbing a selected one drags the whole existing set.
+    const refs = isKfSelected(ref) ? kfSels : e.shiftKey ? [...kfSels, ref] : [ref];
+    setKfDrag({ refs, grabbed: ref, startX: x, x, shift: e.shiftKey, alt: e.altKey, moved: false });
   };
   const moveKfDrag = (e: React.PointerEvent) => {
     const d = kfDragRef.current;
     if (!d || e.buttons !== 1) return;
     e.stopPropagation();
     const rect = (e.currentTarget as HTMLElement).closest('.tlv2-canvas')!.getBoundingClientRect();
-    setKfDrag({ ...d, x: e.clientX - rect.left, moved: true });
+    const raw = e.clientX - rect.left;
+    setKfDrag({ ...d, x: snapKfX(raw, e.altKey, d.refs), alt: e.altKey, moved: true });
   };
   const endKfDrag = (e: React.PointerEvent) => {
     const d = kfDragRef.current;
@@ -450,23 +491,43 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
     if (!d) return;
     e.stopPropagation();
     if (!d.moved) {
-      // A plain click: select the diamond (and its layer — shared selection).
-      setKfSel(d);
-      setSelectedPart(d.key);
+      // A plain click selects (shift toggles membership) — and its layer, shared.
+      if (d.shift) {
+        setKfSels((prev) =>
+          prev.some((s) => sameRef(s, d.grabbed)) ? prev.filter((s) => !sameRef(s, d.grabbed)) : [...prev, d.grabbed],
+        );
+      } else {
+        setKfSels([d.grabbed]);
+      }
+      setSelectedPart(d.grabbed.key);
       return;
     }
-    const seg = segs[d.step];
+    const seg = segs[d.grabbed.step];
     const speed = data.speed || 1;
-    // Snap to the same 0.05 s grid every timing edit uses (effective seconds).
-    const tEff = Math.round(Math.max(0, (d.x - seg.x) / pxPerSec) / 0.05) * 0.05;
+    // The grabbed diamond lands on a magnet exactly when one engaged; otherwise on the
+    // 0.05 s grid — and the whole set shifts by the same stored-clock delta.
+    const rawT = Math.max(0, (d.x - seg.x) / pxPerSec);
+    const snapped = Math.abs(d.x - snapKfX(d.x, false, d.refs)) < 0.5 && !d.alt;
+    const tEff = snapped ? rawT : Math.round(rawT / 0.05) * 0.05;
     const toRel = Math.round(tEff * speed * 1000) / 1000;
-    if (Math.abs(toRel - d.tRel) < 0.005) return;
-    applyData(
-      d.prop !== undefined
-        ? moveKeyframe(data, d.step, d.key, d.prop, d.tRel, toRel)
-        : moveLayerKeyframes(data, d.step, d.key, d.tRel, toRel),
+    const delta = Math.round((toRel - d.grabbed.tRel) * 1000) / 1000;
+    if (Math.abs(delta) < 0.005) return;
+    let next = data;
+    for (const ref of d.refs) {
+      const to = Math.round(Math.max(0, ref.tRel + delta) * 1000) / 1000;
+      next =
+        ref.prop !== undefined
+          ? moveKeyframe(next, ref.step, ref.key, ref.prop, ref.tRel, to)
+          : moveLayerKeyframes(next, ref.step, ref.key, ref.tRel, to);
+    }
+    if (next === data) return;
+    applyData(next);
+    setKfSels(
+      d.refs.map((ref) => ({
+        ...ref,
+        tRel: Math.round(Math.min(Math.max(0, ref.tRel + delta), data.steps[ref.step].duration) * 1000) / 1000,
+      })),
     );
-    setKfSel({ ...d, tRel: toRel });
   };
 
   // ── Steps as clips (Phase 6): right-edge resize, context menu, hold popover ─────
@@ -532,8 +593,9 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
   const channelOf = (sel: string): 'mask' | 'rise' =>
     parts.find((p) => p.selector === sel)?.channel === 'mask' ? 'mask' : 'rise';
 
-  // Keyboard: Delete removes the selected diamond's keyframes; ←/→ nudge it on the 0.05 s
-  // grid; Space plays the graphic. Never while typing in a field or the code editor.
+  // Keyboard: Delete removes the selected keyframe SET; ←/→ nudge the whole set on the
+  // 0.05 s grid; Ctrl/Cmd+C copies it and Ctrl/Cmd+V pastes at the playhead; Space plays
+  // the graphic. Never while typing in a field or the code editor.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = document.activeElement as HTMLElement | null;
@@ -548,27 +610,67 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
         sendControl('play');
         return;
       }
-      if (!editable || !kfSel) return;
+      if (!editable) return;
+      const speed = data.speed || 1;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && kfSels.length > 0) {
+        // Copy: the set's keyframes as (selector, property, offset-from-earliest, value).
+        e.preventDefault();
+        const entries: typeof kfClipboard.current = [];
+        let minT = Infinity;
+        for (const ref of kfSels) {
+          const tracks = data.steps[ref.step]?.layers[ref.key] ?? {};
+          for (const [prop, kfs] of Object.entries(tracks)) {
+            if (ref.prop !== undefined && prop !== ref.prop) continue;
+            const kf = kfs.find((k) => Math.abs(k.time - ref.tRel) < 0.005);
+            if (kf) {
+              entries.push({ selector: ref.key, prop, dt: kf.time, value: kf.value, ease: kf.ease });
+              minT = Math.min(minT, kf.time);
+            }
+          }
+        }
+        kfClipboard.current = entries.map((en) => ({ ...en, dt: Math.round((en.dt - minT) * 1000) / 1000 }));
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && kfClipboard.current.length > 0) {
+        // Paste: the group lands with its earliest keyframe at the playhead's moment,
+        // same layers, same properties — one undoable apply.
+        e.preventDefault();
+        const baseT = Math.round(head.t * speed * 1000) / 1000;
+        let next = data;
+        for (const en of kfClipboard.current) {
+          next = setKeyframe(next, head.step, en.selector, en.prop, baseT + en.dt, en.value, en.ease);
+        }
+        applyData(next);
+        return;
+      }
+      if (kfSels.length === 0) return;
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
-        setKfSel(null);
-        applyData(
-          kfSel.prop !== undefined
-            ? deleteKeyframe(data, kfSel.step, kfSel.key, kfSel.prop, kfSel.tRel)
-            : deleteLayerKeyframes(data, kfSel.step, kfSel.key, kfSel.tRel),
-        );
+        let next = data;
+        for (const ref of kfSels) {
+          next =
+            ref.prop !== undefined
+              ? deleteKeyframe(next, ref.step, ref.key, ref.prop, ref.tRel)
+              : deleteLayerKeyframes(next, ref.step, ref.key, ref.tRel);
+        }
+        setKfSels([]);
+        if (next !== data) applyData(next);
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
-        const speed = data.speed || 1;
         const delta = (e.key === 'ArrowLeft' ? -0.05 : 0.05) * speed;
-        const to = Math.round(Math.max(0, kfSel.tRel + delta) * 1000) / 1000;
-        if (to === kfSel.tRel) return;
-        const next =
-          kfSel.prop !== undefined
-            ? moveKeyframe(data, kfSel.step, kfSel.key, kfSel.prop, kfSel.tRel, to)
-            : moveLayerKeyframes(data, kfSel.step, kfSel.key, kfSel.tRel, to);
+        let next = data;
+        const moved: KfRef[] = [];
+        for (const ref of kfSels) {
+          const to = Math.round(Math.max(0, ref.tRel + delta) * 1000) / 1000;
+          const n2 =
+            ref.prop !== undefined
+              ? moveKeyframe(next, ref.step, ref.key, ref.prop, ref.tRel, to)
+              : moveLayerKeyframes(next, ref.step, ref.key, ref.tRel, to);
+          moved.push(n2 !== next ? { ...ref, tRel: to } : ref);
+          next = n2;
+        }
         if (next !== data) {
-          setKfSel({ ...kfSel, tRel: to });
+          setKfSels(moved);
           applyData(next);
         }
       }
@@ -576,7 +678,7 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editable, kfSel, data, template]);
+  }, [editable, kfSels, data, template, head]);
 
   const cueOf = (seg: (typeof segs)[number]) => (seg.i === 0 ? '▶' : seg.isOut ? '■' : '»');
 
@@ -740,30 +842,25 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
                       ) : null,
                     )}
                   {diamonds.map((d, di) => {
-                    const dragging =
-                      kfDrag &&
-                      kfDrag.key === r.layerKey &&
-                      kfDrag.prop === r.prop &&
-                      kfDrag.step === d.step &&
-                      kfDrag.tRel === d.tRel &&
-                      kfDrag.moved;
-                    const selected =
-                      kfSel &&
-                      kfSel.key === r.layerKey &&
-                      kfSel.prop === r.prop &&
-                      kfSel.step === d.step &&
-                      Math.abs(kfSel.tRel - d.tRel) < 0.005;
+                    const ref: KfRef = { key: r.layerKey, step: d.step, tRel: d.tRel, prop: r.prop };
+                    const grabbed = kfDrag?.moved && sameRef(kfDrag.grabbed, ref);
+                    const inDragSet = kfDrag?.moved && kfDrag.refs.some((s) => sameRef(s, ref));
+                    const selected = isKfSelected(ref);
                     return (
                       <span
                         key={di}
-                        className={`tlv2-diamond${editable ? ' editable' : ''}${selected ? ' selected' : ''}${dragging ? ' dragging' : ''}`}
-                        style={{ left: dragging ? kfDrag!.x : d.x }}
+                        className={`tlv2-diamond${editable ? ' editable' : ''}${selected ? ' selected' : ''}${inDragSet ? ' dragging' : ''}`}
+                        style={{
+                          left: grabbed ? kfDrag!.x : inDragSet ? d.x + (kfDrag!.x - kfDrag!.startX) : d.x,
+                        }}
                         title={
                           (isProp ? `${r.label} keyframe` : d.n > 1 ? `${d.n} property keyframes` : 'keyframe') +
-                          (editable ? ' — drag to retime, click to select (Delete removes)' : '')
+                          (editable
+                            ? ' — drag to retime (the whole selection moves), shift-click to add to the set, Delete removes, Ctrl+C/V copies and pastes at the playhead'
+                            : '')
                         }
                         data-testid={`tlv2-kf-${r.layerKey.replace(/[^\w-]/g, '')}${isProp ? `-${r.prop}` : ''}`}
-                        onPointerDown={(e) => startKfDrag(e, { key: r.layerKey, step: d.step, tRel: d.tRel, prop: r.prop }, d.x)}
+                        onPointerDown={(e) => startKfDrag(e, ref, d.x)}
                         onPointerMove={moveKfDrag}
                         onPointerUp={endKfDrag}
                         onPointerCancel={() => setKfDrag(null)}
@@ -771,8 +868,7 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
                           if (!editable) return;
                           e.preventDefault();
                           e.stopPropagation();
-                          const ref = { key: r.layerKey, step: d.step, tRel: d.tRel, prop: r.prop };
-                          setKfSel(ref);
+                          setKfSels([ref]);
                           setSelectedPart(r.layerKey);
                           setKfMenu({ x: e.clientX, y: e.clientY, ref });
                         }}
