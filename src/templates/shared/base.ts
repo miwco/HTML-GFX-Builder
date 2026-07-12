@@ -5,7 +5,7 @@
 // settings, and the JS runtime scaffold around the marked ANIMATION region.
 //
 // A category module (e.g. templates/lowerThirds/shared.ts) composes these pieces and
-// adds its own structure contract (.l3 / .card / .credits / .ticker) and motion module.
+// adds its own structure contract (.lower-third / .info-card / .credits / .ticker) and motion module.
 
 import { DEFAULT_SETTINGS, type Resolution, type SpxSettings } from '../../model/types';
 import { customFontFaceCss, customFontStack, fontById, fontFaceCss, fontStack } from '../../model/fonts';
@@ -33,6 +33,21 @@ export function computeScale(o: ResolvedOptions): number {
 /** The auto-fit cap: boxes never grow past this — text wraps to new rows instead. */
 export function computeMaxTextWidth(res: Resolution): number {
   return Math.round(Math.min(res.width * 0.42, res.width - 2 * (res.width * 0.0625)));
+}
+
+/**
+ * The auto-fit cap as emitted CSS. The measure follows --scale, so resizing the graphic
+ * (Style panel size, canvas corner handle) widens the box instead of wrapping the same
+ * pixel width tighter — but it never grows past the frame's horizontal safe area.
+ * `maxPx` is the category cap at this resolution's default scale; dividing by the
+ * resolution factor normalizes it to "px per unit of --scale" (--scale already carries
+ * that factor, see computeScale).
+ */
+export function maxTextWidthCss(res: Resolution, maxPx: number): string {
+  const resFactor = Math.min(res.width / 1920, res.height / 1080);
+  const perScaleUnit = Math.round(maxPx / resFactor);
+  const safeMax = Math.round(res.width - 2 * (res.width * 0.0625));
+  return `min(calc(${perScaleUnit}px * var(--scale)), ${safeMax}px)`;
 }
 
 // ── Positioning: 9 zones snapped to safe areas ───────────────────────────────

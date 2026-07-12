@@ -36,13 +36,13 @@ export type TemplateCategory =
 
 export const CATEGORIES: CategoryInfo[] = [
   // Essentials — the graphics almost every live show needs.
-  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 10, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
-  { id: 'ticker',        name: 'Tickers',                 plannedCount: 4,  available: true , description: 'Scrolling news, info, and index strips.', group: 'essentials' },
+  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 13, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
+  { id: 'ticker',        name: 'Tickers',                 plannedCount: 6,  available: true , description: 'Scrolling news, info, and index strips.', group: 'essentials' },
   { id: 'scoreboard',    name: 'Scoreboards',             plannedCount: 2,  available: true , description: 'Two-team scores and match status.', group: 'essentials' },
-  { id: 'info-card',     name: 'Info cards',              plannedCount: 4,  available: true,  description: 'Full / half screen cards — info and quotes.', group: 'essentials' },
+  { id: 'info-card',     name: 'Info cards',              plannedCount: 5,  available: true,  description: 'Full / half screen cards — info and quotes.', group: 'essentials' },
   { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: true , description: 'Pre-show holding loops with a timer.', group: 'essentials' },
   { id: 'end-credits',   name: 'End credits',             plannedCount: 4,  available: true , description: 'Rolling and card-based credit sequences.', group: 'essentials' },
-  { id: 'corner-bug',    name: 'Corner bug',              plannedCount: 1,  available: true , description: 'A persistent corner logo (image placeholder).', group: 'essentials' },
+  { id: 'corner-bug',    name: 'Corner bug',              plannedCount: 2,  available: true , description: 'A persistent corner logo (image placeholder).', group: 'essentials' },
   // Specials — for particular formats and moments.
   { id: 'infographic',   name: 'Infographics',            plannedCount: 6,  available: true , description: 'Stats, polls, leaderboards, schedules, counters.', group: 'specials' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 2,  available: true , description: 'Countdowns and clocks for game formats.', group: 'specials' },
@@ -96,6 +96,9 @@ export type AnimPresetId =
   | 'pop-spring'
   | 'snap-stinger'
   | 'blur-in'
+  | 'fade'
+  | 'drop-in'
+  | 'flip-3d'
   // End-credits motion formats (templates/endCredits/creditsPresets.ts):
   | 'credits-roll'
   | 'credits-pages'
@@ -194,6 +197,8 @@ export interface TemplateVariant {
 // ── Curated palettes (one accent + neutral system; see DESIGN_LANGUAGE.md) ──
 
 export const PALETTES: Palette[] = [
+  // NoaCG house (the brand system: void panel, one amber accent — BRAND-MANUAL §3)
+  { id: 'noacg',    name: 'NoaCG Amber',  styleTags: ['noacg'],   accent: '#f6a623', text: '#ffffff', textDim: 'rgba(183,188,196,0.95)', panel: 'rgba(10, 12, 16, 0.86)' },
   // Minimal
   { id: 'ivory',    name: 'Ivory',        styleTags: ['minimal'], accent: '#e8c547', text: '#ffffff', textDim: 'rgba(255,255,255,0.72)', panel: 'rgba(12, 14, 18, 0.92)' },
   { id: 'porcelain',name: 'Porcelain',    styleTags: ['minimal'], accent: '#0f1115', text: '#0f1115', textDim: 'rgba(15,17,21,0.65)',    panel: 'rgba(250, 250, 248, 0.96)' },

@@ -2,17 +2,17 @@
 // o.lines — the wizard's line editor doesn't apply here):
 //   f0 "Team A" (name) · f1 "Score A" · f2 "Team B" (name) · f3 "Score B"
 //
-// Structure contract (mirrors the standard .l3 contract so the six standard lowerThirds
-// animation presets work unchanged with prefix 'sb' and lineCount 4):
-//   <div class="sb">                 root — zone positioned; opacity:0 until play()
-//     <div class="sb-box">           the panel; presets tween this
+// Structure contract (mirrors the standard .lower-third contract so the six standard lowerThirds
+// animation presets work unchanged with prefix 'scoreboard' and lineCount 4):
+//   <div class="scoreboard">                 root — zone positioned; opacity:0 until play()
+//     <div class="scoreboard-box">           the panel; presets tween this
 //       team group A:
-//         <div class="sb-mask"><span id="f0" class="sb-team">HOME</span></div>
-//         <div class="sb-mask"><span id="f1" class="sb-score">0</span></div>
+//         <div class="scoreboard-mask"><span id="f0" class="scoreboard-team">HOME</span></div>
+//         <div class="scoreboard-mask"><span id="f1" class="scoreboard-score">0</span></div>
 //       …divider of the design's choice…
 //       team group B:
-//         <div class="sb-mask"><span id="f2" class="sb-team">AWAY</span></div>
-//         <div class="sb-mask"><span id="f3" class="sb-score">0</span></div>
+//         <div class="scoreboard-mask"><span id="f2" class="scoreboard-team">AWAY</span></div>
+//         <div class="scoreboard-mask"><span id="f3" class="scoreboard-score">0</span></div>
 //     </div>
 //   </div>
 //
@@ -32,6 +32,7 @@ import {
   baseSettings,
   computeScale,
   documentHtml,
+  maxTextWidthCss,
   resetCanvasCss,
   resolveHeadingFont,
   rootVarsCss,
@@ -39,13 +40,14 @@ import {
   zoneCssText,
 } from '../shared/base';
 import { presetById, type PresetConfig } from '../lowerThirds/animPresets';
+import { convertToDataRegion } from '../shared/standard';
 
 export interface SbDesign {
-  /** Inner HTML of .sb — must contain .sb-box with the four .sb-mask > span#fN lines. */
+  /** Inner HTML of .scoreboard — must contain .scoreboard-box with the four .scoreboard-mask > span#fN lines. */
   html: string;
   /** Variant CSS (panel, team names, scores, divider). Colors via :root vars only. */
   css: string;
-  /** Whether the design includes a .sb-accent element (line-reveal draws it first). */
+  /** Whether the design includes a .scoreboard-accent element (line-reveal draws it first). */
   hasAccent: boolean;
 }
 
@@ -71,6 +73,14 @@ function sbRuntimeJs(name: string, animationBlock: string): string {
 var onAir = false;               // true between play() and stop() — pops only happen on air
 var scoreIds = ['f1', 'f3'];     // the two score fields (f0/f2 are the team names)
 
+// motionSpeed(): the template's speed knob. The NOACG_ANIM data block owns it; a legacy
+// animSpeed variable is honored too, and hand-written animation code defaults to 1.
+function motionSpeed() {
+  if (typeof NOACG_ANIM !== 'undefined' && NOACG_ANIM.speed) return NOACG_ANIM.speed;
+  if (typeof animSpeed !== 'undefined' && animSpeed) return animSpeed;
+  return 1;
+}
+
 ${setFieldValueJs}
 
 // update(data): SPX sends field values as JSON, e.g. {"f0":"HOME","f1":"2"}.
@@ -90,7 +100,7 @@ function update(data) {
       // No preset ever tweens a mask, so the pop can't collide with an entrance or exit.
       gsap.fromTo(el.parentNode,
         { scale: 1.35 },
-        { scale: 1, duration: 0.4 / animSpeed, ease: 'back.out(1.7)' }
+        { scale: 1, duration: 0.4 / motionSpeed(), ease: 'back.out(1.7)' }
       );
     }
   }
@@ -141,7 +151,7 @@ export function assembleScoreboard(meta: SbMeta, design: SbDesign, o: ResolvedOp
     title: meta.name,
     definitionBlock: definitionScriptBlock(settings, SB_FIELDS),
     body: `  <!-- Scoreboard root — two team groups (name + score) inside one panel. -->
-  <div class="sb">
+  <div class="scoreboard">
 ${design.html}
   </div>`,
   });
@@ -155,22 +165,22 @@ ${font.face}
 ${resetCanvasCss(o.resolution)}
 
 /* ── Root position (anchor zone) ── */
-.sb {
+.scoreboard {
   position: absolute;
 ${zoneCssText(o.zone, o.nudge, o.resolution)}
   opacity: 0;                      /* hidden until play() runs the entrance */
 }
 
 /* ── Auto-fit: the panel hugs its content and wraps instead of overflowing. ── */
-.sb-box {
+.scoreboard-box {
   width: fit-content;              /* the panel hugs the two team groups */
-  max-width: ${maxTextWidth}px;             /* never wider than this — text wraps instead */
+  max-width: ${maxTextWidthCss(o.resolution, maxTextWidth)};  /* the wrap cap — follows --scale, stops at the safe area */
   will-change: transform, opacity; /* hint the browser: this element animates */
 }
-.sb-mask {
+.scoreboard-mask {
   overflow: hidden;                /* lines animate in from behind this mask */
 }
-.sb-mask > span {
+.scoreboard-mask > span {
   display: inline-block;           /* so the line can move (and pop) inside its mask */
   overflow-wrap: break-word;       /* break very long unbroken team names */
   text-wrap: balance;              /* wrapped rows get even lengths */
@@ -184,7 +194,7 @@ ${design.css}
   // 'auto' uses the preset's hand-tuned ease pair; a named easing preset overrides both phases.
   const ease = resolveEasing(o.animation.easing, preset.autoEase);
   const cfg: PresetConfig = {
-    prefix: 'sb',
+    prefix: 'scoreboard',
     lineCount: 4, // f0 team A · f1 score A · f2 team B · f3 score B
     hasAccent: design.hasAccent,
     steps: false, // scoreboards never step — the whole board enters at once
@@ -195,7 +205,10 @@ ${design.css}
 
   const js = sbRuntimeJs(meta.name, preset.emit(cfg));
 
-  return {
+  // Timeline v2: scoreboards create as animation data blocks. Only the marked region
+  // converts — the score-pop runtime wrapping it (onAir, update()'s mask pop) is
+  // scoreboard-owned code outside the markers and stays byte-identical.
+  return convertToDataRegion({
     name: meta.name,
     type: 'scoreboard',
     resolution: o.resolution,
@@ -214,7 +227,7 @@ ${design.css}
       text: f.value,
       styles: {},
     })),
-  };
+  });
 }
 
 /** The authoring API for scoreboard variant modules. */

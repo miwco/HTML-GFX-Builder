@@ -13,7 +13,7 @@ export interface Splitter {
  *  outrunning the thin handle; no window-level listeners needed. */
 export function useSplitter(
   axis: 'x' | 'y',
-  containerRef: RefObject<HTMLElement>,
+  containerRef: RefObject<HTMLElement | null>,
   onChange: (ratio: number) => void,
   onCommit: (ratio: number) => void,
 ): Splitter {

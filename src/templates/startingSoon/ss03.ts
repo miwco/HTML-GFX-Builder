@@ -34,21 +34,21 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
   },
   (o) => ({
     // Card = kicker mask + headline mask + the clock capsule. The capsule carries
-    // ss-pulse, so the hold-loop preset breathes it while the clock ticks inside.
+    // starting-soon-pulse, so the hold-loop preset breathes it while the clock ticks inside.
     html: `    <!-- Frost Hold: one frosted card — title caps, show name, clock in a glass pill. -->
-    <div class="ss-box">
+    <div class="starting-soon-box">
       <!-- Title caps — the small accent kicker (mask-wrapped for reveals). -->
-      <div class="ss-mask"><span id="f0" class="ss-title">${o.lines[0]?.sample || 'STARTING SOON'}</span></div>
+      <div class="starting-soon-mask"><span id="f0" class="starting-soon-title">${o.lines[0]?.sample || 'STARTING SOON'}</span></div>
       <!-- Show name — the headline (mask-wrapped like the title). -->
-      <div class="ss-mask"><span id="f1" class="ss-show">${o.lines[1]?.sample || 'Midnight Sessions'}</span></div>
-      <!-- The clock capsule — ss-pulse is the hold-loop's breath target. -->
-      <div class="ss-pill ss-pulse">
-        <span class="ss-clock">5:00</span>
+      <div class="starting-soon-mask"><span id="f1" class="starting-soon-show">${o.lines[1]?.sample || 'Midnight Sessions'}</span></div>
+      <!-- The clock capsule — starting-soon-pulse is the hold-loop's breath target. -->
+      <div class="starting-soon-pill starting-soon-pulse">
+        <span class="starting-soon-clock">5:00</span>
       </div>
     </div>`,
 
     css: `/* The frosted card — lt08's glass card grown into a full holding screen. */
-.ss-box {
+.starting-soon-box {
   padding: calc(48px * var(--scale)) calc(76px * var(--scale));  /* front-door air, not strap padding */
   background: var(--panel-bg);     /* translucent white — the glass tint */
   backdrop-filter: blur(18px);     /* frosts the video playing behind the card */
@@ -59,12 +59,12 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* Stack rhythm: a small breath between the kicker and the headline. */
-.ss-mask + .ss-mask {
+.starting-soon-mask + .starting-soon-mask {
   margin-top: calc(14px * var(--scale));  /* kicker and name still read as one unit */
 }
 
 /* Title caps — the quiet accent kicker above the headline. */
-.ss-title {
+.starting-soon-title {
   font-size: calc(24px * var(--scale));  /* label scale — announces, never competes */
   font-weight: 600;                /* semibold keeps small caps legible */
   line-height: 1.2;                /* compact single-line label */
@@ -74,7 +74,7 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* Show name — the headline the audience is waiting for. */
-.ss-show {
+.starting-soon-show {
   font-size: calc(66px * var(--scale));  /* holding screens carry lower-third headline size and more */
   font-weight: 700;                /* bold enough to own the screen */
   line-height: 1.1;                /* tight leading — big text needs less */
@@ -83,7 +83,7 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The clock capsule — lt09's glass pill, slowed down for the wait (the breath target). */
-.ss-pill {
+.starting-soon-pill {
   display: inline-flex;            /* hug the clock; centered by the card's text-align */
   align-items: center;             /* the time sits on the capsule's centerline */
   margin-top: calc(32px * var(--scale));  /* clear air — the clock is its own moment */
@@ -97,18 +97,18 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
 
 /* Accent ring — a softened halo drawn by a pseudo-element, so the border stays pure
    var(--accent) (the Style panel retints it) and opacity does the late-night softening. */
-.ss-pill::after {
+.starting-soon-pill::after {
   content: '';                     /* pseudo-elements need content to render */
   position: absolute;              /* pinned over the capsule, out of the flex flow */
   inset: 0;                        /* cover the whole pill */
   border: calc(2px * var(--scale)) solid var(--accent);  /* the accent-tinted edge */
   border-radius: inherit;          /* follow the capsule's full rounding */
-  opacity: 0.4;                    /* a glow at rest — .ss-done brings it to full */
+  opacity: 0.4;                    /* a glow at rest — .starting-soon-done brings it to full */
   pointer-events: none;            /* purely decorative overlay */
 }
 
 /* The countdown — painted by the clock runtime every second. */
-.ss-clock {
+.starting-soon-clock {
   font-size: calc(46px * var(--scale));  /* clearly the second-biggest thing on the card */
   font-weight: 600;                /* solid digits without going heavy */
   line-height: 1;                  /* the capsule's padding sets the height */
@@ -117,11 +117,11 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
   color: var(--text-color);        /* primary text — the accent stays in its small doses */
 }
 
-/* Time's up — the clock runtime adds .ss-done to the root at 0:00. */
-.ss-done .ss-clock {
+/* Time's up — the clock runtime adds .starting-soon-done to the root at 0:00. */
+.starting-soon-done .starting-soon-clock {
   color: var(--accent);            /* the zero moment borrows the accent */
 }
-.ss-done .ss-pill::after {
+.starting-soon-done .starting-soon-pill::after {
   opacity: 1;                      /* the halo comes to full strength */
 }`,
   }),

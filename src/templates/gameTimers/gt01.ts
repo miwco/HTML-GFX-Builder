@@ -36,16 +36,16 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
     // Stack = label mask, accent hairline, clock — top to bottom under the top-center
     // anchor. The hidden #f1 minutes source is appended by the assembler.
     html: `    <!-- Clean Clock: [small-caps label] / [accent hairline] / [big clock]. -->
-    <div class="gt-box">
+    <div class="game-timer-box">
       <!-- The label line — #f0 is the SPX field; line-reveal slides it up out of the mask. -->
-      <div class="gt-mask"><span id="f0">${o.lines[0]?.sample || 'ROUND 1'}</span></div>
+      <div class="game-timer-mask"><span id="f0">${o.lines[0]?.sample || 'ROUND 1'}</span></div>
       <!-- The accent hairline — the single accent moment (the lt02 underline motif). -->
-      <div class="gt-accent"></div>
+      <div class="game-timer-accent"></div>
       <!-- The clock — the countdown runtime repaints this as M:SS. -->
-      <div class="gt-clock">3:00</div>
+      <div class="game-timer-clock">3:00</div>
     </div>`,
     css: `/* The stack: label / hairline / clock, centered — no panel, whitespace does the work. */
-.gt-box {
+.game-timer-box {
   display: flex;                   /* a simple vertical stack */
   flex-direction: column;          /* label, hairline, clock — top to bottom */
   align-items: center;             /* everything centered under the top anchor */
@@ -54,7 +54,7 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
 }
 
 /* Label line — a quiet small-caps kicker; the clock is the loud element here. */
-.gt-mask > span {
+.game-timer-mask > span {
   font-size: calc(18px * var(--scale));  /* kicker scale — clearly a label, not a headline */
   font-weight: 600;                /* enough weight for small caps to carry */
   line-height: 1.3;                /* relaxed leading at small sizes */
@@ -64,7 +64,7 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
 }
 
 /* The hairline — short on purpose: a mark between label and clock, not a full rule. */
-.gt-accent {
+.game-timer-accent {
   width: calc(64px * var(--scale));  /* a short stroke — never the full stack width */
   height: calc(2px * var(--scale));  /* true hairline weight */
   background: var(--accent);       /* the one small, sharp dose of accent color */
@@ -72,7 +72,7 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
 }
 
 /* The clock — large and calm; tabular figures so digits never jiggle as they tick. */
-.gt-clock {
+.game-timer-clock {
   font-size: calc(88px * var(--scale));  /* the headline element of the design */
   font-weight: 400;                /* regular — confident, never shimmer-thin over video */
   line-height: 1;                  /* the numerals sit tight under the hairline */
@@ -83,11 +83,11 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
 }
 
 /* Time's up — the clock flips to the accent and blinks twice. Surgical, not a siren. */
-.gt-done .gt-clock {
+.game-timer-done .game-timer-clock {
   color: var(--accent);            /* zero reads in the accent color */
-  animation: gt-flash 0.9s ease-out;  /* one brief opacity flash, then steady */
+  animation: game-timer-flash 0.9s ease-out;  /* one brief opacity flash, then steady */
 }
-@keyframes gt-flash {
+@keyframes game-timer-flash {
   0%, 44%, 100% { opacity: 1; }    /* on… */
   22%, 66% { opacity: 0.2; }       /* …off — two quick blinks, then settle */
 }`,

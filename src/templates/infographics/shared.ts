@@ -6,9 +6,9 @@
 //     bar rows from the field values, exactly like tickers re-render their items.
 //
 // Structure contract:
-//   <div class="ig">                 root — zone positioned; opacity:0 until play()
-//     <div class="ig-box">           the panel; presets reveal this
-//       …design markup: stat value (#f0), labels, or #ig-bars with .ig-bar-fill rows…
+//   <div class="infographic">                 root — zone positioned; opacity:0 until play()
+//     <div class="infographic-box">           the panel; presets reveal this
+//       …design markup: stat value (#f0), labels, or #infographic-bars with .infographic-bar-fill rows…
 //     </div>
 //   </div>
 //
@@ -28,6 +28,7 @@ import {
   baseSettings,
   computeScale,
   documentHtml,
+  maxTextWidthCss,
   resetCanvasCss,
   resolveHeadingFont,
   rootVarsCss,
@@ -38,7 +39,7 @@ import type { PresetConfig } from '../lowerThirds/animPresets';
 import { igPresetById } from './igPresets';
 
 export interface IgDesign {
-  /** Inner HTML of .ig — must contain .ig-box (stat markup or #ig-bars rows). */
+  /** Inner HTML of .infographic — must contain .infographic-box (stat markup or #infographic-bars rows). */
   html: string;
   /** Variant CSS (panel, value, labels, bars). Colors via :root vars only. */
   css: string;
@@ -119,7 +120,7 @@ export function assembleInfographic(meta: IgMeta, design: IgDesign, o: ResolvedO
     title: meta.name,
     definitionBlock: definitionScriptBlock(settings, design.fields),
     body: `  <!-- Infographic root — a data callout panel (stat or bar chart). -->
-  <div class="ig">
+  <div class="infographic">
 ${design.html}
   </div>`,
   });
@@ -133,22 +134,22 @@ ${font.face}
 ${resetCanvasCss(o.resolution)}
 
 /* ── Root position (anchor zone) ── */
-.ig {
+.infographic {
   position: absolute;
 ${zoneCssText(o.zone, o.nudge, o.resolution)}
   opacity: 0;                      /* hidden until play() runs the entrance */
 }
 
 /* ── Auto-fit: the panel hugs its content and wraps instead of overflowing. ── */
-.ig-box {
+.infographic-box {
   width: fit-content;              /* the panel hugs the stat / chart */
-  max-width: ${maxTextWidth}px;             /* never wider than this — text wraps instead */
+  max-width: ${maxTextWidthCss(o.resolution, maxTextWidth)};  /* the wrap cap — follows --scale, stops at the safe area */
   will-change: transform, opacity; /* hint the browser: this element animates */
 }
-.ig-mask {
+.infographic-mask {
   overflow: hidden;                /* lines animate in from behind this mask */
 }
-.ig-mask > span {
+.infographic-mask > span {
   display: inline-block;           /* so the line can move inside its mask */
   overflow-wrap: break-word;       /* break very long unbroken words */
   text-wrap: balance;              /* wrapped rows get even lengths */
@@ -162,7 +163,7 @@ ${design.css}
   // 'auto' uses the preset's hand-tuned ease pair; a named easing preset overrides both phases.
   const ease = resolveEasing(o.animation.easing, preset.autoEase);
   const cfg: PresetConfig = {
-    prefix: 'ig',
+    prefix: 'infographic',
     lineCount: design.fields.length,
     hasAccent: false,
     steps: false, // infographics never step — the whole callout enters at once

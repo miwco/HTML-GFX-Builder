@@ -3,8 +3,8 @@
 // preset only choreographs the entrance/exit and calls startClock() / stopClock().
 //
 // The game-timer structure contract (see shared.ts):
-//   .gt (root, opacity:0) → .gt-box (the panel) → [.gt-accent?] → .gt-mask with the
-//     #f0 label → .gt-clock (the countdown runtime paints M:SS; .gt-done = "time's up")
+//   .game-timer (root, opacity:0) → .game-timer-box (the panel) → [.game-timer-accent?] → .game-timer-mask with the
+//     #f0 label → .game-timer-clock (the countdown runtime paints M:SS; .game-timer-done = "time's up")
 //
 // The countdown is real time and the on-air clock is authoritative, so every preset
 // calls startClock() at t = 0 of the in-timeline — never after the entrance settles.
@@ -90,9 +90,9 @@ ${knobs(cfg)}
 // buildInTimeline(): start the countdown, then pop the panel in around it.
 function buildInTimeline() {
   var tl = gsap.timeline();
-  tl.set('.gt', { opacity: 1 });               // reveal the (CSS-hidden) graphic
+  tl.set('.game-timer', { opacity: 1 });               // reveal the (CSS-hidden) graphic
   tl.call(startClock);                         // start ticking at once — on air, time rules
-  tl.fromTo('.gt-box',
+  tl.fromTo('.game-timer-box',
     { scale: 0.85, opacity: 0 },               // fromTo: replay always starts clean
     { scale: 1, opacity: 1, duration: 0.5 / animSpeed, ease: easeIn }
   );
@@ -103,8 +103,8 @@ function buildInTimeline() {
 function buildOutTimeline() {
   var tl = gsap.timeline();
   tl.call(stopClock);                          // stop ticking the moment we leave
-  tl.to('.gt-box', { scale: 0.9, opacity: 0, duration: 0.35 / animSpeed, ease: easeOut });
-  tl.set('.gt', { opacity: 0 });               // fully hidden; ready to play again
+  tl.to('.game-timer-box', { scale: 0.9, opacity: 0, duration: 0.35 / animSpeed, ease: easeOut });
+  tl.set('.game-timer', { opacity: 0 });               // fully hidden; ready to play again
   return tl;
 }
 ${MARK_CLOSE}`,

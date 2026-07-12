@@ -10,6 +10,8 @@ import {
   remoteControlConfig,
 } from '../control/realtimeControl';
 import { isBackendConfigured } from '../backend/config';
+import { useAuthState } from './auth/useAuthState';
+import { useAuthUi } from './auth/authUi';
 import { hasChatGraphic, chatGraphicBlock, stripChatGraphic, chatBackendRefKey, type ChatMode } from '../showchat/chatGraphicBlock';
 import { listMyShows, type ShowRow } from '../showchat/chatData';
 import ModerationPanel from '../showchat/ModerationPanel';
@@ -132,6 +134,8 @@ export default function ControlPanel() {
   const liveDataOn = hasLiveData(template.js);
   const remoteOn = hasRealtimeControl(template.js);
   const backendConfigured = isBackendConfigured();
+  const { needsSignIn } = useAuthState();
+  const openSignIn = useAuthUi((s) => s.openSignIn);
   const remote = backendConfigured ? remoteControlConfig(template.name) : null;
 
   const drive = (action: PlayoutAction) => sendControl(action);
@@ -159,12 +163,12 @@ export default function ControlPanel() {
   const chatOn = hasChatGraphic(template.js);
   const chatRefKey = backendConfigured ? chatBackendRefKey() : null;
   useEffect(() => {
-    if (!backendConfigured) return;
+    if (!backendConfigured || needsSignIn) return; // shows are per-account; skip when signed out
     void listMyShows().then((s) => {
       setChatShows(s);
       setChatShowId((id) => id || s[0]?.id || '');
     });
-  }, [backendConfigured, moderationOpen]); // refresh after moderating (shows may have been created)
+  }, [backendConfigured, needsSignIn, moderationOpen]); // refresh after moderating (shows may have been created)
 
   const enableChat = () => {
     if (!chatRefKey || !chatShowId) return;
@@ -307,9 +311,25 @@ export default function ControlPanel() {
             Share a public link; viewers submit messages you approve and send to air. Manage the
             queue, then add a graphic block that shows the on-air messages.
           </p>
-          <button onClick={() => setModerationOpen(true)}>💬 Manage &amp; moderate</button>
+          <button
+            onClick={() =>
+              needsSignIn
+                ? openSignIn('Sign in to run a show chat — audience send-in with moderation.')
+                : setModerationOpen(true)
+            }
+          >
+            💬 Manage &amp; moderate
+          </button>
 
-          {chatRefKey ? (
+          {needsSignIn ? (
+            <p className="muted" style={{ marginTop: 6 }}>
+              Show chat needs an account —{' '}
+              <button className="link-inline" onClick={() => openSignIn('Sign in to run a show chat — audience send-in with moderation.')}>
+                sign in
+              </button>{' '}
+              to create shows and moderate messages.
+            </p>
+          ) : chatRefKey ? (
             <div className="row" style={{ marginTop: 8, alignItems: 'center' }}>
               <select className="grow" value={chatShowId} onChange={(e) => setChatShowId(e.target.value)}>
                 {chatShows.length === 0 && <option value="">Create a show first</option>}

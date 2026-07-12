@@ -29,11 +29,16 @@ Then point the app at it via `.env` (see `../.env.example`):
 ```
 VITE_SUPABASE_URL=https://<your-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<your-anon-key>   # public; RLS is the real boundary
-VITE_REQUIRE_AUTH=true                    # force login (hosted closed beta); omit for open/offline
 ```
 
 With those unset, the app runs in pure offline localStorage mode — no login, no sync, exports
 unchanged.
+
+**There is no login wall (Era 5.6 — the open editor).** With a backend configured, the editor is
+still open to everyone: anyone can create, preview, and export with no account. Signing in (topbar
+"Sign in" → dialog) only unlocks the account features — cloud sync, community, show chat, AI.
+Signup is **open** (migration `0006`); to re-close it to the invite allowlist, ship a migration
+restoring the `0002` body of `enforce_allowlist`.
 
 ## Contents
 
@@ -59,6 +64,10 @@ unchanged.
   Required so a takedown works at all: Postgres applies SELECT policies to the rows an
   `UPDATE ... WHERE` must locate, so without it a moderator's status change silently matches 0 rows
   (found in live-verify). Also what a review/takedown queue reads.
+- `migrations/0006_open_signup.sql` — **open signup** (Era 5.6): `enforce_allowlist` now allows
+  every sign-up; the hook wiring and the allowlist table stay, so re-closing is a one-function
+  migration. Abuse posture for public instances: require email confirmation (Auth → Sign In/Up)
+  and enable captcha (Auth → Attack Protection) in the dashboard.
 - `seed.sql` — local-dev-only allowlist seed.
 
 Migrations are ordered by filename and are **immutable once shipped** — change the schema by adding
@@ -69,13 +78,17 @@ a new migration, never by editing an applied one.
 The app is built code-first: `npm run build` + offline E2E prove the offline path and the pure sync
 logic, but the server paths below need a real project. Do these once after connecting:
 
-**Auth (5.1)**
-1. With `VITE_REQUIRE_AUTH=true` and your `.env` pointing at the project, `npm run dev` → you should
-   see the login screen (not the app).
-2. Add your email to the allowlist (`insert into allowlist (email) values ('you@…');`), then sign up
-   / sign in with email+password → the app appears; the topbar shows your email + "Sign out".
-3. Sign up with a NON-allowlisted email → it must be rejected with the private-beta message. (This
-   confirms the `enforce_allowlist` hook is wired — Authentication → Hooks in the dashboard.)
+**Auth (5.1, reworked in 5.6 — the open editor + open signup)**
+1. With your `.env` pointing at the project, `npm run dev` → open `/app`: the EDITOR loads with no
+   login wall; the topbar shows a "Sign in" button, and the AI tab / 🌐 Community prompt for
+   sign-in. (The root `/` is the public landing page.) Google OAuth returns to `/app` — the
+   dashboard's Auth → URL Configuration must allowlist that redirect URL.
+2. Sign up with ANY email via the dialog → account created (0006 open signup; live-verified
+   2026-07-08 with a throwaway address, then deleted). Sign in → the dialog closes; the topbar
+   shows your email + "Sign out".
+3. Public-instance hardening (dashboard): require email confirmation (Auth → Sign In/Up) and
+   enable captcha (Auth → Attack Protection). Config.toml sets `enable_confirmations = true` for
+   CLI-managed instances, but the HOSTED dashboard setting is separate — check it there.
 
 **Cloud sync (5.2a)**
 4. Signed in, open 📦 Packets, save a graphic into a packet → the topbar sync pill goes

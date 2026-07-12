@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test';
 // (> 768px → !isMobile), so the two-pane split view with the divider is active.
 
 async function createHairline(page: Page) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
@@ -58,6 +58,70 @@ test('dragging the divider resizes the columns, and the ratio persists', async (
   await page.locator('.gallery-close').click();
   const codeReload = (await page.locator('[data-testid="code-pane"]').boundingBox())!.width;
   expect(Math.abs(codeReload - codeAfter)).toBeLessThan(30);
+});
+
+test('code-left: the tool panels span the full width under preview and Inspector — no dead corner', async ({ page }) => {
+  await createHairline(page);
+  await page.getByTestId('toggle-inspector').click();
+  await expect(page.getByTestId('inspector-pane')).toBeVisible();
+
+  const panel = (await page.getByTestId('panel-pane').boundingBox())!;
+  const insp = (await page.getByTestId('inspector-pane').boundingBox())!;
+  const stage = (await page.locator('.preview-stage').boundingBox())!;
+  const code = (await page.getByTestId('code-pane').boundingBox())!;
+  // The Inspector column ends exactly where the panel row begins — nothing dead under it.
+  expect(insp.y + insp.height).toBeLessThanOrEqual(panel.y + 2);
+  // The panel row spans the whole right region: from the code column's edge to the
+  // Inspector's right edge.
+  expect(panel.x).toBeGreaterThanOrEqual(code.x + code.width - 2);
+  expect(panel.x + panel.width).toBeGreaterThanOrEqual(insp.x + insp.width - 4);
+  // The Inspector still sits right of the preview, never over it.
+  expect(insp.x).toBeGreaterThanOrEqual(stage.x + stage.width - 2);
+});
+
+test('the step timeline reads at an editing scale — comfortable rows and labels', async ({ page }) => {
+  await createHairline(page);
+  await expect(page.getByTestId('timeline-v2')).toBeVisible();
+  // Layer rows are real editing targets, not a status readout.
+  const row = (await page.locator('.tlv2-row').first().boundingBox())!;
+  expect(row.height).toBeGreaterThanOrEqual(26);
+  // Row labels read at UI size (the classic strip keeps its compact 10.5px scale).
+  const labelSize = await page
+    .locator('.tlv2-labels .timeline-label')
+    .first()
+    .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(labelSize).toBeGreaterThanOrEqual(12);
+});
+
+test('the timeline refits and condenses when the Inspector narrows it — manual zoom wins', async ({ page }) => {
+  await createHairline(page);
+  await expect(page.getByTestId('timeline-v2')).toBeVisible();
+  const labelW = async () => (await page.locator('.tlv2-labels').boundingBox())!.width;
+  const ribbonFits = async () => {
+    const canvas = (await page.getByTestId('tlv2-canvas').boundingBox())!;
+    const scroll = (await page.locator('.tlv2-scroll').boundingBox())!;
+    return canvas.width <= scroll.width + 2;
+  };
+  // Comfortable width: full-size labels and the whole ribbon fits (the initial auto-fit).
+  expect(await labelW()).toBeGreaterThanOrEqual(140);
+  expect(await ribbonFits()).toBe(true);
+
+  // Opening the Inspector narrows the strip: the auto zoom REFITS (the whole ribbon
+  // still fits) and the label column condenses — rows keep their editing height.
+  await page.getByTestId('toggle-inspector').click();
+  await expect.poll(labelW).toBeLessThan(120);
+  await expect.poll(ribbonFits).toBe(true);
+  const row = (await page.locator('.tlv2-row').first().boundingBox())!;
+  expect(row.height).toBeGreaterThanOrEqual(26);
+
+  // A manual zoom is a deliberate framing choice — a later layout change must not
+  // override it.
+  await page.getByTestId('tlv2-zoom-in').click();
+  const zoomed = (await page.getByTestId('tlv2-canvas').boundingBox())!.width;
+  await page.getByTestId('toggle-inspector').click(); // wider again
+  await page.waitForTimeout(250);
+  const after = (await page.getByTestId('tlv2-canvas').boundingBox())!.width;
+  expect(Math.abs(after - zoomed)).toBeLessThan(4);
 });
 
 test('"preview on top" mode makes the preview full-width, above code, and persists', async ({ page }) => {

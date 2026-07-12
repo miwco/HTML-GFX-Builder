@@ -60,7 +60,7 @@ function toolResponse(input: unknown) {
 }
 
 async function openAiStep(page: Page) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="ai"]').click();
 }

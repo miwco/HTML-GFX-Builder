@@ -92,11 +92,11 @@ The animation **is** the taste. Rules:
 Text boxes **hug their content and wrap gracefully**; operators type any length.
 
 ```css
-.l3-box {
+.lower-third-box {
   width: fit-content;              /* the panel hugs the text */
   max-width: 800px;                /* never grow past this — wrap instead (~42% of 1920) */
 }
-.l3-name {
+.lower-third-name {
   overflow-wrap: break-word;       /* break very long unbroken words */
   text-wrap: balance;              /* wrapped lines get even lengths */
 }
@@ -115,8 +115,8 @@ use the tighter classic 120 px left inset for lower-left thirds). Zone sets the 
 
 ## 7. Generated-code style (readability & editability)
 
-- **Naming:** one short prefix per category — lower thirds use `l3` (`.l3`, `.l3-box`, `.l3-name`,
-  `.l3-title`, `.l3-kicker`, `.l3-accent`, `.l3-logo`). Functions are verbs:
+- **Naming:** one descriptive prefix per category — lower thirds use `lower-third` (`.lower-third`, `.lower-third-box`, `.lower-third-name`,
+  `.lower-third-title`, `.lower-third-kicker`, `.lower-third-accent`, `.lower-third-logo`). Functions are verbs:
   `buildInTimeline()`, `buildOutTimeline()`, `update(data)`, `play()`, `stop()`, `next()`.
 - **Comment every CSS property** (short, right-aligned style as in existing templates) and every
   JS section. Comments explain *what it does*, not *that it changed*.
@@ -142,22 +142,29 @@ ships at least one variant per style family, and that variant must look like the
 lower-third counterpart. The shared `:root` contract + brand mechanism carry palette and font;
 these family tokens carry the *shape and motion*:
 
-| Token | minimal | sport | glass |
-|---|---|---|---|
-| Accent geometry | hairlines 2–4 px, short underlines | slabs 8–12 px, fused to panel edges | dots, rings, gradient edges |
-| Panel | none or keyline `rgba(255,255,255,0.14)` | solid slab, **skewX(−8°)** where skewed | translucent white 0.08–0.14 + `blur(18px)` + keyline 0.18 |
-| Radius | 0–2 px | 0 | 14–18 px |
-| Shadow | none/subtle | hard offset (sticker-slab) | soft wide `0 20px 60px rgba(0,0,0,0.35)` |
-| Type | normal width, weights 400–700 | condensed/heavy caps, 0.02–0.1 em tracking on labels | soft rounded families, weights 500–800 |
-| Motion feel | expo/power3 reveals, masked lines | ≤0.5 s snap-stingers, x-slides with skew | back.out pops, blur-ins |
-| Continuous motion (tickers/credits/loops) | `ease: 'none'` (Linear) for the travel itself; entrances/exits still eased | same | same |
+| Token | minimal | sport | glass | noacg (house) |
+|---|---|---|---|---|
+| Accent geometry | hairlines 2–4 px, short underlines | slabs 8–12 px, fused to panel edges | dots, rings, gradient edges | one 8 px amber bar fused to the panel's left edge; solid amber label chips (dark ink) |
+| Panel | none or keyline `rgba(255,255,255,0.14)` | solid slab, **skewX(−8°)** where skewed | translucent white 0.08–0.14 + `blur(18px)` + keyline 0.18 | void `rgba(10,12,16,0.86–0.92)` + `blur(8px)`; strips add a `rgba(246,166,35,0.5)` top edge |
+| Radius | 0–2 px | 0 | 14–18 px | 0 on panels; 6 px on chips/badges |
+| Shadow | none/subtle | hard offset (sticker-slab) | soft wide `0 20px 60px rgba(0,0,0,0.35)` | `0 16px 50px rgba(0,0,0,0.5)`; restrained amber glow `0 0 22–26px rgba(246,166,35,0.4–0.6)` on accent elements ONLY |
+| Type | normal width, weights 400–700 | condensed/heavy caps, 0.02–0.1 em tracking on labels | soft rounded families, weights 500–800 | display 700, −0.01/−0.02 em; labels ALWAYS JetBrains Mono caps, 0.14–0.28 em tracking, accent or dark-on-accent |
+| Motion feel | expo/power3 reveals, masked lines | ≤0.5 s snap-stingers, x-slides with skew | back.out pops, blur-ins | expo/power3 reveals like minimal — controlled, newsroomy; the glow never animates on its own |
+| Continuous motion (tickers/credits/loops) | `ease: 'none'` (Linear) for the travel itself; entrances/exits still eased | same | same | same |
+
+The **noacg** family is the product's own on-air look (BRAND-MANUAL §3: void `#0a0c10`, amber
+`#f6a623`, paper `#e8edf2`; markets up/down `#4ac47a`/`#e57a7d`), derived from the seven
+`NoaCG-Brand-Kit/overlays/` pieces. It exists so the product's built-in output showcases the
+brand. Its default label face is bundled JetBrains Mono (`labelFontFaceCss`) — a design-owned
+second typeface the Style panel's heading-font swap never touches. Like every family, palette
+and heading font remain fully user-swappable via the `:root` contract.
 
 Rules:
 - A new category variant **must name its lower-third sibling** in its brief and be judged against
   it ("would these two appear in the same show?").
 - Reuse the exact token values above (e.g. sport's −8° skew, glass's blur 18) — don't improvise
   new ones per category.
-- Category structure contracts mirror `.l3`: `.card`, `.credits`, `.ticker` roots with the same
+- Category structure contracts mirror `.lower-third`: `.info-card`, `.credits`, `.ticker` roots with the same
   `:root` variable names, the same marked ANIMATION region, and the same auto-fit text rules.
 
 ## 9. Judging checklist (what reviewers score)

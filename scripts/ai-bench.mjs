@@ -4,7 +4,7 @@
 //
 //   node scripts/ai-bench.mjs [out-dir] [count | id,id,…]
 //
-// Requirements: the dev server on http://localhost:5174 and VITE_ANTHROPIC_API_KEY in
+// Requirements: the dev server (this checkout's port — scripts/dev-port.mjs) and VITE_ANTHROPIC_API_KEY in
 // .env (or the environment). ⚠ SPENDS REAL TOKENS — roughly a few cents per brief with
 // the default model; the third arg limits the run to the first N briefs, or to a
 // comma-separated list of brief ids (e.g. "karaoke-line,weather-now").
@@ -14,7 +14,9 @@
 
 import { chromium } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { devPort } from './dev-port.mjs';
 
+const BASE = `http://localhost:${devPort()}`;
 const OUT = process.argv[2] || './bench-out';
 const FILTER = process.argv[3] ?? '';
 mkdirSync(OUT, { recursive: true });
@@ -57,7 +59,7 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, de
 await page.addInitScript((key) => {
   localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: key, model: 'claude-sonnet-5' }));
 }, KEY);
-await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(800);
 
 const selected = /^[a-z-]+(,[a-z-]+)*$/.test(FILTER)
@@ -144,7 +146,7 @@ for (const [id, brief] of selected) {
     );
 
     // Back to the app for the next round.
-    await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(600);
   } catch (e) {
     results.push({ id, brief, name: null, summary: null, ok: false, errors: [String(e.message || e)], overlaps: [] });

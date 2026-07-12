@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { composeDocument } from '../preview/composeDocument';
 import { useTemplateStore } from '../store/templateStore';
 import CanvasGuides from './CanvasGuides';
+import CanvasInteraction from './CanvasInteraction';
 
 interface Props {
-  iframeRef: RefObject<HTMLIFrameElement>;
+  iframeRef: RefObject<HTMLIFrameElement | null>;
 }
 
 const RELOAD_DEBOUNCE_MS = 350;
@@ -84,6 +85,8 @@ export default function PreviewFrame({ iframeRef }: Props) {
         }}
       />
       <CanvasGuides width={stageW * scale} height={stageH * scale} />
+      {/* Direct manipulation — always on: drag the graphic, double-click text to edit. */}
+      <CanvasInteraction iframeRef={iframeRef} width={stageW * scale} height={stageH * scale} />
 
       <div className="preview-toolbar">
         <div className="guide-switch">

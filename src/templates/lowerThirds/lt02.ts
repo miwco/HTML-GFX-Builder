@@ -18,7 +18,7 @@ export const lt02: TemplateVariant = defineVariant(
       { title: 'Title', sample: 'Senior Analyst' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'slide-fade'],
+    animationPresets: ['line-reveal', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('signal'),
     defaultFontId: 'space-grotesk',
     defaultZone: 'bottom-left',
@@ -36,20 +36,20 @@ export const lt02: TemplateVariant = defineVariant(
     // between the name and the title purely by the flex `order` rules in the CSS.
     html: `    <!-- Underline: a plain text stack (no panel). The accent underline is the last
          child of the box; flex \`order\` places it visually between name and title. -->
-    <div class="l3-box">
+    <div class="lower-third-box">
 ${lineMasks(o)}
       <!-- The accent underline — the design's single color moment. -->
-      <div class="l3-accent"></div>
+      <div class="lower-third-accent"></div>
     </div>`,
     css: `/* The text block: a plain vertical stack — no panel, whitespace does the work. */
-.l3-box {
+.lower-third-box {
   display: flex;                   /* flex so \`order\` can slot the underline between lines */
   flex-direction: column;          /* stack the lines vertically */
   gap: calc(10px * var(--scale));  /* small breathing room above and below the underline */
 }
 
 /* The accent underline — short on purpose: a mark, not a rule across the text. */
-.l3-accent {
+.lower-third-accent {
   order: 1;                        /* after the name (order 0), before the title (order 2) */
   width: calc(72px * var(--scale));  /* a short stroke — never stretched to the text width */
   height: calc(3px * var(--scale));  /* hairline weight */
@@ -58,12 +58,12 @@ ${lineMasks(o)}
 }
 
 /* Every line after the name drops below the underline (the name keeps default order 0). */
-.l3-mask:nth-child(n + 2) {
+.lower-third-mask:nth-child(n + 2) {
   order: 2;                        /* below the underline (order 1) */
 }
 
 /* Name line — the big moment. */
-.l3-name {
+.lower-third-name {
   font-size: calc(56px * var(--scale));  /* headline size */
   font-weight: 600;                /* strong without shouting */
   line-height: 1.08;               /* tight leading for big text */
@@ -72,7 +72,7 @@ ${lineMasks(o)}
 }
 
 /* Title line — small caps, dimmed, quiet. */
-.l3-title {
+.lower-third-title {
   font-size: calc(23px * var(--scale));  /* clearly subordinate to the name */
   font-weight: 400;                /* light against the semibold name */
   line-height: 1.3;                /* relaxed leading at small sizes */

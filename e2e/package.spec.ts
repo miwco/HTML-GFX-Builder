@@ -4,7 +4,7 @@ import { test, expect, type Page, type FrameLocator } from '@playwright/test';
 // and the first-wave categories (info cards, end credits, tickers).
 
 async function toVariantStep(page: Page, categoryName: string, variantName: string) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: categoryName }).click();
@@ -38,7 +38,7 @@ test('custom colors: a hex typed in the wizard lands in the generated :root', as
   await create(page);
   await expect
     .poll(async () =>
-      frame(page).locator('.l3-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
+      frame(page).locator('.lower-third-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
     )
     .toBe('rgb(255, 45, 120)');
 });
@@ -87,10 +87,13 @@ test('project brand: match toggle carries the look to another variant', async ({
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Frosted Card' }).click();
-  await expect(page.locator('.wz-match input')).toBeChecked();
+  // The match toggle is off by default — carrying the look over is an explicit choice.
+  const match = page.locator('.wz-match input');
+  await expect(match).not.toBeChecked();
+  await match.check();
   await create(page);
   await expect
-    .poll(async () => frame(page).locator('.l3').evaluate(() => {
+    .poll(async () => frame(page).locator('.lower-third').evaluate(() => {
       return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
     }))
     .toBe('#00ff88');
@@ -100,10 +103,10 @@ test('info card: creates, binds, and plays', async ({ page }) => {
   await toVariantStep(page, 'Info cards', 'Slab Card');
   await create(page);
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Slab Card');
-  await expect(frame(page).locator('.card')).toBeAttached(); // the NEW document is loaded
+  await expect(frame(page).locator('.info-card')).toBeAttached(); // the NEW document is loaded
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame(page).locator('.card').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame(page).locator('.info-card').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 
@@ -116,7 +119,7 @@ test('end credits: text field drives the parsed roll', async ({ page }) => {
   // Editing the credits in the Data panel + ⟳ Update re-renders the rows.
   await page.locator('.panel-tabs .tab', { hasText: 'Data' }).click();
   await page.locator('.panel-body textarea').first().fill('CREW\nShowrunner | Nova Reyes');
-  await page.getByRole('button', { name: '⟳ Update' }).click();
+  await page.locator('.panel-body').getByRole('button', { name: '⟳ Update' }).click();
   await expect(track.locator('.credits-row')).toHaveCount(1);
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect

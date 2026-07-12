@@ -19,7 +19,7 @@ export const lt06: TemplateVariant = defineVariant(
       { title: 'Team', sample: 'FC VOLTA' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['mask-wipe', 'snap-stinger'],
+    animationPresets: ['mask-wipe', 'snap-stinger', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('inferno'),
     defaultFontId: 'archivo',
     defaultZone: 'bottom-left',
@@ -33,16 +33,16 @@ export const lt06: TemplateVariant = defineVariant(
     uicolor: '6',
   },
   (o) => ({
-    // No .l3-accent element: the accent IS the second bar's background.
+    // No .lower-third-accent element: the accent IS the second bar's background.
     html: `    <!-- Split Bar: no shared panel — each line's span paints its own bar, so the bars step. -->
-    <div class="l3-box">
+    <div class="lower-third-box">
 ${lineMasks(o)}
     </div>`,
     css: `/* No shared panel here: the box is only a stack of line masks (normal block flow,
    zero gap — the bars touch). Each span paints its own bar and hugs its own text. */
 
 /* The name line: a heavy dark slab. */
-.l3-name {
+.lower-third-name {
   background: var(--panel-bg);     /* the dark slab behind the name */
   color: var(--text-color);        /* primary text color */
   padding: calc(16px * var(--scale)) calc(34px * var(--scale));  /* generous slab padding, wide sides */
@@ -54,7 +54,7 @@ ${lineMasks(o)}
 }
 
 /* The team line: a solid accent bar — sport's deliberate bold-accent exception. */
-.l3-title {
+.lower-third-title {
   background: var(--accent);       /* the accent moment: a full accent slab */
   color: var(--panel-bg);          /* the dark slab hue doubles as ink on the bright accent bar */
   padding: calc(10px * var(--scale)) calc(34px * var(--scale));  /* slimmer bar; sides match the name slab so text edges align */

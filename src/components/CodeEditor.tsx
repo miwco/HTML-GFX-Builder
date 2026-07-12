@@ -128,8 +128,15 @@ export default function CodeEditor() {
               key={t.id}
               className={`tab ${activeTab === t.id ? 'active' : ''}`}
               onClick={() => setActiveTab(t.id)}
+              title={
+                t.id !== activeTab && lastChange?.ranges[t.id]
+                  ? `The last change touched the ${t.label} — click to see it highlighted`
+                  : undefined
+              }
             >
               {t.label}
+              {/* A dot marks a tab the last panel/canvas apply changed but isn't showing. */}
+              {t.id !== activeTab && lastChange?.ranges[t.id] && <span className="change-dot" />}
             </button>
           ))}
         </div>

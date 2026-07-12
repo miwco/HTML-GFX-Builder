@@ -37,18 +37,18 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
     // A single centered stack: kicker (f0) → show name (f1) → hairline (the breath
     // target) → clock. Both text lines are mask-wrapped so future presets can reveal them.
     html: `    <!-- Quiet Hold: caps title, big show name, breathing hairline, light countdown. -->
-    <div class="ss-box">
+    <div class="starting-soon-box">
       <!-- The small tracking-wide caps title (field f0). -->
-      <div class="ss-mask"><span class="ss-kicker" id="f0">${o.lines[0]?.sample || 'STARTING SOON'}</span></div>
+      <div class="starting-soon-mask"><span class="starting-soon-kicker" id="f0">${o.lines[0]?.sample || 'STARTING SOON'}</span></div>
       <!-- The show name — the composition's one big, elegant moment (field f1). -->
-      <div class="ss-mask"><span class="ss-show" id="f1">${o.lines[1]?.sample || 'The Late Line'}</span></div>
+      <div class="starting-soon-mask"><span class="starting-soon-show" id="f1">${o.lines[1]?.sample || 'The Late Line'}</span></div>
       <!-- The hairline separator — the single accent moment; hold-loop breathes it. -->
-      <div class="ss-rule ss-pulse"></div>
+      <div class="starting-soon-rule starting-soon-pulse"></div>
       <!-- The countdown — the clock runtime paints M:SS here every second. -->
-      <div class="ss-clock">5:00</div>
+      <div class="starting-soon-clock">5:00</div>
     </div>`,
     css: `/* The stack: no panel at all — centered type and whitespace carry the whole card. */
-.ss-box {
+.starting-soon-box {
   display: flex;                   /* stack the lines vertically… */
   flex-direction: column;          /* …top to bottom */
   align-items: center;             /* every line sits on the same center axis */
@@ -57,7 +57,7 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The caps title — a quiet tracking-wide label above the show name. */
-.ss-kicker {
+.starting-soon-kicker {
   font-size: calc(24px * var(--scale)); /* label scale — clearly subordinate */
   font-weight: 600;                /* firm enough for small caps to carry */
   letter-spacing: 0.24em;          /* wide tracking — the label breathes */
@@ -66,7 +66,7 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The show name — large and elegant; the only heavy element on the card. */
-.ss-show {
+.starting-soon-show {
   font-size: calc(92px * var(--scale)); /* full-frame headline scale */
   font-weight: 600;                /* confident without shouting */
   line-height: 1.08;               /* big text sits tight */
@@ -75,7 +75,7 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The hairline — the design's single accent moment, and the hold-loop breath target. */
-.ss-rule {
+.starting-soon-rule {
   width: calc(84px * var(--scale));  /* a short stroke — a mark, not a rule across the card */
   height: calc(2px * var(--scale));  /* true hairline weight */
   margin: calc(18px * var(--scale)) 0;  /* extra air above and below the separator */
@@ -84,7 +84,7 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The countdown — large, light figures; tabular digits so the colon never jitters. */
-.ss-clock {
+.starting-soon-clock {
   font-size: calc(112px * var(--scale)); /* the clock is the card's focal point on hold */
   font-weight: 400;                /* regular figures — the size carries the moment, not weight */
   line-height: 1;                  /* a single tight row of digits */
@@ -94,7 +94,7 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* Time's up — the clock takes the accent, the card's only other color moment. */
-.ss-done .ss-clock {
+.starting-soon-done .starting-soon-clock {
   color: var(--accent);            /* 0:00 lights up in the accent color */
 }`,
   }),

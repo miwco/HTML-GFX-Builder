@@ -3,7 +3,9 @@
 // fully offline at playout. Generated CSS contains a visible @font-face rule referencing the
 // relative path "fonts/<file>" — teachable and 1:1 with the export.
 
-export type StyleTag = 'minimal' | 'sport' | 'glass';
+/** The style families. 'noacg' is the house family — the product's own on-air look
+ *  (dark control-room panels, one amber accent, mono technical labels). */
+export type StyleTag = 'minimal' | 'sport' | 'glass' | 'noacg';
 
 export interface BundledFont {
   id: string;
@@ -36,9 +38,18 @@ export const FONTS: BundledFont[] = [
     family: 'Space Grotesk',
     file: 'space-grotesk.woff2',
     weights: [400, 700],
-    styleTags: ['minimal', 'glass'],
+    styleTags: ['noacg', 'minimal', 'glass'],
     fallback: 'Arial, sans-serif',
-    blurb: 'Modern grotesque with a technical edge.',
+    blurb: 'Modern grotesque with a technical edge — the NoaCG house display face.',
+  },
+  {
+    id: 'jetbrains-mono',
+    family: 'JetBrains Mono',
+    file: 'jetbrains-mono.woff2',
+    weights: [400, 700],
+    styleTags: ['noacg'],
+    fallback: 'Consolas, "Courier New", monospace',
+    blurb: 'Technical monospace — labels, data, timecode (the NoaCG house label face).',
   },
   {
     id: 'manrope',
@@ -96,6 +107,22 @@ export function fontFaceCss(font: BundledFont): string {
 /** Full font-family value for CSS (family + fallback stack). */
 export function fontStack(font: BundledFont): string {
   return `"${font.family}", ${font.fallback}`;
+}
+
+/**
+ * A design-owned SECOND typeface (e.g. the NoaCG house label mono). Deliberately worded
+ * differently from fontFaceCss: the Style panel / looks swap the FIRST "Bundled open-source
+ * font" block (the heading face), and this comment keeps a label face out of that match.
+ */
+export function labelFontFaceCss(font: BundledFont): string {
+  return `/* Design-owned label font (bundled OFL file — ships with the export, offline at playout).
+   The Style panel's font picker swaps the heading face above; this one belongs to the design. */
+@font-face {
+  font-family: "${font.family}";
+  src: url("fonts/${font.file}") format("woff2");
+  font-weight: ${font.weights[0]} ${font.weights[1]};  /* variable font: covers this weight range */
+  font-display: swap;          /* show fallback text until the font loads */
+}`;
 }
 
 /** License note written into exported packages that bundle a font. */

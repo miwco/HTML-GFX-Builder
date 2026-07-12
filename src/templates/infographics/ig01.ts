@@ -38,16 +38,16 @@ export const ig01: TemplateVariant = defineInfographicVariant(
     const labelText = o.lines[1]?.sample || 'Audience share';
     return {
       html: `    <!-- Big Stat: [enormous figure] over [short accent rule] over [caps label]. -->
-    <div class="ig-box">
+    <div class="infographic-box">
       <!-- The figure — the count-up preset tweens this element's text from 0. -->
-      <div class="ig-value" id="f0">${valueText}</div>
+      <div class="infographic-value" id="f0">${valueText}</div>
       <!-- The rule — the design's single accent moment (a mark, not a divider). -->
-      <div class="ig-rule"></div>
+      <div class="infographic-rule"></div>
       <!-- The label — small, dimmed, tracking-wide caps. -->
-      <div class="ig-label" id="f1">${labelText}</div>
+      <div class="infographic-label" id="f1">${labelText}</div>
     </div>`,
       css: `/* The callout: a plain vertical stack — no panel, whitespace does the work (lt01's sibling). */
-.ig-box {
+.infographic-box {
   display: flex;                   /* a simple column of figure / rule / label */
   flex-direction: column;          /* stacked top to bottom */
   align-items: flex-end;           /* right-anchored zone — everything hangs off the right edge */
@@ -55,7 +55,7 @@ export const ig01: TemplateVariant = defineInfographicVariant(
 }
 
 /* The figure — enormous and light: at this size regular weight already reads airy. */
-.ig-value {
+.infographic-value {
   font-size: calc(150px * var(--scale)); /* the whole design IS this number (1080p reference) */
   font-weight: 400;                /* regular — at 150px it already reads light and airy */
   line-height: 1;                  /* no dead leading — the rule sets the gap below */
@@ -67,7 +67,7 @@ export const ig01: TemplateVariant = defineInfographicVariant(
 }
 
 /* The rule — a short 3px accent hairline: a mark under the figure, never a full-width bar. */
-.ig-rule {
+.infographic-rule {
   width: calc(84px * var(--scale));   /* short on purpose — echoes lt02's underline */
   height: calc(3px * var(--scale));   /* hairline weight (family token: 2-4px) */
   margin: calc(20px * var(--scale)) 0 calc(14px * var(--scale)); /* air above and below */
@@ -75,7 +75,7 @@ export const ig01: TemplateVariant = defineInfographicVariant(
 }
 
 /* The label — quiet tracking-wide caps, clearly subordinate to the figure. */
-.ig-label {
+.infographic-label {
   font-size: calc(21px * var(--scale)); /* kicker scale — a caption, not a headline */
   font-weight: 400;                /* light; the figure carries all the weight */
   line-height: 1.35;               /* relaxed leading in case it wraps */

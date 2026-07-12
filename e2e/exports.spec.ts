@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 // taken through its load/updateAction/playAction contract.
 
 async function createHairline(page: Page) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
@@ -27,12 +27,85 @@ async function downloadTarget(page: Page, label: string): Promise<JSZip> {
   return JSZip.loadAsync(readFileSync(await download.path()));
 }
 
-test('export panel offers all four targets', async ({ page }) => {
+test('export panel offers all six targets', async ({ page }) => {
   await createHairline(page);
   await page.locator('.panel-tabs .tab', { hasText: 'Export' }).click();
-  for (const label of ['Starter SPX export', 'Advanced / Pack export', 'CasparCG export', 'OGraf (EBU) export']) {
+  for (const label of ['SPX export', 'HTML overlay (OBS / vMix)', 'H2R Graphics export', 'CasparCG export', 'OGraf (EBU) export', 'LiveOS (NetOn.Live) export']) {
     await expect(page.locator('.issue', { hasText: label })).toBeVisible();
   }
+});
+
+test('h2r: GDD fields embedded, and the play() toggle drives entrance then exit', async ({ page }) => {
+  await createHairline(page);
+  const zip = await downloadTarget(page, 'H2R Graphics export');
+  const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+  expect(names.sort()).toEqual(['hairline/README.md', 'hairline/hairline.html']);
+
+  const html = await zip.file('hairline/hairline.html')!.async('string');
+  // The GDD block H2R parses into editable inputs — property keys match the element ids.
+  // The script tag MUST carry name="graphics-data-definition": without it H2R never finds
+  // the block and shows no editable fields (the bug the real-app test surfaced).
+  const gddMatch = html.match(/<script name="graphics-data-definition" type="application\/json\+gdd">\s*([\s\S]*?)\s*<\/script>/);
+  expect(gddMatch).toBeTruthy();
+  const gdd = JSON.parse(gddMatch![1]);
+  expect(gdd.properties.f0.label).toBe('Name');
+  expect(gdd.properties.f1.label).toBe('Title');
+  expect(gdd.properties.f0.gddType).toBe('single-line');
+  expect(html).not.toMatch(/src=["'](?:\.\/)?js\//); // nothing external left
+
+  // Drive it exactly like H2R: update(json string), then play() on air, play() again off air.
+  const view = await page.context().newPage();
+  await view.setContent(html, { waitUntil: 'load' });
+  await view.evaluate(() => {
+    (window as unknown as { update(raw: string): void }).update('{"f0":"H2R Works"}');
+    (window as unknown as { play(): void }).play(); // toggle ON — entrance
+  });
+  await expect(view.locator('#f0')).toHaveText('H2R Works');
+  await expect
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+  await view.evaluate(() => (window as unknown as { play(): void }).play()); // toggle OFF — exit
+  await expect
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('0');
+  await view.close();
+});
+
+test('export target choice is remembered as the default across reloads', async ({ page }) => {
+  await createHairline(page);
+  await page.locator('.panel-tabs .tab', { hasText: 'Export' }).click();
+  await page.locator('.issue', { hasText: 'CasparCG export' }).click();
+  // Fresh load: the wizard opens; behind it the Export tab must preselect the remembered target.
+  await page.reload();
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.locator('.panel-tabs .tab', { hasText: 'Export' }).click();
+  await expect(page.locator('.issue', { hasText: 'CasparCG export' }).locator('input[type="radio"]')).toBeChecked();
+});
+
+test('html overlay: self-contained, autoplays with the Data panel values, control panel bundled', async ({ page }) => {
+  await createHairline(page);
+  // Type a custom value in the Data panel — the export must bake it in.
+  await page.locator('.panel-tabs .tab', { hasText: 'Data' }).click();
+  const nameInput = page.locator('.panel-body input').first();
+  await nameInput.fill('Overlay Works');
+  const zip = await downloadTarget(page, 'HTML overlay (OBS / vMix)');
+  const names = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+  expect(names.sort()).toEqual(['hairline/README.md', 'hairline/controlpanel.html', 'hairline/hairline.html']);
+
+  const html = await zip.file('hairline/hairline.html')!.async('string');
+  expect(html).toContain('Autoplay for browser sources');
+  expect(html).toContain('spx-control-receiver'); // the BroadcastChannel receiver is inlined
+  expect(html).not.toMatch(/src=["'](?:\.\/)?js\//); // nothing external left
+
+  // Load the exported file like OBS would: no calls from outside — it must play itself.
+  const view = await page.context().newPage();
+  await view.setContent(html, { waitUntil: 'load' });
+  await expect(view.locator('#f0')).toHaveText('Overlay Works'); // baked value, not the default
+  await expect
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1'); // play() ran on load
+  await view.close();
 });
 
 test('casparcg: one self-contained html that speaks JSON and CasparCG XML', async ({ page }) => {
@@ -56,9 +129,43 @@ test('casparcg: one self-contained html that speaks JSON and CasparCG XML', asyn
   });
   await expect(view.locator('#f0')).toHaveText('Caspar Works');
   await expect
-    .poll(async () => view.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => view.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
   await view.close();
+});
+
+test('liveos: the OGraf package with LiveOS instructions — same graphic, LiveOS README', async ({ page }) => {
+  await createHairline(page);
+  const liveosZip = await downloadTarget(page, 'LiveOS (NetOn.Live) export');
+
+  // The package IS an OGraf v1 Graphic (LiveOS's HTML5 graphics engine is OGraf-compliant):
+  // manifest + graphic.mjs + bundled GSAP, plus a LiveOS-specific README.
+  const names = Object.keys(liveosZip.files).filter((n) => !liveosZip.files[n].dir);
+  expect(names).toEqual(
+    expect.arrayContaining([
+      'hairline/README.md',
+      'hairline/graphic.mjs',
+      'hairline/hairline.ograf.json',
+      'hairline/lib/gsap.min.js',
+    ]),
+  );
+  const manifest = JSON.parse(await liveosZip.file('hairline/hairline.ograf.json')!.async('string'));
+  expect(manifest.$schema).toBe('https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json');
+  expect(manifest.main).toBe('graphic.mjs');
+  expect(manifest.schema.properties.f0.title).toBe('Name');
+  const readme = await liveosZip.file('hairline/README.md')!.async('string');
+  expect(readme).toContain('LiveOS');
+  expect(readme).toContain('OGraf');
+
+  // The Graphic itself must be byte-identical to the OGraf export — the driven OGraf
+  // contract test below covers this exact module, so the two targets can never drift.
+  const ografZip = await downloadTarget(page, 'OGraf (EBU) export');
+  expect(await liveosZip.file('hairline/graphic.mjs')!.async('string')).toBe(
+    await ografZip.file('hairline/graphic.mjs')!.async('string'),
+  );
+  expect(await liveosZip.file('hairline/hairline.ograf.json')!.async('string')).toBe(
+    await ografZip.file('hairline/hairline.ograf.json')!.async('string'),
+  );
 });
 
 test('ograf: a valid v1 Graphic whose Web Component passes the action contract', async ({ page }) => {
@@ -111,7 +218,7 @@ test('ograf: a valid v1 Graphic whose Web Component passes the action contract',
     const afterUpdate = el.querySelector('#f0')?.textContent;
     const played = await el.playAction({});
     await new Promise((r) => setTimeout(r, 700));
-    const opacity = getComputedStyle(el.querySelector('.l3')!).opacity;
+    const opacity = getComputedStyle(el.querySelector('.lower-third')!).opacity;
     await el.stopAction({});
     await el.dispose();
     const cleared = el.innerHTML === '';

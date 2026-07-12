@@ -26,14 +26,16 @@
 // mildly house-biased toward C; the neutral, cross-arm score is the text-OVERLAP count and the
 // screenshots. Read those first.
 //
-// Requirements: the dev server on http://localhost:5174 and VITE_ANTHROPIC_API_KEY in .env (or
+// Requirements: the dev server (this checkout's port — scripts/dev-port.mjs) and VITE_ANTHROPIC_API_KEY in .env (or
 // the environment). ⚠ SPENDS REAL TOKENS — arm B multiplies calls by the round count, so a full
 // run is roughly count × (1 + ROUNDS_B + up-to-2) generations. Third arg limits to the first N
 // briefs or a comma-separated id list.
 
 import { chromium } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { devPort } from './dev-port.mjs';
 
+const BASE = `http://localhost:${devPort()}`;
 const OUT = process.argv[2] || './compare-out';
 const FILTER = process.argv[3] ?? '';
 const ROUNDS_B = 2; // arm B: 1 generation + this many self-critique improvement rounds
@@ -70,7 +72,7 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, de
 await page.addInitScript((key) => {
   localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: key, model: 'claude-sonnet-5' }));
 }, KEY);
-await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
+await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(800);
 
 const selected = /^[a-z-]+(,[a-z-]+)*$/.test(FILTER)
@@ -319,7 +321,7 @@ for (const [id, brief] of selected) {
   } catch (e) {
     console.log('FAILED: ' + (e.message || e));
     results.push({ id, brief, arms: null, error: String(e.message || e) });
-    await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
+    await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(500);
     continue;
   }
@@ -332,7 +334,7 @@ for (const [id, brief] of selected) {
       `${OUT}/${id}-${key}.code.txt`,
       `=== index.html ===\n${tpl.html}\n\n=== template.css ===\n${tpl.css}\n\n=== template.js ===\n${tpl.js}\n`,
     );
-    let overlaps = [];
+    let overlaps;
     try {
       overlaps = await shoot(key, id, tpl);
     } catch (e) {
@@ -344,7 +346,7 @@ for (const [id, brief] of selected) {
   results.push(row);
   console.log('');
 
-  await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(500);
 }
 

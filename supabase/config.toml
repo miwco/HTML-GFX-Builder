@@ -7,7 +7,7 @@
 # in at deploy time on the hosted instance only. Secrets are referenced via env(NAME); no literal
 # secret ever lives in this file. See docs/ERA5_PLAN.md.
 
-project_id = "spx-html-gfx-builder"
+project_id = "noacg-studio"
 
 [api]
 enabled = true
@@ -36,11 +36,9 @@ site_url = "http://localhost:5174"
 additional_redirect_urls = ["http://localhost:5174"]
 jwt_expiry = 3600
 
-# Invite-only closed beta. The GATE is the Before-User-Created hook below (an allowlist check),
-# NOT this toggle. Signups are left ENABLED on purpose so the hook is always reached for a
-# self-serve OAuth / email attempt; the hook then rejects anyone not on the allowlist. Flipping
-# this to false risks short-circuiting the hook before it runs (unverified GoTrue behaviour) —
-# only disable it after confirming allowlisted users can still sign up. See docs/ERA5_PLAN.md 5.1.
+# Signup is OPEN (Era 5.6, migration 0006): the Before-User-Created hook below now allows every
+# sign-up. The hook stays wired so re-closing to the invite allowlist is a one-function migration
+# (restore the 0002 body of enforce_allowlist) — no auth reconfiguration needed either way.
 enable_signup = true
 enable_anonymous_sign_ins = false
 
@@ -53,8 +51,9 @@ enabled = true
 client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
 
-# Before-User-Created hook: the invite-only allowlist gate. Postgres-function form so the check
-# never leaves the instance and a self-hoster needs no extra service. Defined in migrations/0002.
+# Before-User-Created hook: the signup switch (permissive since 0006; allowlist gate in 0002).
+# Postgres-function form so the check never leaves the instance and a self-hoster needs no
+# extra service.
 [auth.hook.before_user_created]
 enabled = true
 uri = "pg-functions://postgres/public/enforce_allowlist"

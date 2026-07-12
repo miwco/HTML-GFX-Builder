@@ -13,6 +13,7 @@ import {
   registerAppFont,
 } from '../model/fonts';
 import type { Zone9 } from '../model/wizard';
+import { detectPrefix } from '../model/structure';
 import { zoneDecls } from '../templates/lowerThirds/shared';
 import { fileToDataUrl, isFontAsset, isImageAsset, uniqueAssetPath } from '../assets/assetUtils';
 
@@ -41,7 +42,7 @@ const ZONES: Zone9[] = [
 
 /**
  * The live Style panel. Reads the template's :root style contract straight from the code
- * and writes deterministic patches back (CSS variables, @font-face swap, .l3 position).
+ * and writes deterministic patches back (CSS variables, @font-face swap, root position).
  * Works on any template that keeps its :root variables — hand edits elsewhere are safe.
  */
 export default function StylePanel() {
@@ -64,8 +65,11 @@ export default function StylePanel() {
   const canSwapFont = FONT_BLOCK_RE.test(template.css);
   const currentFamily = (template.css.match(/font-family:\s*"([^"]+)"/) || [])[1];
 
-  // Position editing needs the standard .l3 root.
-  const canPosition = /\.l3\s*\{/.test(template.css);
+  // Position editing needs the standard structure root (`.{prefix}` with a rule to patch).
+  const prefix = detectPrefix(template.html);
+  const rootSelector = prefix ? `.${prefix}` : null;
+  const canPosition =
+    rootSelector !== null && new RegExp(`\\.${prefix}\\s*\\{`).test(template.css);
 
   const setVar = (name: string, value: string) => {
     setCss(setCssVariable(template.css, name, value));
@@ -101,12 +105,13 @@ export default function StylePanel() {
   };
 
   const setZone = (zone: Zone9) => {
+    if (!rootSelector) return;
     let css = template.css;
     for (const d of zoneDecls(zone, { x: 0, y: 0 }, template.resolution)) {
-      css = setCssDeclaration(css, '.l3', d.prop, d.value);
+      css = setCssDeclaration(css, rootSelector, d.prop, d.value);
     }
     setCss(css);
-    setNote(`Moved to ${zone} (see the .l3 rule in the CSS).`);
+    setNote(`Moved to ${zone} (see the ${rootSelector} rule in the CSS).`);
   };
 
   const onFiles = async (files: FileList | null) => {
@@ -217,8 +222,8 @@ export default function StylePanel() {
             ))}
           </div>
           <p className="hint" style={{ marginTop: 6 }}>
-            Zones snap to safe areas and rewrite the <code className="inline">.l3</code> rule.
-            Fine-tune the pixel values in the CSS tab.
+            Zones snap to safe areas and rewrite the <code className="inline">{rootSelector}</code>{' '}
+            rule. Fine-tune the pixel values in the CSS tab.
           </p>
         </div>
       )}

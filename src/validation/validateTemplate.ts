@@ -2,6 +2,7 @@
 // owns SPX compatibility. Returns errors (block export) and warnings (allow but flag).
 
 import { parseDefinition } from '../model/spxDefinition';
+import { parseAnimData } from '../blocks/animData';
 import { DATA_FTYPES, type SpxTemplate } from '../model/types';
 
 export interface ValidationIssue {
@@ -87,7 +88,6 @@ function classifyRefs(html: string, css: string): { external: string[]; absolute
 /** Check the template JS compiles (catches obvious syntax errors). */
 function jsCompiles(js: string): string | null {
   try {
-    // eslint-disable-next-line no-new-func
     new Function(js);
     return null;
   } catch (e) {
@@ -176,6 +176,61 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
   const syntax = jsCompiles(template.js);
   if (syntax) {
     errors.push({ rule: 'syntax', message: `JavaScript syntax error: ${syntax}` });
+  }
+
+  // 5b. Step reveal targets: every selector in stepGroups should exist in the HTML. A
+  //     dangling one is a WARNING, not an error — GSAP tweens an empty target list, so the
+  //     press is a harmless no-op, but the operator would wonder why a Continue does nothing.
+  const groupsLiteral = template.js.match(/var stepGroups = \[([\s\S]*?)\];/)?.[1];
+  if (groupsLiteral) {
+    const selectors = [...groupsLiteral.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    for (const sel of selectors) {
+      const exists = sel.startsWith('#')
+        ? new RegExp(`id="${sel.slice(1)}"`).test(template.html)
+        : sel.startsWith('.')
+          ? new RegExp(`class="[^"]*\\b${sel.slice(1)}\\b[^"]*"`).test(template.html)
+          : true; // an exotic selector — leave it to the author
+      if (!exists) {
+        warnings.push({
+          rule: 'step-target',
+          message: `Step reveal targets "${sel}", which no longer exists in the HTML — that » Next press will do nothing for it.`,
+        });
+      }
+    }
+  }
+
+  // 5c. Timeline v2 data blocks: the same dangling-selector guard for NOACG_ANIM layers
+  //     and reveals, plus an honest warning when the block exists but the timeline cannot
+  //     read it (the graphic still plays — the interpreter reads whatever is there — but
+  //     every visual editing surface will treat it as hand-crafted code).
+  if (template.js.includes('var NOACG_ANIM')) {
+    const data = parseAnimData(template.js);
+    if (!data) {
+      warnings.push({
+        rule: 'anim-data',
+        message:
+          'The NOACG_ANIM block is not readable as animation data (strict JSON, version 1) — the timeline and Inspector will treat this template as hand-crafted code.',
+      });
+    } else {
+      const selectors = new Set<string>();
+      for (const step of data.steps) {
+        Object.keys(step.layers).forEach((s) => selectors.add(s));
+        (step.reveals ?? []).forEach((s) => selectors.add(s));
+      }
+      for (const sel of selectors) {
+        const exists = sel.startsWith('#')
+          ? new RegExp(`id="${sel.slice(1)}"`).test(template.html)
+          : sel.startsWith('.')
+            ? new RegExp(`class="[^"]*\\b${sel.slice(1)}\\b[^"]*"`).test(template.html)
+            : true; // an exotic selector — leave it to the author
+        if (!exists) {
+          warnings.push({
+            rule: 'anim-data-target',
+            message: `The animation data targets "${sel}", which no longer exists in the HTML — its keyframes will do nothing.`,
+          });
+        }
+      }
+    }
   }
 
   // 6. Runtime error captured from the live preview.

@@ -3,6 +3,8 @@ import { getAiProvider } from '../../../ai';
 import { brainstorm, type ChatMessage } from '../../../ai/brainstorm';
 import { EXAMPLE_PROMPTS } from '../../../ai/examplePrompts';
 import { AI_MODELS, aiConfigured, loadAiSettings, saveAiSettings } from '../../../ai/settings';
+import { useAuthState } from '../../auth/useAuthState';
+import SignInPrompt from '../../auth/SignInPrompt';
 import { fileToDataUrl, uniqueAssetPath } from '../../../assets/assetUtils';
 import type { AssetFile, Resolution, SpxTemplate } from '../../../model/types';
 import type { Palette } from '../../../model/wizard';
@@ -11,7 +13,7 @@ import { validateTemplate, type ValidationResult } from '../../../validation/val
 interface Props {
   resolution: Resolution;
   fps: number;
-  /** Brand colors to honor (when "Match current project" is on and a brand exists). */
+  /** Brand colors to honor (when "Use current project's colors & font" is on and a brand exists). */
   brandPalette: Palette | null;
   /** The current AI result shown in the live preview (null until the first generation). */
   result: SpxTemplate | null;
@@ -20,6 +22,7 @@ interface Props {
 
 /** Step 1 (Describe-it mode) — prompt + optional images/brand → a validated template. */
 export default function AiStep({ resolution, fps, brandPalette, result, onResult }: Props) {
+  const { needsSignIn } = useAuthState();
   const [settings, setSettings] = useState(loadAiSettings);
   const [showSettings, setShowSettings] = useState(!aiConfigured());
   const [prompt, setPrompt] = useState('');
@@ -100,6 +103,17 @@ export default function AiStep({ resolution, fps, brandPalette, result, onResult
     setRefine('');
     void run(() => getAiProvider().modify(p, result), 'Refining…');
   };
+
+  // Hosted mode, no account: AI is an account feature. The template wizard path stays fully
+  // open — this only gates the Describe-it (AI) entry. Offline builds never hit this branch.
+  if (needsSignIn) {
+    return (
+      <SignInPrompt
+        feature="Describe your graphic"
+        reason="Sign in to use AI — describe any graphic and get a validated, editable template."
+      />
+    );
+  }
 
   return (
     <div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTemplateStore } from '../../store/templateStore';
 import { variantById, variantsFor } from '../../templates/catalog';
 import { createBlankTemplate } from '../../templates/blank';
-import { brandPatch, draftResolution, draftToOptions, initialDraft, mergeDraft, type DraftPatch, type WizardDraft } from './draft';
+import { brandPatch, buildDraftTemplate, draftResolution, initialDraft, mergeDraft, type DraftPatch, type WizardDraft } from './draft';
 import { loadBrand, saveBrand, type ProjectBrand } from '../../model/brand';
 import { importTemplateFile } from '../../model/importTemplate';
 import { paletteById } from '../../model/wizard';
@@ -40,7 +40,8 @@ export default function CreationWizard() {
   const [replayKey, setReplayKey] = useState(0);
   // Describe-it mode: the AI's current (validated) result, previewed live like any draft.
   const [aiResult, setAiResult] = useState<{ template: SpxTemplate; valid: boolean } | null>(null);
-  // The saved project brand ("Match current project" keeps new graphics in the same package).
+  // The saved project brand (the "Use current project's colors & font" toggle keeps new
+  // graphics in the same package).
   const [brand, setBrand] = useState<ProjectBrand | null>(null);
   const [matchBrand, setMatchBrand] = useState(false);
 
@@ -53,7 +54,9 @@ export default function CreationWizard() {
       setAiResult(null);
       const b = loadBrand();
       setBrand(b);
-      setMatchBrand(!!b);
+      // Off by default: reusing the previous project's look is an explicit choice,
+      // not something a new graphic silently inherits.
+      setMatchBrand(false);
     }
   }, [open]);
 
@@ -71,9 +74,17 @@ export default function CreationWizard() {
 
   // The live preview always renders the draft as real template code.
   const previewTemplate = useMemo(
-    () => (variant ? variant.create(draftToOptions(variant, draft)) : null),
+    () => (variant ? buildDraftTemplate(variant, draft) : null),
     [variant, draft],
   );
+
+  // On the Animation step the preview demos the full lifecycle (in → hold → out → in)
+  // so the exit is actually seen — unless the user is tuning the entrance only.
+  const demoOut =
+    step === 5 &&
+    !!variant &&
+    ['lower-third', 'info-card', 'scoreboard', 'corner-bug'].includes(variant.category) &&
+    draft.animation.direction !== 'in';
 
   if (!open) return null;
 
@@ -217,7 +228,7 @@ export default function CreationWizard() {
                     variantId: v.id,
                     lines: v.suggestedLines.map((l) => ({ ...l })),
                     zone: null,
-                    animation: { presetId: null },
+                    animation: { presetId: null, outPresetId: null },
                     // Matched brand carries the package look into every new graphic.
                     ...(matchBrand && brand
                       ? brandPatch(brand)
@@ -243,6 +254,7 @@ export default function CreationWizard() {
               <WizardPreview
                 template={mode === 'ai' ? aiResult!.template : previewTemplate!}
                 replayKey={replayKey}
+                demoOut={demoOut}
               />
             </aside>
           )}
@@ -267,16 +279,11 @@ export default function CreationWizard() {
                     );
                   }}
                 />
-                Match current project
+                Use current project's colors &amp; font
               </label>
             )}
           </div>
           <div className="row" style={{ gap: 8 }}>
-            {mode !== 'ai' && step > 0 && step < 5 && (
-              <button disabled={nextDisabled} onClick={() => setStep(step + 1)}>
-                Next ›
-              </button>
-            )}
             {mode === 'ai' && step === 1 && (
               <button
                 className="primary"
@@ -287,9 +294,21 @@ export default function CreationWizard() {
                 Create project
               </button>
             )}
+            {/* "Create project" is the quiet shortcut (primary only on the last step,
+                where it's the sole forward action); "Next ›" is the highlighted path. */}
             {mode !== 'ai' && step >= 2 && (
-              <button className="primary" disabled={!previewTemplate} onClick={create}>
+              <button
+                className={step === 5 ? 'primary' : undefined}
+                disabled={!previewTemplate}
+                onClick={create}
+                title="Create the project now — remaining steps keep their defaults"
+              >
                 Create project
+              </button>
+            )}
+            {mode !== 'ai' && step > 0 && step < 5 && (
+              <button className="primary wz-next" disabled={nextDisabled} onClick={() => setStep(step + 1)}>
+                Next ›
               </button>
             )}
           </div>

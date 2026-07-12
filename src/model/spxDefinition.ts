@@ -48,7 +48,6 @@ function extractObjectLiteral(source: string): string | null {
 /** Safely evaluate a JS object literal (handles trailing commas / unquoted keys). */
 function evalObjectLiteral(literal: string): Record<string, unknown> | null {
   try {
-    // eslint-disable-next-line no-new-func
     const fn = new Function('return (' + literal + ');');
     const value = fn();
     return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;

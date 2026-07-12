@@ -19,7 +19,7 @@ export const lt04: TemplateVariant = defineVariant(
       { title: 'Kicker', sample: 'EXCLUSIVE' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['mask-wipe', 'slide-fade'],
+    animationPresets: ['mask-wipe', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('porcelain'),
     defaultFontId: 'archivo',
     defaultZone: 'bottom-left',
@@ -33,16 +33,16 @@ export const lt04: TemplateVariant = defineVariant(
     uicolor: '4',
   },
   (o) => ({
-    // Structure: one light panel (.l3-box) holding the masked text lines. No accent shape —
+    // Structure: one light panel (.lower-third-box) holding the masked text lines. No accent shape —
     // the kicker's accent color IS this design's accent moment.
     html: `    <!-- The porcelain card. Lines are masked for reveals; the kicker (f1) is lifted
          above the name (f0) purely with CSS order — data order stays Name, Kicker. -->
-    <div class="l3-box">
+    <div class="lower-third-box">
 ${lineMasks(o)}
     </div>`,
 
     css: `/* The card: a light panel that hugs its text (fit-content comes from the shared rules). */
-.l3-box {
+.lower-third-box {
   display: flex;                   /* lay the lines out as a column… */
   flex-direction: column;          /* …so \`order\` can visually reorder them */
   gap: calc(10px * var(--scale));  /* breathing room between kicker and name */
@@ -56,12 +56,12 @@ ${lineMasks(o)}
    second line's mask, and \`order: -1\` pulls it above the name inside the flex column —
    the operator's data order (Name, then Kicker) never changes. With only one line filled
    in, this selector matches nothing and just the name shows. */
-.l3-mask:nth-child(2) {
+.lower-third-mask:nth-child(2) {
   order: -1;                       /* lift this line to the top of the column */
 }
 
 /* The name (f0): the big line the graphic exists for. */
-.l3-name {
+.lower-third-name {
   font-size: calc(52px * var(--scale));  /* headline scale */
   font-weight: 800;                /* maximum contrast against the small kicker */
   line-height: 1.1;                /* tight leading — big text needs less air */
@@ -70,7 +70,7 @@ ${lineMasks(o)}
 }
 
 /* The kicker (f1): a small, loud label chip in the accent color. */
-.l3-title {
+.lower-third-title {
   font-size: calc(17px * var(--scale));  /* small on purpose — a label, not a headline */
   font-weight: 700;                /* bold enough to read at this size */
   line-height: 1.2;                /* a touch of air inside its reveal mask */

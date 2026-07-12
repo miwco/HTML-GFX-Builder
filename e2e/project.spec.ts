@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 // is unchanged — closing it reveals the restored graphic.
 
 test('project autosave: the working graphic survives a reload', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();

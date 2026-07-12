@@ -31,7 +31,7 @@ const FOREIGN_HTML = `<!DOCTYPE html>
 </html>`;
 
 async function dropTemplate(page: Page, name: string, buffer: Buffer) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="import"]').click();
   await page.locator('.wz-drop input[type="file"]').setInputFiles({ name, mimeType: 'text/html', buffer });
@@ -71,7 +71,7 @@ test('import .html: splits into panes, keeps the definition, validates, exports'
 
 test('import round-trip: an exported Starter zip re-imports as the same code', async ({ page }) => {
   // Create + export a wizard template.
-  await page.goto('/');
+  await page.goto('/app');
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
@@ -94,7 +94,7 @@ test('import round-trip: an exported Starter zip re-imports as the same code', a
   await page.getByRole('button', { name: '+ New project' }).click();
   await page.locator('[data-entry="import"]').click();
   await page.locator('.wz-drop input[type="file"]').setInputFiles({
-    name: 'hairline_spx-starter.zip',
+    name: 'hairline_spx.zip',
     mimeType: 'application/zip',
     buffer: zipBuffer,
   });

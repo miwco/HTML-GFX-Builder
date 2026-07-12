@@ -3,7 +3,7 @@
 // rewrite. Everything outside the markers (play/stop/update/next scaffolding) never changes.
 //
 // Presets rely on the standard structure contract, parameterized by a class PREFIX so every
-// category shares this library (lower thirds use "l3", info cards "card", …):
+// category shares this library (lower thirds use "lower-third", info cards "info-card", …):
 //   .<p> (root, opacity:0 until play) → .<p>-accent? → .<p>-box → .<p>-mask > #fN line elements
 // Because the structure is standard, ANY preset applies to ANY variant of ANY category.
 //
@@ -16,8 +16,21 @@
 
 import type { AnimPresetId } from '../../model/wizard';
 
+/** A template's existing Continue chain, carried through re-emits so a preset swap never
+ *  resets the user's regrouping or per-step timing. Values are the RAW literals the arrays
+ *  are written with (durations pre-division, eases 'easeIn' or a quoted string). */
+export interface StepChain {
+  /** Parts revealed per » Next press — any registry part selector, not just lines. */
+  groups: string[][];
+  durations: string[];
+  eases: string[];
+  /** Reveal channel per assigned selector: 'mask' slides within a line mask, 'rise' is the
+   *  generic fade+rise for everything else (accents, logos). Lines default to 'mask'. */
+  reveals: Record<string, 'mask' | 'rise'>;
+}
+
 export interface PresetConfig {
-  /** The category's class prefix ('l3', 'card', 'credits', 'ticker'). */
+  /** The category's class prefix ('lower-third', 'info-card', 'credits', 'ticker'). */
   prefix: string;
   /** How many visible text lines (#f0…#fN) the design has. */
   lineCount: number;
@@ -25,6 +38,13 @@ export interface PresetConfig {
   hasAccent: boolean;
   /** Multi-step mode: in-timeline shows line 1; each next() reveals one more line. */
   steps: boolean;
+  /** The current chain to preserve (when the template already has one); absent = defaults. */
+  stepChain?: StepChain;
+  /** Assigned chain selectors whose element lives OUTSIDE the .<prefix> root (building-block
+   *  elements sit next to the root, not inside it) — they miss the root's opacity gate, so
+   *  the steps block hides them from first paint and the exit fades them out
+   *  (blocks/animPatch.ts patchOutsideExit keeps the out-phase line in sync). */
+  stepOutsideParts?: string[];
   /** Initial animSpeed value (0.75 slower · 1 normal · 1.5 faster). */
   speed: number;
   /** GSAP ease string for entrance tweens (e.g. 'power3.out', 'back.out(1.6)'). */
@@ -51,9 +71,22 @@ function lineList(count: number): string {
   return Array.from({ length: count }, (_, i) => `'#f${i}'`).join(', ');
 }
 
-/** In steps mode only line 1 enters with the in-timeline; the rest wait for next(). */
+/** The selectors a preset's steps world currently assigns to presses (empty = defaults). */
+function assignedSet(cfg: PresetConfig): Set<string> {
+  if (!cfg.steps) return new Set();
+  if (cfg.stepChain) return new Set(cfg.stepChain.groups.flat());
+  return new Set(Array.from({ length: Math.max(0, cfg.lineCount - 1) }, (_, i) => `#f${i + 1}`));
+}
+
+/** The lines that enter WITH the in-timeline: everything not assigned to a » press.
+ *  (Default steps mode: only line 1 enters; the rest wait for next().) */
 function linesInIntro(cfg: PresetConfig): string {
-  return cfg.steps ? lineList(1) : lineList(cfg.lineCount);
+  if (!cfg.steps) return lineList(cfg.lineCount);
+  const assigned = assignedSet(cfg);
+  return Array.from({ length: cfg.lineCount }, (_, i) => `#f${i}`)
+    .filter((s) => !assigned.has(s))
+    .map((s) => `'${s}'`)
+    .join(', ');
 }
 
 /**
@@ -66,39 +99,97 @@ var easeIn = '${cfg.easeIn}';${' '.repeat(Math.max(1, 18 - cfg.easeIn.length))}/
 var easeOut = '${cfg.easeOut}';${' '.repeat(Math.max(1, 17 - cfg.easeOut.length))}// exit ease — starts naturally, leaves quickly`;
 }
 
-/** The multi-step block: reveals one further line per next() call (SPX Continue). */
+/** The multi-step block: each next() (SPX Continue) reveals the next GROUP of parts.
+ *  Groups + per-step timing/ease live in the arrays; each part's reveal style lives in
+ *  stepReveals — the timeline strip edits these literals. Pre-hiding is DERIVED from
+ *  stepGroups at runtime (hidePendingSteps), so a part removed from every group appears
+ *  with the graphic again, by construction. */
 function stepsBlock(cfg: PresetConfig): string {
-  if (!cfg.steps || cfg.lineCount < 2) return '';
-  const rest = Array.from({ length: cfg.lineCount - 1 }, (_, i) => `'#f${i + 1}'`).join(', ');
+  if (!cfg.steps) return '';
+  // An existing chain (regrouped presses, tuned timings, assigned parts) survives the
+  // re-emit; without one, the default is one line per press in document order.
+  const chain = cfg.stepChain && cfg.stepChain.groups.length > 0 ? cfg.stepChain : null;
+  if (!chain && cfg.lineCount < 2) return '';
+  const count = chain ? chain.groups.length : cfg.lineCount - 1;
+  const groups = chain
+    ? chain.groups.map((g) => `[${g.map((t) => `'${t}'`).join(', ')}]`).join(', ')
+    : Array.from({ length: count }, (_, i) => `['#f${i + 1}']`).join(', ');
+  const durations = (chain ? chain.durations : Array.from({ length: count }, () => '0.45')).join(', ');
+  const eases = (chain ? chain.eases : Array.from({ length: count }, () => 'easeIn')).join(', ');
+  const revealEntries = chain
+    ? chain.groups.flat().map((sel) => `'${sel}': '${chain.reveals[sel] ?? 'mask'}'`)
+    : Array.from({ length: count }, (_, i) => `'#f${i + 1}': 'mask'`);
   return `
 
-// Multi-step: the in animation shows only the first line; each Continue (next())
-// reveals one more line with the same motion vocabulary.
+// Multi-step: the in animation shows only the parts that are NOT on a » press; each
+// Continue (next()) reveals the next GROUP. Groups + per-step timing below — the
+// timeline strip edits these. stepReveals says HOW each part appears: 'mask' slides
+// up within its line mask, 'rise' fades and rises (accents, logos, shapes).
 var currentStep = 0;
-var stepLines = [${rest}];  // lines revealed by steps, in order
+var stepGroups = [${groups}];  // parts revealed per Continue, in order
+var stepDurations = [${durations}];  // seconds per step (divided by animSpeed)
+var stepEases = [${eases}];  // ease per step (a quoted string overrides the knob)
+var stepReveals = { ${revealEntries.join(', ')} };
+function hidePendingSteps(tl) {
+  currentStep = 0;                         // a fresh play restarts the step sequence
+  stepGroups.forEach(function (group) { group.forEach(function (sel) {
+    tl.set(sel, stepReveals[sel] === 'rise' ? { opacity: 0, y: 14 } : { yPercent: 110 });
+  }); });
+}
 function revealNextStep() {
-  var line = stepLines[currentStep];
-  if (!line) return;                       // no more lines to reveal
+  var group = stepGroups[currentStep];
+  if (group === undefined) return null;    // no more steps
+  var duration = stepDurations[currentStep] || 0.45;
+  var ease = stepEases[currentStep] || easeIn;
   currentStep += 1;
-  gsap.fromTo(line,
-    { yPercent: 110 },
-    { yPercent: 0, duration: 0.45 / animSpeed, ease: easeIn }
-  );
-}`;
+  var tl = gsap.timeline();
+  group.forEach(function (sel, i) {
+    var rise = stepReveals[sel] === 'rise';
+    tl.fromTo(sel,
+      rise ? { opacity: 0, y: 14 } : { yPercent: 110 },
+      rise ? { opacity: 1, y: 0, duration: duration / animSpeed, ease: ease }
+           : { yPercent: 0, duration: duration / animSpeed, ease: ease },
+      i * 0.08 / animSpeed                 // per-part stagger within the press
+    );
+  });
+  return tl;
+}${outsideGate(cfg)}`;
 }
 
-/** In steps mode, hide the not-yet-revealed lines at the start of the in-timeline. */
+/** The load-side of the outside gate: press-assigned parts that live OUTSIDE the root are
+ *  not covered by its rest-hide (the root is CSS-hidden until play; its children with it),
+ *  so they must hide themselves from the first paint. The exit side is the patched
+ *  buildOutTimeline line (blocks/animPatch.ts patchOutsideExit). */
+function outsideGate(cfg: PresetConfig): string {
+  const outside = cfg.stepOutsideParts ?? [];
+  if (!cfg.steps || outside.length === 0) return '';
+  return `
+
+// Parts on a » press that live OUTSIDE the graphic's root miss its opacity gate (the
+// root is CSS-hidden until play, and its children with it). Hide them from the first
+// paint so nothing shows before play — DOM-ready-safe: this file loads in <head>.
+var stepOutsideParts = [${outside.map((s) => `'${s}'`).join(', ')}];
+function hideOutsideStepParts() {
+  stepOutsideParts.forEach(function (sel) { gsap.set(sel, { opacity: 0, y: 14 }); });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hideOutsideStepParts);
+else hideOutsideStepParts();`;
+}
+
+/** In steps mode, park the press-assigned parts hidden at the start of the in-timeline.
+ *  The set of parts and HOW each hides live with the steps block (derived from stepGroups),
+ *  so regrouping and unassigning never leave a part stuck hidden. */
 function hideStepLines(cfg: PresetConfig): string {
-  if (!cfg.steps || cfg.lineCount < 2) return '';
-  const rest = Array.from({ length: cfg.lineCount - 1 }, (_, i) => `'#f${i + 1}'`).join(', ');
-  return `\n  tl.set([${rest}], { yPercent: 110 });  // step lines start hidden below their mask`;
+  if (stepsBlock(cfg) === '') return '';
+  return `
+  hidePendingSteps(tl);                            // parts on a » press start hidden`;
 }
 
 export const ANIM_PRESETS: AnimPreset[] = [
   {
     id: 'slide-fade',
     name: 'Slide + fade',
-    description: 'The graphic rises into place while lines fade up in sequence. Quiet and universal.',
+    description: 'In: the graphic rises into place, lines follow in sequence. Out: it sinks back down and fades. Quiet and universal.',
     autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Slide + fade — the whole graphic rises in; text lines follow in sequence.
@@ -133,7 +224,7 @@ ${MARK_CLOSE}`,
   {
     id: 'line-reveal',
     name: 'Line reveal',
-    description: 'The accent line draws in first, then text slides up from behind an invisible mask. Elegant.',
+    description: 'In: the accent line draws in, text slides up from behind its mask. Out: text drops back, the line retracts. Elegant.',
     autoEase: { easeIn: 'expo.out', easeOut: 'power3.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Line reveal — the accent draws in, then text slides up from behind its mask.
@@ -178,7 +269,7 @@ ${MARK_CLOSE}`,
   {
     id: 'mask-wipe',
     name: 'Mask wipe',
-    description: 'The panel wipes open left-to-right like a curtain; text settles right behind it.',
+    description: 'In: the panel wipes open left-to-right like a curtain. Out: it wipes shut the other way.',
     autoEase: { easeIn: 'expo.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Mask wipe — the panel reveals via a clip-path wipe; text follows just behind.
@@ -218,7 +309,7 @@ ${MARK_CLOSE}`,
   {
     id: 'pop-spring',
     name: 'Pop spring',
-    description: 'Scales up with a springy overshoot — friendly, social-stream energy.',
+    description: 'In: pops up with a springy overshoot. Out: shrinks away cleanly, no bounce. Friendly, social-stream energy.',
     autoEase: { easeIn: 'back.out(1.6)', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Pop spring — the card pops in with a springy overshoot (Back Out ease).
@@ -253,7 +344,7 @@ ${MARK_CLOSE}`,
   {
     id: 'snap-stinger',
     name: 'Snap stinger',
-    description: 'Slams in from the side and settles in under half a second. Sport-fast.',
+    description: 'In: slams in from the left and snaps straight. Out: snaps away to the right, even faster. Sport-fast.',
     autoEase: { easeIn: 'power4.out', easeOut: 'power3.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Snap stinger — slams in from the left with a skew that settles. Fast by design.
@@ -288,7 +379,7 @@ ${MARK_CLOSE}`,
   {
     id: 'blur-in',
     name: 'Blur in',
-    description: 'Materialises out of a blur — soft, premium, glassy.',
+    description: 'In: materialises out of a blur. Out: dissolves back into it. Soft, premium, glassy.',
     autoEase: { easeIn: 'power2.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Blur in — the card materialises out of a blur (filter animates on the box only).
@@ -314,6 +405,112 @@ function buildInTimeline() {
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to('.${cfg.prefix}-box', { opacity: 0, filter: 'blur(10px)', duration: 0.35 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
+  return tl;
+}${stepsBlock(cfg)}
+${MARK_CLOSE}`,
+  },
+
+  {
+    id: 'fade',
+    name: 'Fade',
+    description: 'In: a clean crossfade, no movement at all. Out: fades to nothing. The calmest choice.',
+    autoEase: { easeIn: 'sine.out', easeOut: 'sine.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Fade — a pure opacity dissolve, no movement. Calm, documentary, timeless.
+${knobs(cfg)}
+
+// buildInTimeline(): choreographs the entrance. Called by play().
+function buildInTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
+    { opacity: 0 },
+    { opacity: 1, duration: 0.6 / animSpeed }
+  );
+  tl.fromTo([${linesInIntro(cfg)}],
+    { opacity: 0 },
+    { opacity: 1, duration: 0.5 / animSpeed, stagger: 0.12 / animSpeed },
+    '-=0.35'                                         // lines join while the box is still fading
+  );
+  return tl;
+}
+
+// buildOutTimeline(): the exit — fades away faster than it arrived.
+function buildOutTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
+  tl.to('.${cfg.prefix}-box', { opacity: 0, duration: 0.4 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
+  return tl;
+}${stepsBlock(cfg)}
+${MARK_CLOSE}`,
+  },
+
+  {
+    id: 'drop-in',
+    name: 'Drop in',
+    description: 'In: the card falls from above and lands with a soft overshoot. Out: it lifts straight back up and away.',
+    autoEase: { easeIn: 'back.out(1.4)', easeOut: 'power2.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Drop in — the card falls from above and settles with a small overshoot.
+${knobs(cfg)}
+
+// buildInTimeline(): choreographs the entrance. Called by play().
+function buildInTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
+    { y: -70, opacity: 0 },                          // starts well above its resting spot…
+    { y: 0, opacity: 1, duration: 0.6 / animSpeed }  // …falls in and settles (Back Out)
+  );
+  tl.fromTo([${linesInIntro(cfg)}],
+    { y: -12, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.4 / animSpeed, stagger: 0.07 / animSpeed },
+    '-=0.3'
+  );
+  return tl;
+}
+
+// buildOutTimeline(): the exit — lifts straight back up and away, faster.
+function buildOutTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
+  tl.to('.${cfg.prefix}-box', { y: -40, opacity: 0, duration: 0.35 / animSpeed });
+  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
+  return tl;
+}${stepsBlock(cfg)}
+${MARK_CLOSE}`,
+  },
+
+  {
+    id: 'flip-3d',
+    name: 'Flip 3D',
+    description: 'In: the card swings down from a 3D hinge along its top edge. Out: it folds forward and away. Dimensional.',
+    autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Flip 3D — the card swings in on a 3D hinge along its top edge.
+${knobs(cfg)}
+
+// buildInTimeline(): choreographs the entrance. Called by play().
+function buildInTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeIn } });
+  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
+  tl.fromTo('.${cfg.prefix}-box',
+    { rotationX: -80, opacity: 0, transformPerspective: 900, transformOrigin: 'center top' },
+    { rotationX: 0, opacity: 1, duration: 0.65 / animSpeed }
+  );
+  tl.fromTo([${linesInIntro(cfg)}],
+    { opacity: 0 },
+    { opacity: 1, duration: 0.35 / animSpeed, stagger: 0.08 / animSpeed },
+    '-=0.25'
+  );
+  return tl;
+}
+
+// buildOutTimeline(): the exit — folds forward past the camera, faster.
+function buildOutTimeline() {
+  var tl = gsap.timeline({ defaults: { ease: easeOut } });
+  tl.to('.${cfg.prefix}-box',
+    { rotationX: 65, opacity: 0, transformPerspective: 900, transformOrigin: 'center top', duration: 0.4 / animSpeed });
   tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}

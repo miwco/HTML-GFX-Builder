@@ -1,11 +1,11 @@
 // gt02 "Power Clock" — a corner slab game timer, sibling of lt05 (Angle Slab) and
 // lt06 (Split Bar). Same sport DNA: a near-black slab painted at the family's -8°
 // lean (radius 0), a chunky 10px accent edge leaning with it, condensed heavy caps.
-// The lean is PAINTED, never animated: the slab lives on .gt-box::before and the
-// edge on .gt-box::after — the timer-run preset tweens .gt-box itself (scale + fade),
+// The lean is PAINTED, never animated: the slab lives on .game-timer-box::before and the
+// edge on .game-timer-box::after — the timer-run preset tweens .game-timer-box itself (scale + fade),
 // and because the pseudo-layers are never touched by any preset, the lean survives
 // every entrance and exit (the lt05 technique). When the countdown hits zero the
-// shared clock runtime adds .gt-done: the clock flips to the accent and the edge
+// shared clock runtime adds .game-timer-done: the clock flips to the accent and the edge
 // flashes — pure CSS keyframes, no extra JS.
 
 import { paletteById, type TemplateVariant } from '../../model/wizard';
@@ -36,24 +36,24 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
     uicolor: '6',
   },
   (o) => ({
-    // Structure contract: .gt-box > .gt-mask > #f0 (the label) + .gt-clock (JS paints M:SS).
+    // Structure contract: .game-timer-box > .game-timer-mask > #f0 (the label) + .game-timer-clock (JS paints M:SS).
     html: `    <!-- Power Clock: dimmed caps label over the big clock, on one leaning dark slab. -->
-    <div class="gt-box">
+    <div class="game-timer-box">
       <!-- The label line — the span sits inside the mask so it can be revealed. -->
-      <div class="gt-mask"><span id="f0" class="gt-label">${o.lines[0]?.sample || 'SHOT CLOCK'}</span></div>
+      <div class="game-timer-mask"><span id="f0" class="game-timer-label">${o.lines[0]?.sample || 'SHOT CLOCK'}</span></div>
       <!-- The clock — the countdown runtime repaints this every second as M:SS. -->
-      <div class="gt-clock">3:00</div>
+      <div class="game-timer-clock">3:00</div>
     </div>`,
     css: `/* The box: the preset tweens THIS element (scale + fade), so it carries no lean of
    its own — the family skew lives on the pseudo-layers below. */
-.gt-box {
+.game-timer-box {
   position: relative;              /* anchors the painted slab (::before) and edge (::after) */
   padding: calc(18px * var(--scale)) calc(34px * var(--scale));  /* tight vertical, wide horizontal */
 }
 
 /* The painted slab: the sport lean lives HERE, on a background layer no preset ever
-   tweens — the scale tween on .gt-box moves it along, but can never flatten the skew. */
-.gt-box::before {
+   tweens — the scale tween on .game-timer-box moves it along, but can never flatten the skew. */
+.game-timer-box::before {
   content: '';                     /* pseudo-elements render only with content set */
   position: absolute;              /* fills the box exactly ... */
   inset: 0;                        /* ... edge to edge */
@@ -65,7 +65,7 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
 
 /* The accent edge: a chunky 10px slab fused to the painted slab's left side. It leans
    the same -8° from the same spot, so slab and edge displace together and stay fused. */
-.gt-box::after {
+.game-timer-box::after {
   content: '';                     /* second pseudo-layer — the color moment */
   position: absolute;              /* pinned over the slab's left edge ... */
   left: 0;                         /* ... flush with the box's left side */
@@ -78,7 +78,7 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
 
 /* The label: dimmed spaced-out caps (lt05's secondary treatment) — the leaning edge
    stays the single accent dose while the clock runs. */
-.gt-label {
+.game-timer-label {
   color: var(--text-dim);          /* secondary line dims — one accent dose per graphic */
   font-size: calc(19px * var(--scale));  /* kicker scale — clearly a label, not a headline */
   font-weight: 700;                /* bold so the small caps carry */
@@ -87,7 +87,7 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
 }
 
 /* The clock: the loudest thing on screen — big, heavy, dead straight. */
-.gt-clock {
+.game-timer-clock {
   margin-top: calc(10px * var(--scale));  /* small gap: chip + clock read as one unit */
   font-size: calc(76px * var(--scale));  /* headline scale — readable from the back row */
   font-weight: 900;                /* maximum impact weight (sport hits hard) */
@@ -97,18 +97,18 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
   font-variant-numeric: tabular-nums;  /* digits share one width — no jiggle each tick */
 }
 
-/* ── Time's up: the clock runtime adds .gt-done on the root at zero. ── */
+/* ── Time's up: the clock runtime adds .game-timer-done on the root at zero. ── */
 
 /* The clock flips to the accent — the whole slab suddenly reads "ZERO". */
-.gt-done .gt-clock {
+.game-timer-done .game-timer-clock {
   color: var(--accent);            /* the accent takes over the headline at zero */
 }
 
 /* The leaning edge flashes — opacity only, so the painted skew is never disturbed. */
-.gt-done .gt-box::after {
-  animation: gt-flash 0.4s ease-in-out 6;  /* six quick blinks, then steady */
+.game-timer-done .game-timer-box::after {
+  animation: game-timer-flash 0.4s ease-in-out 6;  /* six quick blinks, then steady */
 }
-@keyframes gt-flash {
+@keyframes game-timer-flash {
   50% { opacity: 0.15; }           /* dip to near-off mid-blink; ends back at full */
 }`,
   }),

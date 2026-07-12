@@ -281,8 +281,8 @@ A field can become a **project variable** shared across templates by adding `prv
 
 The docs page above describes the **`spxData` + `spxRenderer.on(...)`** style. SPX also accepts the
 **classic globals** style — global `play()`, `stop()`, `update(data)` (where `data` is a JSON
-string), and `next()` — used by CasparCG-style templates and by some builders (e.g. the *SPX HTML
-GFX Builder* project). Both are valid; SPX validators typically accept **either**. Everything else
+string), and `next()` — used by CasparCG-style templates and by some builders (e.g. the *NoaCG
+Studio* project). Both are valid; SPX validators typically accept **either**. Everything else
 (`SPXGCTemplateDefinition`, playout/display settings, ftypes, `prvar`, folder/path rules) is
 identical in both styles. Pick the one the user/project wants:
 

@@ -16,7 +16,7 @@ async function create(page: Page, categoryName: string, variantName: string) {
 }
 
 test('packets: save two graphics, reopen one, export the whole packet as one zip', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await create(page, 'Lower thirds', 'Hairline');
 
   // Save the lower third into a new packet.
@@ -53,7 +53,7 @@ test('packets: save two graphics, reopen one, export the whole packet as one zip
 });
 
 test('looks: capture the current look, apply it to another graphic, survive reload', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await create(page, 'Lower thirds', 'Hairline');
 
   // Tweak the accent through the Style panel, then capture the look.

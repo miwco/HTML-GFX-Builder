@@ -1,49 +1,70 @@
 # CLAUDE.md
 
-Guidance for AI agents working in this repo. Keep it accurate — update it when architecture or
-conventions change.
+Guidance for AI agents working in this repo. Keep it accurate - update it when architecture or
+conventions change. This root file holds the product identity, the non-negotiables, and the
+working practices; **deep per-area contracts live in nested CLAUDE.md files** in `src/model`,
+`src/templates`, `src/store`, `src/blocks`, `src/export`, `src/render`, `src/landing`, and
+`src/components` - they load automatically when you work on files there, and you should read
+the relevant one before editing that area from outside it.
 
 ## What this is
 
-**NoaCG Studio** — an **AI-assisted, SPX-first** browser tool for creating modern, premium HTML
-broadcast graphics and exporting them as working **SPX** templates (SPX Graphics / CasparCG) and
-other targets. (Brand: dark control-room aesthetic, one amber "on-air" accent, restrained glow;
-full system in `NoaCG-Brand-Kit/BRAND-MANUAL.md`.) The aim is to
-be **the best and easiest place to create broadcast graphics** — for organizations, TV channels,
-streamers, and universities, technical and non-technical users alike (it's also used in teaching, but
-the product is a production tool, not a code tutorial). The creation wizard builds a graphic from
-choices (template → fields → style → animation): a **non-technical user never has to open the code**,
-while a **professional** can drop into the always-available editor and take full control. Code stays
-the single source of truth — the live panels patch it deterministically and nothing hides behind
-visual-only tools — but its *view* is optional (the code editor can be hidden).
+**NoaCG Studio** - an **AI-assisted, multi-platform** browser tool for creating modern, premium
+HTML broadcast graphics and exporting them to **many broadcast/streaming environments**
+("anything-goes export": SPX Graphics, CasparCG, OGraf, OBS/vMix overlays today; more over
+time). It's for organizations, TV channels, streamers, and universities, technical and
+non-technical users alike (it's also used in teaching, but the product is a production tool, not
+a code tutorial). Brand: dark control-room aesthetic, one amber "on-air" accent, restrained glow
+- full system in `NoaCG-Brand-Kit/BRAND-MANUAL.md`. **Business posture: free forever for the
+core; the only paid surface is hosted AI without a BYO key; the current goal is users/adoption,
+not revenue** (see `docs/GOALS.md`). The aim is to be **the best and most useful place to create
+broadcast graphics, and run them anywhere**.
 
 Binding project docs (read before generating or judging templates): **`docs/DESIGN_LANGUAGE.md`**
-(taste + motion + code-style rules) and **`docs/GOALS.md`** (north star + milestone checklist —
+(taste + motion + code-style rules) and **`docs/GOALS.md`** (north star + milestone checklist -
 keep it checked off as work lands).
 
 **The pillars (keep every change true to these):**
-- **Best & easiest to create** — the north star is premium output with the least friction; a
+- **Best & easiest to create** - the north star is premium output with the least friction; a
   non-technical user can make a great graphic without ever touching code.
-- **AI-assisted** — AI and blocks help write the template; a pro stays in full control of the code.
-- **SPX-first** — the primary target is a working SPX template; SPX compatibility comes before
-  everything (CasparCG / OGraf export from the same template).
-- **Code is real & always available, view optional** — every visual/AI action writes real HTML/CSS/JS
-  you can open and edit; **nothing hides behind a visual-only scene model**. But the code *view* is
-  optional: no-code users keep it hidden, pros work in it directly.
-- **Clean, editable code** — generated code is clean and commented so a professional can read and extend it.
-- **Reliable export** — an SPX package must always be valid and plug-and-play (see the validation gate).
+- **AI-assisted** - AI and blocks help write the template; a pro stays in full control of the code.
+- **Export anywhere, SPX-canonical** - SPX is the canonical *internal* template format and the
+  strictest validation target; every other target is an export adapter off the same source, so
+  breadth is added without reworking the core. SPX compatibility stays rock-solid, but the
+  product is not "an SPX generator."
+- **Code is real & always available, view optional** - every visual/AI action writes real
+  HTML/CSS/JS you can open and edit; **nothing hides behind a visual-only scene model**. But the
+  code *view* is optional: no-code users keep it hidden, pros work in it directly.
+- **Clean, editable code** - generated code is clean and commented so a professional can read and
+  extend it.
+- **Reliable export** - an SPX package must always be valid and plug-and-play (see the
+  validation gate); the other targets hold the same bar.
 
 ## Commands
 
 ```bash
 npm install
-npm run dev      # Vite dev server on http://localhost:5174
-npm run build    # tsc (typecheck) && vite build -> dist/   <-- run this after changes; it's the CI gate
+npm run dev      # Vite dev server (landing at /, THE EDITOR AT /app)
+npm run build    # tsc && eslint && vite build -> dist/   <-- run this after changes; it's the CI gate
+npm run lint     # eslint . --max-warnings 0 (also part of build; config in eslint.config.js)
 npm run preview  # serve the production build
 ```
 
+**The dev port is per-checkout** (`scripts/dev-port.mjs`): 5174 in the main checkout (5175 for
+the live e2e suite), a stable path-derived port in a linked git worktree - so parallel worktrees
+never fight over one server. Vite (strictPort), both Playwright configs, and the dev scripts all
+derive the same number; `node scripts/dev-port.mjs` prints it. `.claude/launch.json` is
+GENERATED with that port by postinstall (gitignored - never hand-edit or commit it).
+`DEV_PORT=n` overrides everything if two worktrees ever hash to the same port.
+
+**Two pages (Vite MPA):** `index.html` is the static public landing at `/` (no React; carries a
+redirect shim so old root `?chat=`/`?template=` share links land on `/app` with their query).
+`app.html` is the editor at `/app` - dev/preview get the clean URL from the `app-clean-url`
+plugin in vite.config.ts; production gets it from Vercel `cleanUrls` (vercel.json). E2E specs
+navigate to `/app`.
+
 There is **no unit-test suite**. Verify changes with `npm run build` plus in-browser checks (see
-Verifying, below). Never mark work done on a green build alone if behaviour is observable — check it.
+Verifying, below). Never mark work done on a green build alone if behaviour is observable - check it.
 
 ## Non-negotiable principles (these override default behaviour)
 
@@ -51,13 +72,13 @@ Verifying, below). Never mark work done on a green build alone if behaviour is o
    canonical. Visual/AI/block actions must emit *deterministic, readable code patches*, never a
    hidden scene model. The editor always reflects exactly what was written.
 2. **Generated code must be clean, commented, and easy to edit.** Prefer simple, obvious code over
-   clever code — a professional should be able to read and extend it. Rich-but-commented CSS is the
+   clever code - a professional should be able to read and extend it. Rich-but-commented CSS is the
    house style.
 3. **Offline-first, no unnecessary dependencies.** GSAP is bundled locally
    (`src/assets/gsap.min.js`). Don't add runtime deps or external/CDN references in generated
    templates. The exported package must be plug-and-play (relative paths, bundled GSAP).
 4. **Validate before export.** `validation/validateTemplate.ts` is the gate; export is blocked on
-   errors. Keep it authoritative — the platform owns SPX compatibility, not the AI.
+   errors. Keep it authoritative - the platform owns SPX compatibility, not the AI.
 5. **Building blocks and AI are deterministic transforms** `(template) => template` that insert
    clean code. No fragile free-form generation in the stub path.
 
@@ -69,220 +90,159 @@ Full reference: **`docs/SPX_TEMPLATE_FORMAT.md`** (derived from the real example
 - A global `window.SPXGCTemplateDefinition = { ...settings, DataFields: [...] }` describes the
   operator's fields. Fields are `f0`, `f1`, … with an `ftype` (textfield, number, dropdown, …).
 - SPX calls global `play()`, `stop()`, `update(data)` (a **JSON string**), and `next(data)`.
-- **Field → DOM convention (this project): each field `fN` maps to one element `id="fN"`.**
+- **Field -> DOM convention (this project): each field `fN` maps to one element `id="fN"`.**
   `update()` writes the value straight into it via `getElementById`. **No hidden `.spx-data`
-  holders, no `_gfx` display split** — that older "premium pack" style is documented but not what we
-  generate. An input-only value (e.g. a countdown duration) may live in a hidden `<div id="fN"
+  holders, no `_gfx` display split** - that older "premium pack" style is documented but not what
+  we generate. An input-only value (e.g. a countdown duration) may live in a hidden `<div id="fN"
   style="display:none">`.
 
-## Architecture
+## Architecture map
+
+Directories marked * have their own CLAUDE.md with the binding per-area contracts.
 
 ```
 src/
-  model/        types.ts (SpxTemplate, Resolution, ASPECTS…), spxDefinition (parse/serialize),
-                wizard.ts (categories, variants, WizardOptions, palettes), fonts.ts (bundled OFL
-                fonts registry + CustomFont import helpers), brand.ts (ProjectBrand save/load,
-                localStorage 'spx-gfx-brand'), packets.ts (packet manager data layer: graphics
-                collections 'spx-gfx-packets' + brand looks 'spx-gfx-looks' +
-                captureLookFromTemplate/applyLookToTemplate), easings.ts, defaultTemplate
-  templates/    blank.ts + the wizard catalog, resolved through catalog.ts (CATALOG,
-                variantsFor/variantById):
-                  shared/       base.ts (generic assembler pieces: :root vars, zones, auto-fit,
-                                runtime scaffold) + standard.ts (CategorySpec, assembleStandard,
-                                makeDefineVariant) + clock.ts (countdown engine: hidden minutes
-                                field → M:SS + {prefix}-done at zero; DOM-ready-safe) — every
-                                category builds on these
-                  lowerThirds/  lt01…lt10 on shared.ts (prefix 'l3') + animPresets.ts (6
-                                marked-region GSAP presets, prefix-parameterized — they animate
-                                any category's .{prefix}-box structure)
-                  infoCards/    card01…card03 (prefix 'card')
-                  endCredits/   cr01…cr04 (prefix 'credits') + creditsPresets.ts (credits-roll /
-                                credits-pages / credits-crawl); data-driven: a hidden #f0
-                                textarea holds "Role | Name" lines, template JS parses and
-                                rebuilds #credits-track, ends with logo + year (.credits-end)
-                  tickers/      tk01…tk03 (prefix 'ticker') + tickerPresets.ts (ticker-marquee /
-                                ticker-flip); data-driven: #f0 lines → #ticker-track items;
-                                marquee = items rendered twice, slide one set width, linear
-                                repeat:-1 (seamless loop)
-                  startingSoon/ ss01…ss03 (prefix 'ss', hold-loop preset: entrance + calm
-                                .ss-pulse breathing + clock via shared/clock.ts, minutes in f2)
-                  gameTimers/   gt01…gt02 (prefix 'gt', type 'countdown'; timer-run pop +
-                                timer-line-reveal; minutes in f1; .gt-done styles time-up)
-                  scoreboards/  sb01…sb02 (prefix 'sb'; fixed 4-field contract f0-f3 as
-                                sb-masks so the standard presets drive them; update() pops a
-                                score's mask when it changes on air)
-                  cornerBug/    bug01 (prefix 'bug', standard assembler, logo slot +
-                                placeholder mark)
-                  infographics/ ig01…ig02 (prefix 'ig'; design owns fields + runtimeExtraJs;
-                                igPresets: count-up — suffix-preserving number tween — and
-                                bars-grow over #ig-bars .ig-bar-fill[data-value])
-                  quiz/         qz01 (prefix 'qz'; f0 question, f1-f4 options, hidden f5
-                                correct-answer dropdown; next() → revealAnswer() adds
-                                .qz-correct/.qz-dim, update() clears the reveal)
-  store/        templateStore.ts — zustand; template + UI state; undo history; lastChange
-                (per-tab changed-line ranges from every apply — the editor highlight);
-                replayNonce (Motion applies auto-replay via PlayoutSimulator); patchCss
-                (Style-panel patches: highlight without history spam)
-  preview/      composeDocument.ts — inlines CSS + GSAP + JS + assets into the iframe srcdoc
-  blocks/       registry.ts (BuildingBlock[] — no Blocks tab anymore; this is the offline AI
-                stub's vocabulary), edit.ts (nextFieldId, addFieldToDefinition, …), cssVars.ts,
-                animPatch.ts (marked-region readers/patchers: readAnimationInfo reads per-phase
-                "// In preset:" / "// Out preset:" comments falling back to "// Preset:";
-                swapAnimationPhase(js, id, cfg, 'in'|'out'|'both') splices two emitted regions
-                at the buildOutTimeline boundary — steps code travels with the IN phase)
-  ai/           provider.ts (AIProvider + GenerateContext), claudeProvider.ts (real provider:
-                system prompt = SPX + house contracts + lt01's generated code as the canonical
-                example; forced emit_template tool; validate + one repair round), anthropic.ts
-                (direct browser call with the user's key OR VITE_AI_PROXY_URL gateway),
-                settings.ts (localStorage + .env: key, model), index.ts (getAiProvider —
-                Claude when configured, stub otherwise), stubProvider.ts, presets.ts
-  validation/   validateTemplate.ts — runs before export and on AI output
-  control/      the modular control-panel engine (Era 4): controlModel.ts (fields → operator
-                control descriptors by ftype, ONE generator, no per-template code;
-                controlChannelName + ControlMessage protocol), controlPanelHtml.ts (the
-                standalone controlpanel.html, same descriptors, inline), receiverScript.ts
-                (BroadcastChannel listener injected into exported index.html), liveData.ts
-                (editable published-CSV → update() polling block appended to template.js)
-  export/       registry.ts (4 targets), slug.ts (shared, avoids a cycle), targets/spxStarter.ts
-                (+ buildStarterInto, reused by packets), targets/spxPack.ts, targets/casparcg.ts
-                (single self-contained html + JSON/XML data shim), targets/ograf.ts (EBU OGraf
-                v1: manifest from DataFields + graphic.mjs Web Component; AMD-guarded gsap
-                loader), packetExport.ts (whole packet -> one zip, a Starter folder per graphic),
-                common.ts (addSharedAssets, addReferencedFonts, injectControlReceiver +
-                addControlPanel for SPX exports, FONT_LICENSES.md)
-  teach/        knowledge.ts + explain.ts — surfaced as Monaco HOVER tooltips in the editor
-                (registered in CodeEditor.tsx; there is no Learn tab), cssReference.ts
-  assets/       gsap.min.js (bundled), assetUtils.ts (data-URL assets)
-  components/    AppShell (two-pane layout: code left; preview stacked over the tool tabs
-                 right — the stage's aspect-ratio comes from the template resolution),
-                 CodeEditor (Monaco + change-highlight decorations + hover explanations),
-                 PreviewFrame, CanvasGuides, PlayoutSimulator (auto-replays on replayNonce),
-                 SidePanel (six tabs: Data / Control / Style / Motion / AI / Export),
-                 SampleDataPanel (sample values + add-field), ControlPanel (operator view from
-                 control/ engine; live-drives the preview via store.sendControl → simulator;
-                 downloads controlpanel.html; adds the Google-Sheets live-data block),
-                 StylePanel, AnimationPanel (In/Out/Both phase control), AIPromptPanel,
-                 ExportPanel (validation inline), PacketManager (📦 topbar modal),
-                 wizard/ (CreationWizard, draft.ts, WizardPreview, MiniPreview, steps/)
-public/fonts/   the 6 bundled woff2 fonts (served at /fonts, copied into exports)
-scripts/        l3-sweep.mjs — Playwright dev tool: `node scripts/l3-sweep.mjs <shots-dir>
-                <category>` validates every variant × preset × easing (+ category-specific
-                track/loop checks) and captures taste screenshots
-docs/           GOALS.md (north star + milestones), DESIGN_LANGUAGE.md (taste rulebook),
-                SPX_TEMPLATE_FORMAT.md (SPX contract)
+  model/ *     data layer: SpxTemplate types, SPX definition parse/serialize, wizard catalog
+               data, fonts, brand, packets, easings, autosaved project, template import,
+               layout + prefs, and structure.ts - the TemplatePart registry, THE shared
+               element-identity contract (timeline, canvas selection, and step assignment all
+               name elements through it)
+  templates/ * the wizard catalog: shared assemblers (base/standard/clock) + 10 categories
+               (lower thirds, info cards, end credits, tickers, starting soon, game timers,
+               scoreboards, corner bug, infographics, quiz); also the :root style contract,
+               the DOM-ready runtime rule, the field/image policy, and the easing doctrine
+  store/ *     templateStore.ts (zustand) - applyTemplate/undo choke point + editor UI state
+  preview/     composeDocument.ts - inlines CSS + GSAP + JS + assets into the iframe srcdoc
+               (plus a preview-only images/ -> data-URL shim, see src/templates/CLAUDE.md)
+  blocks/ *    deterministic template transforms: the block registry (the offline AI stub's
+               vocabulary), field editing, the Timeline v2 animation-data engine (animData
+               schema/serializer, animEdit mutators, animEval resolver, animImport legacy
+               converter, presetApply generators), and the LEGACY-region patchers (animPatch,
+               stepAssign, timelineModel) still serving not-yet-migrated categories
+  ai/          provider.ts (AIProvider + GenerateContext), claudeProvider.ts (the real provider:
+               system prompt = SPX + house contracts + lt01's generated code as the canonical
+               example; forced emit_template tool; validate + one repair round), anthropic.ts
+               (direct browser call with the user's key OR the VITE_AI_PROXY_URL gateway),
+               settings.ts (localStorage + .env: key, model), index.ts (getAiProvider - Claude
+               when configured, stub otherwise), stubProvider.ts, presets.ts
+  validation/  validateTemplate.ts - runs before export and on AI output
+  control/     the modular control-panel engine: controlModel.ts (fields -> operator control
+               descriptors by ftype, ONE generator, no per-template code; controlChannelName +
+               ControlMessage protocol), controlPanelHtml.ts (the standalone controlpanel.html,
+               same descriptors, inline), receiverScript.ts (BroadcastChannel listener injected
+               into exported index.html), liveData.ts (editable published-CSV -> update()
+               polling block appended to template.js)
+  export/ *    the export registry - 6 targets (SPX starter, HTML overlay for OBS/vMix, H2R,
+               CasparCG, OGraf, LiveOS) + whole-packet export + packaging conventions
+  render/ *    video/image rendering contracts: the versioned RenderManifest, the
+               duration/HOLD schedule model, tier limits (ALL configurable numbers live
+               there), the virtual-clock runtime (__noacgRender - every frame a pure
+               function of the manifest), the render-document composer, and the UI-side
+               client + job store. The service is api/render/*; the renderer is
+               render-worker/. Feature-gated by VITE_RENDER_API; architecture + ops in
+               docs/RENDER.md
+  landing/ *   the landing page's GSAP motion system. POLICY: the landing never fakes product
+               UI - on-air output and real screenshots only; roadmap features are tagged
+               planned/coming, never shown as shipped
+  teach/       knowledge.ts + explain.ts + cssReference.ts - surfaced as Monaco HOVER tooltips
+               in the editor (registered in CodeEditor.tsx; an aid, not the point - there is no
+               Learn tab)
+  assets/      gsap.min.js (bundled) + assetUtils.ts (data-URL assets)
+  backend/     the OPTIONAL Supabase backend: config.ts isBackendConfigured is the ONE
+               feature-detection point (unset env = pure offline mode); supabase.ts (lazy
+               client), auth.ts (Google OAuth + email/password + subscribeAuth),
+               storage/supabaseProvider/sync/syncController (LWW cloud sync of
+               packets/looks/brand for signed-in users), assets.ts (Storage bucket)
+  community/   shared templates: communityData.ts (RPCs, signed-in only), gate.ts (validate +
+               bench at publish AND import), useIsModerator.ts
+  showchat/    audience send-in: SendIn page (?chat=<slug>), ModerationPanel, chatGraphicBlock
+               (polling graphic block), chatData.ts
+  components/ * the React app: AppShell (code | preview+Inspector row over full-width
+               panels; a new selection auto-opens the Inspector), CodeEditor (Monaco),
+               canvas direct manipulation + selection + position keyframing, PlayoutSimulator, the timeline dock
+               (StepTimeline for data-block templates, the classic TimelineView for legacy
+               ones), Inspector (properties + keyframes + Animations), the five-tab SidePanel
+               (Data / Control / Style / AI / Export - Motion lives on the timeline), wizard/,
+               auth/
+public/fonts/  the 7 bundled woff2 fonts (served at /fonts, copied into exports;
+               jetbrains-mono.woff2 doubles as the app UI's mono face)
+scripts/       dev-port.mjs (per-checkout port), l3-sweep.mjs (catalog sweep - see Verifying),
+               renderDevPlugin.mjs (mounts api/render on the dev server), render-smoke.mjs +
+               make-render-manifest.mjs (render verification - see docs/RENDER.md),
+               hooks/ (Claude Code guard hooks wired in .claude/settings.json: commit-message
+               style, protected generated files, per-file lint on edit, dev-server policy,
+               e2e port preflight, session-start worktree sanity check + port orientation)
+docs/          GOALS.md (north star + milestones), DESIGN_LANGUAGE.md (taste rulebook),
+               SPX_TEMPLATE_FORMAT.md (SPX contract), RENDER.md (video/image rendering)
+api/           the render service's Vercel functions (start/status/cancel/complete/cleanup +
+               the local-output file route) with the JobStore + RenderExecutor seams in
+               api/_lib; typechecked by tsconfig.api.json inside the build gate
+render-worker/ the Remotion renderer - its own exact-pinned package so the dependency (and
+               its non-OSI license) never enters the AGPL app bundle
 ```
+
+### Auth posture (the open editor)
+
+**There is no login wall, ever.** The editor - create, preview, export, local packets - is open
+to everyone, hosted or self-hosted. Only *account features* gate themselves: cloud sync,
+community, show chat, and AI (hosted mode). Offline builds (no Supabase env) must grow **zero**
+auth UI (E2E-pinned in `e2e/auth.spec.ts`). Don't reintroduce an app-wide gate. The
+`needsSignIn`/`SignInPrompt` gating pattern and the open-signup migration note live in
+src/components/CLAUDE.md.
 
 ### The choose-first creation flow (primary UX)
 
-New projects go through the **CreationWizard** (Entry → Category → Template → Fields → Style →
-Animation, persistent live preview). Creating calls `variant.create(options)` which generates the
-complete, commented template. After creation, code is the source of truth and two **live panels**
-keep working via deterministic patches:
-
-- **Style panel** — reads/writes the `:root` style contract (`--accent`, `--text-color`,
-  `--text-dim`, `--panel-bg`, `--font-heading`, `--scale`), swaps the marked `@font-face` block
-  (bundled or imported), re-anchors the root element via `zoneDecls`, and can import a font
-  post-creation.
-- **Motion panel** — only touches the marked region
-  (`/* == ANIMATION … == */ … /* == END ANIMATION == */`) and its three knob variables
-  (`animSpeed`, `easeIn`, `easeOut`). Presets are per-category (`blocks/animPatch.ts
-  presetsForType`); the root prefix is detected from `class="(\w+)-box"`. Preset/steps swaps
-  re-emit the region (undoable); user code outside the markers is never modified. The steps
-  toggle only shows for line-based categories (lower thirds, info cards, scoreboards, corner
-  bug) — continuous, clock, and data-driven formats hide it.
-
-**Sample data on create:** `applyTemplate(template, { resetSampleData: true })` is used by the
-wizard so a new project starts from ITS field defaults — plain `applyTemplate` (blocks, panels,
-AI) intentionally preserves typed sample values for matching field ids. Don't drop the flag from
-the wizard path: the old template's values would leak into the new graphic's fields.
-
-**Template runtime rule:** generated template.js loads in `<head>` in exported packages — any
-load-time DOM work (initial rebuild/paint) must use the DOM-ready guard pattern (see
-shared/clock.ts or the rebuild calls in credits/tickers/infographics runtimes).
-
-**Images & fields (the broadcast field policy):**
-- Field types offered to users are the ones live graphics actually use: `textfield`,
-  `textarea`, `number`, and **`filelist` = the image field** (SPX lists files from
-  `assetfolder: './images/'`). `dropdown`/`checkbox`/`color` exist in the SPX format but are
-  reserved for genuinely constrained design choices (e.g. the quiz's correct-answer dropdown) —
-  don't offer them in generic field UIs.
-- Asset path convention: uploads land at `images/<file>` (fonts at `fonts/<file>`); the export
-  zip wraps everything in one project folder, so extracting into a templates folder yields
-  `[TemplatesFolder]/<project>/index.html` + `<project>/images/<file>` — the layout SPX and
-  CasparCG expect. Both exporters use `zip.folder(slug(name))`.
-- Every runtime writes fields through the shared `setFieldValue` helper (base.ts
-  `setFieldValueJs`): text -> textContent, `<img id="fN">` -> src (empty value hides the img and
-  toggles `.has-image` on its parent so CSS can show a placeholder). Data-driven categories may
-  instead keep the path in a hidden source div (credits' #f2 logo).
-- Logo slots are real SPX fields: credits f2, corner bug + card03 design-owned `extraFields`
-  (`StandardDesign.extraFields`, id computed after all user fields).
-- The preview iframe can't resolve `images/...` set at runtime — composeDocument injects a
-  MutationObserver shim that swaps known relative paths for their in-memory data URLs.
-  Exported packages never include the shim.
-
-**Easing doctrine** lives in `model/easings.ts` + DESIGN_LANGUAGE §4: entrances use Out-direction
-curves, exits use In-direction and run faster; Back Out for pops; Bounce/Elastic playful-only;
-Linear only for continuous motion (credits rolls, ticker marquees — strictly `ease: 'none'`).
-
-**Broadcast packages.** Graphics made in one project must read as siblings — DESIGN_LANGUAGE §8
-holds the per-family cross-category tokens (minimal / sport / glass shape, type, and motion
-values). Two mechanisms enforce it: the **project brand** (`model/brand.ts`, captured on every
-wizard Create; the wizard's "Match current project" toggle re-applies palette + font via
-`brandPatch`) and **sibling judging** (every new category variant is judged against its
-lower-third counterpart). Custom colors enter through the wizard's Custom palette (hex/rgba +
-picker); imported fonts become template assets (`fonts/<file>` data-URL) with a visible
-`@font-face`, are registered via the FontFace API for the builder UI, and ship as real binaries
-in the export.
-
-Key flows and patterns:
-
-- **Editing:** `setHtml/setCss/setJs` update the template; editing HTML re-parses the definition so
-  `fields`/`settings` stay in sync. Preview rebuilds on a ~350 ms debounce.
-- **Building blocks** (`blocks/registry.ts`): pure transforms grouped by a hierarchical `path`
-  (e.g. `['Lower third']`, `['Animation','GSAP']`) with a `primaryTab` (tab to reveal after
-  applying). Inserted elements are positioned in the lower-left action-safe area via
-  `positionForNewElement`, tagged `data-gfx`, and styled with `textCssRule` (rich commented CSS).
-  Animation is two tracks: **CSS** (`@keyframes` + class applied to the element) and **GSAP**
-  (tween injected into `play()/stop()`).
-- **Undo:** `applyTemplate` snapshots the previous template; `undo()` restores it. Blocks, AI, and
-  gallery all flow through `applyTemplate`. Global **Ctrl/Cmd+Z** (AppShell) calls `undo()` unless
-  focus is in Monaco or a form field.
-- **Assets/branding:** uploads are base64 data URLs in `template.assets[]`; the preview inlines
-  them, the exporter decodes them to real files under `assets/`. Brand colours are `:root` CSS
-  variables.
-- **Editor hover help (optional):** the `teach/` module surfaces explanations as Monaco hover
-  tooltips for users who open the code — an aid, not the point. There is no Learn tab.
+New projects go through the **CreationWizard** (Entry -> Category -> Template -> Fields -> Style
+-> Animation, persistent live preview); `variant.create(options)` generates the complete,
+commented template. After creation, code is the source of truth and two **live panels** keep
+working via deterministic patches: the **Style panel** writes the `:root` style contract
+(src/templates/CLAUDE.md) and **the timeline under the preview** — the step timeline for
+data-block templates, the classic strip for legacy ones — touches ONLY the marked ANIMATION region
+(src/blocks/CLAUDE.md) - user code outside the markers is never modified. The wizard applies
+with `resetSampleData: true` so a new project starts from its own field defaults
+(src/store/CLAUDE.md).
 
 ## Verifying changes
 
-Always `npm run build` (typecheck + build) after changes.
+Always `npm run build` (typecheck + lint + build) after changes. The tree stays lint-clean:
+fix findings properly rather than sprinkling eslint-disable comments.
 
-- **UI flows → use Playwright.** Verify user-facing flows with the E2E suite in `e2e/` (specs drive
-  the real dev server). Run `npm run test:e2e`. Add a spec for any new user-facing flow (gallery,
-  blocks, undo, guides, branding, export, …).
+- **UI flows -> use Playwright.** Verify user-facing flows with the E2E suite in `e2e/` (specs
+  drive the real dev server). Run `npm run test:e2e`. Add a spec for any new user-facing flow
+  (gallery, blocks, undo, guides, branding, export, …).
 - **Logic checks without UI (fast path):** Vite serves source modules, so in a browser context you
   can `await import('/src/blocks/registry.ts?t=' + Date.now())`, apply blocks to
   `createBlankTemplate(...)`, run `validateTemplate`, and load `composeDocument(tpl)` into a hidden
   iframe to call `update()/play()/stop()`. Good for blocks, templates, validation, and export logic.
 - **Store/state checks:** `import('/src/store/templateStore.ts')` then `useTemplateStore.getState()`.
 - **Template catalog sweep:** `node scripts/l3-sweep.mjs <shots-dir> <category>` (dev server must
-  be running; category = `lower-third` | `info-card` | `end-credits` | `ticker`) — validates every
+  be running; category = `lower-third` | `info-card` | `end-credits` | `ticker`) - validates every
   variant × preset × easing (runtime, steps, auto-fit, credits/ticker track checks) and captures
   settled-state taste screenshots. Run it for the affected category after template changes.
 
 **Gotchas:**
-- After many edits the Vite dev server can serve a **stale module** (HMR lag) — restart it if a
+- After many edits the Vite dev server can serve a **stale module** (HMR lag) - restart it if a
   change isn't reflected.
+- The app declares `color-scheme: dark` (styles.css `:root`) and composeDocument injects the
+  matching `<meta name="color-scheme" content="dark">` into the preview srcdoc. **Keep them
+  paired** - Chromium paints an iframe opaque (white stage) when embedder and iframe schemes
+  disagree. Exported packages get neither.
+- The e2e suite pins **offline mode** via `webServer.env` in playwright.config.ts, but
+  `reuseExistingServer: true` means a dev server already running on THIS checkout's port
+  (started by hand, with the real `.env`) gets reused - backend-sensitive specs then fail
+  confusingly. Kill any manual server on this checkout's port (`node scripts/dev-port.mjs`
+  prints it) before `npm run test:e2e`. Other worktrees' servers are harmless - they live on
+  their own ports.
 - Worse: after HMR updates, `import('/src/store/…')` in an eval/console context can resolve a
-  **different module instance** than the running app (a "ghost store" — your clicks patch the real
+  **different module instance** than the running app (a "ghost store" - your clicks patch the real
   store while your assertions read the stale one). If state reads disagree with visible UI,
   **restart the dev server and reload** before trusting any eval-based assertion.
 - Monaco isn't fully interactive in a headless preview and GSAP animations don't visibly tick (rAF);
   assert on DOM/state, not screenshots, for those.
-- In Playwright specs, **never clear localStorage via `addInitScript`** — the script also runs in
+- In Playwright specs, **never clear localStorage via `addInitScript`** - the script also runs in
   the same-origin srcdoc preview iframe, so every preview rebuild wipes the key (this silently
   deleted the project brand). Fresh browser contexts already isolate storage per test.
-- The preview rebuilds on a ~350 ms debounce after `applyTemplate` — Playwright specs must wait for
+- The preview rebuilds on a ~350 ms debounce after `applyTemplate` - Playwright specs must wait for
   it (or for an element unique to the new document) before clicking Play or asserting inside the
   iframe, or they hit the previous document.
 
@@ -292,6 +252,12 @@ Always `npm run build` (typecheck + build) after changes.
   asks.
 - The working rhythm in this repo: **commit each completed, verified phase/step** with a descriptive
   message. **Never add a `Co-Authored-By` trailer or any agent co-author** (the user's global rule).
-  The user likes GitHub kept up to date, but ask before pushing unless they've already asked in the
-  current effort.
+  The user likes GitHub kept up to date: push completed, verified work to `main` without asking
+  (standing permission, 2026-07-08).
+- **Commit messages:** write clear, human-readable messages that explain the actual change - they
+  must be understandable to any outside developer reading the history cold. No chat/session
+  language, internal planning names, or AI-sounding phrases ("as requested", "starting era 5",
+  "continued work", "made changes", "AI update", "per your instructions"). Never mention Claude,
+  Codex, ChatGPT, agents, prompts, or the conversation unless the commit is specifically about AI
+  tooling.
 - Don't commit `dist/` changes as part of feature work.

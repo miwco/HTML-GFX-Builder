@@ -41,20 +41,20 @@ export const ig02: TemplateVariant = defineInfographicVariant(
     const headingText = o.lines[1]?.sample || 'HOW WE WATCH';
 
     return {
-      // Structure: .ig-box is the frosted panel; #ig-bars is rebuilt from the hidden
+      // Structure: .infographic-box is the frosted panel; #infographic-bars is rebuilt from the hidden
       // #f0 source by rebuildInfographic() — exactly like a ticker rebuilds its track.
       html: `    <!-- Glass Bars: one frosted panel — caps heading on top, the bar rows below. -->
-    <div class="ig-box">
+    <div class="infographic-box">
       <!-- Heading — the panel's small-caps kicker (SPX writes field f1 here). -->
-      <div class="ig-heading" id="f1">${headingText}</div>
+      <div class="infographic-heading" id="f1">${headingText}</div>
       <!-- Bar rows — rendered by rebuildInfographic() from the hidden source below. -->
-      <div id="ig-bars"></div>
+      <div id="infographic-bars"></div>
     </div>
     <!-- Hidden bars source — SPX writes field f0 here; JS renders it. One "Label | value" per line. -->
     <div id="f0" style="display: none">${barsText}</div>`,
 
       css: `/* The frosted panel — same glass language as the Frosted Card lower third. */
-.ig-box {
+.infographic-box {
   width: calc(560px * var(--scale));  /* fixed chart width — the tracks need a stable length */
   box-sizing: border-box;          /* padding stays inside the fixed width */
   padding: calc(26px * var(--scale)) calc(32px * var(--scale));  /* generous inner air */
@@ -67,7 +67,7 @@ export const ig02: TemplateVariant = defineInfographicVariant(
 }
 
 /* Heading — a small-caps kicker in the accent color, like the Frosted Card's third line. */
-.ig-heading {
+.infographic-heading {
   margin-bottom: calc(20px * var(--scale));  /* air before the first bar row */
   font-size: calc(17px * var(--scale));  /* small label size */
   font-weight: 700;                /* bold keeps small caps legible */
@@ -80,14 +80,14 @@ export const ig02: TemplateVariant = defineInfographicVariant(
 }
 
 /* The chart — bar rows stacked with even air between them. */
-#ig-bars {
+#infographic-bars {
   display: flex;                   /* a simple vertical stack */
   flex-direction: column;          /* one bar row under another */
   gap: calc(18px * var(--scale));  /* even rhythm between the rows */
 }
 
 /* Head line of a row: label on the left, value figure on the right. */
-.ig-bar-head {
+.infographic-bar-head {
   display: flex;                   /* label and value share one line */
   justify-content: space-between;  /* label hugs left, value hugs right */
   align-items: baseline;           /* both sit on the same text baseline */
@@ -96,7 +96,7 @@ export const ig02: TemplateVariant = defineInfographicVariant(
 }
 
 /* The bar's label — the primary reading line of each row. */
-.ig-bar-label {
+.infographic-bar-label {
   min-width: 0;                    /* allow the label to shrink and wrap inside flex */
   font-size: calc(21px * var(--scale));  /* clearly bigger than the heading kicker */
   font-weight: 600;                /* semibold carries the row */
@@ -106,7 +106,7 @@ export const ig02: TemplateVariant = defineInfographicVariant(
 }
 
 /* The value figure — the number the bar visualizes. */
-.ig-bar-value {
+.infographic-bar-value {
   flex-shrink: 0;                  /* long labels never squeeze the figure */
   font-size: calc(21px * var(--scale));  /* same size as the label… */
   font-weight: 700;                /* …contrast through weight, not more fonts */
@@ -115,7 +115,7 @@ export const ig02: TemplateVariant = defineInfographicVariant(
 }
 
 /* The track — a fully-rounded rgba-white lane the fill grows inside. */
-.ig-bar-track {
+.infographic-bar-track {
   height: calc(12px * var(--scale));  /* slim lane — the chart stays elegant */
   border-radius: 999px;            /* full pill — a cap, not a size, so it is not scaled */
   background: rgba(255, 255, 255, 0.14);  /* translucent white lane on the glass */
@@ -126,7 +126,7 @@ export const ig02: TemplateVariant = defineInfographicVariant(
    Deliberate deviation from the "transform/opacity only" motion rule: the fill tweens
    WIDTH because scaleX would squash its rounded cap; the lane is a clipped 12px strip,
    so relayout stays cheap. */
-.ig-bar-fill {
+.infographic-bar-fill {
   width: 0;                        /* fallback — the rebuild renders an inline width at the value */
   height: 100%;                    /* fill the whole lane height */
   border-radius: inherit;          /* the growing end stays rounded like the lane */
@@ -148,11 +148,11 @@ function escapeHtml(s) {
 }
 
 // rebuildInfographic(): parse the hidden #f0 source (one "Label | value" per line)
-// and rebuild the #ig-bars rows. Each fill is rendered already at its value so an
+// and rebuild the #infographic-bars rows. Each fill is rendered already at its value so an
 // on-air update() shows fresh data at once; on play() the 'bars-grow' preset resets
 // the fills to 0 and grows each one back to its data-value percent.
 function rebuildInfographic() {
-  var bars = document.getElementById('ig-bars');
+  var bars = document.getElementById('infographic-bars');
   var lines = document.getElementById('f0').textContent.split('\\n');
   var html = '';
   lines.forEach(function (raw) {
@@ -164,13 +164,13 @@ function rebuildInfographic() {
     var value = parseFloat(valueText);             // NaN when the value part is missing
     if (label === '' || isNaN(value)) return;      // skip lines without a label or a number
     var fill = Math.max(0, Math.min(100, value));  // clamp only the DRAWN fill to the 0-100 track
-    html += '<div class="ig-row">'
-          +   '<div class="ig-bar-head">'
-          +     '<span class="ig-bar-label">' + escapeHtml(label) + '</span>'
-          +     '<span class="ig-bar-value">' + escapeHtml(valueText) + '</span>'  // show the typed figure, never a silently altered one
+    html += '<div class="infographic-row">'
+          +   '<div class="infographic-bar-head">'
+          +     '<span class="infographic-bar-label">' + escapeHtml(label) + '</span>'
+          +     '<span class="infographic-bar-value">' + escapeHtml(valueText) + '</span>'  // show the typed figure, never a silently altered one
           +   '</div>'
-          +   '<div class="ig-bar-track">'
-          +     '<div class="ig-bar-fill" data-value="' + fill + '" style="width: ' + fill + '%"></div>'
+          +   '<div class="infographic-bar-track">'
+          +     '<div class="infographic-bar-fill" data-value="' + fill + '" style="width: ' + fill + '%"></div>'
           +   '</div>'
           + '</div>';
   });

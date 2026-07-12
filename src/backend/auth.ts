@@ -14,7 +14,10 @@ export interface AuthState {
   user: User | null;
 }
 
-const OAUTH_REDIRECT = typeof window !== 'undefined' ? window.location.origin : undefined;
+// Return to wherever the app itself is served from (/app hosted, /app.html raw self-host) —
+// NOT the bare origin: that is the public landing page, which runs no Supabase client.
+const OAUTH_REDIRECT =
+  typeof window !== 'undefined' ? window.location.origin + window.location.pathname : undefined;
 
 /** Start Google OAuth. On success the page redirects, so a resolved value with no error means
  * "redirecting"; an error means it never left. */
@@ -37,8 +40,9 @@ export async function signInWithEmail(email: string, password: string): Promise<
 }
 
 /**
- * Create an account with email + password. Blocked server-side unless the email is allowlisted
- * (the enforce_allowlist hook returns 403 for non-invitees); that message surfaces here.
+ * Create an account with email + password. Signup is open (migration 0006); the server-side
+ * Before-User-Created hook is the switch if it ever needs to re-close to the allowlist — any
+ * rejection message it returns surfaces here.
  */
 export async function signUpWithEmail(email: string, password: string): Promise<{ error: string | null }> {
   const sb = await getSupabase();

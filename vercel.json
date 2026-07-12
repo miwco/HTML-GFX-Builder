@@ -1,0 +1,14 @@
+{
+  "cleanUrls": true,
+  "buildCommand": "npm run build && npm --prefix render-worker ci && npm --prefix render-worker run typecheck && node render-worker/bundle.mjs",
+  "functions": {
+    "api/render/start.ts": {
+      "maxDuration": 300,
+      "includeFiles": "render-worker/{bundle/**,sandbox-job.mjs}"
+    },
+    "api/render/status.ts": { "maxDuration": 60 },
+    "api/render/cancel.ts": { "maxDuration": 60 },
+    "api/render/cleanup.ts": { "maxDuration": 300 }
+  },
+  "crons": [{ "path": "/api/render/cleanup", "schedule": "30 3 * * *" }]
+}

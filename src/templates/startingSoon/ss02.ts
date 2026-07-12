@@ -3,7 +3,7 @@
 // bar), a huge condensed show name on a dark slab, and the countdown mounted in a
 // heavy slab with a chunky accent edge (lt05's fused 10px slab). Every lean is
 // PAINTED on a ::before layer at the family's -8deg, so no preset can flatten it —
-// the hold-loop preset scales the accent edge (.ss-pulse), and because that element
+// the hold-loop preset scales the accent edge (.starting-soon-pulse), and because that element
 // carries no transform of its own, the lean survives every breath.
 
 import { paletteById, type TemplateVariant } from '../../model/wizard';
@@ -38,21 +38,21 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   },
   (o) => ({
     // Stack order: chip (f0) → show name (f1) → clock slab. The masks wrap the field
-    // spans (structure contract); the accent edge is the one .ss-pulse element.
+    // spans (structure contract); the accent edge is the one .starting-soon-pulse element.
     html: `    <!-- Volt Hold: a centered sport stack. Every lean is painted on a ::before layer. -->
-    <div class="ss-box">
+    <div class="starting-soon-box">
       <!-- The title chip — the loud accent moment up top (its slab lives on ::before). -->
-      <div class="ss-mask ss-chip-mask"><span id="f0" class="ss-chip">${o.lines[0]?.sample || 'STARTING SOON'}</span></div>
+      <div class="starting-soon-mask starting-soon-chip-mask"><span id="f0" class="starting-soon-chip">${o.lines[0]?.sample || 'STARTING SOON'}</span></div>
       <!-- The show name — the biggest thing on screen, on its own dark leaning slab. -->
-      <div class="ss-mask ss-show-mask"><span id="f1" class="ss-show">${o.lines[1]?.sample || 'FRIDAY FIGHT NIGHT'}</span></div>
+      <div class="starting-soon-mask starting-soon-show-mask"><span id="f1" class="starting-soon-show">${o.lines[1]?.sample || 'FRIDAY FIGHT NIGHT'}</span></div>
       <!-- The clock slab — a heavy dark block with a chunky accent edge that breathes. -->
-      <div class="ss-slab">
-        <div class="ss-edge ss-pulse"></div>
-        <div class="ss-clock">5:00</div>
+      <div class="starting-soon-slab">
+        <div class="starting-soon-edge starting-soon-pulse"></div>
+        <div class="starting-soon-clock">5:00</div>
       </div>
     </div>`,
     css: `/* The stack: three rows centered on one axis, each hugging its own width. */
-.ss-box {
+.starting-soon-box {
   display: flex;                   /* stack the rows ... */
   flex-direction: column;          /* ... top to bottom */
   align-items: center;             /* chip, name and clock share one center axis */
@@ -60,16 +60,16 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 
 /* The masks clip at their edges, so they get side padding: room for the painted
    -8deg lean to overhang without being cut off by overflow: hidden. */
-.ss-chip-mask,
-.ss-show-mask {
+.starting-soon-chip-mask,
+.starting-soon-show-mask {
   padding: 0 calc(20px * var(--scale));  /* breathing room for the skew overhang */
 }
-.ss-show-mask {
+.starting-soon-show-mask {
   margin-top: calc(10px * var(--scale)); /* small gap: chip and name read as one unit */
 }
 
 /* The title chip — condensed caps punched out of a solid accent slab (lt06's motif). */
-.ss-chip {
+.starting-soon-chip {
   position: relative;              /* anchors the painted slab (::before) */
   padding: calc(10px * var(--scale)) calc(30px * var(--scale));  /* tight chip padding */
   font-size: calc(24px * var(--scale));  /* label scale — a kicker, not a headline */
@@ -82,7 +82,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The chip's slab: the family lean lives HERE, on a layer no preset ever tweens. */
-.ss-chip::before {
+.starting-soon-chip::before {
   content: '';                     /* pseudo-elements render only with content set */
   position: absolute;              /* fills the chip exactly ... */
   inset: 0;                        /* ... edge to edge */
@@ -93,7 +93,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The show name — huge condensed caps, the loudest thing on screen. */
-.ss-show {
+.starting-soon-show {
   position: relative;              /* anchors its painted slab (::before) */
   padding: calc(14px * var(--scale)) calc(44px * var(--scale));  /* generous slab padding */
   font-size: calc(92px * var(--scale));  /* headline scale for a full-screen hold */
@@ -106,7 +106,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The name's slab: same painted lean, dark this time — lt05's technique exactly. */
-.ss-show::before {
+.starting-soon-show::before {
   content: '';                     /* render the pseudo-layer */
   position: absolute;              /* fills the name's padding box ... */
   inset: 0;                        /* ... edge to edge */
@@ -117,7 +117,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The clock slab — a heavy dark block; extra left padding makes room for the edge. */
-.ss-slab {
+.starting-soon-slab {
   position: relative;              /* anchors the painted slab and the accent edge */
   margin-top: calc(20px * var(--scale));  /* the clock stands slightly apart */
   padding: calc(12px * var(--scale)) calc(48px * var(--scale))
@@ -125,7 +125,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The slab paint — the lean on ::before again, out of every preset's reach. */
-.ss-slab::before {
+.starting-soon-slab::before {
   content: '';                     /* render the pseudo-layer */
   position: absolute;              /* edge to edge ... */
   inset: 0;                        /* ... of the slab */
@@ -135,10 +135,10 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   transform: skewX(-8deg);         /* fused with the accent edge's lean */
 }
 
-/* The accent edge — the .ss-pulse target. The element itself carries NO transform
+/* The accent edge — the .starting-soon-pulse target. The element itself carries NO transform
    (the hold-loop preset scales it to breathe); its lean is painted on ::before,
    so the breath can never flatten it. Chunky 10px — a slab, not a hairline. */
-.ss-edge {
+.starting-soon-edge {
   position: absolute;              /* pinned over the slab's left edge ... */
   left: 0;                         /* ... flush with the slab box */
   top: 0;                          /* full height, top ... */
@@ -146,7 +146,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   width: calc(10px * var(--scale));  /* the family's chunky slab width */
   will-change: transform;          /* hint the browser: this element breathes */
 }
-.ss-edge::before {
+.starting-soon-edge::before {
   content: '';                     /* render the accent paint */
   position: absolute;              /* fills the edge exactly ... */
   inset: 0;                        /* ... top to bottom */
@@ -155,7 +155,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 }
 
 /* The digits — big, heavy, and steady (tabular digits never wobble as they tick). */
-.ss-clock {
+.starting-soon-clock {
   font-size: calc(56px * var(--scale));  /* clearly subordinate to the name (~1.6:1) */
   font-weight: 800;                /* heavy — the clock is a headline of its own */
   line-height: 1.1;                /* tight digit row */
@@ -164,8 +164,8 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   font-variant-numeric: tabular-nums;  /* every digit one width — no jitter per second */
 }
 
-/* Time's up: the clock runtime adds .ss-done to the root — flip the digits to volt. */
-.ss-done .ss-clock {
+/* Time's up: the clock runtime adds .starting-soon-done to the root — flip the digits to volt. */
+.starting-soon-done .starting-soon-clock {
   color: var(--accent);            /* zero reached: the digits go loud */
 }`,
   }),

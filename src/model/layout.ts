@@ -19,6 +19,10 @@ export interface LayoutPrefs {
   previewRatio: number;
   /** preview-top: the code column's width as a fraction of the bottom row (0..1). */
   bottomRatio: number;
+  /** Whether the Inspector column (right of the preview) is collapsed. */
+  inspectorCollapsed: boolean;
+  /** The Inspector column's width as a fraction of its row (0..1). */
+  inspectorRatio: number;
 }
 
 export const DEFAULT_LAYOUT: LayoutPrefs = {
@@ -27,6 +31,8 @@ export const DEFAULT_LAYOUT: LayoutPrefs = {
   codeRatio: 0.5,     // ≈ today's 1.05fr / 1fr split
   previewRatio: 0.58, // a big preview up top, with room for code + panels below
   bottomRatio: 0.5,
+  inspectorCollapsed: false,
+  inspectorRatio: 0.2,
 };
 
 /** Clamp a split fraction to usable bounds so no region becomes unusable. Column splits use the tight
@@ -54,6 +60,12 @@ export function loadLayout(): LayoutPrefs {
     codeRatio: num(saved.codeRatio, DEFAULT_LAYOUT.codeRatio, 0.2, 0.7),
     previewRatio: num(saved.previewRatio, DEFAULT_LAYOUT.previewRatio, 0.25, 0.85),
     bottomRatio: num(saved.bottomRatio, DEFAULT_LAYOUT.bottomRatio, 0.2, 0.7),
+    // The Inspector defaults OPEN only where three columns genuinely fit (full-width
+    // desktops); on laptop-width windows it starts collapsed — the ◨ toggle is one click
+    // and the explicit preference always wins.
+    inspectorCollapsed:
+      saved.inspectorCollapsed ?? (typeof window !== 'undefined' ? window.innerWidth < 1500 : false),
+    inspectorRatio: num(saved.inspectorRatio, DEFAULT_LAYOUT.inspectorRatio, 0.12, 0.35),
   };
 }
 

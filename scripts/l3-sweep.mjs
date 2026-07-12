@@ -3,6 +3,7 @@
 // over a video-like backdrop for the user's taste review.
 import { chromium } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
+import { devPort } from './dev-port.mjs';
 
 const OUT = process.argv[2] || './l3-shots';
 const CATEGORY = process.argv[3] || 'lower-third';
@@ -11,7 +12,7 @@ mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 0.5 });
 page.on('pageerror', (e) => console.error('PAGE ERROR:', e.message));
-await page.goto('http://localhost:5174/', { waitUntil: 'domcontentloaded' });
+await page.goto(`http://localhost:${devPort()}/`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(800);
 
 // ---------- 1) Deterministic checks (run inside the app page: Vite serves the source) ----------
@@ -49,14 +50,14 @@ const results = await page.evaluate(async (CATEGORY) => {
     const isCredits = CATEGORY === 'end-credits';
     const isTicker = CATEGORY === 'ticker';
     // Clock categories share the countdown engine; their prefix differs.
-    const clockPrefix = { 'starting-soon': 'ss', 'game-timer': 'gt' }[CATEGORY] || null;
+    const clockPrefix = { 'starting-soon': 'starting-soon', 'game-timer': 'game-timer' }[CATEGORY] || null;
     const isScoreboard = CATEGORY === 'scoreboard';
     const isInfographic = CATEGORY === 'infographic';
     const isQuiz = CATEGORY === 'quiz';
     row.checks.masks = isCredits ? tpl.html.includes('credits-track')
       : isTicker ? tpl.html.includes('ticker-track')
       : clockPrefix ? tpl.html.includes(`${clockPrefix}-clock`)
-      : isInfographic ? tpl.html.includes('ig-box') // designs own their fields — no mask contract
+      : isInfographic ? tpl.html.includes('infographic-box') // designs own their fields — no mask contract
       : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
 
     const rt = await runInFrame(tpl, async (w, d) => {
@@ -79,8 +80,13 @@ const results = await page.evaluate(async (CATEGORY) => {
       for (let k = 0; k < 3 && presetOk; k++) {
         const easing = EASINGS[e++ % EASINGS.length];
         const t2 = v.create({ animation: { presetId: p, easing } });
-        if (!t2.js.includes("var easeIn = '") || !t2.js.includes("var easeOut = '")) {
-          presetOk = false; row.issues.push('easing vars missing for ' + p + '/' + easing); break;
+        // Timeline v2 categories emit the data block ("ease" fields inside NOACG_ANIM);
+        // legacy categories still carry the knob variables.
+        const easingPresent = t2.js.includes('var NOACG_ANIM')
+          ? /"ease":\s*"/.test(t2.js)
+          : t2.js.includes("var easeIn = '") && t2.js.includes("var easeOut = '");
+        if (!easingPresent) {
+          presetOk = false; row.issues.push('easing missing for ' + p + '/' + easing); break;
         }
         const r2 = await runInFrame(t2, async (w) => { w.play(); await new Promise((r) => setTimeout(r, 40)); w.stop(); return {}; });
         if (r2.fatal || r2.errs.length) { presetOk = false; row.issues.push('preset ' + p + '/' + easing + ': ' + (r2.fatal || r2.errs[0])); }
@@ -143,17 +149,17 @@ const results = await page.evaluate(async (CATEGORY) => {
       // Infographics carry their own data shape: bars, cascaded rows, a filling ring, or
       // a counting stat. Pass when the variant's shape demonstrably works.
       const r9 = await runInFrame(tpl, async (w, d) => {
-        if (d.getElementById('ig-bars')) {
+        if (d.getElementById('infographic-bars')) {
           w.update(JSON.stringify({ f0: 'Alpha | 80\nBeta | 55\nGamma | 30', f1: 'Results' }));
-          return { bars: d.getElementById('ig-bars').children.length };
+          return { bars: d.getElementById('infographic-bars').children.length };
         }
-        if (d.getElementById('ig-rows')) {
+        if (d.getElementById('infographic-rows')) {
           // Row designs rebuild from their textarea source (already holds a sample).
           w.update(JSON.stringify({}));
-          return { rows: d.getElementById('ig-rows').children.length };
+          return { rows: d.getElementById('infographic-rows').children.length };
         }
-        if (d.querySelector('.ig-ring-fill')) {
-          const ring = d.querySelector('.ig-ring-fill');
+        if (d.querySelector('.infographic-ring-fill')) {
+          const ring = d.querySelector('.infographic-ring-fill');
           const before = getComputedStyle(ring).strokeDashoffset;
           w.play();
           await new Promise((r) => setTimeout(r, 1400));
@@ -181,7 +187,7 @@ const results = await page.evaluate(async (CATEGORY) => {
         await new Promise((r) => setTimeout(r, 500));
         return {
           bound: d.getElementById('f2')?.textContent === 'Mars',
-          revealed: !!d.querySelector('.qz-correct'),
+          revealed: !!d.querySelector('.quiz-correct'),
         };
       });
       row.checks.autoFit = !r10.fatal && r10.errs.length === 0 && !!r10.bound && !!r10.revealed;
@@ -224,7 +230,9 @@ const results = await page.evaluate(async (CATEGORY) => {
       return { wrapped: longRect.height > shortH * 1.5, boxW: Math.round(boxRect.width) };
     });
     // The cap differs per category — read it from the generated CSS (max-width on the box).
-    const cap = Number((t4.css.match(/max-width:\s*(\d+)px/) || [])[1] ?? 830);
+    // Matches both the plain `806px` form and the scale-aware `min(calc(806px * var(--scale)), …)`
+    // form; the sweep creates at default scale 1, where both mean the same width.
+    const cap = Number((t4.css.match(/max-width:\s*(?:min\(calc\()?(\d+)px/) || [])[1] ?? 830);
     row.checks.autoFit = !r4.fatal && !!r4.wrapped && r4.boxW <= cap + 2;
     if (!row.checks.autoFit) row.issues.push('autofit: ' + JSON.stringify({ fatal: r4.fatal, wrapped: r4.wrapped, boxW: r4.boxW, cap }));
     out.push(row);

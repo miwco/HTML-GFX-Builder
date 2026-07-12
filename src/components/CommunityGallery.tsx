@@ -66,7 +66,7 @@ export default function CommunityGallery({ onClose, initialSlug }: Props) {
   }, [initialSlug]);
 
   /** Import an already-fetched item into local work (the import-time gate lives here). */
-  const useItem = (item: CommunityItem): boolean => {
+  const importItem = (item: CommunityItem): boolean => {
     if (item.kind === 'graphic') {
       const template = item.body as SpxTemplate;
       const gate = publishGate(template);
@@ -97,7 +97,7 @@ export default function CommunityGallery({ onClose, initialSlug }: Props) {
       setNote('That template is no longer available.');
       return;
     }
-    if (useItem(item)) onClose(); // a graphic loaded into the editor — close the gallery
+    if (importItem(item)) onClose(); // a graphic loaded into the editor — close the gallery
   };
 
   const onReport = async (id: string, name: string) => {

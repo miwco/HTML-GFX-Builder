@@ -15,20 +15,9 @@
 }
 @font-face {
   font-family: "JetBrains Mono";
-  src: url("/fonts/jetbrains-mono.woff2") format("woff2");
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  src: url("/fonts/jetbrains-mono-700.woff2") format("woff2");
-  font-weight: 700;
+  src: url("/fonts/jetbrains-mono.woff2") format("woff2"); /* variable 400-700 (also in the
+     bundled template-font set, model/fonts.ts — one file serves the app AND the graphics) */
+  font-weight: 400 700;
   font-display: swap;
 }
 
@@ -64,6 +53,12 @@
   --amber-glow: 0 0 24px rgba(246, 166, 35, 0.35);
 
   font-family: var(--font-ui);
+  /* Tell the browser the app IS dark, so native controls (select popups, scrollbars,
+     pickers) render dark too — without this, Windows Chrome paints option popups light
+     while the options inherit our near-white text (unreadable white-on-white).
+     The preview srcdoc declares the same scheme (composeDocument.ts) — Chromium disables
+     iframe transparency when embedder and iframe color-schemes disagree. */
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -101,6 +96,13 @@ input, select, textarea {
   padding: 6px 8px;
   font-size: 13px;
   width: 100%;
+}
+/* Native select popups: paint options EXPLICITLY. `color-scheme: dark` alone proved
+   unreliable on some Windows/Chromium builds (white popup, light-grey text — unreadable);
+   explicit option colors hold wherever option styling is honored at all. */
+select option {
+  background-color: var(--bg-2);
+  color: var(--text);
 }
 textarea { resize: vertical; }
 label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 4px; }
@@ -185,6 +187,16 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
 }
 .pane:last-child { border-right: none; }
 
+/* The code pane while Monaco's lazy chunk streams in — calm, dim, no layout shift. */
+.code-editor-loading {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
 /* Draggable divider between the code and preview columns (desktop split view). Transparent at rest —
    the code pane's own border-right is the resting hairline; the divider only lights up on hover/drag.
    Its ::before widens the 6px grid track's hit area to ~14px. */
@@ -213,6 +225,22 @@ body.resizing-cols { user-select: none; cursor: col-resize; }
 .workspace-divider-h:hover,
 .workspace-divider-h.dragging { background: var(--accent); }
 body.resizing-rows { user-select: none; cursor: row-resize; }
+
+/* code-left: the right region stacks the preview row (stage + timeline | Inspector) over the
+   FULL-WIDTH tool panels. The row's height comes from the preview block, so the Inspector
+   column ends exactly where the panels begin — no dead corner under it. */
+.workspace-right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.workspace-right .preview-row { flex: 0 0 auto; display: grid; min-width: 0; }
+.workspace-right .preview-cell { min-width: 0; display: flex; flex-direction: column; }
+.workspace-right .preview-row > .preview-cell:not(:only-child) { border-right: 1px solid var(--border); }
+.workspace-right .panel-pane { flex: 1; min-height: 0; border-right: none; border-top: 1px solid var(--border); }
+/* The full-width panel row keeps a readable measure — forms don't stretch to a 1600px
+   line just because the row spans the workspace. */
+.workspace-right .panel-body > * { max-width: 1080px; }
+/* The Inspector matches the preview block's height exactly (the row is sized by the
+   preview alone); its own content scrolls within that height. */
+.workspace-right .inspector-pane { position: relative; }
+.workspace-right .inspector-pane > .inspector { position: absolute; inset: 0; overflow-y: auto; }
 
 /* "Preview on top": a full-width preview across the top (row 1), a horizontal divider (row 2), and a
    code | panels row below (row 3, its own column grid). The preview FILLS its region (canvas centered,
@@ -245,6 +273,16 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   border: 1px solid transparent;
 }
 .tab.active { background: var(--bg); border-color: var(--border); border-bottom-color: var(--bg); color: var(--text); }
+/* The last apply changed code in this (inactive) tab — same blue as the line highlight. */
+.tab .change-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent-2, #5eafff);
+  vertical-align: 1px;
+}
 
 /* ---------- Editor ---------- */
 .editor-host { flex: 1; min-height: 0; }
@@ -684,6 +722,7 @@ kbd {
 .wz-style-tag[data-style='minimal'] { color: #e8c547; }
 .wz-style-tag[data-style='sport'] { color: #c8f31d; }
 .wz-style-tag[data-style='glass'] { color: #7dd3fc; }
+.wz-style-tag[data-style='noacg'] { color: var(--amber); }
 
 /* Step 3: field rows */
 .wz-line-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
@@ -946,7 +985,11 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 
 .wz-match { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; }
 
-/* ---------- Auth (Era 5.1 — hosted closed beta only) ---------- */
+/* The wizard's main forward action: bigger than its neighbors so the path onward is unmissable
+   (the amber fill comes from .primary). */
+.wz-footer button.wz-next { padding: 9px 26px; font-size: 14px; }
+
+/* ---------- Auth (Era 5.6 — on-demand sign-in; the app itself is never walled) ---------- */
 .auth-gate {
   position: fixed;
   inset: 0;
@@ -957,7 +1000,10 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   z-index: 200;
   padding: 24px;
 }
+/* Dialog variant: a translucent backdrop over the live workspace (click outside / Esc closes). */
+.auth-overlay { background: rgba(6, 8, 11, 0.72); backdrop-filter: blur(3px); }
 .auth-card {
+  position: relative;
   width: 100%;
   max-width: 360px;
   background: var(--bg-2);
@@ -966,6 +1012,17 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   padding: 28px 26px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
 }
+.auth-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 4px 8px;
+}
+.auth-close:hover { color: var(--text); background: transparent; border-color: transparent; }
 .auth-logo { display: flex; justify-content: center; margin: 4px 0 14px; }
 .auth-tag { text-align: center; font-size: 14px; color: var(--text); margin: 0; }
 .auth-sub { margin: 6px 0 20px; font-size: 13px; text-align: center; }
@@ -985,9 +1042,810 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   padding: 4px;
 }
 .auth-toggle:hover { background: transparent; border-color: transparent; text-decoration: underline; }
-.auth-status { display: inline-flex; align-items: center; gap: 8px; }
-.auth-status .muted { font-size: 12px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.auth-signout { font-size: 12px; padding: 4px 10px; }
+.auth-status { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+.auth-signin { font-size: 12px; padding: 4px 12px; }
+
+/* The account avatar chip (signed in) — Google photo, or an initial on the amber accent. */
+.avatar-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+}
+.avatar-btn:hover { border-color: var(--amber); }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar-initial {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--amber);
+  line-height: 1;
+}
+
+/* The account dropdown under the avatar. */
+.account-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+  padding: 6px;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+}
+.account-menu-head {
+  font-size: 12px;
+  color: var(--text-dim);
+  padding: 8px 10px 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+.account-menu button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text);
+}
+.account-menu button:hover { background: rgba(232, 237, 242, 0.06); }
+.account-menu-sep { height: 1px; background: var(--border); margin: 6px 0; }
+
+/* Inline "sign in" link inside a sentence (feature nudges in panels). */
+.link-inline {
+  display: inline;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: inherit;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-inline:hover { background: transparent; border-color: transparent; color: var(--accent); }
+
+/* The inline gate a signed-out visitor sees where an account feature would render. */
+.signin-prompt .primary { margin-top: 4px; }
+
+/* ---------- Canvas direct manipulation (Era 6 — drag, hover affordances, inline edit) ---------- */
+.canvas-layer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;                 /* above the guides, below the toolbar */
+  touch-action: none;         /* pointer events own the gesture */
+}
+.canvas-layer.cursor-grab { cursor: grab; }
+.canvas-layer.cursor-text { cursor: text; }
+.canvas-layer.dragging { cursor: grabbing; }
+
+/* W2 — the corner scale handle (bottom-right of the hovered graphic). */
+.scale-handle {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--amber);
+  border: 1.5px solid rgba(10, 12, 16, 0.9);
+  box-shadow: 0 0 10px rgba(246, 166, 35, 0.5);
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 6;
+}
+.scale-handle.dragging { box-shadow: 0 0 14px rgba(246, 166, 35, 0.8); }
+
+/* The inline text editor floated over the text element it edits. */
+.inline-edit { position: absolute; z-index: 6; }
+.inline-edit input,
+.inline-edit textarea {
+  width: 100%;
+  background: rgba(10, 12, 16, 0.95);
+  border: 1.5px solid var(--amber);
+  border-radius: 6px;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, 0.6), 0 0 18px rgba(246, 166, 35, 0.25);
+  color: var(--paper);
+  font-size: 14px;
+  padding: 6px 10px;
+}
+.move-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  pointer-events: none;
+}
+.move-cell { border: 1px dashed rgba(246, 166, 35, 0.18); }
+.move-cell.target { background: rgba(246, 166, 35, 0.1); border-color: rgba(246, 166, 35, 0.55); }
+.move-ghost {
+  position: absolute;
+  border: 1.5px solid var(--amber);
+  border-radius: 3px;
+  background: rgba(246, 166, 35, 0.08);
+  box-shadow: 0 0 18px rgba(246, 166, 35, 0.35);
+  pointer-events: none;
+}
+.move-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  background: rgba(10, 12, 16, 0.8);
+  padding: 4px 10px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ---------- Timeline strip (Era 6 — under the preview, above the transport) ---------- */
+.timeline-strip {
+  flex: 0 0 auto;              /* never steals stage height by growing */
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(10, 12, 16, 0.5);
+  margin: 6px 8px 0;
+  padding: 4px 8px 6px;
+}
+.timeline-strip.collapsed { padding-bottom: 4px; }
+.timeline-head { display: flex; align-items: center; gap: 8px; }
+.timeline-head .tab { font-size: 11px; padding: 2px 8px; }
+.timeline-collapse {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.timeline-collapse:hover { color: var(--text); background: transparent; border-color: transparent; }
+.timeline-time { font-size: 11px; min-width: 44px; text-align: right; }
+.timeline-knobs { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+/* Moment cards: the cue line ("on ▶ Play") sits under each segment's title, so the chain
+   reads as the operator's story — arrive, hold, reveal, leave. */
+.timeline-seg { white-space: nowrap; display: flex; flex-direction: column; align-items: flex-start; padding: 3px 8px; }
+.timeline-seg-main { line-height: 1.25; }
+.timeline-seg-sub { font-size: 8.5px; letter-spacing: 0.05em; color: var(--text-dim); line-height: 1.3; }
+/* Collapsed strip stays one slim line — the cue subtitles fold away with the tracks. */
+.timeline-strip.collapsed .timeline-seg-sub { display: none; }
+.timeline-marker { color: var(--amber); font-size: 10px; }
+.timeline-seg.drop-target {
+  outline: 1.5px solid var(--amber);
+  outline-offset: 1px;
+  background: rgba(246, 166, 35, 0.12);
+}
+.timeline-newstep {
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.timeline-newstep:hover { color: var(--text); border-color: rgba(246, 166, 35, 0.5); }
+/* Unavailable (nothing to split / one line): stays visible, the tooltip says why. */
+.timeline-newstep:disabled { opacity: 0.45; cursor: default; }
+.timeline-newstep:disabled:hover { color: var(--text-dim); border-color: var(--border); }
+.regroup-ghost {
+  position: fixed;
+  z-index: 300;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  background: rgba(10, 12, 16, 0.92);
+  border: 1px solid rgba(246, 166, 35, 0.5);
+  border-radius: 4px;
+  padding: 3px 8px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+/* The hold's explainer — shown in the tracks area when ● On air is selected. */
+.timeline-hold-note { margin: 8px 0 4px; font-size: 11px; color: var(--text-dim); }
+
+.timeline-tracks {
+  position: relative;
+  margin-top: 6px;
+  padding: 4px 2px 2px;
+}
+.timeline-label {
+  width: 102px;
+  flex-shrink: 0;
+  font-size: 10.5px;          /* friendly element names (raw selector in the tooltip) */
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── T4.2: the cue-segmented overview — the whole playout as one strip ─────────
+   Three columns: sticky part names · the zoomable section canvas (scrolls) · the
+   per-row controls. Row heights are fixed so the columns stay aligned. */
+.timeline-ov { display: flex; align-items: flex-start; gap: 8px; }
+.timeline-ov-labels { display: flex; flex-direction: column; flex-shrink: 0; width: 102px; }
+.timeline-ov-scroll { flex: 1; min-width: 0; overflow-x: auto; }
+.timeline-ov-canvas { position: relative; }
+.timeline-ov-gutter { display: flex; flex-direction: column; flex-shrink: 0; }
+.timeline-ov-gutter-row { display: flex; align-items: center; gap: 6px; }
+.timeline-ov-corner { flex-shrink: 0; }
+
+/* Section backdrops: a whisper of separation; the selected moment tints amber; the hold
+   is a hatched break (it waits for a cue — it has no clock). */
+.timeline-ov-secbg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 1px solid rgba(232, 237, 242, 0.12);
+  background: rgba(232, 237, 242, 0.025);
+}
+.timeline-ov-secbg.active { background: rgba(246, 166, 35, 0.07); }
+.timeline-ov-secbg.hold {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(232, 237, 242, 0.05) 0 4px,
+    transparent 4px 9px
+  );
+}
+.timeline-ov-secbg.hold.active { background-color: rgba(246, 166, 35, 0.07); }
+/* A drag is armed over this section: dropping moves WHEN the grabbed part appears. */
+.timeline-ov-secbg.drop { background: rgba(246, 166, 35, 0.14); }
+.timeline-ov-tick {
+  position: absolute;
+  top: 22px;                  /* below the header row */
+  bottom: 0;
+  width: 1px;
+  background: rgba(232, 237, 242, 0.05);
+  pointer-events: none;
+}
+.timeline-ov-tick.whole { background: rgba(232, 237, 242, 0.1); }
+
+/* Section headers double as the ruler: name + real local duration; click selects. */
+.timeline-ov-sec {
+  position: absolute;
+  top: 0;
+  padding: 0 6px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline-ov-sec:hover { background: rgba(232, 237, 242, 0.05); color: var(--text); }
+.timeline-ov-sec.active { color: var(--amber); }
+.timeline-ov-sec.drop-target { outline: 1.5px solid var(--amber); outline-offset: -2px; }
+
+.timeline-ov-row { position: relative; border-top: 1px solid rgba(232, 237, 242, 0.04); }
+.timeline-appears-spacer { width: 142px; flex-shrink: 0; }
+
+/* T5 — the per-layer "enters from" drawer: an expand arrow on the label, a sticky row of
+   basic transform inputs underneath (properties, not bars — they don't ride the clock). */
+.timeline-expand {
+  background: transparent;
+  border: none;
+  padding: 0 3px 0 0;
+  font-size: 9px;
+  color: var(--text-dim);
+  cursor: pointer;
+  vertical-align: middle;
+}
+.timeline-expand:hover { color: var(--amber); background: transparent; }
+.timeline-expand-spacer { display: inline-block; width: 12px; }
+.timeline-drawer-label { color: rgba(246, 166, 35, 0.8); padding-left: 12px; }
+.timeline-drawer { background: rgba(246, 166, 35, 0.04); }
+.timeline-drawer-fields {
+  position: sticky;
+  left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+}
+.timeline-drawer-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.timeline-drawer-field input {
+  width: 52px;
+  height: 18px;
+  padding: 1px 4px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+}
+.timeline-bar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--amber), rgba(246, 166, 35, 0.55));
+  min-width: 3px;
+}
+/* T2 — editable bars: drag the body to retime, the edges to stretch either end. */
+.timeline-bar.editable { cursor: grab; touch-action: none; }
+.timeline-bar.editable:hover { box-shadow: 0 0 8px rgba(246, 166, 35, 0.5); }
+.timeline-bar.dragging {
+  cursor: grabbing;
+  box-shadow: 0 0 10px rgba(246, 166, 35, 0.7);
+  pointer-events: none;   /* hit-test through the moving bar so drop zones resolve */
+}
+.timeline-bar-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  border-right: 2px solid rgba(10, 12, 16, 0.55);  /* a visible grip on the bar's end */
+  border-radius: 0 3px 3px 0;
+}
+/* The start-side grip: dragging it moves WHEN the move begins; the end stays pinned. */
+.timeline-bar-handle-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  border-left: 2px solid rgba(10, 12, 16, 0.55);
+  border-radius: 3px 0 0 3px;
+}
+.timeline-bar.set {
+  width: 3px;
+  background: var(--paper);   /* an instant set() — a tick, not a span */
+}
+/* What the bar does, written on it ("fade + slide", "wipe", "reveal", …). */
+.timeline-bar-verb {
+  position: absolute;
+  inset: 0;
+  padding: 0 9px 0 5px;       /* right padding keeps clear of the resize grip */
+  font-size: 8.5px;
+  line-height: 10px;
+  letter-spacing: 0.05em;
+  color: rgba(10, 12, 16, 0.85);   /* dark ink on the amber bar */
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;       /* the bar underneath owns the drag */
+  user-select: none;
+}
+/* The one-time announcement when step reveal turns on (▶ Play changes behavior). */
+.timeline-notice {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: var(--amber);
+  background: rgba(246, 166, 35, 0.08);
+  border: 1px solid rgba(246, 166, 35, 0.25);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+/* An inline text-action inside the hint line (e.g. "Turn off step reveal"). */
+.timeline-hint-action {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 10px;
+  color: var(--amber);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.timeline-hint-action:hover { background: transparent; color: var(--glow); }
+
+/* The one-line gesture hint under the tracks — discoverability without hovering. */
+.timeline-hint {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timeline-playhead {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  background: rgba(232, 237, 242, 0.7);
+  pointer-events: none;
+}
+
+/* T2.5 — the per-tween ease picker at the row's end ('auto' inherits the phase knob). */
+.timeline-ease {
+  width: 96px;
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  padding: 1px 4px;
+  height: 18px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.timeline-ease:hover { color: var(--text); border-color: rgba(246, 166, 35, 0.4); }
+.timeline-ease-spacer { width: 96px; flex-shrink: 0; }
+
+/* The selected In/Out card's controls row — the Motion panel's per-phase preset + easing,
+   converged onto the strip (one motion surface). Same slim height as the gesture hint. */
+.timeline-inspector { display: flex; align-items: center; gap: 6px; }
+.timeline-inspector-label {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  flex-shrink: 0;
+}
+.timeline-inspector-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Content-sized selects: the preset/easing/speed/out pickers carry words, not curves. */
+.timeline-preset,
+.timeline-phase-ease,
+.timeline-speed { width: auto; max-width: 190px; }
+.timeline-out-mode { width: auto; max-width: 230px; }
+/* The auto-out delay, in milliseconds — a sibling of the out-mode select. */
+.timeline-out-ms {
+  width: 64px;
+  height: 18px;
+  padding: 1px 4px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+/* The part row's when-control: which » Next press the part appears on. */
+.timeline-appears {
+  width: 142px;
+  flex-shrink: 0;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  padding: 1px 4px;
+  height: 18px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.timeline-appears:hover { color: var(--text); border-color: rgba(246, 166, 35, 0.4); }
+.timeline-scrub { accent-color: var(--amber); }
+
+/* Overview zoom — scales every section's local seconds-to-pixels ratio. */
+.timeline-zoom { display: inline-flex; gap: 2px; }
+.timeline-zoom-btn {
+  padding: 0 7px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+.timeline-zoom-btn:hover { color: var(--text); border-color: rgba(246, 166, 35, 0.4); background: transparent; }
+
+/* ---------- Timeline v2 — the step timeline (read-first; opt-in via the dock chip) ---------- */
+.timeline-dock { position: relative; }
+.timeline-dock-toggle {
+  position: absolute;
+  top: -1px;
+  right: 14px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  padding: 1px 7px;
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  border-top: none;
+}
+.timeline-dock-toggle:hover { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
+.tlv2-body { display: flex; align-items: stretch; gap: 8px; margin-top: 2px; }
+/* The v2 editing scale: wider labels + larger type than the classic strip — this is the
+   primary motion surface and its targets earn real estate (the classic strip keeps its
+   compact readout scale). */
+.tlv2-labels { display: flex; flex-direction: column; flex-shrink: 0; width: 150px; }
+.tlv2 .timeline-label { width: 150px; font-size: 12px; }
+/* Squeezed strip (Inspector open on a laptop width): the label column condenses so the
+   ribbon keeps editing room — rows and diamonds hold their size. */
+.tlv2.tight .tlv2-labels { width: 104px; }
+.tlv2.tight .timeline-label { width: 104px; font-size: 11px; }
+.tlv2-scroll { flex: 1; min-width: 0; overflow-x: auto; }
+.tlv2-canvas { position: relative; cursor: crosshair; }
+.tlv2-ruler { position: relative; border-bottom: 1px solid rgba(232, 237, 242, 0.1); }
+.tlv2-tick {
+  position: absolute;
+  bottom: 0;
+  border-left: 1px solid rgba(232, 237, 242, 0.14);
+  padding-left: 3px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  height: 8px;
+  line-height: 0.4;
+  white-space: nowrap;
+}
+.tlv2-tick.whole { height: 13px; }
+.tlv2-clips { position: absolute; left: 0; right: 0; }
+.tlv2-clip {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border: 1px solid rgba(246, 166, 35, 0.35);
+  border-radius: 4px;
+  background: rgba(246, 166, 35, 0.08);
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11px;
+  color: var(--text);
+  padding: 3px 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tlv2-clip.active { border-color: var(--amber); background: rgba(246, 166, 35, 0.16); }
+.tlv2-cue { color: var(--amber); }
+.tlv2-clip-dur { color: var(--text-dim); font-size: 10px; }
+.tlv2-hold {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--text-dim);
+  line-height: 24px;
+  background: repeating-linear-gradient(-45deg, rgba(232, 237, 242, 0.06) 0 4px, transparent 4px 9px);
+  border-radius: 3px;
+}
+.tlv2-row { position: absolute; left: 0; right: 0; border-top: 1px solid rgba(232, 237, 242, 0.05); }
+.tlv2-row.selected { background: rgba(246, 166, 35, 0.06); }
+.tlv2-diamond {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--amber);
+  font-size: 12px;
+  text-shadow: 0 0 4px rgba(246, 166, 35, 0.5);
+  pointer-events: none;
+}
+/* Data-block templates: diamonds are live — drag to retime, click to select. */
+.tlv2-diamond.editable { pointer-events: auto; cursor: grab; touch-action: none; padding: 4px; }
+.tlv2-diamond.editable:hover { text-shadow: 0 0 8px rgba(246, 166, 35, 0.9); }
+.tlv2-diamond.selected { color: var(--paper, #fff); text-shadow: 0 0 8px rgba(246, 166, 35, 1); }
+.tlv2-diamond.dragging { cursor: grabbing; }
+.timeline-dock-chips { position: absolute; top: -1px; right: 14px; display: inline-flex; gap: 6px; }
+.timeline-dock-chips .timeline-dock-toggle { position: static; }
+.timeline-dock-toggle.convert { color: var(--amber); border-color: rgba(246, 166, 35, 0.45); }
+.tlv2-reveal { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 11px; pointer-events: none; }
+.tlv2-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(232, 237, 242, 0.85);
+  box-shadow: 0 0 6px rgba(232, 237, 242, 0.35);
+  pointer-events: none;
+}
+/* The playhead's grab cap — a flag in the ruler, kinder to grab than the 1px line. */
+.tlv2-playhead-cap {
+  position: absolute;
+  top: 0;
+  width: 13px;
+  height: 14px;
+  transform: translateX(-7px);
+  background: rgba(232, 237, 242, 0.9);
+  clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.tlv2-playhead-cap:hover { background: var(--amber); }
+.tlv2-side { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; align-items: center; }
+.tlv2-time { font-size: 11px; color: var(--text-dim); }
+/* Phase 6 — steps as clips: the duration handle, the context menu, the hold popover. */
+.tlv2-clip-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  border-right: 2px solid rgba(246, 166, 35, 0.55);
+  border-radius: 0 4px 4px 0;
+  touch-action: none;
+}
+.tlv2-hold.editable { cursor: pointer; }
+.tlv2-hold.editable:hover { color: var(--amber); }
+.tlv2-add-step { font-size: 10px; letter-spacing: 0.03em; color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
+.tlv2-speed {
+  width: 62px;
+  height: 22px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10.5px;
+  padding: 0 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.tlv2-menu {
+  position: fixed;
+  z-index: 320;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+.tlv2-menu-item {
+  text-align: left;
+  font-size: 11px;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text);
+}
+.tlv2-menu-item:hover { background: rgba(246, 166, 35, 0.12); color: var(--text); }
+.tlv2-menu-item.danger:hover { background: rgba(220, 70, 70, 0.15); }
+.tlv2-menu-input,
+.tlv2-out-mode {
+  font-size: 11px;
+  height: 22px;
+  padding: 1px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.tlv2-out-ms-row { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text-dim); padding: 2px 2px 0; }
+.tlv2-out-ms {
+  width: 70px;
+  height: 20px;
+  padding: 1px 5px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10.5px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+
+/* ---------- Inspector (Timeline v2 — the selection's properties, right of the preview) ---------- */
+.inspector-pane { overflow-y: auto; min-width: 0; }
+.inspector { padding: 10px 12px; }
+.inspector-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+.inspector-identity { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; }
+.inspector-label { font-size: 14px; font-weight: 700; }
+.inspector-kind { font-size: 10.5px; letter-spacing: 0.06em; color: var(--amber); }
+.inspector-selector {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.inspector-empty { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.inspector-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.inspector-tabs .tab { font-size: 11px; padding: 3px 10px; }
+.inspector-body { display: flex; flex-direction: column; gap: 2px; }
+.inspector-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(232, 237, 242, 0.05);
+}
+.inspector-row-label { font-size: 11.5px; color: var(--text-dim); }
+.inspector-row-value {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--text);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.inspector-hint { margin-top: 10px; font-size: 10.5px; line-height: 1.5; }
+/* Phase 4 — editable properties: value/input + the keyframe diamond side by side. */
+.inspector-row-edit { display: inline-flex; align-items: center; gap: 6px; }
+.inspector-input {
+  width: 64px;
+  height: 20px;
+  padding: 1px 5px;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  text-align: right;
+}
+.inspector-kf {
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1;
+}
+.inspector-kf:hover { color: var(--amber); background: transparent; }
+.inspector-kf.armed { color: var(--amber); }
+.inspector-kf.at-kf { text-shadow: 0 0 6px rgba(246, 166, 35, 0.9); }
+/* ◀ ▶ — jump to the property's previous/next keyframe (the CapCut/AE convention). */
+.inspector-kf-nav {
+  background: transparent;
+  border: none;
+  padding: 0 1px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.inspector-kf-nav:hover { color: var(--amber); background: transparent; }
+/* Armed labels scrub: drag horizontally to change the value. */
+.inspector-row-label.scrubbable { cursor: ew-resize; touch-action: none; user-select: none; }
+.inspector-row-label.scrubbable:hover { color: var(--text); }
+/* Phase 5 — the Animations tab's preset row: style · In/Out/Both · Apply. */
+.inspector-preset { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.inspector-preset-select {
+  flex: 1 1 100%;
+  height: 22px;
+  font-size: 11px;
+  padding: 1px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.inspector-preset-phase { display: inline-flex; gap: 2px; }
+.inspector-preset-phase .tab { font-size: 10px; padding: 2px 8px; }
+.inspector-preset-apply {
+  margin-left: auto;
+  font-size: 10.5px;
+  padding: 2px 10px;
+  color: var(--amber);
+  border: 1px solid rgba(246, 166, 35, 0.45);
+  border-radius: 4px;
+  background: transparent;
+}
+.inspector-preset-apply:disabled { opacity: 0.4; }
+.inspector-preset-apply:not(:disabled):hover { background: rgba(246, 166, 35, 0.1); }
 
 /* Cloud sync status pill (Era 5.2) */
 .sync-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 4px 10px; }
@@ -1069,4 +1927,92 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   .wz-entry-card { width: 100%; }
   .pk-body { padding: 12px 14px; }
   .gallery-modal { width: 100vw; max-height: 100dvh; border-radius: 0; }
+}
+
+/* ---------- Canvas selection (Era 6 — click-to-select + hover naming; editor UI only) ---------- */
+/* All of this is overlay chrome inside .canvas-layer — pointer-events: none throughout,
+   so it can never swallow the drag / dblclick / scale-handle gestures underneath it. */
+.canvas-selection-outline {
+  position: absolute;
+  border: 1.5px solid var(--amber);
+  border-radius: 3px;
+  box-shadow: 0 0 14px rgba(246, 166, 35, 0.28);
+  pointer-events: none;
+  z-index: 5;
+}
+.canvas-hover-outline {
+  position: absolute;
+  border: 1px solid rgba(246, 166, 35, 0.5);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 5;
+}
+.canvas-hover-tag {
+  position: absolute;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(246, 166, 35, 0.9);
+  background: rgba(10, 12, 16, 0.78);
+  padding: 2px 6px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 6;
+}
+/* The naming chip over the selected element: the registry label + (only where the action
+   already exists) a short affordance hint. */
+.canvas-chip {
+  position: absolute;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  max-width: 340px;
+  overflow: hidden;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  background: rgba(10, 12, 16, 0.92);
+  border: 1px solid rgba(246, 166, 35, 0.45);
+  border-radius: 4px;
+  padding: 3px 9px;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
+  z-index: 6;
+}
+.canvas-chip-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+.canvas-chip-hint {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+/* ---------- Shared selection (Era 6 — canvas ↔ timeline highlight the same element) ---------- */
+/* A registry part's row label is its selection handle; the selected element's row gets a
+   quiet amber wash so the strip and the canvas visibly agree on what is selected. */
+.timeline-label.clickable { cursor: pointer; }
+.timeline-label.clickable:hover { color: var(--text); }
+.timeline-label.selected { color: var(--amber); }
+.timeline-ov-row.selected {
+  background: rgba(246, 166, 35, 0.07);
+  box-shadow: inset 2px 0 0 var(--amber);
+}
+
+/* The chip's "appears on press" control — the timeline gutter's menu, reachable from the
+   canvas. The chip opts into pointer input only while it carries this control. */
+.canvas-chip.interactive { pointer-events: auto; }
+.canvas-chip select.canvas-appears {
+  width: auto;                /* the global select rule stretches to 100% — not in a chip */
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 9.5px;
+  padding: 1px 4px;
+  background: rgba(27, 34, 48, 0.9);
+  border-color: rgba(246, 166, 35, 0.35);
+  border-radius: 3px;
+  color: var(--text);
 }

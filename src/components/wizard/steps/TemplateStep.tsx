@@ -10,7 +10,7 @@ interface Props {
   onPickVariant: (variant: TemplateVariant) => void;
 }
 
-const STYLE_LABEL = { minimal: 'Minimal', sport: 'Sport', glass: 'Glass' } as const;
+const STYLE_LABEL = { minimal: 'Minimal', sport: 'Sport', glass: 'Glass', noacg: 'NoaCG' } as const;
 
 /** Step 2 — pick the design (plus canvas format). */
 export default function TemplateStep({ variants, draft, onDraft, onPickVariant }: Props) {

@@ -5,7 +5,7 @@ import { test, expect } from '@playwright/test';
 // in-memory provider — no backend needed. The LIVE Supabase round-trip is maintainer-verified.
 
 test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
 
   const results = await page.evaluate(async () => {
     const { reconcile, runSync } = await import('/src/backend/sync.ts?t=' + Date.now());
@@ -19,8 +19,9 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
     });
 
     // In-memory StorageProvider that just stores whatever StoredRecords it's given.
-    const mem = (seed: any[] = []) => {
-      const store = new Map<string, any>(seed.map((r) => [r.kind + ':' + r.id, r]));
+    type Rec = { kind: string; id: string; updatedAt: string } & Record<string, unknown>;
+    const mem = (seed: Rec[] = []) => {
+      const store = new Map<string, Rec>(seed.map((r): [string, Rec] => [r.kind + ':' + r.id, r]));
       return {
         store,
         async list(kind: string) {
@@ -29,7 +30,7 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
         async get(kind: string, id: string) {
           return store.get(kind + ':' + id) ?? null;
         },
-        async put(r: any) {
+        async put(r: Rec) {
           store.set(r.kind + ':' + r.id, r);
         },
         async remove(kind: string, id: string) {
@@ -93,11 +94,11 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
     localStorage.removeItem('spx-gfx-sync');
     const local = mem([rec('L', T1)]);
     const remote = mem([rec('R', T1)]);
-    const r1 = await runSync(local as any, remote as any);
+    const r1 = await runSync(local, remote);
     const remoteHasL = remote.store.has('packet:L');
     const localHasR = local.store.has('packet:R');
     check('runSync pushes+pulls', r1.pushed === 1 && r1.pulled === 1 && remoteHasL && localHasR);
-    const r2 = await runSync(local as any, remote as any);
+    const r2 = await runSync(local, remote);
     check('runSync idempotent', r2.pushed === 0 && r2.pulled === 0 && r2.conflicts === 0);
 
     // 10. ids must be valid UUIDs (cloud documents.id is a uuid PK — a non-UUID poisons sync)
@@ -114,7 +115,7 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
 });
 
 test('asset externalization: round-trips through a Storage stub', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
 
   const result = await page.evaluate(async () => {
     const { externalizeAssets, rehydrateAssets, STORAGE_SENTINEL } = await import('/src/backend/assets.ts?t=' + Date.now());
@@ -133,14 +134,14 @@ test('asset externalization: round-trips through a Storage stub', async ({ page 
       graphics: [{ template: { assets: [{ path: 'images/logo.png', data: png }] } }],
     };
 
-    const ext: any = await externalizeAssets(body, 'user123', upload);
+    const ext = await externalizeAssets(body, 'user123', upload);
     const extData: string = ext.graphics[0].template.assets[0].data;
-    const re: any = await rehydrateAssets(ext, download);
+    const re = await rehydrateAssets(ext, download);
     const reData: string = re.graphics[0].template.assets[0].data;
 
     // A non-base64 data-URL (inline SVG) must be left inline, not externalized.
     const svg = 'data:image/svg+xml,<svg/>';
-    const extSvg: any = await externalizeAssets({ a: { path: 'x', data: svg } }, 'u', upload);
+    const extSvg = await externalizeAssets({ a: { path: 'x', data: svg } }, 'u', upload);
 
     return {
       sentinel: extData.startsWith(STORAGE_SENTINEL),

@@ -42,29 +42,29 @@ export const ig05: TemplateVariant = defineInfographicVariant(
     const goalText = o.lines[1]?.sample || '250000';
     return {
       html: `    <!-- Rising Total: [caps kicker] / [currency mark + huge total] / [track] / [footer]. -->
-    <div class="ig-box">
+    <div class="infographic-box">
       <!-- The kicker — small tracking-wide caps in the accent color (field f2). -->
-      <div class="ig-kicker" id="f2">TOTAL RAISED</div>
+      <div class="infographic-kicker" id="f2">TOTAL RAISED</div>
       <!-- The figure row — a static currency mark beside the counting total (field f0). -->
-      <div class="ig-figure">
-        <span class="ig-currency">&euro;</span>
-        <span class="ig-value" id="f0">${totalText}</span>
+      <div class="infographic-figure">
+        <span class="infographic-currency">&euro;</span>
+        <span class="infographic-value" id="f0">${totalText}</span>
       </div>
       <!-- The progress track — the count-up preset grows the fill to its data-value percent. -->
-      <div class="ig-track">
-        <div class="ig-bar-fill" data-value="0"></div>
+      <div class="infographic-track">
+        <div class="infographic-bar-fill" data-value="0"></div>
       </div>
       <!-- The footer — raised total (left) and goal line (right); rebuildInfographic() writes both. -->
-      <div class="ig-footer">
-        <span class="ig-sub" id="ig-sub"></span>
-        <span class="ig-goal" id="ig-goal"></span>
+      <div class="infographic-footer">
+        <span class="infographic-sub" id="infographic-sub"></span>
+        <span class="infographic-goal" id="infographic-goal"></span>
       </div>
     </div>
     <!-- Hidden goal source — SPX writes field f1 here; JS reads it and formats the goal line. -->
     <div id="f1" style="display: none">${goalText}</div>`,
 
       css: `/* The panel — lt03's quiet keyline card, capped by the design's one accent hairline. */
-.ig-box {
+.infographic-box {
   min-width: calc(620px * var(--scale));  /* the track keeps a stable run behind short totals */
   padding: calc(26px * var(--scale)) calc(40px * var(--scale)) calc(24px * var(--scale));  /* generous inner air */
   background: var(--panel-bg);     /* the panel color (retints via the :root contract) */
@@ -74,7 +74,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
 }
 
 /* The kicker — quiet tracking-wide caps, the accent's second, tiny appearance. */
-.ig-kicker {
+.infographic-kicker {
   font-size: calc(19px * var(--scale));  /* label scale — a caption, not a headline */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.2;                /* compact label leading */
@@ -87,7 +87,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
 }
 
 /* The figure row — currency mark and total share one centered baseline. */
-.ig-figure {
+.infographic-figure {
   display: flex;                   /* mark and figure sit side by side */
   justify-content: center;         /* centered on the panel's axis */
   align-items: baseline;           /* the small mark rests on the figure's baseline */
@@ -96,14 +96,14 @@ export const ig05: TemplateVariant = defineInfographicVariant(
 }
 
 /* The currency mark — static and dimmed: a unit, not part of the counting number. */
-.ig-currency {
+.infographic-currency {
   font-size: calc(44px * var(--scale));  /* clearly subordinate to the figure */
   font-weight: 600;                /* semibold so the thin glyph stays visible */
   color: var(--text-dim);          /* dimmed — the total carries the weight */
 }
 
 /* The total — enormous tabular digits; the count-up preset tweens this text from 0. */
-.ig-value {
+.infographic-value {
   min-width: 0;                    /* allow the figure to shrink and wrap inside flex */
   font-size: calc(110px * var(--scale));  /* the whole design IS this number (1080p reference) */
   font-weight: 700;                /* bold — the panel's single heavy element */
@@ -115,7 +115,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
 }
 
 /* The track — a slim keyline-grey lane the accent fill grows inside. */
-.ig-track {
+.infographic-track {
   height: calc(8px * var(--scale));  /* hairline-slim lane — the chart stays quiet */
   margin-top: calc(22px * var(--scale));  /* air between the figure and the bar */
   border-radius: calc(2px * var(--scale));  /* minimal family: 0-2px, never a pill */
@@ -127,7 +127,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
    Deliberate deviation from the "transform/opacity only" motion rule: the fill tweens
    WIDTH because scaleX would squash its end cap; the lane is a clipped 8px strip,
    so relayout stays cheap. */
-.ig-bar-fill {
+.infographic-bar-fill {
   width: 0;                        /* fallback — the rebuild renders an inline width at the value */
   height: 100%;                    /* fill the whole lane height */
   border-radius: inherit;          /* the growing end matches the lane's rounding */
@@ -136,7 +136,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
 }
 
 /* The footer — raised-so-far hugs left, the goal hugs right; they can never touch. */
-.ig-footer {
+.infographic-footer {
   display: flex;                   /* both figures share one line */
   justify-content: space-between;  /* raised hugs left, goal hugs right */
   align-items: baseline;           /* both sit on the same text baseline */
@@ -145,7 +145,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
 }
 
 /* The raised figure — a small bold echo of the total at the bar's start. */
-.ig-sub {
+.infographic-sub {
   font-size: calc(19px * var(--scale));  /* footer scale — clearly under the big figure */
   font-weight: 700;                /* bold — it restates the headline number */
   font-variant-numeric: tabular-nums;  /* equal-width digits across updates */
@@ -154,7 +154,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
 }
 
 /* The goal line — dimmed and right-aligned: the target, not the news. */
-.ig-goal {
+.infographic-goal {
   font-size: calc(19px * var(--scale));  /* same size as the raised figure… */
   font-weight: 400;                /* …contrast through weight, not more fonts */
   font-variant-numeric: tabular-nums;  /* equal-width digits across updates */
@@ -201,12 +201,12 @@ function rebuildInfographic() {
   totalEl.setAttribute('data-target', totalText);
 
   // Footer: the raised figure on the left, the dim goal line on the right.
-  document.getElementById('ig-sub').textContent = '€' + totalText;
-  document.getElementById('ig-goal').textContent = 'Goal: €' + formatThousands(goal);
+  document.getElementById('infographic-sub').textContent = '€' + totalText;
+  document.getElementById('infographic-goal').textContent = 'Goal: €' + formatThousands(goal);
 
   // Progress: clamp to the 0-100 track (a bar can never under- or overfill).
   var percent = goal > 0 ? Math.max(0, Math.min(100, (total / goal) * 100)) : 0;
-  var fill = document.querySelector('.ig-bar-fill');
+  var fill = document.querySelector('.infographic-bar-fill');
   fill.setAttribute('data-value', percent);
   fill.style.width = percent + '%';
 }

@@ -17,7 +17,7 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
     maxLines: 1,
     suggestedLines: [{ title: 'Team A', sample: 'HOME' }],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe'],
+    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',
     defaultZone: 'top-left',
@@ -32,32 +32,32 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
   },
   () => ({
     // Two team rows inside one panel; the accent rule lives inside the box so every
-    // preset that moves .sb-box carries it along.
+    // preset that moves .scoreboard-box carries it along.
     html: `    <!-- Quiet Score: [accent rule] | row A / hairline / row B. -->
-    <div class="sb-box">
+    <div class="scoreboard-box">
       <!-- The accent rule — the design's single color moment (line-reveal draws it first). -->
-      <div class="sb-accent"></div>
+      <div class="scoreboard-accent"></div>
       <!-- Team A: name left, score right. -->
-      <div class="sb-row">
-        <div class="sb-mask sb-mask-team"><span id="f0" class="sb-team">HOME</span></div>
-        <div class="sb-mask sb-mask-score"><span id="f1" class="sb-score">0</span></div>
+      <div class="scoreboard-row">
+        <div class="scoreboard-mask scoreboard-mask-team"><span id="f0" class="scoreboard-team">HOME</span></div>
+        <div class="scoreboard-mask scoreboard-mask-score"><span id="f1" class="scoreboard-score">0</span></div>
       </div>
       <!-- The 2px hairline between the two team rows. -->
-      <div class="sb-rule"></div>
+      <div class="scoreboard-rule"></div>
       <!-- Team B: same anatomy as team A. -->
-      <div class="sb-row">
-        <div class="sb-mask sb-mask-team"><span id="f2" class="sb-team">AWAY</span></div>
-        <div class="sb-mask sb-mask-score"><span id="f3" class="sb-score">0</span></div>
+      <div class="scoreboard-row">
+        <div class="scoreboard-mask scoreboard-mask-team"><span id="f2" class="scoreboard-team">AWAY</span></div>
+        <div class="scoreboard-mask scoreboard-mask-score"><span id="f3" class="scoreboard-score">0</span></div>
       </div>
     </div>`,
     css: `/* The stack — panel-free like lt01/lt02: whitespace and type do the talking. */
-.sb-box {
+.scoreboard-box {
   position: relative;              /* anchors the absolutely-placed accent rule */
   padding-left: calc(27px * var(--scale));  /* room for the 3px rule + a generous 24px gap */
 }
 
 /* The accent rule — a thin vertical line on the stack's leading edge (lt01's hairline). */
-.sb-accent {
+.scoreboard-accent {
   position: absolute;              /* pinned to the stack, not part of the row flow */
   left: 0;                         /* sits on the leading edge */
   top: 0;                          /* spans the full stack height… */
@@ -68,7 +68,7 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
 }
 
 /* One team row: name on the left, score pushed to the right edge. */
-.sb-row {
+.scoreboard-row {
   display: flex;                   /* name and score share one line */
   align-items: center;             /* both sit on the row's centerline */
   justify-content: space-between;  /* name hugs left, score hugs right */
@@ -76,17 +76,17 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
 }
 
 /* The name mask may shrink so long team names wrap instead of pushing the score out. */
-.sb-mask-team {
+.scoreboard-mask-team {
   min-width: 0;                    /* lets flexbox shrink this side and wrap the text */
 }
 
 /* The score mask never shrinks — the number always keeps its place at the edge. */
-.sb-mask-score {
+.scoreboard-mask-score {
   flex-shrink: 0;                  /* long names wrap; the score stays put */
 }
 
 /* The hairline between the rows — dim punctuation, never a second accent. */
-.sb-rule {
+.scoreboard-rule {
   height: calc(2px * var(--scale));  /* hairline weight (minimal family: 2-4px) */
   margin: calc(12px * var(--scale)) 0;  /* even air above and below the line */
   background: var(--text-dim);     /* drawn from the dim text tone… */
@@ -94,7 +94,7 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
 }
 
 /* Team name — quiet tracking-wide caps, subordinate to the score. */
-.sb-team {
+.scoreboard-team {
   font-size: calc(24px * var(--scale));  /* label scale (values are 1080p reference) */
   font-weight: 600;                /* firm without shouting */
   line-height: 1.15;               /* tight, but safe if a long name wraps */
@@ -104,7 +104,7 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
 }
 
 /* Score — the row's anchor: bigger, heavier, and in tabular figures. */
-.sb-score {
+.scoreboard-score {
   font-size: calc(32px * var(--scale));  /* clearly senior to the team name */
   font-weight: 700;                /* the heaviest element in the design */
   line-height: 1.1;                /* a touch of headroom for the on-air score pop */

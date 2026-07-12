@@ -11,7 +11,7 @@ const PNG_1PX = Buffer.from(
 );
 
 async function createFrom(page: Page, categoryName: string, variantName: string) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: categoryName }).click();
@@ -42,14 +42,15 @@ async function uploadImage(page: Page, fieldLabel: string, fileName: string) {
   await page.waitForTimeout(650);
 }
 
-test('wizard: the extra-field types are the broadcast set, and Image becomes a filelist field', async ({ page }) => {
+test('data panel: the add-field types are the broadcast set, and Image becomes a filelist field', async ({ page }) => {
   await createFrom(page, 'Lower thirds', 'Hairline');
-  await page.getByRole('button', { name: 'Next ›' }).click(); // Fields
-  await page.getByRole('button', { name: '+ Add an extra field' }).click();
-  const select = page.locator('.wz-step select').last();
+  await create(page);
+  await page.locator('.panel-tabs .tab', { hasText: 'Data' }).click();
+  const addSection = page.locator('.panel-section', { hasText: 'Add a field' });
+  const select = addSection.locator('select');
   await expect(select.locator('option')).toHaveText(['Text', 'Long text', 'Number', 'Image']);
   await select.selectOption('filelist');
-  await create(page);
+  await addSection.getByRole('button', { name: '+ Add' }).click();
   // The generated definition carries the SPX filelist contract.
   const html = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
@@ -65,7 +66,7 @@ test('end credits: uploading a logo through the Logo field puts it in the end bl
   // Placeholder first — no logo picked yet.
   await expect(frame(page).locator('.credits-end .credits-logo-slot')).toBeAttached();
   await uploadImage(page, 'Logo', 'my_logo.png');
-  await page.getByRole('button', { name: '⟳ Update' }).click();
+  await page.locator('.panel-body').getByRole('button', { name: '⟳ Update' }).click();
   const logo = frame(page).locator('.credits-end img.credits-logo');
   await expect(logo).toBeAttached();
   // The preview shim resolves the relative path to the in-memory data URL.
@@ -77,13 +78,13 @@ test('end credits: uploading a logo through the Logo field puts it in the end bl
 test('corner bug: the logo field replaces the placeholder mark', async ({ page }) => {
   await createFrom(page, 'Corner bug', 'Glass Mark');
   await create(page);
-  await expect(frame(page).locator('.bug-mark')).toBeVisible();
+  await expect(frame(page).locator('.corner-bug-mark')).toBeVisible();
   await uploadImage(page, 'Logo', 'channel_mark.png');
-  await page.getByRole('button', { name: '⟳ Update' }).click();
-  await expect(frame(page).locator('.bug-media.has-image')).toBeAttached();
-  await expect(frame(page).locator('.bug-mark')).toBeHidden();
+  await page.locator('.panel-body').getByRole('button', { name: '⟳ Update' }).click();
+  await expect(frame(page).locator('.corner-bug-media.has-image')).toBeAttached();
+  await expect(frame(page).locator('.corner-bug-mark')).toBeHidden();
   await expect
-    .poll(async () => frame(page).locator('img.bug-logo').evaluate((el) => (el as HTMLImageElement).src.slice(0, 5)))
+    .poll(async () => frame(page).locator('img.corner-bug-logo').evaluate((el) => (el as HTMLImageElement).src.slice(0, 5)))
     .toBe('data:');
 });
 

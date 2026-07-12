@@ -2,17 +2,16 @@ import { useTemplateStore, type SidePanel as PanelId } from '../store/templateSt
 import SampleDataPanel from './SampleDataPanel';
 import ControlPanel from './ControlPanel';
 import StylePanel from './StylePanel';
-import AnimationPanel from './AnimationPanel';
 import AIPromptPanel from './AIPromptPanel';
 import ExportPanel from './ExportPanel';
 
 // Focused tools. Data = developer sample values + add-field; Control = the operator view.
-// Validation lives inside Export; explanations live on hover in the editor.
+// Validation lives inside Export; explanations live on hover in the editor. Motion lives
+// on the timeline strip under the preview (its moment cards), not in a tab.
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'data', label: 'Data' },
   { id: 'control', label: 'Control' },
   { id: 'style', label: 'Style' },
-  { id: 'animation', label: 'Motion' },
   { id: 'ai', label: 'AI' },
   { id: 'export', label: 'Export' },
 ];
@@ -41,7 +40,6 @@ export default function SidePanel() {
         {activePanel === 'data' && <SampleDataPanel />}
         {activePanel === 'control' && <ControlPanel />}
         {activePanel === 'style' && <StylePanel />}
-        {activePanel === 'animation' && <AnimationPanel />}
         {activePanel === 'ai' && <AIPromptPanel />}
         {activePanel === 'export' && <ExportPanel />}
       </div>

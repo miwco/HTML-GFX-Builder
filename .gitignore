@@ -22,3 +22,20 @@ example_projects/
 # AI bench / comparison outputs (screenshots + generated code, regenerated on demand)
 bench-out/
 compare-out/
+
+# Local render outputs + manifest fixtures (multi-MB, regenerated on demand by
+# scripts/make-render-manifest.mjs and the render dev loop)
+.render-dev/
+
+# Generated per-checkout by scripts/dev-port.mjs (postinstall): each worktree gets its own
+# dev-server port, so this file must never be shared through git.
+.claude/launch.json
+
+# Remotion deploy bundle (built by render-worker/bundle.mjs in the Vercel build step)
+render-worker/bundle/
+
+# Vercel CLI link pointer (project/org id - local only)
+.vercel/
+
+.vercel
+.env*.local

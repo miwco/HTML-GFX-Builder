@@ -18,7 +18,7 @@ export const lt08: TemplateVariant = defineVariant(
       { title: 'Title', sample: 'Creative Director' },
     ],
     hasLogoSlot: true,
-    animationPresets: ['pop-spring', 'blur-in', 'slide-fade'],
+    animationPresets: ['pop-spring', 'blur-in', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',
     defaultZone: 'bottom-left',
@@ -34,8 +34,8 @@ export const lt08: TemplateVariant = defineVariant(
   (o) => {
     // The logo is rendered only when an image was actually imported — never an empty src.
     const logo = o.logoAssetPath
-      ? `      <!-- Imported logo — docked to the card's left edge (see .l3-logo). -->
-      <img class="l3-logo" src="${o.logoAssetPath}" alt="" />
+      ? `      <!-- Imported logo — docked to the card's left edge (see .lower-third-logo). -->
+      <img class="lower-third-logo" src="${o.logoAssetPath}" alt="" />
 `
       : '';
 
@@ -50,7 +50,7 @@ export const lt08: TemplateVariant = defineVariant(
       ? `
 
 /* The imported logo: a rounded square, vertically centered against the text block. */
-.l3-logo {
+.lower-third-logo {
   position: absolute;              /* out of flow — the card's left padding reserves its space */
   left: calc(30px * var(--scale)); /* aligned with the card's horizontal padding */
   top: 50%;                        /* centered on the card… */
@@ -64,12 +64,12 @@ export const lt08: TemplateVariant = defineVariant(
 
     return {
       html: `    <!-- One frosted glass card: ${o.logoAssetPath ? 'logo + ' : ''}masked text lines inside a single translucent panel. -->
-    <div class="l3-box">
+    <div class="lower-third-box">
 ${logo}${lineMasks(o)}
     </div>`,
 
       css: `/* The frosted card — translucent panel, heavy backdrop blur, one soft lifting shadow. */
-.l3-box {
+.lower-third-box {
   padding: calc(22px * var(--scale)) calc(30px * var(--scale));  /* generous inner air */${boxLogoDecls}
   background: var(--panel-bg);     /* translucent white — the glass tint */
   backdrop-filter: blur(18px);     /* frosts the video playing behind the card */
@@ -80,7 +80,7 @@ ${logo}${lineMasks(o)}
 }
 
 /* Line 1 — the name leads. */
-.l3-name {
+.lower-third-name {
   font-size: calc(46px * var(--scale));  /* headline size */
   font-weight: 700;                /* bold enough to carry the card */
   line-height: 1.1;                /* tight leading — big text needs less */
@@ -89,7 +89,7 @@ ${logo}${lineMasks(o)}
 }
 
 /* Line 2 — the title/role sits quietly under the name. */
-.l3-title {
+.lower-third-title {
   margin-top: calc(6px * var(--scale));  /* small gap: name + title read as one unit */
   font-size: calc(23px * var(--scale));  /* half the name — clear hierarchy */
   font-weight: 500;                /* medium — present but not competing */
@@ -98,7 +98,7 @@ ${logo}${lineMasks(o)}
 }
 
 /* Line 3 (optional) — a small-caps kicker, e.g. a handle or a location. */
-.l3-extra {
+.lower-third-extra {
   margin-top: calc(10px * var(--scale));  /* a touch more air before the kicker */
   font-size: calc(17px * var(--scale));   /* small label size */
   font-weight: 600;                /* semibold keeps small caps legible */

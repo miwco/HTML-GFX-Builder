@@ -17,7 +17,7 @@ export const lt07: TemplateVariant = defineVariant(
       { title: 'Subtitle', sample: 'HOME · GAME 4' },
     ],
     hasLogoSlot: true,
-    animationPresets: ['snap-stinger', 'pop-spring'],
+    animationPresets: ['snap-stinger', 'pop-spring', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('royal'),
     defaultFontId: 'bebas-neue',
     defaultZone: 'bottom-left',
@@ -33,19 +33,19 @@ export const lt07: TemplateVariant = defineVariant(
     // The badge shows the imported logo when one exists; otherwise it stays a clean
     // accent square (drop a logo here via the import flow).
     const badge = o.logoAssetPath
-      ? `\n        <img class="l3-logo" src="${o.logoAssetPath}" alt="" />\n      `
+      ? `\n        <img class="lower-third-logo" src="${o.logoAssetPath}" alt="" />\n      `
       : '<!-- Empty accent square — drop a logo here via the import flow. -->';
 
     return {
       html: `    <!-- One flex slab: the accent badge (logo slot) on the left, the text stack on the right. -->
-    <div class="l3-box">
-      <div class="l3-accent">${badge}</div>
-      <div class="l3-text">
+    <div class="lower-third-box">
+      <div class="lower-third-accent">${badge}</div>
+      <div class="lower-third-text">
 ${lineMasks(o, '        ')}
       </div>
     </div>`,
       css: `/* The slab: badge and text panel fused into one hard-edged unit (zero radius on purpose). */
-.l3-box {
+.lower-third-box {
   display: flex;                   /* badge and text sit side by side */
   align-items: stretch;            /* the badge stretches to the text panel's height */
   background: var(--panel-bg);     /* dark panel behind the text stack */
@@ -53,7 +53,7 @@ ${lineMasks(o, '        ')}
 }
 
 /* The badge: a solid accent square holding the logo — the one bold accent moment. */
-.l3-accent {
+.lower-third-accent {
   flex: 0 0 calc(96px * var(--scale));    /* fixed badge width; long text never squeezes it */
   min-height: calc(96px * var(--scale));  /* stays roughly square even with one short line */
   display: flex;                   /* center the logo inside the badge */
@@ -63,7 +63,7 @@ ${lineMasks(o, '        ')}
 }
 
 /* The imported logo (rendered only when a graphic was imported). */
-.l3-logo {
+.lower-third-logo {
   width: 100%;                     /* fill the badge width… */
   height: 100%;                    /* …and its height… */
   object-fit: contain;             /* …without distorting the artwork */
@@ -71,7 +71,7 @@ ${lineMasks(o, '        ')}
 }
 
 /* The text stack: name on top, support lines beneath, centered against the badge. */
-.l3-text {
+.lower-third-text {
   display: flex;                   /* stack the lines vertically */
   flex-direction: column;          /* top to bottom */
   justify-content: center;         /* keep the stack vertically centered in the slab */
@@ -81,7 +81,7 @@ ${lineMasks(o, '        ')}
 }
 
 /* Line 1 — the name / headline. Bebas is single-weight, so size does the shouting. */
-.l3-name {
+.lower-third-name {
   font-size: calc(60px * var(--scale));  /* headline size */
   line-height: 1.05;               /* big display text sits tight */
   color: var(--text-color);        /* primary text */
@@ -89,7 +89,7 @@ ${lineMasks(o, '        ')}
 }
 
 /* Line 2 — the subtitle (fixture, score line, role). */
-.l3-title {
+.lower-third-title {
   font-size: calc(27px * var(--scale));  /* clearly subordinate to the name (≈2.2:1 vs the headline) */
   line-height: 1.2;                /* a touch more air than the headline */
   color: var(--text-dim);          /* secondary text steps back */
@@ -98,7 +98,7 @@ ${lineMasks(o, '        ')}
 }
 
 /* Line 3 — an optional kicker (venue, sponsor). Only present with three lines. */
-.l3-extra {
+.lower-third-extra {
   font-size: calc(18px * var(--scale));  /* the smallest voice in the stack */
   line-height: 1.2;                /* same rhythm as the subtitle */
   color: var(--text-dim);          /* stays quiet next to the name */

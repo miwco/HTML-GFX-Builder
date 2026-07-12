@@ -19,11 +19,6 @@ export interface BackendConfig {
   url: string;
   /** Supabase anon/publishable key (public; safe to ship). Empty = offline mode. */
   anonKey: string;
-  /**
-   * Hosted closed-beta gate: force login before the app is usable. Self-hosted / offline builds
-   * leave this off so they run with no auth, exactly like today.
-   */
-  requireAuth: boolean;
 }
 
 /** Read the (optional) Supabase configuration from the build env. */
@@ -31,20 +26,16 @@ export function loadBackendConfig(): BackendConfig {
   return {
     url: env('VITE_SUPABASE_URL'),
     anonKey: env('VITE_SUPABASE_ANON_KEY'),
-    requireAuth: env('VITE_REQUIRE_AUTH') === 'true',
   };
 }
 
-/** True when a Supabase backend is configured (both URL and anon key present). */
+/**
+ * True when a Supabase backend is configured (both URL and anon key present).
+ *
+ * There is deliberately NO "require auth" mode: the editor is open to everyone, always — anyone
+ * can create, preview, and export without an account. Signing in only unlocks the account
+ * features (cloud sync, community, AI); each of those gates itself via the auth state.
+ */
 export function isBackendConfigured(cfg: BackendConfig = loadBackendConfig()): boolean {
   return Boolean(cfg.url && cfg.anonKey);
-}
-
-/**
- * True when the app should force login before use — only when a backend is configured AND the
- * hosted instance opted in via VITE_REQUIRE_AUTH. Self-hosted / offline builds always return
- * false, so they run with no login UI exactly like today.
- */
-export function isAuthRequired(cfg: BackendConfig = loadBackendConfig()): boolean {
-  return isBackendConfigured(cfg) && cfg.requireAuth;
 }

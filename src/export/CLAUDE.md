@@ -1,0 +1,35 @@
+# src/export - export targets & packaging
+
+Loaded alongside the root CLAUDE.md when working in this directory. Keep it accurate. Exported
+packages must be plug-and-play - relative paths, bundled GSAP, no CDN references - and
+validation gates every export (root non-negotiables 3 and 4).
+
+- **registry.ts** - 6 targets, each with its own successMessage + ExportContext (the Data
+  panel's sampleData rides along so serverless targets can bake it).
+- **slug.ts** - shared slug helper (lives here to avoid an import cycle).
+- **selfContained.ts** - single-file composer: inline CSS/GSAP/JS/assets + extra body scripts.
+- **targets/spxStarter.ts** - the one SPX export = spxTarget, id 'spx'; + buildStarterInto,
+  reused by packets.
+- **targets/htmlOverlay.ts** - OBS/vMix browser source: an autoplay block fills fields from baked
+  sampleData -> definition defaults, then play(). An auto-out `out` = N ms setting rides
+  along: the block measures the entrance from a paused throwaway timeline and schedules
+  stop() at entrance + delay (the bundled control panel's Stop still works sooner). Receiver
+  + controlpanel.html bundled.
+- **targets/h2r.ts** - H2R Custom HTML: GDD block from DataFields + play()-toggle shim.
+- **targets/casparcg.ts** - selfContained + JSON/XML data shim.
+- **targets/ograf.ts** - EBU OGraf v1: manifest from DataFields + graphic.mjs Web Component;
+  AMD-guarded gsap loader. `addOgrafPackage` is reused by **targets/liveos.ts** - LiveOS's HTML5
+  graphics engine is OGraf-compliant, so that target is the same package with NetOn.Live install
+  steps in the README.
+- **packetExport.ts** - whole packet -> one zip, a Starter folder per graphic.
+- **common.ts** - addSharedAssets, addReferencedFonts, injectControlReceiver + addControlPanel,
+  FONT_LICENSES.md.
+
+## Packaging conventions
+
+- Asset paths: uploads land at `images/<file>` (fonts at `fonts/<file>`); the export zip wraps
+  everything in one project folder, so extracting into a templates folder yields
+  `[TemplatesFolder]/<project>/index.html` + `<project>/images/<file>` - the layout SPX and
+  CasparCG expect. Both of those exporters use `zip.folder(slug(name))`.
+- Uploads are base64 data URLs in `template.assets[]`; the preview inlines them, the exporter
+  decodes them to real files.

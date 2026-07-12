@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { EXPORT_TARGETS } from '../export/registry';
 import { slug } from '../export/common';
+import { loadPrefs, savePrefs } from '../model/prefs';
+import { isRenderConfigured } from '../render/config';
+import RenderPanel from './render/RenderPanel';
 import { useTemplateStore } from '../store/templateStore';
 import { validateTemplate } from '../validation/validateTemplate';
 
@@ -12,12 +15,22 @@ import { validateTemplate } from '../validation/validateTemplate';
  */
 export default function ExportPanel() {
   const template = useTemplateStore((s) => s.template);
+  const sampleData = useTemplateStore((s) => s.sampleData);
   const previewError = useTemplateStore((s) => s.previewError);
   const setValidation = useTemplateStore((s) => s.setValidation);
 
-  const [targetId, setTargetId] = useState(EXPORT_TARGETS[0].id);
+  // The target preselects from the remembered preference (Settings, or simply the last pick).
+  const [targetId, setTargetId] = useState(() => {
+    const preferred = loadPrefs().defaultExportTarget;
+    return EXPORT_TARGETS.some((t) => t.id === preferred) ? preferred : EXPORT_TARGETS[0].id;
+  });
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const pickTarget = (id: string) => {
+    setTargetId(id);
+    savePrefs({ defaultExportTarget: id }); // remember the choice as the new default
+  };
 
   const target = EXPORT_TARGETS.find((t) => t.id === targetId)!;
 
@@ -33,10 +46,13 @@ export default function ExportPanel() {
     if (!validation.ok) return;
     setBusy(true);
     try {
-      const zip = await target.build(template);
+      // Targets with no playout server (HTML overlay) bake the Data panel's values in as
+      // the on-load data — what you see in the preview is what the browser source shows.
+      const zip = await target.build(template, { sampleData });
       const blob = await zip.generateAsync({ type: 'blob' });
       saveAs(blob, `${slug(template.name)}_${target.id}.zip`);
-      setMessage('✓ Exported. Drop the unzipped folder into your SPX templates.');
+      // Each target carries its own success line, so its deploy workflow reads correctly.
+      setMessage(target.successMessage);
     } catch (err) {
       setMessage('Export failed: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -47,9 +63,10 @@ export default function ExportPanel() {
   return (
     <div>
       <div className="panel-section">
-        <h3>Export SPX package</h3>
+        <h3>Export</h3>
         <p className="hint">
-          The package is plug-and-play: relative paths, bundled GSAP, no external dependencies.
+          Pick where this graphic will run. Every package is plug-and-play: relative paths,
+          bundled GSAP, no external dependencies.
         </p>
       </div>
 
@@ -66,7 +83,7 @@ export default function ExportPanel() {
                 name="export-target"
                 style={{ width: 'auto', marginTop: 3 }}
                 checked={targetId === t.id}
-                onChange={() => setTargetId(t.id)}
+                onChange={() => pickTarget(t.id)}
               />
               <div>
                 <div style={{ fontWeight: 600 }}>{t.label}</div>
@@ -115,6 +132,10 @@ export default function ExportPanel() {
           </div>
         ))}
       </div>
+
+      {/* Video/image rendering — only on deployments with a render backend (VITE_RENDER_API).
+          Unconfigured (offline/self-host default) builds show nothing here. */}
+      {isRenderConfigured() && <RenderPanel />}
     </div>
   );
 }

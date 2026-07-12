@@ -3,7 +3,7 @@ import { test, expect, type Page, type Route } from '@playwright/test';
 // Era 3: the Describe-it step's example prompts + brainstorm chat (Anthropic mocked).
 
 async function openAiStep(page: Page) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="ai"]').click();
 }

@@ -4,7 +4,7 @@ import { test, expect, type Page, type FrameLocator } from '@playwright/test';
 
 /** Walk the wizard entry → category → variant selection. */
 async function toVariantStep(page: Page, variantName: string) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat:not([disabled])').first().click();
@@ -34,12 +34,12 @@ test('wizard: create a lower third with defaults', async ({ page }) => {
   // Play runs the entrance (root becomes visible).
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame.locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 
 test('wizard: blank project escape hatch', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await page.locator('[data-entry="blank"]').click();
   await expect(page.locator('.wz-modal')).toBeHidden();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Blank');
@@ -75,7 +75,7 @@ test('wizard: steps mode reveals lines on Next', async ({ page }) => {
 });
 
 test('import graphics: image lands in the logo slot', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await page.locator('[data-entry="import"]').click();
   // A tiny 1×1 PNG.
   await page.locator('.wz-drop input[type="file"]').setInputFiles({
@@ -94,7 +94,7 @@ test('import graphics: image lands in the logo slot', async ({ page }) => {
   await page.locator('.wz-variant', { hasText: 'Number Badge' }).click();
   await createFromCurrentStep(page);
 
-  const logo = previewFrame(page).locator('.l3-logo');
+  const logo = previewFrame(page).locator('.lower-third-logo');
   await expect(logo).toBeVisible();
   await expect
     .poll(async () => logo.evaluate((el: HTMLImageElement) => el.src.startsWith('data:image/png')))
@@ -111,24 +111,30 @@ test('style panel: accent retints the live preview', async ({ page }) => {
   // The preview rebuilds (debounced) with the new accent on the hairline.
   await expect
     .poll(async () =>
-      previewFrame(page).locator('.l3-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
+      previewFrame(page).locator('.lower-third-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
     )
     .toBe('rgb(255, 45, 120)');
 });
 
-test('motion panel: preset swap jumps to the JS tab and still plays', async ({ page }) => {
-  await toVariantStep(page, 'Frosted Card');
+test('timeline strip: preset swap jumps to the JS tab and still plays', async ({ page }) => {
+  // The classic strip still serves the not-yet-migrated categories — an info card here
+  // (lower thirds create as data blocks and use the step timeline instead).
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Info cards' }).click();
+  await page.locator('.wz-variant', { hasText: 'Hairline Card' }).click();
   await createFromCurrentStep(page);
 
-  await page.locator('.panel-tabs .tab', { hasText: 'Motion' }).click();
-  await page.locator('.wz-anim', { hasText: 'Mask wipe' }).click();
+  // The ▶ In card is selected by default — its preset picker swaps the entrance.
+  await page.getByTestId('timeline-phase-preset').selectOption('mask-wipe');
   await expect(page.locator('.tabs .tab.active')).toHaveText('JS');
 
   const frame = previewFrame(page);
   await expect(frame.locator('#f0')).toBeAttached();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame.locator('.l3').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame.locator('.info-card').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 

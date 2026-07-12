@@ -5,9 +5,8 @@
 // template works with any CasparCG client out of the box.
 
 import JSZip from 'jszip';
-import gsapSource from '../../assets/gsap.min.js?raw';
-import { inlineAssetRefs } from '../../assets/assetUtils';
 import type { SpxTemplate } from '../../model/types';
+import { composeSelfContainedHtml } from '../selfContained';
 import { slug } from '../common';
 import type { ExportTarget } from '../registry';
 
@@ -36,29 +35,16 @@ const CASPAR_DATA_SHIM = `// ── CasparCG data shim ────────�
   };
 })();`;
 
-/** Build the single-file HTML: strip external refs, inline everything. */
+/** Build the single-file HTML: strip external refs, inline everything (shared composer). */
 export function composeCasparHtml(template: SpxTemplate): string {
-  // Inline uploaded assets (images/foo.png -> data URL) in markup and styles.
-  let html = inlineAssetRefs(template.html, template.assets)
-    // Drop the external stylesheet/script references — their contents go inline below.
-    .replace(/<link\b[^>]*href=["'](?:\.\/)?(?:css\/|js\/)[^"']*["'][^>]*>\s*/gi, '')
-    .replace(/<script\b[^>]*src=["'](?:\.\/)?(?:js\/|css\/)[^"']*["'][^>]*>\s*<\/script>\s*/gi, '');
-  const css = inlineAssetRefs(template.css, template.assets);
-
-  const headInjection =
-    `<script>/* GSAP (bundled) — no internet needed at playout. */\n${gsapSource}</script>\n` +
-    `<style>\n${css}\n</style>\n`;
-  html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${headInjection}</head>`) : headInjection + html;
-
-  const bodyInjection = `<script>\n${template.js}\n\n${CASPAR_DATA_SHIM}\n</script>\n`;
-  html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${bodyInjection}</body>`) : html + bodyInjection;
-  return html;
+  return composeSelfContainedHtml(template, [CASPAR_DATA_SHIM]);
 }
 
 export const casparTarget: ExportTarget = {
   id: 'casparcg',
   label: 'CasparCG export',
   description: 'One self-contained .html file (CSS, JS, GSAP, images inlined) + a data shim for CasparCG XML payloads.',
+  successMessage: '✓ Exported. Drop the .html into your CasparCG templates folder.',
   async build(template) {
     const zip = new JSZip();
     const name = slug(template.name);

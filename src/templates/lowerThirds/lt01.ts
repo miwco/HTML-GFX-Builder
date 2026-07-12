@@ -17,7 +17,7 @@ export const lt01: TemplateVariant = defineVariant(
       { title: 'Title', sample: 'Chief Correspondent' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe'],
+    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',
     defaultZone: 'bottom-left',
@@ -31,14 +31,14 @@ export const lt01: TemplateVariant = defineVariant(
   },
   (o) => ({
     html: `    <!-- Hairline structure: [vertical accent line] | [transparent text block]. -->
-    <div class="l3-accent"></div>
-    <div class="l3-box">
+    <div class="lower-third-accent"></div>
+    <div class="lower-third-box">
 ${lineMasks(o)}
     </div>`,
     css: `/* The hairline — a thin vertical line spanning the full height of the text block.
    It is the design's only non-text element; presets grow it in via transform. */
-.l3-accent {
-  position: absolute;               /* pinned inside the positioned .l3 root */
+.lower-third-accent {
+  position: absolute;               /* pinned inside the positioned .lower-third root */
   left: 0;                          /* sits at the block's left edge */
   top: 0;                           /* stretches from the very top… */
   bottom: 0;                        /* …to the very bottom of the text block */
@@ -48,12 +48,12 @@ ${lineMasks(o)}
 }
 
 /* The text block — deliberately transparent: no panel, whitespace does the work. */
-.l3-box {
+.lower-third-box {
   padding-left: calc(27px * var(--scale));  /* room for the 3px line + a generous 24px gap */
 }
 
 /* Name line — big and confident; the only heavy element in the design. */
-.l3-name {
+.lower-third-name {
   font-size: calc(54px * var(--scale));  /* headline size (values are 1080p reference) */
   font-weight: 700;                 /* bold enough to carry the design on its own */
   line-height: 1.08;                /* big text sits tight */
@@ -62,8 +62,8 @@ ${lineMasks(o)}
 }
 
 /* Title line (and any extra line) — quiet on purpose: smaller, lighter, dimmed. */
-.l3-title,
-.l3-extra {
+.lower-third-title,
+.lower-third-extra {
   font-size: calc(24px * var(--scale));  /* ≈2.2:1 below the name — clear hierarchy */
   font-weight: 400;                 /* regular weight; contrast comes from the name */
   line-height: 1.3;                 /* secondary text gets room to breathe */

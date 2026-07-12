@@ -5,14 +5,35 @@ bottom rather than rewriting history.
 
 ## North star
 
-> **NoaCG Studio — the best and easiest place to create modern, premium broadcast graphics, for any platform.**
+> **NoaCG Studio — the best and most useful place to create modern, premium broadcast graphics, and run them anywhere.**
 
-Make an on-air-worthy graphic in a couple of minutes, no code required, then export it to a working
-SPX package (or CasparCG / OGraf). Two kinds of user are first-class: a **non-technical creator** who
+Make an on-air-worthy graphic in a couple of minutes, no code required, then export it to whatever
+environment the user already runs. Two kinds of user are first-class: a **non-technical creator** who
 never opens the code, and a **professional** who drops into the always-available editor for full
 control. The generated HTML/CSS/JS stays clean, well-named, and the single source of truth — its view
 is optional. Users span organizations, TV channels, streamers, and universities (it's also used in
 teaching, but the product is a production tool, not a code tutorial).
+
+### Anything-goes export (a platform, not an SPX generator)
+
+Export is **not SPX-first only**. The ambition is a flexible broadcast-graphics **platform** targeting
+many broadcast and streaming environments - **SPX, OBS, vMix, CasparCG, OGraf**, and more over time.
+SPX stays the canonical *internal* template format (and the strictest validation target); every other
+target is an export adapter derived from that same source, so breadth is added without reworking the
+core. Breadth across the whole live stack - plus automation, remote control, and smarter workflows - is
+a primary long-term differentiator, not a nice-to-have.
+
+### Operating principles (business posture)
+
+- **Free forever for the core.** Creating, editing, exporting, controlling, and self-hosting are free,
+  always - no feature paywall on the workflow.
+- **One paid surface only, and later:** hosted AI generation for users who won't bring their own API
+  key (real compute cost). **Bring-your-own-key stays free.** Premium features / paid services are
+  deferred until there is a large user base and are not a current priority - don't build paywalls
+  speculatively.
+- **The goal now is users, not revenue.** Optimize for usefulness, adoption, and regular use
+  (activation + retention). Money is a later, optional consequence of a large, happy user base. See
+  the GTM plan + [[gtm-competitive]] memory.
 
 ### What "done right" feels like
 - **Fast:** new project → on-air-worthy lower third in under 2 minutes, no code required.
@@ -54,8 +75,9 @@ teaching, but the product is a production tool, not a code tutorial).
       the file becomes a template asset (`fonts/…`), gets a visible `@font-face`, renders in the
       preview, and ships inside the export (single file per font; weight sets later)
 - [x] **Project brand + match toggle** — the app remembers the project's brand (family, palette
-      incl. custom, font incl. imported); the wizard preselects it ("Match current project", on
-      by default) so the next graphic automatically belongs to the same package
+      incl. custom, font incl. imported); the wizard's "Use current project's colors & font"
+      toggle (off by default — matching is an explicit choice) makes the next graphic belong
+      to the same package
 - [x] **Package-consistency foundations** — DESIGN_LANGUAGE addendum with per-family
       cross-category tokens (shape, type roles, motion timing); shared template assembler
       extracted from lowerThirds for all categories; continuous-motion machinery (linear loops)
@@ -171,6 +193,45 @@ server era (no server = no CORS-free social APIs, no inbound chat endpoint).
       StandardDesign.disableSteps).
 - [x] Wizard category grouping: **Essentials** vs **Specials** (CategoryInfo.group).
 
+### Public face (2026-07-08 — the landing page + open doors)
+- [x] **Public landing page at `/`** — static, brand-true (void/amber, bundled fonts, no React,
+      no CDN): hero + "runs on OBS · vMix · SPX · CasparCG · OGraf" chips + house-template
+      screenshots + how-it-works + operability row + free/AGPL footer. The editor moved to
+      **`/app`** (Vite MPA: app.html entry; dev/preview clean URL via the `app-clean-url` plugin,
+      production via Vercel `cleanUrls`). Old root `?chat=`/`?template=` share links redirect
+      with their query; in-app link generation follows `location.pathname`; Google OAuth returns
+      to `/app` (origin+pathname). E2E: landing.spec (3) + every spec migrated to `/app`.
+
+### Homebase (2026-07-08 — the signed-in account surface)
+- [x] **Avatar account menu** in the topbar (Google photo or initial chip) → Your homebase ·
+      Settings · Sign out; signed-out hosted mode keeps the plain "Sign in" button; offline
+      builds still grow zero auth UI.
+- [x] **Your homebase** — every saved graphic across all packets, newest first, open-into-editor;
+      reads the SAME packet store 📦 Packets manages (one source of saved designs; cloud sync
+      already mirrors it). Empty state routes to the wizard.
+- [x] **Settings** — AI key + model (same ai/settings store the wizard uses) + workflow defaults
+      (`model/prefs.ts`: default export target — the Export tab also remembers the last pick);
+      brand/style defaults deliberately stay where the work happens (project brand + looks).
+      *Future settings home: preferred styles, platform presets, personal brand assets.*
+- [x] E2E: configured homebase.spec (avatar → homebase → settings → sign out, live-verified);
+      offline export-default persistence spec.
+
+### The NoaCG house family (2026-07-08 — brand-kit overlays as first-class templates)
+- [x] **A 4th style family `noacg`** — the product's own on-air look (§8 tokens: 8px amber bar +
+      void blur(8px) panels, mono label voice, restrained accent glow), so built-in output
+      showcases the brand. New `NoaCG Amber` palette; JetBrains Mono bundled (variable 400-700,
+      one file now also serving the app UI); `labelFontFaceCss` = a design-owned second typeface
+      the Style panel's heading swap never touches; `StandardDesign.runtimeExtraJs` (the
+      infographics doctrine generalized) for design-owned runtime like live clocks.
+- [x] **7 house variants** rebuilt from `NoaCG-Brand-Kit/overlays/` (offline-first — no Google
+      Fonts, full SPX runtime): **lt11 House Strap**, **lt12 House Breaking** (accent chip +
+      headline panel), **lt13 House Interview** (3-line) · **bug02 House Clock** (logo/three-bar
+      mark + live HH:MM:SS, accent seconds) · **tk05 House Wire** + **tk06 House Markets**
+      (sign-colored deltas, live clock caps) · **card05 House Title** (mono kicker + huge title +
+      radial accent glow; the overlay's opaque backdrop intentionally dropped — catalog graphics
+      composite). Catalog: **43 designs**. Swept (lower-third / ticker / info-card all valid) +
+      4 house E2E specs (clock ticks, deltas color, chip stacks, mono face loads).
+
 ### Era 4 — Local backend (no server, no login)
 - [x] **Control panels for your graphics** — ONE modular engine (src/control/controlModel.ts)
       turns any graphic's SPX DataFields into an operator panel: number → +/− stepper (custom
@@ -268,14 +329,294 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       **moderator takedown queue UI shipped** (🛡 Moderate, gated on `is_moderator()`; review a
       sandboxed preview → Remove/Restore; reports queue). **Deferred:** human pre-review flip (one line
       + the queue already exists), whole-packet publishing, anon public gallery + login-less share page.
-- [ ] **5.6 Payments/subscriptions LAST** (long beta first; separate private repo, Stripe, metered
+- [x] **5.6 The open editor (free-to-try posture, 2026-07-08)** — the app-wide login wall is GONE
+      (`VITE_REQUIRE_AUTH` removed; AuthGate/LoginScreen → an on-demand `SignInDialog` + `useAuthState`
+      feature gates). Anyone can create, preview, and export with no account — hosted or self-hosted.
+      Signing in (topbar button or any gate) unlocks the account features: cloud sync, community,
+      show chat, AI (both the side panel and the wizard's Describe-it entry). Local packets stay
+      anonymous-friendly; publish/sync nudge sign-in inline. Offline builds grow no auth UI at all
+      (E2E-pinned). **Signup opened the same day** (migration `0006`: the Before-User-Created hook
+      now allows everyone; applied + live-verified with a throwaway signup). Re-close = restore the
+      0002 function body. *Remaining hardening (dashboard, manual): require email confirmation +
+      enable captcha — the live project currently auto-confirms.*
+- [ ] **5.7 Payments/subscriptions LAST** (long beta first; separate private repo, Stripe, metered
       generations)
 
-### Era 6 — WYSIWYG editor
+### Era 6 — WYSIWYG editor + timeline
+- [x] **W1 drag-to-position (2026-07-08)** — the Move toggle on the preview toolbar overlays a
+      pointer layer (9-zone grid + ghost + target-cell highlight; the root is revealed while the
+      mode is on): release computes nearest zone + residual nudge and writes the SAME
+      `zoneDecls` patch the Style panel writes onto the detected root rule — deterministic,
+      highlighted, undoable. Esc cancels. E2E: drag re-anchors bottom-left → top-right in the
+      preview's stylesheet + Ctrl+Z restores; Escape leaves the code untouched.
+- [x] **T1 read-only timeline view (2026-07-08)** — the Motion tab renders the marked ANIMATION
+      region as tracks (`blocks/timelineModel.ts`: parse-by-construction of the emitted
+      tl.set/to/fromTo calls — knobs, durations `X / animSpeed`, staggers, `'-=N'` overlaps;
+      unrecognizable hand-edits degrade to an honest "the code is the truth" note). In/Out phase
+      tabs with real durations (∞ badge for loops), one row per tween, and a scrubber that
+      PAUSES the live preview at any moment (store `sendScrub` → simulator builds + pauses the
+      phase timeline; OUT scrubs start from the settled on-air state). Timing knobs = T2.
+- [x] **The direct-manipulation rework (2026-07-08, same-day user feedback on the build):**
+      1) **Settled design view** — after every rebuild the preview shows the graphic SETTLED
+      (simulator: `buildInTimeline().progress(1, true)` + a truth-restoring second `update()`;
+      clocks/loops stay idle; blank/imported templates unaffected). The canvas is never dead.
+      2) **No move mode** — `CanvasInteraction` replaces the W1 toggle: hand/text hover cursors,
+      drag starts on the graphic with a 4px threshold, same zone+nudge patch; grid only during
+      drag. 3) **W3 inline text editing shipped** — dblclick a visible `#fN` → overlay input →
+      live sample value + SPX-definition default + static text in ONE undoable patch
+      (`setFieldDefault`). 4) **T1.5** — the timeline is a collapsible strip UNDER the preview
+      (above the transport), with a LIVE playhead following the simulator-owned `__activeTl`
+      (Play sweeps In; Stop auto-switches to Out; scrub reclaims; end-snap fix so keyboard
+      scrubs reach final set() calls). E2E: wysiwyg (3), timeline (5), inline-edit (2).
+- [x] **T2 draggable timing bars (2026-07-08)** — drag a bar's body to retime a tween, its
+      right-edge handle to stretch it (0.05s snap): `patchTweenTiming` (blocks/timelineModel.ts,
+      the parser in reverse) rewrites the tween's `N / animSpeed` duration literal and writes an
+      explicit absolute position (replacing '-=' overlaps) IN the emitted region — zero preset
+      changes, the code keeps its readable sequential shape, the speed knob still scales
+      everything. One undoable applyTemplate per release + auto-replay. set() ticks and
+      measured durations stay read-only. Per-element eases = T2.5. E2E: stretch rewrites the
+      literal + undo restores; move writes the absolute position + still plays.
+- [x] **W2 corner scale handle (2026-07-08)** — hovering the graphic shows a handle at the
+      root's bottom-right; dragging live-previews `--scale` (inline :root override, ×N badge)
+      and releases ONE `patchCss` write of the variable (the Style panel's size mechanism),
+      clamped 0.5–2. E2E: the drag grows --scale in the rebuilt preview within the clamp.
+- [x] **T2.5 per-tween eases (2026-07-08)** — an ease chip per editable bar: the easing
+      vocabulary's phase-correct half (doctrine intact) + auto (inherit the knob);
+      `patchTweenEase` writes/clears a quoted ease literal in the tween's vars.
+- [x] **T3.1+T3.2 steps sequencing (2026-07-08)** — the moat slice, competitor-researched
+      (Loopic = stop-point keyframes, step count baked in; SPX = a bare Continue button):
+      the strip shows the graphic as the playout chain **▶ In · » 2 · » 3 · ■ Out** —
+      data-driven step count, real durations, the SPX `out` mode as a badge. The simulator
+      owns each Continue's reveal tween so the LIVE PLAYHEAD sweeps every » Next press;
+      step segments scrub (prior state jumped, callbacks suppressed), stretch
+      (`var stepDurations = [...]` literals) and take per-step eases (`stepEases`) — all
+      through the same undoable literal patcher. Emit upgrade also fixed a latent bug:
+      replaying a steps template never reset `currentStep`.
+- [x] **T3.3 reveal groups (2026-07-08)** — the better-than-Loopic move: `var stepGroups =
+      [['#f1'], ['#f2']]` in the emitted block (a GROUP per Continue, 0.08s stagger inside a
+      group); step segments show one row per line and dragging a row's bar onto another » tab
+      regroups (`patchStepRegroup` rewrites groups+durations+eases as one undoable patch;
+      emptied steps disappear with their timing; a »+ drop target splits a line into a new
+      step). E2E: merge »3 into »2 → one press reveals both lines → split back out via »+.
+- [x] **T3.5 the moment-cards UX pass (2026-07-09, tester feedback: "how do I add steps?")** —
+      the strip now tells the playout story instead of assuming it: every segment is a MOMENT
+      CARD with its operator cue underneath (▶ In "on ▶ Play" · » 2 "on 1st » Next" · ■ Out
+      "on ■ Stop"); a read-only **● On air** card names the hold between the last reveal and
+      the exit (until ■ Stop / auto-out Ns / stays) and clicking it parks the preview on the
+      settled on-air look; step rows get an **"appears on" menu** (move a line to another
+      » Next press, or its own new one — patchStepRegroup minus the drag); »+ Step disables
+      with a tooltip reason instead of vanishing; an unparsable hand-edited region shows an
+      honest one-liner; the header ease readout speaks the vocabulary's names (raw GSAP pair
+      in the tooltip). Next (needs approval): converge the Motion panel into the In/Out cards
+      and make the On air card edit `settings.out`.
+- [x] **T3.6 step-workflow honesty fixes (2026-07-09, second tester round)** — app declares
+      `color-scheme: dark` + the preview srcdoc gets the matching meta (native select popups
+      were white-on-white on Windows; the pairing keeps the stage transparent); the appears-on
+      menu is self-labeling ("appears on press 2") and cards/ghost/tooltips share the "press"
+      vocabulary; a "Turn off step reveal" action on the strip (the Motion checkbox's
+      counterpart); `countLines` no longer counts `<img>` logo fields as text lines — corner
+      bugs and card03 stop offering a broken unmasked step reveal. Bigger rethink planned and
+      approved separately (element→press assignment, derived part registry, cue-segmented
+      strip): fix B1/B2 step-sync bugs next, generalize steps to non-text parts after the
+      registry; timeline overview and canvas assignment wait for the Era-6 selection model.
+- [x] **T3.7 step-sync bug fixes (2026-07-09)** — two intent-corrupting bugs: (B1) regroups
+      only patched the JS, so a merge/split left a stale SPX `steps` count (a dead Continue
+      press on air, wrong OGraf stepCount) — every step-count-changing path now re-syncs the
+      definition via `withStepsSetting` (invariant: steps = groups + 1); (B2) any Motion
+      preset/easing apply re-emitted the default one-line-per-press chain, silently deleting
+      the user's regrouping — `presetConfigFromTemplate` now round-trips the existing
+      `stepGroups`/`stepDurations`/`stepEases` literals (filtered to lines that still exist)
+      and the emitters preserve them. Turning steps on now announces the behavior change on
+      the strip ("▶ Play now shows only the first line…"), and the steps checkbox copy in the
+      wizard + Motion panel uses the same press language. E2E: definition follows merge/split;
+      preset swap keeps a merged chain + tuned ease.
+- [x] **T4.0 the TemplatePart registry (2026-07-09)** — the shared element-identity contract
+      (model/structure.ts `getTemplateParts(html, fields)`): DOM-derived, never stored —
+      parts are {selector, kind: root|panel|accent|line|image|block, label, channel:
+      mask|rise} with single-token selectors only (the region parsers can't round-trip more)
+      and a uniqueness rule (a selector matching ≠1 elements is excluded, not guessed).
+      `countLines` = the registry's mask-capable `line` parts (DOMParser replaces the
+      attribute-order regex that miscounted logo imgs); the timeline strip's labels/ghost/
+      appears menu read `part.label` (friendlyTarget keeps heuristics only for unregistered
+      selectors). This is the contract the canvas selection layer and step generalization
+      build on — canvas session must consume it, never fork it. E2E pins the Hairline
+      part map + the selector shape rule.
+- [x] **T4.1 any part on any press (2026-07-09)** — steps stop being lines-only: accents,
+      logo/image slots, and any line but the first can be assigned to a » Next press.
+      Emit changes (animPresets stepsBlock): a `stepReveals` map says HOW each part appears
+      ('mask' slides within its line mask, 'rise' fades+rises — channel from the registry,
+      never guessed from the selector); pre-hiding is `hidePendingSteps()` DERIVED from
+      stepGroups at runtime, so "removed from every group ⇒ appears with ▶ Play" is true by
+      construction; per-part reveals are positioned tweens in one timeline (mixed channels
+      per press work). Patch split: moving between existing presses stays patchStepRegroup
+      (array patch, keeps tuning); assigning/unassigning re-emits the IN phase
+      (`applyStepChain`) because the entrance choreography changes (an assigned accent's
+      intro draw drops; it returns on unassign). The step view lists unassigned parts with
+      an "appears with ▶ Play" menu — pick a press to move them; assigned rows can go back.
+      Emptied presses disappear; the last part leaving turns steps off. Validation warns on
+      dangling step selectors. Deferred: block elements outside the root (opacity-gate
+      problem); entering the steps world still needs 2+ lines (»+ gate) — a logo-only
+      first step is a follow-up. E2E: accent onto its own press → hidden through Play,
+      revealed on press 2, definition steps follow → unassigned back into the entrance.
+- [x] **T4.2 the cue-segmented overview (2026-07-09, user-ratified over a global time
+      axis)** — the strip's tracks area becomes ONE overview of the whole playout: every
+      section (▶ In · each » press · ● hold · ■ Out) side by side, each on its own REAL
+      local clock (a single global ruler would fabricate times for operator-driven cues);
+      widths = duration × zoom (+/- buttons; fit once per template, min-width-aware), the
+      hold a fixed hatched break; rows are registry parts spanning every section —
+      multi-target tweens expand onto member rows at their true stagger offsets, set()-only
+      bookkeeping rows drop. Every bar edits in place (the same literal patchers); reveal
+      bars drag onto » cards to regroup; the gutter shows each part's "appears on press"
+      menu at a glance + the selected moment's ease chips. Cards renumbered by PRESS ("» 1"
+      = the 1st » Next) so headers, cards, menus, and tooltips finally share ONE numbering.
+      timelineModel.buildOverview = the pure matrix derivation. E2E: overview structure,
+      zoom scaling (hold fixed), header-click selection; the whole regroup/retime suite
+      re-pinned on overview geometry (bars scroll into view in narrow panes).
+- [x] **T5 independent layers + basic per-layer animation (2026-07-10, third tester round)** —
+      the interaction rethink the tester asked for, as ONE coherent drag model:
+      (1) layers edit INDEPENDENTLY — dragging any member of a joint multi-target tween
+      splits it into per-target calls first (`splitTween`: exact stagger offsets become
+      explicit positions, phase length unchanged) so only the grabbed layer retimes;
+      (2) bars resize from BOTH edges (left handle moves the start, end pinned);
+      (3) dragging a bar ACROSS sections moves WHEN the part appears — entrance bar onto a
+      » press assigns it there, reveal bar onto the entrance un-assigns — all through the
+      canvas-shared `changePartPress`, with section bodies as drop zones and a ghost chip
+      naming the destination (dropping outside a bar's section can never stretch a phase);
+      (4) each layer row's ▸ arrow opens the ENTERS-FROM drawer: X / Y / Scale / Opacity /
+      Rotation from-values that settle to the design position (`patchTweenVars` edits
+      from/to literals minimally, `insertPartTween` gives partless layers a tween) — the
+      deliberately small basic-animation set (slide-ins etc.), NOT a keyframe system (the
+      future Flow mode owns advanced logic); (5) select options painted explicitly
+      (color-scheme alone failed on the tester's Chromium — white popup, grey text) and
+      the timeline selects go solid/full-contrast; clicking a bar (without dragging)
+      selects the element, extending the canvas↔code↔timeline sync. E2E: split-on-drag,
+      both-edge resize, drop-to-press round-trip, drawer literal round-trip, explicit
+      option colors.
+- [x] **W4.1 the canvas selection model (2026-07-09)** — click a structural element in the
+      preview to select it: registry-backed hit-testing (`getTemplateParts` selectors via an
+      elementFromPoint closest-ancestor walk, rect-containment fallback for pointer-events:
+      none imports), an amber outline + naming chip speaking `part.label` (the same words as
+      the timeline strip), a hover outline + tag previewing what a click would select, and
+      click-again-to-climb (line/panel → whole graphic — the registry's nesting, so the root
+      stays reachable). Empty canvas or Escape deselects (Escape yields to drag/inline-edit/
+      form focus). The chip surfaces ONLY actions that already exist where they apply:
+      "Double-click to edit" on text lines; the corner --scale handle stays anchored while
+      the whole graphic is selected. Selection is editor UI state ONLY — no store field, no
+      template write, rAF-tracked rects so it follows animation and rebuilds. Step/press
+      assignment on selection is deliberately NOT here (lands after both Era-6 tracks merge).
+      E2E: canvas-selection (5 — select/name, hover, deselect ×2, climb+handle, edit/drag
+      layering).
+- [x] **W4.2 shared selection (2026-07-09, the first convergence slice)** — the two Era-6
+      tracks meet: the canvas selection selector moved from component state into the store
+      (`selectedPart`), and both surfaces speak it. Clicking an element on the canvas washes
+      its overview row amber (label lit, inset edge); clicking a row's LABEL in the strip
+      selects that element on the canvas (outline + chip), clicking the selected label
+      deselects both. Only registry-part rows are handles (unregistered hand-tween rows stay
+      inert); still UI state only — no history, no template write. Next convergence slice:
+      the chip's "appears on press" action reusing applyStepChain. E2E: canvas-selection +1
+      (both directions + deselect, no code written).
+- [x] **W4.3 "appears on press" from the canvas (2026-07-09, the payoff slice)** — the
+      selected element's chip carries the timeline gutter's press control: select the
+      accent/logo/a line on the canvas → "appears with ▶ Play / on press N / on a new
+      press". Same conditions as the gutter (steps on, chain groupable, eligible kinds,
+      never the first line), same soloLast guard, ONE undoable apply + auto-replay. The
+      decision tree extracted to blocks/stepAssign.ts `changePartPress` (entrance→press
+      and press→entrance re-emit the IN phase with the registry channel; press→press stays
+      the tuning-preserving array patch) and the gutter now delegates to it — the two
+      surfaces cannot drift. The chip opts into pointer input only while it carries the
+      control and swallows its events (the gesture layer under it never fires). E2E:
+      canvas-selection +1 (assign via chip → code + gutter agree → back to the entrance).
+- [x] **T4.5 blocks join the press chain (2026-07-10, closes T4.1's deferral)** — building-
+      block elements (data-gfx + id, siblings of the root) can now appear on a » press. The
+      opacity-gate problem solved with an emitted OUTSIDE GATE, both halves derived from the
+      chain: (load side) the steps block hides `stepOutsideParts` from first paint, DOM-ready-
+      guarded, so nothing shows before ▶ Play; (exit side) ONE recognizable `tl.to(...)` line
+      in buildOutTimeline — kept in sync surgically by `patchOutsideExit` at the swap choke
+      points, so assign/unassign never resets out-phase tuning and the line's own dragged
+      timing survives updates (it parses as a normal editable fade bar in the overview).
+      Outside-ness decided by real DOM containment, not part kind. `assignableParts` now
+      includes blocks (chains round-trip through preset swaps without dropping them); the
+      gutter menu and the canvas chip both offer them. E2E: canvas-selection +1 — insert the
+      Logo block, give it its own press from the chip, and pin the whole lifecycle (hidden
+      settled → revealed on press 2 → fades on ■ Stop → always-on again after unassign, gate
+      code gone).
+- [x] **T6 one motion surface (2026-07-10, the approved T3.5 follow-up)** — the Motion
+      side-tab is retired; the strip's moment cards ARE the motion surface (SidePanel: five
+      tabs). The selected ▶ In / ■ Out card grows an inspector row with that phase's preset
+      picker (presetsForType, per-category) and easing choice (the vocabulary's phase-correct
+      half — doctrine intact), writing the panel's exact patches (`swapAnimationPhase` /
+      `setAnimKnob`); the animSpeed knob lives on the strip header (Slower/Normal/Faster);
+      the ● On air card's note now EDITS the SPX `out` setting (until ■ Stop / auto-out N ms
+      with an editable delay / stays-no-out), synced into the definition like
+      `withStepsSetting`. The unparsable-region fallback keeps the Motion tab's one remaining
+      duty: an honest one-liner plus a start-over preset select (a 'both'-phase swap re-emits
+      the whole region and brings the timeline back). Found & fixed on the way: `splitRegion`
+      left the "// Out preset:" tag in the head slice, so an In-swap followed by an Out-swap
+      stranded a stale duplicate tag that won the readback (the panel had the same bug).
+      Steps stay where T3.6 put them (»+ Step / turn-off on the strip); the wizard's
+      Animation STEP is untouched (a different surface for a different moment). E2E: the
+      motion specs re-pinned on the strip + new coverage (per-phase swap from a card, speed
+      knob, out-mode sync, fallback).
+- [x] **T6.1 motion-surface tester fixes (2026-07-10, first round on the converged strip)** —
+      four issues from trying the build: (1) an EXIT could leak its end state into the next
+      playback — most visibly a Blur exit leaves filter:blur on the box that a non-blur
+      entrance never resets, so the replay started blurred; the simulator now `resetGraphic`s
+      (clears GSAP inline props on the root subtree) before every entrance, so play → hold →
+      exit → clean reset → play again always starts from the true initial state. (2) The SPX
+      `out` = N ms auto-out never fired in the editor preview (only export); the simulator now
+      schedules the exit after the entrance settles + the hold, cancelled by any manual
+      play/stop/next/scrub. (3) The In and Out cards showed identical preset labels; the Out
+      card now names presets in their exit direction (Blur in → Blur out, Drop in → Drop out;
+      direction-neutral names like Mask wipe unchanged). (4) The per-layer transform drawer
+      was entrance-only; it is now PHASE-AWARE — enters-from on the In card, leaves-to on the
+      Out card (patchTweenToVars edits the exit's to-vars, insertPartOutTween gives a partless
+      layer its own exit tween; opacity never auto-stripped so the exit still fades). E2E:
+      leak-free replay, auto-out in preview, in/out naming, the leaves-to drawer round-trip.
+      (Also answered: the missing Login/Community menus were an env artifact — this worktree
+      has no `.env`, so the app runs offline and both account surfaces stay hidden by design.)
+- [x] **T6.2 per-layer blur (2026-07-10, second tester round)** — the per-layer drawer gains
+      a Blur field on BOTH phases: enters-from materialises a layer out of a blur, leaves-to
+      dissolves it into one. Blur is the one non-transform in the drawer — it serializes to
+      `filter: 'blur(Npx)'` (a string literal, not a bare number), so it has its own reader/
+      writer (`setObjBlur`, a `DRAWER_PROPS`/`DRAWER_IDENTITY` vocabulary alongside the
+      transforms). All four drawer patchers handle it (patchTweenVars/patchTweenToVars edit
+      the from/to objects; insertPartTween gives a blur-in fromTo, insertPartOutTween a
+      blur-out to()), and splitTween still separates a joint tween first so only the grabbed
+      layer blurs. The simulator's reset already clears leaked filter, so blur leaves cleanly.
+      E2E: the drawer exposes blur on both cards and an exit blur round-trips + resets.
+- [x] **T7 Timeline v2 — the step timeline (2026-07-11; phases 1-7 + the creation flip +
+      the CapCut polish pass; Phase 8 deferred, see below)**: the declarative engine
+      (NOACG_ANIM data block + interpreter, canonical serializer, importer, golden parity
+      harness); the Inspector column + redo; the clip-style ribbon (cue markers, ruler,
+      scrub); keyframes (arm/auto-key at the playhead, diamond drag/delete); presets as
+      keyframe generators (In/Out/Both, declared props only, layer-relative In); steps as
+      clips (preserve/stretch resize, duplicate/rename/delete, »+, hold popover, speed);
+      LOWER THIRDS CREATE AS DATA natively — the classic-strip spec suite moved to its
+      still-legacy sibling (info cards' Hairline Card, 34 tests); Phase 7 parity (the
+      OBS/vMix overlay honors auto-out with a measured entrance, data-block validation
+      warnings, the AI prompt teaches the data shape, l3-sweep updated); and the polish
+      pass — playhead grab cap + auto-follow scroll, 1000 px/s deep zoom, per-keyframe
+      and per-step ease menus (right-click), ◀◆▶ keyframe navigation, label
+      drag-scrubbing. **Phase 8 (delete the literal patchers + the classic strip) waits
+      for the remaining category migrations**: standard-contract categories next (info
+      cards, scoreboards, corner bug, starting-soon, timers, quiz — the importer already
+      converts them), loop categories (credits/tickers/infographics) after a loop
+      representation lands in the data model. Original plan entry follows — the
+      CapCut-style rethink: steps as clips, a real playhead/ruler, an Inspector panel,
+      proper keyframes, presets as keyframe generators with In/Out/Both. The audit
+      concluded the parse-by-construction patcher architecture is at end of life for this
+      feature set; the marked region moves to a declarative data literal + fixed
+      interpreter while keeping the builder-globals contract (so the simulator and every
+      export are untouched). Full plan, data model, the twelve design decisions, risks,
+      and 8 phases: **docs/TIMELINE_V2_PLAN.md**.
 Drag/move/scale writes the SAME deterministic patches the panels write today (zone +
 nudge + --scale foundations already exist) — code stays the source of truth. Timeline UI
 for in/out timings + step triggers maps onto the marked ANIMATION region + animSpeed/
-duration knobs. Big; planned last deliberately.
+duration knobs. Big; planned last deliberately. **Binding plans (2026-07-08):
+`docs/WYSIWYG_PLAN.md`** (slices W1 drag-to-position → W2 scale handle → W3 in-place text →
+W4 element nudges, with guardrails) **and `docs/TIMELINE_PLAN.md`** (T1 read-only timeline
+view → T2 timing knobs → T3 steps/next() sequencing → T4 custom sequences; not a Loopic
+clone, never a creation surface). Recommended order: W1 → T1 → T2 → W2/W3 → T3.
 
 ### Era 7 — Nightly automation + the auto-generated graphics library (committed direction, unscheduled)
 Binding plan: **`docs/NIGHTLY_AUTOMATION_PLAN.md`**. The site continuously generates and (eventually)
@@ -305,6 +646,51 @@ read-only scheduled cloud agent. Not yet built — see the plan doc for the veri
 - [x] SPX Starter + Advanced/Pack export with validation gate
 - [x] OGraf export target + manifest validator (see `.claude/skills/ograf-expert`)
 - [x] CasparCG export target (self-contained single file + XML data shim)
+- [x] **HTML overlay export (2026-07-08)** — one self-contained autoplay .html for plain browser
+      sources (OBS Browser Source, vMix Web Browser input, anything that renders a web page):
+      fills fields on load (Data-panel values baked at export, SPX-definition defaults as
+      fallback) then play(); ships the BroadcastChannel receiver + controlpanel.html (OBS custom
+      dock workflow documented) and honors the 5.3 remote-control block. Shared single-file
+      composer extracted (`export/selfContained.ts`, reused by CasparCG). E2E: loads the exported
+      file with zero outside calls and asserts the baked value + settled opacity.
+- [x] **Export research (2026-07-08)** — `docs/EXPORT_TARGETS_RESEARCH.md`: **H2R Graphics** is a
+      HIGH-priority small adapter (its Custom HTML type calls our exact `play()`/`update(json)`
+      contract; fields declared via a GDD script block we can generate from DataFields);
+      **LiveOS** is likely free via our existing OGraf export (OGraf demoed at NAB 2026; else a
+      templates.json adapter); **Singular.Live / Flowics / uno** are closed composers — not
+      ingest targets, interop at the production layer.
+- [x] **H2R Graphics export target (2026-07-08)** — self-contained .html for H2R's Custom HTML
+      graphic type: embedded GDD block (`application/json+gdd`, properties keyed by element id
+      from the SPX DataFields) becomes H2R's editable inputs; a marked toggle shim converts
+      H2R's play()-both-ways convention into the template's play()/stop() pair. E2E drives it
+      exactly like H2R (update json string → toggle on → toggle off). 6 export targets.
+      **Real-H2R fix (2026-07-08):** the GDD `<script>` needs `name="graphics-data-definition"`
+      — without it H2R silently shows no editable fields (found by the user importing into a
+      real H2R install; verified against H2R's own Loopic-exported sample). Also dropped the
+      unrecognized `file-path` gddType (filelist → plain single-line path input). E2E now pins
+      the `name` attribute. **Live-confirmed in the real H2R app (2026-07-08): fields render
+      and text edits work.**
+- [x] **LiveOS export target (2026-07-09)** — NetOn.Live confirms the LiveOS HTML5 graphics
+      engine is OGraf-compliant (any OGraf template imports and plays directly), so the
+      target (`export/targets/liveos.ts`, registry id `liveos`) reuses the OGraf package
+      builder (`addOgrafPackage`, extracted in `targets/ograf.ts`) and wraps it with
+      LiveOS-specific install steps + success message. E2E pins the LiveOS and OGraf
+      exports to byte-identical graphic.mjs/manifest so the targets can never drift; the
+      driven OGraf contract test covers the shared module. Loopic's legacy `templates.json`
+      ingest stays unbuilt (schema not public — see EXPORT_TARGETS_RESEARCH.md). Still to
+      do: confirm against a real LiveOS install, like H2R was.
+- [x] **Video & image rendering (2026-07-12)** — export any graphic as finished MEDIA from the
+      Export tab: MP4 / transparent WebM / transparent PNG still / PNG-sequence ZIP / ProRes
+      4444 MOV, rendered by Remotion driving the graphic's OWN runtime (no per-graphic
+      compositions, no rewritten animations). A virtual clock makes every frame a pure
+      function of the manifest (countdowns/marquees/count-ups render exactly as live;
+      repeat renders are byte-identical); the user picks the TOTAL duration, measured
+      animation time is preserved, and the remainder becomes hold. Local executor for
+      dev/self-host; hosted path = Vercel Sandbox (@remotion/vercel) + Blob with per-job
+      secret auth, tier quotas (ProRes/sequence sign-in-gated), the render_jobs ledger
+      (migration 0007), and a cleanup cron. Contract: `src/render/CLAUDE.md` +
+      `docs/RENDER.md`. Still to do: live-verify the sandbox path on a real deployment
+      (needs the Blob store + env vars), like H2R was.
 - [ ] Data-driven/live content architecture (ticker/scoreboard controlled from a backend) — later
 
 ### Quality bar (always-on)

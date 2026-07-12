@@ -20,7 +20,7 @@ async function create(page: Page, categoryName: string, variantName: string) {
 }
 
 test('offline: no community affordances anywhere', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await create(page, 'Lower thirds', 'Hairline');
 
   // No Community or Moderate buttons in the topbar.
@@ -35,7 +35,7 @@ test('offline: no community affordances anywhere', async ({ page }) => {
 });
 
 test('the publish gate passes a real template and blocks an unsafe one', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app');
   await create(page, 'Lower thirds', 'Hairline');
 
   const result = await page.evaluate(async () => {

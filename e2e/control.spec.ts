@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 // "0 - 0"; a genuine number field, added below, gets the stepper.)
 
 async function createScoreboard(page: Page) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Scoreboards' }).click();
@@ -30,7 +30,7 @@ test('control tab live-drives the preview from a field control', async ({ page }
   // The control panel's own Play button plays the graphic out.
   await page.locator('.panel-body').getByRole('button', { name: '▶ Play' }).click();
   await expect
-    .poll(async () => frame.locator('.sb').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => frame.locator('.scoreboard').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 });
 
@@ -71,7 +71,7 @@ test('export bundles controlpanel.html + injects the receiver into index.html', 
 });
 
 async function createHairline(page: Page) {
-  await page.goto('/');
+  await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
@@ -162,7 +162,7 @@ test('round-trip: the exported control panel drives the exported graphic over th
   // The graphic reacted over the channel.
   await expect(graphic.locator('#f1')).toHaveText('7');
   await expect
-    .poll(async () => graphic.locator('.sb').evaluate((el) => getComputedStyle(el).opacity))
+    .poll(async () => graphic.locator('.scoreboard').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 
   await panel.close();

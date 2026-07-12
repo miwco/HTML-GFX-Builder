@@ -17,6 +17,7 @@ import {
   computeMaxTextWidth,
   computeScale,
   documentHtml,
+  maxTextWidthCss,
   resetCanvasCss,
   resolveHeadingFont,
   rootVarsCss,
@@ -24,6 +25,8 @@ import {
   zoneCssText,
 } from './base';
 import { presetById, type PresetConfig } from '../lowerThirds/animPresets';
+import { importAnimData } from '../../blocks/animImport';
+import { replaceRegionWithAnimData } from './animRuntime';
 
 export interface StandardDesign {
   /** Inner HTML of the .<prefix> root (accent + box with masked lines). */
@@ -43,6 +46,13 @@ export interface StandardDesign {
    * The wizard's steps flag is then ignored for this variant.
    */
   disableSteps?: boolean;
+  /**
+   * Extra runtime JS the design owns (e.g. a live clock painter). Emitted BEFORE the
+   * marked ANIMATION region — same doctrine as infographics — so the Motion panel can
+   * never rewrite it. Any load-time DOM work in it must use the DOM-ready guard
+   * (template.js loads in <head> in exported packages).
+   */
+  runtimeExtraJs?: string;
 }
 
 export interface StandardMeta {
@@ -54,12 +64,30 @@ export interface StandardMeta {
 
 export interface CategorySpec {
   type: TemplateType;
-  /** Class prefix for the structure contract ('l3', 'card', …). */
+  /** Class prefix for the structure contract ('lower-third', 'info-card', …). */
   prefix: string;
   /** One-line body comment describing the root element. */
   rootComment: string;
   /** The auto-fit width cap for this category (cards may be wider than straps). */
   maxTextWidth?: (res: Resolution) => number;
+  /** Timeline v2: emit the marked region as the NOACG_ANIM data block + interpreter
+   *  instead of legacy choreography — categories flip one by one (lower thirds first).
+   *  The preset still authors the motion; the parity-proven importer converts its emit. */
+  dataRegion?: boolean;
+}
+
+/**
+ * Timeline v2: convert a freshly assembled template's legacy ANIMATION region into the
+ * NOACG_ANIM data block + interpreter (the golden parity harness pins the two as
+ * identical). Only the marked region changes — category-owned runtime around it (score
+ * pops, clock painters) is untouched. A conversion failure keeps the legacy emit:
+ * never a broken template.
+ */
+export function convertToDataRegion(template: SpxTemplate): SpxTemplate {
+  const data = importAnimData(template);
+  const converted = data ? replaceRegionWithAnimData(template.js, data) : null;
+  if (converted) template.js = converted;
+  return template;
 }
 
 /** Class name for the Nth line of a category (0 = heading/name, 1 = title/body, 2+ = extra). */
@@ -121,7 +149,7 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 /* ── Auto-fit: the panel hugs its text and wraps instead of overflowing. ── */
 .${p}-box {
   width: fit-content;              /* the panel hugs the text */
-  max-width: ${maxTextWidth}px;              /* never wider than this — text wraps instead */
+  max-width: ${maxTextWidthCss(o.resolution, maxTextWidth)};  /* the wrap cap — follows --scale, stops at the safe area */
   will-change: transform, opacity; /* hint the browser: this element animates */
 }
 .${p}-mask {
@@ -150,9 +178,12 @@ ${design.css}
     easeOut: ease.easeOut,
   };
 
-  const js = runtimeJs(meta.name, preset.emit(presetCfg));
+  // Design-owned runtime (e.g. a live clock) lives OUTSIDE the marked ANIMATION region —
+  // before it — so preset/steps swaps in the Motion panel can never rewrite it.
+  const extraJs = design.runtimeExtraJs?.trim();
+  const js = runtimeJs(meta.name, extraJs ? `${extraJs}\n\n${preset.emit(presetCfg)}` : preset.emit(presetCfg));
 
-  return {
+  const template: SpxTemplate = {
     name: meta.name,
     type: cat.type,
     resolution: o.resolution,
@@ -172,6 +203,9 @@ ${design.css}
       styles: {},
     })),
   };
+
+  // Timeline v2 flip: categories convert one by one (see convertToDataRegion above).
+  return cat.dataRegion ? convertToDataRegion(template) : template;
 }
 
 /** The authoring factory: a category gets its own defineVariant with everything wired. */

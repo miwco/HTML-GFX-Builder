@@ -1,6 +1,6 @@
 // sb01 "Match Strip" - the sport scoreboard, sibling of lt05 (Angle Slab) / lt06 (Split Bar).
 // Same family DNA: one dark zero-radius slab with the -8deg forward lean painted on a
-// ::before layer (presets tween .sb-box itself - snap-stinger even zeroes its skewX, so the
+// ::before layer (presets tween .scoreboard-box itself - snap-stinger even zeroes its skewX, so the
 // lean must live where no preset can flatten it), a chunky 10px accent edge fused to the
 // slab's left side, and condensed heavy caps. The two scores sit on solid accent chips whose
 // lean is likewise painted on a ::before of a never-animated wrapper - the figures inside
@@ -20,7 +20,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
     maxLines: 1,
     suggestedLines: [{ title: 'Team A', sample: 'HOME' }],
     hasLogoSlot: false,
-    animationPresets: ['snap-stinger', 'slide-fade', 'mask-wipe'],
+    animationPresets: ['snap-stinger', 'slide-fade', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',
     defaultZone: 'top-center',
@@ -35,34 +35,34 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
     uicolor: '5',
   },
   () => ({
-    // Structure: the strip (.sb-box) holds the accent edge, team group A, the colon divider,
+    // Structure: the strip (.scoreboard-box) holds the accent edge, team group A, the colon divider,
     // and team group B. Group B keeps the contract's DOM order (name f2, then score f3) but
     // renders row-reversed so both chips meet in the middle around the colon. Each score chip
     // is a WRAPPER around its mask: the wrapper paints the leaning accent slab on ::before,
-    // and no preset ever animates a wrapper - only .sb-box and the #fN spans move.
+    // and no preset ever animates a wrapper - only .scoreboard-box and the #fN spans move.
     html: `    <!-- Match Strip: one leaning slab - TEAM A | score : score | TEAM B. -->
-    <div class="sb-box">
+    <div class="scoreboard-box">
       <!-- The accent edge - rides inside the box so every preset moves it with the slab. -->
-      <div class="sb-accent"></div>
+      <div class="scoreboard-accent"></div>
       <!-- Team group A: name, then the score chip. -->
-      <div class="sb-group">
-        <div class="sb-mask sb-team-mask"><span id="f0" class="sb-team">HOME</span></div>
-        <div class="sb-chip">
-          <div class="sb-mask"><span id="f1" class="sb-score">0</span></div>
+      <div class="scoreboard-group">
+        <div class="scoreboard-mask scoreboard-team-mask"><span id="f0" class="scoreboard-team">HOME</span></div>
+        <div class="scoreboard-chip">
+          <div class="scoreboard-mask"><span id="f1" class="scoreboard-score">0</span></div>
         </div>
       </div>
       <!-- The divider: a heavy accent colon between the two chips. -->
-      <div class="sb-colon">:</div>
+      <div class="scoreboard-colon">:</div>
       <!-- Team group B: same DOM order as A (name f2, score f3), mirrored visually. -->
-      <div class="sb-group sb-group-b">
-        <div class="sb-mask sb-team-mask"><span id="f2" class="sb-team">AWAY</span></div>
-        <div class="sb-chip">
-          <div class="sb-mask"><span id="f3" class="sb-score">0</span></div>
+      <div class="scoreboard-group scoreboard-group-b">
+        <div class="scoreboard-mask scoreboard-team-mask"><span id="f2" class="scoreboard-team">AWAY</span></div>
+        <div class="scoreboard-chip">
+          <div class="scoreboard-mask"><span id="f3" class="scoreboard-score">0</span></div>
         </div>
       </div>
     </div>`,
     css: `/* The strip: presets animate THIS element, so it carries no lean of its own. */
-.sb-box {
+.scoreboard-box {
   position: relative;              /* anchors the painted slab (::before) and the accent edge */
   display: flex;                   /* names, chips and colon in one row */
   align-items: center;             /* everything shares the strip's center line */
@@ -71,9 +71,9 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 }
 
 /* The painted slab: the sport lean lives HERE, on a background layer no preset ever tweens.
-   snap-stinger animates .sb-box skewX -10 -> 0; keeping the design lean on this pseudo-layer
+   snap-stinger animates .scoreboard-box skewX -10 -> 0; keeping the design lean on this pseudo-layer
    means that inline skewX(0) can never flatten the slab. */
-.sb-box::before {
+.scoreboard-box::before {
   content: '';                     /* pseudo-elements render only with content set */
   position: absolute;              /* fills the box exactly ... */
   inset: 0;                        /* ... edge to edge */
@@ -84,9 +84,9 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 }
 
 /* The accent: a chunky vertical slab fused to the painted slab's left edge (as in lt05).
-   The element itself stays transform-free — presets may tween .sb-accent (line-reveal
+   The element itself stays transform-free — presets may tween .scoreboard-accent (line-reveal
    scales it), so the family lean is painted on its ::after layer, out of GSAP's reach. */
-.sb-accent {
+.scoreboard-accent {
   position: absolute;              /* pinned over the slab's left edge ... */
   left: 0;                         /* ... flush with the box's left side */
   top: 0;                          /* full height, top ... */
@@ -95,7 +95,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 }
 
 /* The accent's paint: color and lean live on the pseudo-layer no preset ever tweens. */
-.sb-accent::after {
+.scoreboard-accent::after {
   content: '';                     /* pseudo-elements render only with content set */
   position: absolute;              /* fills the accent element exactly ... */
   inset: 0;                        /* ... edge to edge */
@@ -104,7 +104,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 }
 
 /* One team group: the name and its score chip, reading as a unit. */
-.sb-group {
+.scoreboard-group {
   display: flex;                   /* name + chip side by side */
   align-items: center;             /* both sit on the strip's center line */
   gap: calc(22px * var(--scale));  /* air between the name and its chip */
@@ -113,17 +113,17 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 
 /* Group B mirrors: DOM stays name-then-score (the contract), display flips so the
    chip sits toward the colon and the name faces outward - a symmetrical strip. */
-.sb-group-b {
+.scoreboard-group-b {
   flex-direction: row-reverse;     /* score chip first, name last (visually) */
 }
 
 /* The team name mask: allowed to give up width so long names wrap inside the strip. */
-.sb-team-mask {
+.scoreboard-team-mask {
   min-width: 0;                    /* flex items refuse to shrink without this */
 }
 
 /* The team name: condensed heavy caps - the family voice. */
-.sb-team {
+.scoreboard-team {
   font-size: calc(40px * var(--scale));  /* headline scale, a step under the scores */
   font-weight: 700;                /* maximum punch */
   line-height: 1.1;                /* tight - big caps need little leading */
@@ -133,7 +133,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 }
 
 /* The score chip: a wrapper no preset ever animates - safe home for the painted lean. */
-.sb-chip {
+.scoreboard-chip {
   position: relative;              /* anchors the leaning accent slab (::before) */
   display: flex;                   /* centers the figure ... */
   align-items: center;             /* ... vertically ... */
@@ -145,7 +145,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 
 /* The chip's paint: solid accent, leaning with the slab. Lives on the wrapper's ::before
    (not on the mask or the #fN span) so reveals and score-pops never disturb the lean. */
-.sb-chip::before {
+.scoreboard-chip::before {
   content: '';                     /* pseudo-elements render only with content set */
   position: absolute;              /* fills the chip exactly ... */
   inset: 0;                        /* ... edge to edge */
@@ -155,7 +155,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 }
 
 /* The score figure: the heaviest thing on the strip, in dark ink on the bright chip. */
-.sb-score {
+.scoreboard-score {
   font-size: calc(50px * var(--scale));  /* the loudest scale - scores lead a scoreboard */
   font-weight: 700;                /* heavy condensed figures */
   line-height: 1;                  /* the figure fills its chip, no dead leading */
@@ -164,7 +164,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 }
 
 /* The divider: a heavy accent colon - the accent's only echo on the dark slab itself. */
-.sb-colon {
+.scoreboard-colon {
   font-size: calc(40px * var(--scale));  /* matches the team names */
   font-weight: 700;                /* solid, not a hairline */
   line-height: 1;                  /* sits tight on the center line */

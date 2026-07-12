@@ -2,7 +2,12 @@
 
 **NoaCG Studio** is a modern, premium broadcast graphics builder. Create on-air lower thirds,
 tickers, scoreboards, info cards and more by choosing — template → fields → style → animation, with
-a live preview at every step — then export working **SPX**, **CasparCG**, and **OGraf** templates.
+a live preview at every step — then run them anywhere: an **HTML overlay for OBS / vMix browser
+sources**, or working **SPX**, **CasparCG**, and **OGraf** templates. Free, and free to try —
+creating, previewing, and exporting need no account.
+
+**Live app: [noacg-studio.vercel.app](https://noacg-studio.vercel.app)** — no account needed to
+create, preview, or export.
 
 Two audiences are first-class: a **non-technical creator** who never opens the code, and a
 **professional** who drops into the always-available Monaco editor for full control. Either way the
@@ -17,7 +22,7 @@ format, see [`docs/SPX_TEMPLATE_FORMAT.md`](docs/SPX_TEMPLATE_FORMAT.md).
 
 ```bash
 npm install
-npm run dev      # http://localhost:5174
+npm run dev      # http://localhost:5174 (public landing at /, the editor at /app; a git worktree gets its own port — scripts/dev-port.mjs prints it)
 npm run build    # typecheck + production build to dist/
 ```
 
@@ -30,13 +35,15 @@ npm run build    # typecheck + production build to dist/
   and its export**, size, 9-zone safe-area position) → **Animation** (signature GSAP presets,
   speed, **12 easing presets**, multi-step reveal), with a persistent live preview (Play/Stop) at
   every step. Aspect ratio (16:9 / 9:16 / 1:1), resolution, and fps chosen along the way.
-- **Template catalog (31 designs, 10 categories)** — **10 lower thirds** (4 minimal · 3 sport ·
-  3 glass), **3 info cards**, **4 end-credit formats** (stacked roll, two-column roll, one-pager
-  swap, horizontal crawl — each ending with a logo + year block, all driven by a simple
-  `Role | Name` text field), **3 tickers** (seamless marquees + an item flip), **3 starting-soon
+- **Template catalog (43 designs, 10 categories)** — **13 lower thirds** (3 NoaCG house ·
+  4 minimal · 3 sport · 3 glass), **5 info cards**, **4 end-credit formats** (stacked roll,
+  two-column roll, one-pager swap, horizontal crawl — each ending with a logo + year block, all
+  driven by a simple `Role | Name` text field), **6 tickers** (seamless marquees incl. a
+  live-clock news wire + a sign-colored markets strip, and an item flip), **3 starting-soon
   holds** with a live countdown, **2 game-show timers**, **2 scoreboards** (scores pop when they
-  change on air), **2 infographics** (a count-up stat and animated bars), a **corner bug** with
-  a logo slot, and a **quiz card** whose correct answer is revealed on Next/Continue. Every
+  change on air), **6 infographics** (count-up stats, animated bars, poll rings, timing towers,
+  schedules), **2 corner bugs** (logo slot; the house one has a live ticking clock), and a
+  **quiz card** whose correct answer is revealed on Next/Continue. Every
   category ships designs tuned to read as **siblings** of their lower-third counterparts, so a
   project's graphics form one package.
 - **Broadcast packages** — the app remembers your project's **brand** (style family, palette

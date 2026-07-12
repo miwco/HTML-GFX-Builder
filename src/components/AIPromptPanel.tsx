@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { getAiProvider } from '../ai';
 import { aiConfigured } from '../ai/settings';
+import { useAuthState } from './auth/useAuthState';
+import SignInPrompt from './auth/SignInPrompt';
 import { useTemplateStore } from '../store/templateStore';
 import { validateTemplate, type ValidationResult } from '../validation/validateTemplate';
 import type { TemplateChange } from '../model/types';
@@ -16,11 +18,23 @@ export default function AIPromptPanel() {
   const template = useTemplateStore((s) => s.template);
   const activeTab = useTemplateStore((s) => s.activeTab);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
+  const { needsSignIn } = useAuthState();
 
   const [prompt, setPrompt] = useState('');
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<Pending>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
+
+  // Hosted mode, no account: AI is an account feature (creating/exporting never is). The offline
+  // build has no backend, so needsSignIn is always false there and nothing changes.
+  if (needsSignIn) {
+    return (
+      <SignInPrompt
+        feature="AI assistant"
+        reason="Sign in to use AI — generate, modify, fix, and explain graphics with Claude."
+      />
+    );
+  }
 
   const runChange = async (fn: () => Promise<TemplateChange>) => {
     setBusy(true);
