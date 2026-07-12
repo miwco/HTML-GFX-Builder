@@ -69,13 +69,16 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   templates the old parser cannot read stay hand-crafted - the importer never guesses.
 - **presetApply.ts** - presets as keyframe generators DERIVED from their legacy emitters
   through the parity-proven importer (emit the preset's region against a scratch copy of this
-  template, convert it, lift out the tracks - one choreography source, zero taste drift). A
-  preset replaces ONLY the properties its donor animates in the targeted scope (a manually
-  keyed rotation survives a Slide In); 'in' is layer-relative (it targets the step where THAT
-  layer becomes active), 'out' always targets the final step, 'both' writes both -
-  independently editable after. Scope 'all' = the whole graphic adopting the donor's full
-  choreography, step duration, and ease (the classic whole-preset swap, as data) - skipping
-  press-revealed layers, whose entrance belongs to their » press.
+  template, convert it, lift out the tracks - one choreography source, zero taste drift).
+  Applying a preset is a CLEAN SWAP (ratified): the targeted layer's tracks in that direction's
+  step are cleared first, then the donor's are written - switching presets never leaves the
+  previous preset's (or a hand-keyed) track behind. The Inspector passes an easing (resolved to
+  a GSAP pair, stamped onto the written keyframes so it never disturbs a shared step) and an
+  optional per-direction duration (sets the target step's length and scales the donor keyframes
+  to fit). 'in' is layer-relative (it targets the step where THAT layer becomes active), 'out'
+  always targets the final step, 'both' writes both - independently editable after. Scope 'all'
+  = the whole graphic adopting the donor's full choreography and the chosen/donor step duration
+  and ease - skipping press-revealed layers, whose entrance belongs to their » press.
 
 ## The legacy patchers (animPatch / stepAssign / timelineModel)
 

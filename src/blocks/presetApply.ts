@@ -4,14 +4,18 @@
 // convert it, and lift out the entrance/exit tracks. One choreography source, zero taste
 // drift, and the result is ordinary editable keyframes.
 //
-// Application semantics (ratification points 6-8):
-// - a preset declares the properties it controls = the props its donor animates; applying
-//   replaces ONLY those tracks in the targeted scope — a manually keyed rotation survives
-//   a Slide In (unless the preset itself rotates);
+// Application semantics (ratified: a preset apply is a CLEAN SWAP, not a merge):
+// - applying REPLACES the targeted layer's motion in the chosen direction — the layer's
+//   tracks in that step are cleared first, so switching presets never leaves the previous
+//   preset's (or a hand-keyed) track behind. Apply is a true swap, predictable and
+//   first-class; keep hand-authored motion in the OTHER direction or on other layers;
+// - the operator picks the direction (In/Out/Both), an easing, and a duration; easing rides
+//   on the written keyframes (per-layer, so it never disturbs a shared step), duration sets
+//   the target step's length and scales the donor keyframes to fit;
 // - "In" is relative to the layer: it targets the step where THAT layer becomes active;
 // - "Out" always targets the final step; "Both" writes both, independently editable after;
 // - selecting the WHOLE GRAPHIC applies the preset's full choreography (every donor layer),
-//   adopting the donor's step duration and ease — the classic whole-preset swap, as data.
+//   adopting the chosen (or the donor's) step duration and ease — the whole-preset swap.
 
 import type { SpxTemplate } from '../model/types';
 import type { AnimPresetId } from '../model/wizard';
@@ -51,38 +55,91 @@ export function presetDonor(
 
 export type PresetScope = 'all' | string; // 'all' = the whole graphic, else one selector
 
+/** Optional per-direction duration overrides (in EFFECTIVE seconds — what the operator
+ *  sees; stored times are speed-relative, so we multiply by data.speed). */
+export interface PresetDurations {
+  /** Entrance length; targets the step where the scope becomes active. */
+  inDuration?: number;
+  /** Exit length; targets the final (Out) step. */
+  outDuration?: number;
+}
+
+/**
+ * Write a donor's tracks onto one layer of a target step as a CLEAN SWAP: the layer's
+ * prior tracks in that step are cleared first, so a new preset never blends with the one
+ * it replaces (ratification: applying a preset replaces the element's motion in that
+ * direction). `refDurStored` is the donor phase's designed length (stored clock) used to
+ * scale the keyframes when the operator picks a duration; returns the step's new stored
+ * length so 'all'-scope can settle one shared duration for the whole phase.
+ */
+function swapLayerTracks(
+  targetStep: AnimData['steps'][number],
+  selector: string,
+  tracks: import('./animData').AnimLayerTracks,
+  refDurStored: number,
+  chosenEffSec: number | undefined,
+  speed: number,
+  stepEase: string,
+): number {
+  const layer: import('./animData').AnimLayerTracks = {};
+  targetStep.layers[selector] = layer; // clean swap — drop whatever this step held for the layer
+  let maxT = 0;
+  for (const [prop, kfs] of Object.entries(tracks)) {
+    // Carry the phase's easing onto each keyframe (ease INTO it). The donor's easing lives
+    // on its step; stamping it here keeps a single-layer apply's easing choice intact
+    // without touching the other layers that share the target step. Keyframes that already
+    // carry their own ease (multi-segment presets) are left as-authored.
+    layer[prop] = kfs.map((k) => (k.ease ? { ...k } : { ...k, ease: stepEase }));
+    for (const k of kfs) maxT = Math.max(maxT, k.time);
+  }
+  if (chosenEffSec !== undefined && Number.isFinite(chosenEffSec) && chosenEffSec > 0 && refDurStored > 0) {
+    const storedD = round(chosenEffSec * speed);
+    const scale = storedD / refDurStored;
+    for (const prop of Object.keys(layer)) {
+      layer[prop] = layer[prop].map((k) => ({ ...k, time: round(k.time * scale) }));
+    }
+    return storedD;
+  }
+  return maxT;
+}
+
 /**
  * Apply a donor's keyframes onto the data. Pure; returns new data (or null when the donor
- * offers nothing for the scope). Undeclared properties and other layers are untouched.
+ * offers nothing for the scope). The targeted layer's motion in each direction is REPLACED
+ * (a clean swap), so switching presets never leaves the previous preset's tracks behind.
+ * Other layers and the untouched direction are left alone.
  */
 export function applyPresetData(
   data: AnimData,
   donor: AnimData,
   phase: 'in' | 'out' | 'both',
   scope: PresetScope,
+  durations?: PresetDurations,
 ): AnimData | null {
   const next = JSON.parse(JSON.stringify(data)) as AnimData;
+  const speed = data.speed || 1;
   const phases: ('in' | 'out')[] = phase === 'both' ? ['in', 'out'] : [phase];
   let touched = false;
 
   for (const ph of phases) {
     const donorStep = ph === 'in' ? donor.steps[0] : donor.steps[donor.steps.length - 1];
+    const refDur = donorStep.duration;
+    const chosen = ph === 'in' ? durations?.inDuration : durations?.outDuration;
 
     if (scope === 'all') {
+      let longest = 0;
       for (const [selector, tracks] of Object.entries(donorStep.layers)) {
         // A press-revealed layer's entrance belongs to its » press, not to ▶ Play —
         // exactly the classic rule (assigned parts drop from the intro choreography).
         if (ph === 'in' && layerPress(next, selector) !== -1) continue;
         const targetStep = ph === 'in' ? next.steps[0] : next.steps[next.steps.length - 1];
-        const layer = (targetStep.layers[selector] ??= {});
-        for (const [prop, kfs] of Object.entries(tracks)) {
-          layer[prop] = kfs.map((k) => ({ ...k }));
-          touched = true;
-        }
+        longest = Math.max(longest, swapLayerTracks(targetStep, selector, tracks, refDur, chosen, speed, donorStep.ease));
+        touched = true;
       }
-      // The whole-graphic swap adopts the preset's designed pace for the phase.
+      // The whole-graphic swap adopts one pace for the phase: the operator's choice, else
+      // the preset's designed length. Easing rides on the donor's keyframes/step ease.
       const t = ph === 'in' ? next.steps[0] : next.steps[next.steps.length - 1];
-      t.duration = donorStep.duration;
+      t.duration = chosen !== undefined && chosen > 0 ? round(chosen * speed) : Math.max(donorStep.duration, longest);
       t.ease = donorStep.ease;
     } else {
       // One layer: its own donor tracks when the donor animates it; otherwise the donor's
@@ -95,14 +152,11 @@ export function applyPresetData(
       if (!tracks) continue;
       const targetIdx = ph === 'out' ? next.steps.length - 1 : activationStep(next, scope);
       const targetStep = next.steps[targetIdx];
-      const layer = (targetStep.layers[scope] ??= {});
-      for (const [prop, kfs] of Object.entries(tracks)) {
-        layer[prop] = kfs.map((k) => ({ ...k }));
-        touched = true;
-      }
-      // The step stretches if the preset's motion outlasts it (never silently truncates).
-      const maxT = Math.max(...Object.values(layer).flat().map((k) => k.time));
-      if (targetStep.duration < maxT) targetStep.duration = round(maxT);
+      const written = swapLayerTracks(targetStep, scope, tracks, refDur, chosen, speed, donorStep.ease);
+      touched = true;
+      // Honour the chosen duration; otherwise stretch so the motion never truncates.
+      if (chosen !== undefined && chosen > 0) targetStep.duration = round(chosen * speed);
+      else if (targetStep.duration < written) targetStep.duration = round(written);
     }
   }
   return touched ? next : null;

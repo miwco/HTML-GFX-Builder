@@ -183,12 +183,14 @@ test('v2 keyframes: dragging a diamond retimes it; Delete removes it; undo resto
   expect(await times()).toEqual(before);
 });
 
-test('v2 presets: In and Out apply independently; undeclared manual keyframes survive', async ({ page }) => {
+test('v2 presets: In and Out apply independently; applying a preset cleanly swaps the targeted motion', async ({ page }) => {
   test.setTimeout(60_000);
   await createHairline(page);
   await page.getByTestId('toggle-inspector').click();
 
-  // Give #f0 a MANUAL rotation keyframe — no preset declares rotation, so it must survive.
+  // Give #f0 a MANUAL rotation keyframe. Ratified interaction model: applying a preset is a
+  // CLEAN SWAP of the targeted layer's motion in that direction, so this rotation is replaced
+  // by the preset's #f0 entrance (it does not blend or survive).
   await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
   await page.getByTestId('inspector-kf-rotation').click();
   await page.waitForTimeout(400);
@@ -208,8 +210,9 @@ test('v2 presets: In and Out apply independently; undeclared manual keyframes su
   expect(Object.keys(data!.steps[0].layers['.lower-third-box'])).toContain('scale');
   // …the exit is untouched (line-reveal's yPercent drop, no scale)…
   expect(data!.steps[1].layers['.lower-third-box']?.scale).toBeUndefined();
-  // …and the manual rotation keyframe survived (undeclared by the preset).
-  expect(data!.steps[0].layers['#f0'].rotation).toBeDefined();
+  // …and #f0's motion is now the preset's entrance — the manual rotation was cleanly swapped out.
+  expect(data!.steps[0].layers['#f0'].rotation).toBeUndefined();
+  expect(Object.keys(data!.steps[0].layers['#f0']).length).toBeGreaterThan(0);
 
   // Apply Blur to the Out only — the In keeps Pop spring.
   await page.getByTestId('inspector-preset-select').selectOption('blur-in');
@@ -234,12 +237,14 @@ test('v2 presets: a single layer takes a preset into ITS activation step (In is 
   await page.waitForTimeout(650);
   const data = await animData(page);
   // Blur-in's LINE choreography (a y + opacity rise — the blur filter is the box's move)
-  // landed in STEP 2, the layer's reveal step — not the entrance. The reveal's own
-  // yPercent track survives untouched (undeclared by the preset's line motion).
+  // landed in STEP 2, the layer's reveal step — not the entrance. The layer still reveals
+  // there, but its entrance motion is now the preset's: a clean swap replaces the reveal
+  // channel's default mask (yPercent) with blur-in's y + opacity rise.
   expect(data!.steps[1].reveals).toContain('#f1');
   expect(Object.keys(data!.steps[1].layers['#f1'])).toEqual(
-    expect.arrayContaining(['y', 'opacity', 'yPercent']),
+    expect.arrayContaining(['y', 'opacity']),
   );
+  expect(data!.steps[1].layers['#f1']?.yPercent).toBeUndefined();
   expect(data!.steps[0].layers['#f1']?.y).toBeUndefined();
   expect(data!.steps[0].layers['#f1']?.opacity).toBeUndefined();
 });

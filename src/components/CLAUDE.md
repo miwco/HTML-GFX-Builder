@@ -105,7 +105,9 @@ in src/blocks/CLAUDE.md.
   drag-scrub the value, blur is the one non-transform (its keyframes live on `filter` as
   'blur(Npx)'), and arming BOTH Position X and Y also unlocks the canvas position-keyframe
   drag (see CanvasInteraction). The Animations tab names which steps move the layer and holds the preset
-  picker (preset + In/Out/Both + Apply - blocks/presetApply.ts). Legacy templates get a
+  picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
+  blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
+  blends with the previous preset), and re-parks the preview at the playhead. Legacy templates get a
   read-only shell (the timeline's convert chip arms editing). Its column lives in both
   desktop layout modes with a splitter + the topbar ◨ Inspector toggle (layout prefs
   inspectorRatio/inspectorCollapsed); it defaults open only on wide screens (>= 1500 px),

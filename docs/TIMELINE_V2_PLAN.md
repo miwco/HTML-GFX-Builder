@@ -289,14 +289,19 @@ property's diamonds on the row. No After Effects-style per-property subrows in v
    animation targets the step where THAT layer becomes active — its `reveals` step, or
    step 1 for always-active layers. "Out" always targets the final step. So for a Score
    revealed in step 3, Slide In writes step 3 keyframes.
-8. **Presets are keyframe generators with a declared property set** *(ratification point
-   7)*: each preset declares the properties it controls (slide-fade: y/yPercent + opacity;
-   pop: scale + y + opacity; blur: filter + opacity...). Applying a preset replaces
-   keyframes ONLY for its declared properties within its target scope (the layer's In
-   step, the Out step, or Both) — a manually keyframed rotation survives a Slide In.
-   In and Out are disjoint data, so one can never overwrite the other; Both writes both,
-   independently editable after. Direction resolves per phase (Slide Left: In = enter
-   from the left, Out = exit to the left).
+8. **Presets are keyframe generators applied as a CLEAN SWAP** *(ratification point 7,
+   amended 2026-07-12)*: each preset declares the properties it controls (slide-fade:
+   y/yPercent + opacity; pop: scale + y + opacity; blur: filter + opacity...). Applying a
+   preset **clears the targeted layer's tracks in that direction's step and writes the
+   preset's** — a true swap, so switching presets never blends, and a hand-keyed rotation
+   in that same direction is replaced (keep hand-authored motion in the other direction or
+   on another layer). The operator also picks an **easing** (stamped onto the written
+   keyframes, so it never disturbs a shared step) and a **per-direction duration** (sets the
+   target step's length and scales the donor keyframes to fit). In and Out are disjoint data,
+   so one can never overwrite the other; Both writes both, independently editable after.
+   Direction resolves per phase (Slide Left: In = enter from the left, Out = exit to the left).
+   *(This supersedes the original "a manually keyframed rotation survives a Slide In" rule:
+   predictability of the preset swap was chosen over preserving undeclared manual tracks.)*
 9. **Automatic keyframes use the armed-property convention.** A property with ≥ 1 keyframe
    on the selected layer is *armed*; editing its value in the Inspector writes/updates the
    keyframe at the playhead. Un-armed edits change the design/base value (a Style-panel-
