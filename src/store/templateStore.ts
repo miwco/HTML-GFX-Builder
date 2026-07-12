@@ -93,8 +93,14 @@ interface TemplateState {
   scrubCommand: { phase: string; time: number; nonce: number } | null;
   /** The selected element (Era 6 shared selection): a TemplatePart selector, or null.
    *  Canvas and timeline highlight the SAME element through this. Editor UI state only —
-   *  it is never written into the template and takes no history snapshot. */
+   *  it is never written into the template and takes no history snapshot.
+   *  With multi-selection this is the PRIMARY (first) of selectedParts — every selection
+   *  setter keeps the two in sync so single-selection consumers just work. */
   selectedPart: string | null;
+  /** The FULL selection, ordered; selectedPart === selectedParts[0] ?? null. The
+   *  interaction-model contract (docs/TIMELINE_INTERACTION_MODEL.md): plain click
+   *  replaces, shift-click toggles, empty-canvas drag lassos. UI state only. */
+  selectedParts: string[];
   /** The step timeline's parked playhead (step index + local time in effective seconds).
    *  The Inspector stamps keyframes here. UI state only — no history, never in code. */
   playhead: { step: number; t: number } | null;
@@ -126,8 +132,13 @@ interface TemplateState {
   sendControl: (action: PlayoutAction) => void;
   /** Seek the live preview's in/out/step timeline to a time (the timeline view's scrubber). */
   sendScrub: (phase: string, time: number) => void;
-  /** Select an element by its TemplatePart selector (null deselects) — see selectedPart. */
+  /** Select ONE element by its TemplatePart selector (null deselects) — replaces the
+   *  whole selection; see selectedPart/selectedParts. */
   setSelectedPart: (selector: string | null) => void;
+  /** Replace the whole selection (the lasso's setter; [] clears). */
+  setSelectedParts: (selectors: string[]) => void;
+  /** Shift-click: add the selector to the selection, or remove it when present. */
+  toggleSelectedPart: (selector: string) => void;
   /** Park the step timeline's playhead (see playhead). */
   setPlayhead: (playhead: { step: number; t: number } | null) => void;
   /** Mark a canvas gesture as started/ended (see canvasGestureActive). */
@@ -191,6 +202,7 @@ export const useTemplateStore = create<TemplateState>((set) => ({
   controlCommand: null,
   scrubCommand: null,
   selectedPart: null,
+  selectedParts: [],
   playhead: null,
   canvasGestureActive: false,
 
@@ -276,7 +288,19 @@ export const useTemplateStore = create<TemplateState>((set) => ({
 
   sendScrub: (phase, time) => set((s) => ({ scrubCommand: { phase, time, nonce: (s.scrubCommand?.nonce ?? 0) + 1 } })),
 
-  setSelectedPart: (selectedPart) => set({ selectedPart }),
+  setSelectedPart: (selectedPart) =>
+    set({ selectedPart, selectedParts: selectedPart ? [selectedPart] : [] }),
+
+  setSelectedParts: (selectedParts) =>
+    set({ selectedParts, selectedPart: selectedParts[0] ?? null }),
+
+  toggleSelectedPart: (selector) =>
+    set((s) => {
+      const selectedParts = s.selectedParts.includes(selector)
+        ? s.selectedParts.filter((x) => x !== selector)
+        : [...s.selectedParts, selector];
+      return { selectedParts, selectedPart: selectedParts[0] ?? null };
+    }),
 
   setPlayhead: (playhead) => set({ playhead }),
 

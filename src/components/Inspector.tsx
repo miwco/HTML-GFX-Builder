@@ -54,6 +54,7 @@ export default function Inspector() {
   const sendScrub = useTemplateStore((s) => s.sendScrub);
   const setPlayhead = useTemplateStore((s) => s.setPlayhead);
   const selectedPart = useTemplateStore((s) => s.selectedPart);
+  const selectedParts = useTemplateStore((s) => s.selectedParts);
   const playhead = useTemplateStore((s) => s.playhead);
   // A label drag-scrub in progress (the familiar drag-the-label-to-change-the-value).
   const scrubDrag = useRef<{ prop: string; startX: number; startValue: number; value: number } | null>(null);
@@ -174,6 +175,11 @@ export default function Inspector() {
         <span className="inspector-label" data-testid="inspector-part-label">{part.label}</span>
         <span className="inspector-kind">{KIND_LABEL[part.kind] ?? part.kind}</span>
         <code className="inspector-selector">{part.selector}</code>
+        {selectedParts.length > 1 && (
+          <span className="inspector-multi" data-testid="inspector-multi">
+            +{selectedParts.length - 1} more selected — properties show the primary
+          </span>
+        )}
       </div>
 
       <div className="inspector-tabs">

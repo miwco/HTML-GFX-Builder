@@ -1761,6 +1761,7 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   color: var(--text-dim);
 }
 .inspector-empty { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.inspector-multi { font-size: 10.5px; color: var(--text-dim); font-style: italic; }
 .inspector-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
 .inspector-tabs .tab { font-size: 11px; padding: 3px 10px; }
 .inspector-body { display: flex; flex-direction: column; gap: 2px; }
@@ -1939,6 +1940,22 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   box-shadow: 0 0 14px rgba(246, 166, 35, 0.28);
   pointer-events: none;
   z-index: 5;
+}
+/* Secondary selected elements (multi-selection): the same amber language, quieter —
+   the primary keeps the glow and the chip. */
+.canvas-selection-outline.secondary {
+  border-width: 1px;
+  border-color: rgba(246, 166, 35, 0.75);
+  box-shadow: none;
+}
+/* The lasso marquee — a drag on empty canvas selecting what it touches. */
+.canvas-lasso {
+  position: absolute;
+  border: 1px solid rgba(246, 166, 35, 0.7);
+  background: rgba(246, 166, 35, 0.07);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 6;
 }
 .canvas-hover-outline {
   position: absolute;

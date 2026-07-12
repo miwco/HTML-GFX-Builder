@@ -109,6 +109,10 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const [layerDrag, setLayerDrag] = useState<LayerDrag | null>(null);
   const layerDragRef = useRef<LayerDrag | null>(null);
   layerDragRef.current = layerDrag;
+  /** A lasso in flight: start + current corner, in canvas px. */
+  const [lasso, setLasso] = useState<{ x0: number; y0: number; x1: number; y1: number; active: boolean; additive: boolean } | null>(null);
+  const lassoRef = useRef<typeof lasso>(null);
+  lassoRef.current = lasso;
   const [editing, setEditing] = useState<EditState | null>(null);
   const [cursor, setCursor] = useState<'default' | 'grab' | 'text'>('default');
   // The root's rect (canvas px) while the pointer is over it — anchors the scale handle.
@@ -128,16 +132,23 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   // must never resize the workspace while the pointer is mid-gesture or the inline editor is
   // open — the canvas (and the edit overlay anchored to it) would shift under the user.
   useEffect(() => {
-    setCanvasGestureActive(Boolean(drag || layerDrag || scaleDrag || editing));
-  }, [drag, layerDrag, scaleDrag, editing, setCanvasGestureActive]);
+    setCanvasGestureActive(Boolean(drag || layerDrag || scaleDrag || editing || lasso));
+  }, [drag, layerDrag, scaleDrag, editing, lasso, setCanvasGestureActive]);
 
   // ── Selection model (editor UI state only — never written into the template).
-  // The selector lives in the STORE so the timeline strip highlights the same element
-  // (shared selection); everything derived from it stays local to this layer. ──
+  // The selectors live in the STORE so the timeline highlights the same elements
+  // (shared selection); everything derived from them stays local to this layer.
+  // Multi-selection follows the interaction model (docs/TIMELINE_INTERACTION_MODEL.md):
+  // plain click replaces, shift-click toggles, a drag on EMPTY canvas lassos. ──
   const selected = useTemplateStore((s) => s.selectedPart);
+  const selectedParts = useTemplateStore((s) => s.selectedParts);
   const setSelected = useTemplateStore((s) => s.setSelectedPart);
-  /** The selected element's live rect in CANVAS px (rAF-tracked below). */
+  const setSelectedParts = useTemplateStore((s) => s.setSelectedParts);
+  const toggleSelectedPart = useTemplateStore((s) => s.toggleSelectedPart);
+  /** The selected elements' live rects in CANVAS px (rAF-tracked below); the PRIMARY
+   *  (first selected) carries the chip, the rest get plain outlines. */
   const [selRect, setSelRect] = useState<CanvasRect | null>(null);
+  const [extraRects, setExtraRects] = useState<CanvasRect[]>([]);
   /** The innermost part under the pointer — the "what would a click select" preview. */
   const [hoverPart, setHoverPart] = useState<{ selector: string; label: string; rect: CanvasRect } | null>(null);
 
@@ -307,14 +318,19 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   };
 
   /** A click selects the innermost part under the point; clicking the SELECTED part again
-   *  climbs to its container (panel → whole graphic); empty canvas deselects. */
-  const selectAt = (p: { x: number; y: number }) => {
+   *  climbs to its container (panel → whole graphic); empty canvas deselects. Shift-click
+   *  (additive) toggles the innermost part's membership instead — no climbing. */
+  const selectAt = (p: { x: number; y: number }, additive = false) => {
     const chain = partChainAt(p);
     if (chain.length === 0) {
-      setSelected(null);
+      if (!additive) setSelected(null);
       return;
     }
-    const climb = chain[0].part.selector === selected && chain.length > 1;
+    if (additive) {
+      toggleSelectedPart(chain[0].part.selector);
+      return;
+    }
+    const climb = chain[0].part.selector === selected && selectedParts.length === 1 && chain.length > 1;
     setSelected(chain[climb ? 1 : 0].part.selector);
   };
 
@@ -329,10 +345,11 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   // Escape cancels an active drag (standard direct-manipulation behavior). A layer drag
   // also puts the layer back where the drag found it (the live GSAP preview moved it).
   useEffect(() => {
-    if (!drag && !layerDrag) return;
+    if (!drag && !layerDrag && !lasso) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       setDrag(null);
+      setLasso(null);
       const ld = layerDragRef.current;
       if (ld) {
         resetLayerDrag(ld);
@@ -341,41 +358,46 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [drag, layerDrag]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [drag, layerDrag, lasso]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // A code edit can remove the selected element — selection follows the registry.
+  // A code edit can remove selected elements — the selection follows the registry.
   useEffect(() => {
-    if (selected && !parts.some((p) => p.selector === selected)) setSelected(null);
-  }, [parts, selected, setSelected]);
+    if (selectedParts.length === 0) return;
+    const alive = selectedParts.filter((sel) => parts.some((p) => p.selector === sel));
+    if (alive.length !== selectedParts.length) setSelectedParts(alive);
+  }, [parts, selectedParts, setSelectedParts]);
 
-  // Track the selected element's on-screen rect. rAF on purpose: animations, preview
-  // rebuilds, and the scale handle all move the element, and the loop re-resolves the
-  // selector against whatever document the iframe currently holds.
+  // Track every selected element's on-screen rect (primary + extras). rAF on purpose:
+  // animations, preview rebuilds, and the scale handle all move the elements, and the
+  // loop re-resolves the selectors against whatever document the iframe currently holds.
   useEffect(() => {
-    if (!selected) {
+    if (selectedParts.length === 0) {
       setSelRect(null);
+      setExtraRects((prev) => (prev.length ? [] : prev));
       return;
     }
+    const near = (a: CanvasRect | null, b: CanvasRect | null) =>
+      !!a && !!b &&
+      Math.abs(a.left - b.left) < 0.5 &&
+      Math.abs(a.top - b.top) < 0.5 &&
+      Math.abs(a.width - b.width) < 0.5 &&
+      Math.abs(a.height - b.height) < 0.5;
     let raf = requestAnimationFrame(function track() {
-      const el = doc()?.querySelector<HTMLElement>(selected);
-      const r = el && el.getClientRects().length > 0 ? el.getBoundingClientRect() : null;
-      setSelRect((prev) => {
-        if (!r) return prev === null ? prev : null;
-        if (
-          prev &&
-          Math.abs(prev.left - r.left) < 0.5 &&
-          Math.abs(prev.top - r.top) < 0.5 &&
-          Math.abs(prev.width - r.width) < 0.5 &&
-          Math.abs(prev.height - r.height) < 0.5
-        ) {
-          return prev; // unchanged — no re-render churn while the graphic is at rest
-        }
-        return { left: r.left, top: r.top, width: r.width, height: r.height };
+      const d = doc();
+      const rects = selectedParts.map((sel) => {
+        const el = d?.querySelector<HTMLElement>(sel);
+        const r = el && el.getClientRects().length > 0 ? el.getBoundingClientRect() : null;
+        return r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
       });
+      setSelRect((prev) => (near(prev, rects[0]) ? prev : rects[0]));
+      const extras = rects.slice(1).filter((r): r is CanvasRect => r !== null);
+      setExtraRects((prev) =>
+        prev.length === extras.length && prev.every((p, i) => near(p, extras[i])) ? prev : extras,
+      );
       raf = requestAnimationFrame(track);
     });
     return () => cancelAnimationFrame(raf);
-  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedParts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escape deselects — but never steals the key from a drag, the inline editor (both own
   // their Escape), or a focused form field / Monaco.
@@ -383,7 +405,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     if (!selected) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (dragRef.current || editingRef.current || scaleDragRef.current || layerDragRef.current) return;
+      if (dragRef.current || editingRef.current || scaleDragRef.current || layerDragRef.current || lassoRef.current) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest?.('input, textarea, select, .monaco-editor')) return;
       setSelected(null);
@@ -418,7 +440,13 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     const el = rootEl();
     if (!el) return;
     const r = el.getBoundingClientRect();
-    if (!inRect(p, r)) return; // drags start ON the graphic only
+    if (!inRect(p, r)) {
+      // EMPTY canvas: a drag lassos (shift keeps the existing selection); a plain
+      // click still selects/deselects on release (below the threshold → selectAt).
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setLasso({ x0: p.x, y0: p.y, x1: p.x, y1: p.y, active: false, additive: e.shiftKey });
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
     setDrag({
       startX: e.clientX,
@@ -430,7 +458,38 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     });
   };
 
+  /** Lasso release: select every rendered non-root part whose rect intersects the
+   *  marquee (the root spans the whole graphic — including it would make any marquee a
+   *  whole-graphic selection). Shift adds the hits to the existing selection. */
+  const commitLasso = (ls: { x0: number; y0: number; x1: number; y1: number; additive: boolean }) => {
+    const d = doc();
+    if (!d) return;
+    const left = Math.min(ls.x0, ls.x1);
+    const top = Math.min(ls.y0, ls.y1);
+    const right = Math.max(ls.x0, ls.x1);
+    const bottom = Math.max(ls.y0, ls.y1);
+    const hits: string[] = [];
+    for (const part of parts) {
+      if (part.kind === 'root') continue;
+      const pel = d.querySelector<HTMLElement>(part.selector);
+      if (!pel || pel.getClientRects().length === 0) continue;
+      const pr = pel.getBoundingClientRect();
+      if (pr.left < right && pr.right > left && pr.top < bottom && pr.bottom > top) {
+        hits.push(part.selector);
+      }
+    }
+    setSelectedParts(ls.additive ? [...selectedParts, ...hits.filter((h) => !selectedParts.includes(h))] : hits);
+  };
+
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const ls = lassoRef.current;
+    if (ls) {
+      const p = toCanvas(e);
+      const active =
+        ls.active || Math.hypot((p.x - ls.x0) * scale, (p.y - ls.y0) * scale) > DRAG_THRESHOLD;
+      setLasso({ ...ls, x1: p.x, y1: p.y, active });
+      return;
+    }
     const ld = layerDragRef.current;
     if (ld) {
       // The selected layer follows the pointer live (a GSAP x/y set on the preview —
@@ -558,12 +617,24 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const ls = lassoRef.current;
+    if (ls) {
+      setLasso(null);
+      if (!ls.active) {
+        // A click on empty canvas (below the threshold) deselects — or shift-toggles
+        // an outside-the-root part under the point.
+        if (!editingRef.current) selectAt(toCanvas(e), e.shiftKey);
+        return;
+      }
+      commitLasso(ls);
+      return;
+    }
     const ld = layerDragRef.current;
     if (ld) {
       setLayerDrag(null);
       if (!ld.active) {
         // A click stays a click — the selection still climbs through containers.
-        if (!editingRef.current) selectAt(toCanvas(e));
+        if (!editingRef.current) selectAt(toCanvas(e), e.shiftKey);
         return;
       }
       commitLayerDrag(ld);
@@ -573,7 +644,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     setDrag(null);
     if (!d || !d.active) {
       // A click (below the drag threshold) is not a move — it updates the SELECTION.
-      if (!editingRef.current) selectAt(toCanvas(e));
+      if (!editingRef.current) selectAt(toCanvas(e), e.shiftKey);
       return;
     }
 
@@ -678,6 +749,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
       onPointerUp={onPointerUp}
       onPointerCancel={() => {
         setDrag(null);
+        setLasso(null);
         const ld = layerDragRef.current;
         if (ld) {
           resetLayerDrag(ld);
@@ -735,10 +807,37 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
               : null
           }
           hover={
-            !scaleDrag && !layerDrag?.active && hoverPart && hoverPart.selector !== selected
+            !scaleDrag && !layerDrag?.active && !lasso?.active && hoverPart && hoverPart.selector !== selected
               ? { rect: hoverPart.rect, label: hoverPart.label }
               : null
           }
+        />
+      )}
+
+      {/* Secondary selection outlines (multi-selection) — plain outlines, no chips;
+          the primary (first selected) carries the chip above. */}
+      {!ghost &&
+        !editing &&
+        extraRects.map((r, i) => (
+          <div
+            key={i}
+            className="canvas-selection-outline secondary"
+            data-testid="canvas-selection-extra"
+            style={{ left: r.left * scale, top: r.top * scale, width: r.width * scale, height: r.height * scale }}
+          />
+        ))}
+
+      {/* The lasso marquee — a drag on empty canvas selecting what it touches. */}
+      {lasso?.active && (
+        <div
+          className="canvas-lasso"
+          data-testid="canvas-lasso"
+          style={{
+            left: Math.min(lasso.x0, lasso.x1) * scale,
+            top: Math.min(lasso.y0, lasso.y1) * scale,
+            width: Math.abs(lasso.x1 - lasso.x0) * scale,
+            height: Math.abs(lasso.y1 - lasso.y0) * scale,
+          }}
         />
       )}
 

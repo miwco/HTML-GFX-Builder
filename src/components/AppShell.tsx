@@ -140,12 +140,15 @@ export default function AppShell() {
   // and a gesture that is live when the timer fires (inline edit, canvas drag) skips it.
   // The layout only ever moves when the user's hands are still; the next new selection
   // offers the Inspector again.
-  const selectedPart = useTemplateStore((s) => s.selectedPart);
-  const prevSelectedRef = useRef<string | null>(null);
+  // Keyed on the WHOLE selection: shift-adding a layer is as much a request to inspect
+  // as a fresh click, even though the primary (first selected) stays the same.
+  const selectedParts = useTemplateStore((s) => s.selectedParts);
+  const selectionKey = selectedParts.join('\n');
+  const prevSelectedRef = useRef<string>('');
   useEffect(() => {
     const prev = prevSelectedRef.current;
-    prevSelectedRef.current = selectedPart;
-    if (isMobile || !selectedPart || selectedPart === prev) return;
+    prevSelectedRef.current = selectionKey;
+    if (isMobile || selectionKey === '' || selectionKey === prev) return;
     const cancel = () => {
       clearTimeout(timer);
       window.removeEventListener('pointerdown', cancel, true);
@@ -161,7 +164,7 @@ export default function AppShell() {
     }, 500); // the OS double-click window — a quiet half-second means the gesture is over
     window.addEventListener('pointerdown', cancel, true);
     return cancel;
-  }, [selectedPart, isMobile]);
+  }, [selectionKey, isMobile]);
 
   // Drag dividers. Column splits use the tight [0.2,0.7] bounds; the preview HEIGHT split allows a
   // wider range so the preview can dominate. Persist on release only (not on every move).

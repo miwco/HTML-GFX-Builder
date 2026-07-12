@@ -112,7 +112,9 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
   const sendControl = useTemplateStore((s) => s.sendControl);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const selectedPart = useTemplateStore((s) => s.selectedPart);
+  const selectedParts = useTemplateStore((s) => s.selectedParts);
   const setSelectedPart = useTemplateStore((s) => s.setSelectedPart);
+  const toggleSelectedPart = useTemplateStore((s) => s.toggleSelectedPart);
   const setPlayhead = useTemplateStore((s) => s.setPlayhead);
 
   const parts = useMemo(
@@ -503,11 +505,14 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
           {rows.map((r) => (
             <span
               key={r.key}
-              className={`timeline-label clickable${selectedPart === r.key ? ' selected' : ''}`}
+              className={`timeline-label clickable${selectedParts.includes(r.key) ? ' selected' : ''}`}
               data-part={r.key}
-              title={`${r.key} — click to select this element (on the canvas too)`}
+              title={`${r.key} — click to select this element (on the canvas too); shift-click adds to the selection`}
               style={{ height: ROW_H, lineHeight: `${ROW_H}px` }}
-              onClick={() => setSelectedPart(selectedPart === r.key ? null : r.key)}
+              onClick={(e) => {
+                if (e.shiftKey) toggleSelectedPart(r.key);
+                else setSelectedPart(selectedPart === r.key && selectedParts.length === 1 ? null : r.key);
+              }}
             >
               {r.label}
             </span>
@@ -607,7 +612,7 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
             {rows.map((r, ri) => (
               <div
                 key={r.key}
-                className={`tlv2-row${selectedPart === r.key ? ' selected' : ''}`}
+                className={`tlv2-row${selectedParts.includes(r.key) ? ' selected' : ''}`}
                 style={{ top: RULER_H + CLIPS_H + ri * ROW_H, height: ROW_H }}
               >
                 {segs.map((seg) =>
