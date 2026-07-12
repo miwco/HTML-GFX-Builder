@@ -1,13 +1,14 @@
 // The durable production job ledger: table render_jobs (migration 0007), written ONLY
-// with the service role from api functions. getJobStore() selects this store when
-// SUPABASE_SERVICE_ROLE_KEY is present; without it the in-memory store serves dev.
+// with the Supabase secret from api functions. getJobStore() selects this store when a
+// secret key is present (SUPABASE_SECRET_KEY or the legacy SUPABASE_SERVICE_ROLE_KEY);
+// without it the in-memory store serves dev.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { RenderFormatId } from '../../src/render/manifest.js';
 import type { RenderTier } from '../../src/render/limits.js';
 import type { JobError, JobOutput, JobState } from '../../src/render/types.js';
 import { TERMINAL_STATES } from '../../src/render/types.js';
-import type { JobProgressSnapshot, JobRecord, JobStore } from './jobStore.js';
+import { supabaseSecretKey, type JobProgressSnapshot, type JobRecord, type JobStore } from './jobStore.js';
 
 const TABLE = 'render_jobs';
 
@@ -117,10 +118,10 @@ let client: SupabaseClient | null = null;
 async function sb(): Promise<SupabaseClient> {
   if (client) return client;
   const url = (process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? '').trim();
-  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
-  if (!url || !serviceKey) throw new Error('render jobs: SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY required');
+  const secretKey = supabaseSecretKey();
+  if (!url || !secretKey) throw new Error('render jobs: SUPABASE_URL + SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) required');
   const { createClient } = await import('@supabase/supabase-js');
-  client = createClient(url, serviceKey, { auth: { persistSession: false } });
+  client = createClient(url, secretKey, { auth: { persistSession: false } });
   return client;
 }
 

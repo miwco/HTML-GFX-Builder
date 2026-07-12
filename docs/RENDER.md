@@ -79,8 +79,11 @@ and fails lost jobs past their deadline. `cancel` stops the executor. `complete`
 worker-secret callback. `cleanup` (cron, CRON_SECRET) sweeps expired outputs and stale
 jobs.
 
-Job ledger: `render_jobs` in Supabase (migration 0007) when
-`SUPABASE_SERVICE_ROLE_KEY` is set; otherwise in process memory (dev/self-host).
+Job ledger: `render_jobs` in Supabase (migration 0007) when a Supabase secret key is set —
+`SUPABASE_SECRET_KEY` (the new `sb_secret_…` key, preferred) or the legacy service_role JWT
+in `SUPABASE_SERVICE_ROLE_KEY` (fallback). The key is only ever handed to `createClient` as
+an opaque API key with RLS-bypassing access, so either format works. Otherwise the ledger
+lives in process memory (dev/self-host).
 
 ### Tiers & limits (src/render/limits.ts — every number lives there)
 
@@ -138,7 +141,7 @@ render section appears and renders on your machine (LocalExecutor spawns
 VITE_RENDER_API=1
 RENDER_EXECUTOR=sandbox
 BLOB_READ_WRITE_TOKEN=   (from the Blob store)
-SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_SECRET_KEY=     (new sb_secret_… key; or set SUPABASE_SERVICE_ROLE_KEY instead)
 CRON_SECRET=             (any long random string)
 IP_HASH_SALT=            (any long random string)
 ```

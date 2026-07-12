@@ -126,9 +126,17 @@ class MemoryJobStore implements JobStore {
   }
 }
 
-/** The store for this deployment: Supabase when the service key is present, else memory. */
+/** The Supabase secret used for the render-jobs ledger. Supabase's new sb_secret_… secret
+ *  key is preferred; the legacy service_role JWT is the fallback. Both are used identically
+ *  — an opaque API key handed to createClient with full, RLS-bypassing access — so either
+ *  works. Returns '' when neither is set (dev/self-host uses the in-memory store). */
+export function supabaseSecretKey(): string {
+  return (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+}
+
+/** The store for this deployment: Supabase when the secret key is present, else memory. */
 export async function getJobStore(): Promise<JobStore> {
-  if ((process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()) {
+  if (supabaseSecretKey()) {
     const { SupabaseJobStore } = await import('./jobStoreSupabase.js');
     return new SupabaseJobStore();
   }
