@@ -144,15 +144,17 @@ export default function VideoAiChatPanel() {
   };
 
   // Auto-run the FIRST generation: the wizard seeds chat with one user turn and no reply.
-  const autoRan = useRef(false);
+  // Guarded PER PROJECT ID - creating or opening another project in the same session must
+  // fire its own first run (the panel component survives document swaps).
+  const autoRanFor = useRef<string | null>(null);
   const needsFirstRun =
     project.chat.length === 1 && project.chat[0].role === 'user' && !busy;
   useEffect(() => {
-    if (!needsFirstRun || autoRan.current || needsSignIn) return;
-    autoRan.current = true;
+    if (!needsFirstRun || autoRanFor.current === project.id || needsSignIn) return;
+    autoRanFor.current = project.id;
     void runGenerate(project.chat[0].text);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fire once per unanswered brief
-  }, [needsFirstRun, needsSignIn]);
+  }, [needsFirstRun, needsSignIn, project.id]);
 
   // Keep the newest turn visible.
   useEffect(() => {
