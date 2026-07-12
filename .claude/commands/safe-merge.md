@@ -58,9 +58,13 @@ Run and summarize:
    `git diff --name-only <base> <branch>` intersected with `git diff --name-only <base> main`
    to list files touched on both sides.
 
-Then present a short plan: what will be merged, how many commits, predicted conflict
-files (if any), and what verification will run. Proceed only if the picture is clean;
-otherwise surface the problems and wait for the user.
+Then present a short plan: **the source branch and the target (`main`), stated explicitly**
+("merge `<branch>` -> `main`"), how many commits, predicted conflict files (if any), and
+what verification will run.
+
+**Confirmation checkpoint (required, every run):** stop here and wait for the user's
+explicit go-ahead before doing anything that changes state - even when the picture is
+clean. Do not proceed to Phase 2 until they confirm.
 
 ## Phase 2 - Prepare (update main, then integrate it INTO the branch)
 
