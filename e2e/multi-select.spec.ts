@@ -87,6 +87,30 @@ test('shift-click builds a multi-selection synced across canvas, timeline, and I
   expect(sel.history).toBe(baseline);
 });
 
+test('preview zoom: the buttons scale the viewport, and a click still hits the right element', async ({ page }) => {
+  await createHairline(page);
+  const reset = page.getByTestId('zoom-reset');
+  await expect(reset).toHaveText('100%'); // the default is fit
+  const iframeTransform = () => page.locator('.preview-frame').evaluate((el) => (el as HTMLElement).style.transform);
+  const fitTransform = await iframeTransform();
+
+  // Zoom in — the readout and the iframe scale both change.
+  await page.getByTestId('zoom-in').click();
+  await expect(reset).toHaveText('125%');
+  expect(await iframeTransform()).not.toBe(fitTransform);
+
+  // Coordinate correctness under zoom: partPoint derives the live scale from the layer, so
+  // a click lands on #f0 even though the canvas is now 1.25× (selection never wrote history).
+  const p = await partPoint(page, '#f0');
+  await page.mouse.click(p.x, p.y);
+  expect((await storeSelection(page)).primary).toBe('#f0');
+
+  // Reset returns to fit.
+  await reset.click();
+  await expect(reset).toHaveText('100%');
+  expect(await iframeTransform()).toBe(fitTransform);
+});
+
 test('timeline labels shift-click into the same multi-selection', async ({ page }) => {
   await createHairline(page);
   await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();

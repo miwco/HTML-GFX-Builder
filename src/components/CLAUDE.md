@@ -25,7 +25,15 @@ in src/blocks/CLAUDE.md.
 - **CodeEditor** - Monaco + change-highlight decorations + change dots on inactive tabs the last
   apply touched + hover explanations (the teach/ module registers its tooltips here; there is no
   Learn tab).
-- **PreviewFrame**, **CanvasGuides**.
+- **PreviewFrame** - the stage: the iframe + overlays live in a `.canvas-world` centred in the
+  stage and translated by `pan`, scaled by fit × `zoom`. Zoom: the toolbar −/%/+ (the % resets
+  to fit), Ctrl/Cmd+wheel (and trackpad pinch) toward the cursor, clamped 0.2–8×. Pan: a plain
+  wheel when zoomed in, or a middle-mouse drag (captured before the overlay). Because the overlay
+  is sized `stageW × (fit×zoom)` and CanvasInteraction reads its live bounding rect, zoom and pan
+  need NO coordinate changes there — the gesture math follows automatically (pinned by the zoom
+  case in e2e/multi-select.spec.ts). Off-canvas VISIBILITY (a pasteboard so elements that start
+  off-screen render) is a separate step — it needs the iframe to render past the canvas bounds.
+- **CanvasGuides**.
 
 ## Canvas direct manipulation (Era 6)
 

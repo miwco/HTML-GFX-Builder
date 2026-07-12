@@ -9,11 +9,19 @@ interface Props {
 }
 
 const RELOAD_DEBOUNCE_MS = 350;
+const ZOOM_MIN = 0.2;
+const ZOOM_MAX = 8;
 
 /**
- * Live preview: renders the composed template in a sandboxed iframe scaled to fit the stage.
- * Reloads (debounced) when the code changes, and reports runtime errors back to the store.
- * The iframe is scaled from the template's native resolution (e.g. 1920×1080) to fit the pane.
+ * Live preview: renders the composed template in a sandboxed iframe scaled to fit the stage,
+ * with a zoomable/pannable viewport on top of the fit scale (for precision work and to reach
+ * elements that animate in from off-canvas). Reloads (debounced) when the code changes, and
+ * reports runtime errors back to the store.
+ *
+ * Coordinate note: the iframe + overlays live in a `.canvas-world` that is centred in the
+ * stage and translated by `pan`; the effective scale passed to the overlays is fit × zoom.
+ * CanvasInteraction derives its own scale from that width and reads the overlay's live
+ * bounding rect, so pan and zoom need no changes there — the overlay math already follows.
  */
 export default function PreviewFrame({ iframeRef }: Props) {
   const template = useTemplateStore((s) => s.template);
@@ -24,24 +32,99 @@ export default function PreviewFrame({ iframeRef }: Props) {
   const setGuide = useTemplateStore((s) => s.setGuide);
 
   const stageRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.3);
+  const [fit, setFit] = useState(0.3);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  // Live refs for the native wheel handler (attached once, non-passive).
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const panRef = useRef(pan);
+  panRef.current = pan;
 
   const { width: stageW, height: stageH } = template.resolution;
+  const effScale = fit * zoom;
+
+  const resetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
 
   // Scale the template iframe (stageW × stageH) to fit the stage pane.
   // Re-runs when the stage is resized OR when the template resolution changes.
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
-    const fit = () => {
+    const fitNow = () => {
       const { width, height } = stage.getBoundingClientRect();
-      setScale(Math.min(width / stageW, height / stageH));
+      setFit(Math.min(width / stageW, height / stageH));
     };
-    fit();
-    const ro = new ResizeObserver(fit);
+    fitNow();
+    const ro = new ResizeObserver(fitNow);
     ro.observe(stage);
     return () => ro.disconnect();
   }, [stageW, stageH]);
+
+  // A new graphic (resolution change) starts framed to fit.
+  useEffect(() => {
+    resetView();
+  }, [stageW, stageH]);
+
+  /** Zoom toward a screen point (keeps the content under it fixed). */
+  const zoomToward = (nextZoomRaw: number, clientX: number, clientY: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const rect = stage.getBoundingClientRect();
+    const nextZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nextZoomRaw));
+    const z0 = zoomRef.current;
+    if (nextZoom === z0) return;
+    const p0 = panRef.current;
+    // Stage-local point relative to the stage centre (the world's anchor before pan).
+    const sx = clientX - rect.left - rect.width / 2;
+    const sy = clientY - rect.top - rect.height / 2;
+    const k = 1 - nextZoom / z0;
+    setZoom(nextZoom);
+    setPan({ x: p0.x + (sx - p0.x) * k, y: p0.y + (sy - p0.y) * k });
+  };
+
+  // Wheel over the stage: Ctrl/Cmd (and trackpad pinch, reported as ctrl+wheel) zooms toward
+  // the cursor; a plain wheel pans WHEN zoomed in (so it never hijacks page scroll at the
+  // default fit). A native non-passive listener so preventDefault actually applies.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        zoomToward(zoomRef.current * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY);
+      } else if (zoomRef.current > 1.001) {
+        e.preventDefault();
+        setPan((p) => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
+      }
+    };
+    stage.addEventListener('wheel', onWheel, { passive: false });
+    return () => stage.removeEventListener('wheel', onWheel);
+    // zoomToward reads live refs; stage identity is stable for the component's life.
+  }, []);
+
+  // Middle-mouse drag pans the viewport. Captured before the overlay so the canvas gesture
+  // layer never sees it. (Left-drag stays with the canvas; a plain wheel pans when zoomed in.)
+  const panDrag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const onStagePointerDown = (e: React.PointerEvent) => {
+    if (e.button === 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      panDrag.current = { x: e.clientX, y: e.clientY, px: panRef.current.x, py: panRef.current.y };
+    }
+  };
+  const onStagePointerMove = (e: React.PointerEvent) => {
+    const d = panDrag.current;
+    if (!d) return;
+    setPan({ x: d.px + (e.clientX - d.x), y: d.py + (e.clientY - d.y) });
+  };
+  const onStagePointerUp = () => {
+    panDrag.current = null;
+  };
 
   // Listen for runtime errors posted from the preview document.
   useEffect(() => {
@@ -69,24 +152,31 @@ export default function PreviewFrame({ iframeRef }: Props) {
     <div
       className={`preview-stage ${previewBg}`}
       ref={stageRef}
-      // The stage's own height follows the template's aspect (clamped by max-height in
-      // CSS); the iframe then scales to fit whatever box results.
       style={{ aspectRatio: `${stageW} / ${stageH}` }}
+      onPointerDownCapture={onStagePointerDown}
+      onPointerMove={onStagePointerMove}
+      onPointerUp={onStagePointerUp}
+      onPointerCancel={onStagePointerUp}
     >
-      <iframe
-        ref={iframeRef}
-        className="preview-frame"
-        title="SPX live preview"
-        sandbox="allow-scripts allow-same-origin"
-        style={{
-          width: stageW,
-          height: stageH,
-          transform: `translate(-50%, -50%) scale(${scale})`,
-        }}
-      />
-      <CanvasGuides width={stageW * scale} height={stageH * scale} />
-      {/* Direct manipulation — always on: drag the graphic, double-click text to edit. */}
-      <CanvasInteraction iframeRef={iframeRef} width={stageW * scale} height={stageH * scale} />
+      <div
+        className="canvas-world"
+        style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}
+      >
+        <iframe
+          ref={iframeRef}
+          className="preview-frame"
+          title="SPX live preview"
+          sandbox="allow-scripts allow-same-origin"
+          style={{
+            width: stageW,
+            height: stageH,
+            transform: `translate(-50%, -50%) scale(${effScale})`,
+          }}
+        />
+        <CanvasGuides width={stageW * effScale} height={stageH * effScale} />
+        {/* Direct manipulation — always on: drag the graphic, double-click text to edit. */}
+        <CanvasInteraction iframeRef={iframeRef} width={stageW * effScale} height={stageH * effScale} />
+      </div>
 
       <div className="preview-toolbar">
         <div className="guide-switch">
@@ -103,6 +193,30 @@ export default function PreviewFrame({ iframeRef }: Props) {
             title="Toggle rule-of-thirds grid"
           >
             Grid
+          </button>
+        </div>
+        <div className="zoom-switch" data-testid="zoom-switch">
+          <button
+            onClick={() => zoomToward(zoom / 1.25, (stageRef.current?.getBoundingClientRect().left ?? 0) + (stageRef.current?.getBoundingClientRect().width ?? 0) / 2, (stageRef.current?.getBoundingClientRect().top ?? 0) + (stageRef.current?.getBoundingClientRect().height ?? 0) / 2)}
+            title="Zoom out (Ctrl/Cmd + scroll)"
+            data-testid="zoom-out"
+          >
+            −
+          </button>
+          <button
+            className="zoom-level"
+            onClick={resetView}
+            title="Reset the view to fit"
+            data-testid="zoom-reset"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            onClick={() => zoomToward(zoom * 1.25, (stageRef.current?.getBoundingClientRect().left ?? 0) + (stageRef.current?.getBoundingClientRect().width ?? 0) / 2, (stageRef.current?.getBoundingClientRect().top ?? 0) + (stageRef.current?.getBoundingClientRect().height ?? 0) / 2)}
+            title="Zoom in (Ctrl/Cmd + scroll)"
+            data-testid="zoom-in"
+          >
+            +
           </button>
         </div>
         <div className="bg-switch">

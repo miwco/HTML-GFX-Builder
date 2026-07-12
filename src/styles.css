@@ -340,6 +340,9 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   box-shadow: 0 10px 50px rgba(0, 0, 0, 0.55);
   /* width/height set dynamically by PreviewFrame based on template.resolution */
 }
+/* The zoom/pan viewport: fills the stage and is translated by `pan`; its absolutely
+   positioned children (iframe + overlays) centre within it, then scale by fit × zoom. */
+.canvas-world { position: absolute; inset: 0; }
 
 /* Preview toolbar (guides + background switches), top-right of the stage. */
 .preview-toolbar {
@@ -351,6 +354,7 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   z-index: 6;
 }
 .preview-toolbar .guide-switch,
+.preview-toolbar .zoom-switch,
 .preview-toolbar .bg-switch {
   display: flex;
   gap: 4px;
@@ -358,6 +362,10 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
 .preview-toolbar button {
   font-size: 11px;
   padding: 3px 9px;
+}
+.preview-toolbar .zoom-switch .zoom-level {
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
 }
 
 .simulator {
