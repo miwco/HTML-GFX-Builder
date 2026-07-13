@@ -25,3 +25,18 @@ self.MonacoEnvironment = {
 };
 
 loader.config({ monaco });
+
+// TSX support for the video editor's Composition.tsx model. Syntax-only diagnostics: without
+// react/remotion type acquisition, semantic checking would drown the editor in "cannot find
+// module" noise. Only the typescript defaults change — the SPX JS tab uses javascriptDefaults
+// and keeps its behavior. (monaco 0.55 moved these to the top-level `typescript` namespace.)
+monaco.typescript.typescriptDefaults.setCompilerOptions({
+  jsx: monaco.typescript.JsxEmit.ReactJSX,
+  target: monaco.typescript.ScriptTarget.ES2020,
+  allowNonTsExtensions: true,
+  moduleResolution: monaco.typescript.ModuleResolutionKind.NodeJs,
+});
+monaco.typescript.typescriptDefaults.setDiagnosticsOptions({
+  noSemanticValidation: true,
+  noSyntaxValidation: false,
+});

@@ -7,12 +7,13 @@
   "description": "NoaCG Studio — a modern, premium broadcast graphics builder. Create on-air templates and export SPX / CasparCG / OGraf.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && tsc -p tsconfig.api.json && eslint . --max-warnings 0 && vite build",
+    "build": "node scripts/build-player-host.mjs && tsc && tsc -p tsconfig.api.json && eslint . --max-warnings 0 && vite build",
+    "build:player-host": "node scripts/build-player-host.mjs --force",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test --config=playwright.live.config.ts",
-    "postinstall": "node scripts/dev-port.mjs"
+    "postinstall": "node scripts/dev-port.mjs && node scripts/build-player-host.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
@@ -25,6 +26,7 @@
     "monaco-editor": "^0.55.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "sucrase": "^3.35.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

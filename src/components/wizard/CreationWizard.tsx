@@ -16,11 +16,16 @@ import FieldsStep from './steps/FieldsStep';
 import StyleStep from './steps/StyleStep';
 import AnimationStep from './steps/AnimationStep';
 import AiStep from './steps/AiStep';
+import VideoStep from './steps/VideoStep';
 import type { SpxTemplate } from '../../model/types';
+import type { VideoProject } from '../../model/videoTypes';
+import { useVideoProjectStore } from '../../store/videoProjectStore';
+import { useDocKindStore } from '../../store/docKindStore';
 
 const STEP_TITLES = ['Start', 'Category', 'Template', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_IMPORT = ['Start', 'Import', 'Template', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_AI = ['Start', 'Describe'];
+const STEP_TITLES_VIDEO = ['Start', 'Video'];
 
 /**
  * The choose-first creation wizard (replaces the old template gallery). Six steps —
@@ -35,7 +40,7 @@ export default function CreationWizard() {
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
 
   const [step, setStep] = useState(0);
-  const [mode, setMode] = useState<'template' | 'import' | 'ai'>('template');
+  const [mode, setMode] = useState<'template' | 'import' | 'ai' | 'video'>('template');
   const [draft, setDraft] = useState<WizardDraft>(initialDraft);
   const [replayKey, setReplayKey] = useState(0);
   // Describe-it mode: the AI's current (validated) result, previewed live like any draft.
@@ -90,21 +95,34 @@ export default function CreationWizard() {
 
   const patch = (p: DraftPatch) => setDraft((d) => mergeDraft(d, p));
 
+  // Creating an SPX graphic (any path) lands in the SPX shell; creating/opening a video
+  // lands in the video shell. Only the wizard flips the persisted doc-kind switch.
+  const toSpxShell = () => useDocKindStore.getState().setKind('spx');
+
+  const createVideo = (project: VideoProject) => {
+    useVideoProjectStore.getState().loadProject(project);
+    useDocKindStore.getState().setKind('video');
+    closeGallery();
+  };
+
   const startBlank = () => {
     applyTemplate(createBlankTemplate(draftResolution(draft), draft.fps), { resetSampleData: true });
     setActiveTab('html');
+    toSpxShell();
   };
 
   const createFromAi = () => {
     if (!aiResult?.valid) return;
     applyTemplate(aiResult.template, { resetSampleData: true });
     setActiveTab('html');
+    toSpxShell();
   };
 
   const create = () => {
     if (!previewTemplate || !variant) return;
     applyTemplate(previewTemplate, { resetSampleData: true });
     setActiveTab('html');
+    toSpxShell();
     // Remember this look as the project brand so the next graphic matches it.
     saveBrand({
       styleTag: variant.styleTag,
@@ -120,8 +138,15 @@ export default function CreationWizard() {
     (step === 1 && (mode === 'import' ? draft.importedImages.length === 0 || !draft.category : !draft.category)) ||
     (step === 2 && !draft.variantId);
 
-  const showPreview = mode === 'ai' ? step === 1 && !!aiResult : step >= 2 && !!previewTemplate;
-  const stepTitles = mode === 'ai' ? STEP_TITLES_AI : mode === 'import' ? STEP_TITLES_IMPORT : STEP_TITLES;
+  const showPreview =
+    mode === 'ai' ? step === 1 && !!aiResult
+    : mode === 'video' ? false
+    : step >= 2 && !!previewTemplate;
+  const stepTitles =
+    mode === 'ai' ? STEP_TITLES_AI
+    : mode === 'video' ? STEP_TITLES_VIDEO
+    : mode === 'import' ? STEP_TITLES_IMPORT
+    : STEP_TITLES;
 
   // Ordering: imported images put logo-slot designs first; a matched brand puts its
   // style family first (so the package's siblings lead).
@@ -145,7 +170,7 @@ export default function CreationWizard() {
             <BrandLogo size={20} />
             <span className="wz-title-sep">·</span>
             <span className="wz-title-step">
-              {mode === 'ai' ? 'Describe it' : mode === 'import' ? 'Import' : 'New project'}
+              {mode === 'ai' ? 'Describe it' : mode === 'video' ? 'Video with AI' : mode === 'import' ? 'Import' : 'New project'}
             </span>
           </div>
           <div className="wz-dots">
@@ -172,8 +197,12 @@ export default function CreationWizard() {
                 onTemplates={() => { setMode('template'); setStep(1); }}
                 onImport={() => { setMode('import'); setStep(1); }}
                 onAi={() => { setMode('ai'); setStep(1); }}
+                onVideo={() => { setMode('video'); setStep(1); }}
                 onBlank={startBlank}
               />
+            )}
+            {step === 1 && mode === 'video' && (
+              <VideoStep onCreate={createVideo} onOpen={createVideo} />
             )}
             {step === 1 && mode === 'ai' && (
               <AiStep
@@ -296,7 +325,7 @@ export default function CreationWizard() {
             )}
             {/* "Create project" is the quiet shortcut (primary only on the last step,
                 where it's the sole forward action); "Next ›" is the highlighted path. */}
-            {mode !== 'ai' && step >= 2 && (
+            {mode !== 'ai' && mode !== 'video' && step >= 2 && (
               <button
                 className={step === 5 ? 'primary' : undefined}
                 disabled={!previewTemplate}
@@ -306,7 +335,7 @@ export default function CreationWizard() {
                 Create project
               </button>
             )}
-            {mode !== 'ai' && step > 0 && step < 5 && (
+            {mode !== 'ai' && mode !== 'video' && step > 0 && step < 5 && (
               <button className="primary wz-next" disabled={nextDisabled} onClick={() => setStep(step + 1)}>
                 Next ›
               </button>

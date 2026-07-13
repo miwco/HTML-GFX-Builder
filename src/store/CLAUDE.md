@@ -1,6 +1,30 @@
-# src/store - templateStore contracts
+# src/store - store contracts
 
 Loaded alongside the root CLAUDE.md when working in this directory. Keep it accurate.
+
+Three stores: **templateStore** (the SPX editor - template + UI state), **videoProjectStore**
+(the parallel AI-video editor), and **docKindStore** (which shell App.tsx renders; persisted
+via model/docKind.ts). The SPX and video stores are fully parallel - neither imports or
+mutates the other; only the wizard flips docKind.
+
+## videoProjectStore.ts
+
+Holds ONE VideoProject + the video editor's UI state, mirroring templateStore's contracts:
+
+- **applyProject(next)** - the undoable choke point (30-cap history). AI results bundle
+  tsx + motionPlan + chat turns into ONE snapshot so undo reverts them together.
+- **patchSettings / addAsset / removeAsset** - undoable single applies.
+- **setTsx** - manual typing: NO history snapshot (Monaco native undo while focused),
+  clears `future`.
+- **appendChat / dropLastChat** - optimistic chat turns without history spam; dropLastChat
+  rolls back a failed send.
+- **loadProject** - whole-document replace (wizard create / reopen): clears history.
+- **autosave** - 800 ms-debounced subscription -> saveCurrentVideoProject; a quota failure
+  sets `autosaveFailed` (the shell warns - never lose video work silently).
+- **busy** - the in-flight AI stage label; blocks concurrent sends.
+- **replayNonce / previewError / activePanel** - UI state, no history.
+
+## templateStore.ts
 
 templateStore.ts (zustand) holds the template plus editor UI state.
 

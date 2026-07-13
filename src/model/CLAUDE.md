@@ -38,3 +38,16 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   undefined (plain-HTTP LAN hosts, CasparCG's CEF). Record ids must be real UUIDs: the cloud
   `documents.id` column is a uuid PK, and a non-UUID id would be rejected by Postgres and poison
   sync.
+- **videoTypes.ts** - VideoProject, the canonical unit of the AI VIDEO editor ("Video or
+  animation with AI"): a single-file React/Remotion composition (`tsx`) + duration/fps/size/
+  transparency + assets (the exact AssetFile shape, sync-ready) + AI chat history and motion
+  plan. Parallel to SpxTemplate - the two worlds never mix; `kind: 'video'` is the serialized
+  discriminant. Also DocKind and createDefaultVideoProject (starter composition).
+- **videoProject.ts** - video persistence mirroring project.ts/packets.ts: current slot
+  'spx-gfx-video-project' (autosave; returns false on quota so the shell can WARN - video
+  assets are big) + saved list 'spx-gfx-video-saved' with soft-delete tombstones.
+- **docKind.ts** - the persisted editor-world switch ('spx-gfx-doc-kind'); App.tsx branches
+  AppShell vs VideoAppShell on it. Falls back to 'spx' when the video slot is empty.
+- **videoLayout.ts** - the video shell's own layout prefs (localStorage 'spx-gfx-video-layout'):
+  just codeRatio + codeCollapsed. Separate from layout.ts on purpose - the video shell has a
+  simple code|preview split, not the SPX dockable workspace.

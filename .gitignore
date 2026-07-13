@@ -34,6 +34,10 @@ compare-out/
 # Remotion deploy bundle (built by render-worker/bundle.mjs in the Vercel build step)
 render-worker/bundle/
 
+# Remotion Player host bundle (built by scripts/build-player-host.mjs into public/ on
+# postinstall/build) - compiled Remotion code stays out of the AGPL repo, like the bundle above
+public/player-host/
+
 # Vercel CLI link pointer (project/org id - local only)
 .vercel/
 

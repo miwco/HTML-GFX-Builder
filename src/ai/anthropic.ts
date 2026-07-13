@@ -26,6 +26,9 @@ export interface ClaudeRequest {
   maxTokens?: number;
   /** Force a specific tool call (structured output). */
   tool?: ClaudeTool;
+  /** Override the settings model for this call (cheap classification stages pin Haiku;
+   *  a video project can pin its own model). */
+  model?: string;
 }
 
 interface ClaudeResponse {
@@ -38,7 +41,7 @@ export async function callClaude(req: ClaudeRequest): Promise<unknown> {
   const s = loadAiSettings();
 
   const body = {
-    model: s.model,
+    model: req.model ?? s.model,
     max_tokens: req.maxTokens ?? 16000,
     system: req.system,
     messages: req.messages,
@@ -75,6 +78,12 @@ export async function callClaude(req: ClaudeRequest): Promise<unknown> {
 
   const data = (await res.json()) as ClaudeResponse;
   if (req.tool) {
+    // A response cut off at max_tokens leaves the tool input incomplete — partial JSON
+    // parses into an object with missing keys and causes confusing downstream crashes.
+    // Fail loudly with the real cause instead.
+    if (data.stop_reason === 'max_tokens') {
+      throw new Error('The AI response was cut off (too long) — try again, or simplify the request.');
+    }
     const call = data.content.find((c) => c.type === 'tool_use');
     if (!call || call.type !== 'tool_use') throw new Error('The model did not return the expected structured result.');
     return call.input;

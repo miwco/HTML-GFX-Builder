@@ -9,7 +9,7 @@
 // in v1 — introducing billing later means changing resolveTier() to read an entitlements
 // table, nothing else moves.
 
-import { RENDER_FORMATS, type RenderFormatId, type RenderManifest } from './manifest.js';
+import { RENDER_FORMATS, type HtmlRenderManifest, type RemotionRenderManifest, type RenderFormatId } from './manifest.js';
 import { durationInFrames } from './manifest.js';
 
 export type RenderTier = 'anonymous' | 'free' | 'paid';
@@ -76,6 +76,8 @@ export function formatNeedsSignIn(format: RenderFormatId): boolean {
 export const RENDER_CONFIG = {
   /** Serialized manifest cap — stays under Vercel's 4.5 MB function body limit. */
   manifestMaxBytes: 4_000_000,
+  /** A compiled single composition module past this is a runaway generation, not code. */
+  compiledJsMaxBytes: 1_000_000,
   /** Output download TTL per tier (ms). */
   outputTtlMs: { anonymous: 2 * 3600_000, free: 24 * 3600_000, paid: 7 * 86_400_000 } as Record<RenderTier, number>,
   /** How often the browser polls job status (also returned by the start endpoint). */
@@ -117,8 +119,15 @@ export interface LimitIssue {
 }
 
 /** The subset of the manifest the limit checks need (the server summarizes before parsing
- *  the multi-MB document). */
-export type ManifestSummary = Pick<RenderManifest, 'width' | 'height' | 'fps' | 'scale' | 'timing' | 'output'>;
+ *  the multi-MB document). Both manifest kinds satisfy their branch structurally. */
+export type ManifestSummary =
+  | Pick<HtmlRenderManifest, 'kind' | 'width' | 'height' | 'fps' | 'scale' | 'timing' | 'output'>
+  | Pick<RemotionRenderManifest, 'kind' | 'width' | 'height' | 'fps' | 'scale' | 'durationInFrames' | 'output'>;
+
+/** A summary's duration in seconds, whichever way the kind expresses it. */
+function summaryDurationSec(m: ManifestSummary): number {
+  return m.kind === 'remotion' ? m.durationInFrames / m.fps : m.timing.totalDurationMs / 1000;
+}
 
 /** Validate a render request against a tier. Empty result = allowed. */
 export function validateRenderRequest(m: ManifestSummary, tier: RenderTier): LimitIssue[] {
@@ -148,10 +157,11 @@ export function validateRenderRequest(m: ManifestSummary, tier: RenderTier): Lim
   }
 
   const maxSec = Math.min(caps.maxDurationSec, caps.maxDurationSecByFormat?.[format] ?? Infinity);
-  if (m.timing.totalDurationMs > maxSec * 1000) {
+  const durSec = summaryDurationSec(m);
+  if (durSec > maxSec) {
     issues.push({
       code: 'duration',
-      message: `${(m.timing.totalDurationMs / 1000).toFixed(0)} s exceeds the ${maxSec} s limit for ${RENDER_FORMATS[format].label}.${tier === 'anonymous' ? ' Sign in for longer renders.' : ''}`,
+      message: `${durSec.toFixed(0)} s exceeds the ${maxSec} s limit for ${RENDER_FORMATS[format].label}.${tier === 'anonymous' ? ' Sign in for longer renders.' : ''}`,
     });
   }
 

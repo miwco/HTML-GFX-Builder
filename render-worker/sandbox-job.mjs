@@ -56,7 +56,9 @@ try {
   const { put } = await import('@vercel/blob');
 
   await ensureBrowser();
-  const composition = await selectComposition({ serveUrl: SERVE_URL, id: 'noacg', inputProps: manifest });
+  // kind:'remotion' = an authored composition module (video editor); else the html document.
+  const compositionId = manifest.kind === 'remotion' ? 'noacg-user' : 'noacg';
+  const composition = await selectComposition({ serveUrl: SERVE_URL, id: compositionId, inputProps: manifest });
   const totalFrames = composition.durationInFrames;
 
   const outputPath = `${JOB_DIR}/output.${out.ext}`;
@@ -83,7 +85,9 @@ try {
   } else if (format === 'prores4444') {
     await renderMedia({ ...common, codec: 'prores', proResProfile: '4444', imageFormat: 'png', pixelFormat: 'yuva444p10le', outputLocation: outputPath, onProgress: mediaProgress });
   } else if (format === 'png-still') {
-    const stillMs = manifest.output.stillTimeMs ?? manifest.timing.totalDurationMs / 2;
+    const defaultStillMs =
+      manifest.kind === 'remotion' ? (totalFrames / 2 / manifest.fps) * 1000 : manifest.timing.totalDurationMs / 2;
+    const stillMs = manifest.output.stillTimeMs ?? defaultStillMs;
     const frame = Math.min(totalFrames - 1, Math.max(0, Math.round((stillMs / 1000) * manifest.fps)));
     writeProgress({ state: 'rendering', progress: 0.3, renderedFrames: 0, totalFrames: 1 }, { force: true });
     await renderStill({ ...common, imageFormat: 'png', frame, output: outputPath });

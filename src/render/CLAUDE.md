@@ -6,6 +6,17 @@ The contract layer for the Remotion exporter (render-worker/ is the renderer, ap
 service). The core promise: **manifest + frame number = exact pixels** - a frame never
 depends on rAF timing, CPU speed, or the wall clock.
 
+**Manifest v2 is a discriminated union on `kind`:** 'html' (the SPX document path - the
+timing/schedule/measurement machinery below applies to it ONLY) and 'remotion' (the AI
+video editor's authored composition: compiledJs + inputProps + fixed durationInFrames;
+rendered by the worker's second composition `noacg-user` via a require shim identical to
+the live preview's player host, so preview and render run the same code).
+`buildVideoManifest.ts` (PURE) builds the remotion kind; the UI is
+components/video/VideoRenderPanel (shares RenderFormatPicker + RenderJobSection with the
+SPX RenderPanel). Assets ride as data URLs inside inputProps against the 4 MB manifest
+cap - the panel shows a budget meter. `durationInFrames()` and `ManifestSummary` take
+either kind.
+
 ## Purity rule (load-bearing)
 
 `manifest.ts`, `schedule.ts`, and `limits.ts` are PURE - no DOM, no `?raw`, no

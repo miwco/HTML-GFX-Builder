@@ -691,6 +691,22 @@ read-only scheduled cloud agent. Not yet built — see the plan doc for the veri
       (migration 0007), and a cleanup cron. Contract: `src/render/CLAUDE.md` +
       `docs/RENDER.md`. Still to do: live-verify the sandbox path on a real deployment
       (needs the Blob store + env vars), like H2R was.
+- [x] **AI video & animation projects (2026-07-13)** — a second project kind beside live
+      graphics: "Video or animation with AI" in the New Project wizard creates a
+      fixed-duration React/Remotion composition (stingers, intros, logo reveals,
+      countdowns, graphics over uploaded video). A staged motion-design harness generates
+      it (skill detection → a timed Motion Director plan → the Remotion coder against a
+      composition contract + canonical example → bounded compile/probe/repair), the code
+      stays visible and editable in Monaco, a sandboxed Remotion Player previews it live
+      (player-host/, its own package — Remotion never enters the AGPL bundle; the iframe's
+      opaque origin keeps AI code away from the user's key), chat refinement iterates,
+      projects autosave + save/reopen, and the EXISTING render service outputs
+      MP4/WebM/PNG/sequence/ProRes via manifest kind:'remotion' (the same compiled module
+      the preview runs). Uploaded images/SVGs/video become `assets` props; a video asset
+      can be the background layer. On the feature worktree branch
+      (claude/ai-remotion-creator); merge pending review. Still to do: sandbox-executor
+      live verification, a Blob upload channel for large assets, editable Remotion inputs
+      mapped to the Template Definition system, and the visual Motion Critic pass.
 - [ ] Data-driven/live content architecture (ticker/scoreboard controlled from a backend) — later
 
 ### Quality bar (always-on)

@@ -74,4 +74,55 @@ if (buf.subarray(4, 8).toString('ascii') !== 'ftyp') fail('downloaded file is no
 const bad = await fetch(`${BASE}/api/render/status?id=${jobId}`, { headers: { authorization: 'Bearer nope' } });
 if (bad.status !== 404) fail(`bad token -> ${bad.status}, expected 404`);
 
-console.log(`SMOKE PASS: ${buf.byteLength} bytes in ${((Date.now() - t0) / 1000).toFixed(1)}s, token gating OK`);
+console.log(`html-kind PASS: ${buf.byteLength} bytes in ${((Date.now() - t0) / 1000).toFixed(1)}s, token gating OK`);
+
+// ── Phase 2: kind:'remotion' — an authored composition module through the same service ──
+
+const { execFileSync } = await import('node:child_process');
+const { readFileSync, mkdirSync } = await import('node:fs');
+mkdirSync('.render-dev', { recursive: true });
+execFileSync('node', ['scripts/make-remotion-manifest.mjs', '.render-dev/smoke-remotion.json', '40', 'mp4']);
+const remotionManifest = JSON.parse(readFileSync('.render-dev/smoke-remotion.json', 'utf8'));
+
+// The smoke submits 3 jobs total but the anonymous quota is 2/h - give each phase-2 job
+// its own synthetic principal (ipHash reads x-forwarded-for; fine against the local dev
+// server, which is the only place this script runs).
+let smokeIp = 0;
+const runJob = async (manifestBody) => {
+  const res = await fetch(`${BASE}/api/render/start`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': `10.99.0.${++smokeIp}` },
+    body: JSON.stringify({ manifest: manifestBody }),
+  });
+  if (res.status !== 202) fail(`remotion start -> ${res.status}: ${await res.text()}`);
+  const started = await res.json();
+  const begun = Date.now();
+  for (;;) {
+    if (Date.now() - begun > 5 * 60_000) fail('remotion job timed out after 5 minutes');
+    await new Promise((r) => setTimeout(r, started.pollIntervalMs));
+    const s = await fetch(`${BASE}/api/render/status?id=${started.jobId}`, {
+      headers: { authorization: `Bearer ${started.jobToken}` },
+    });
+    if (!s.ok) fail(`remotion status -> ${s.status}`);
+    const st = await s.json();
+    if (['complete', 'failed', 'cancelled', 'expired'].includes(st.state)) return { status: st, jobToken: started.jobToken };
+  }
+};
+
+const rem = await runJob(remotionManifest);
+if (rem.status.state !== 'complete') fail(`remotion terminal state ${rem.status.state}: ${JSON.stringify(rem.status.error)}`);
+const remDl = await fetch(`${BASE}${rem.status.output.url}&token=${rem.jobToken}`);
+const remBuf = Buffer.from(await remDl.arrayBuffer());
+if (remBuf.subarray(4, 8).toString('ascii') !== 'ftyp') fail('remotion output is not an MP4');
+console.log(`remotion-kind PASS: ${remBuf.byteLength} bytes`);
+
+// A throwing module must FAIL the job with the real message (never hang or lie).
+const broken = { ...remotionManifest, compiledJs: 'exports.default = function C(){ throw new Error("smoke boom"); };' };
+const brk = await runJob(broken);
+if (brk.status.state !== 'failed') fail(`broken module ended ${brk.status.state}, expected failed`);
+if (!JSON.stringify(brk.status.error ?? {}).includes('boom') && !JSON.stringify(brk.status.error ?? {}).toLowerCase().includes('composition')) {
+  fail(`broken module error lacks a useful message: ${JSON.stringify(brk.status.error)}`);
+}
+console.log('remotion failure-path PASS:', brk.status.error?.message?.slice(0, 80));
+
+console.log('SMOKE PASS (html + remotion kinds)');

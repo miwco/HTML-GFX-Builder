@@ -14,10 +14,14 @@ if (!manifestPath || !outputPath) {
 }
 
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const durSec =
+  manifest.kind === 'remotion'
+    ? manifest.durationInFrames / manifest.fps
+    : manifest.timing.totalDurationMs / 1000;
 console.log(
-  `Rendering "${manifest.projectName}" — ${manifest.output.format}, ` +
+  `Rendering "${manifest.projectName}" (${manifest.kind ?? 'html'}) — ${manifest.output.format}, ` +
   `${manifest.width}x${manifest.height}@${manifest.fps} x${manifest.scale}, ` +
-  `${(manifest.timing.totalDurationMs / 1000).toFixed(1)}s`,
+  `${durSec.toFixed(1)}s`,
 );
 
 const t0 = Date.now();

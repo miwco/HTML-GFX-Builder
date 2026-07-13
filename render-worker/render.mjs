@@ -33,7 +33,10 @@ export async function renderManifest(manifest, outputPath, { onProgress = () => 
   onProgress({ stage: 'bundling', progress: 0 });
   const serveUrl = await bundleProject();
 
-  const composition = await selectComposition({ serveUrl, id: 'noacg', inputProps: manifest });
+  // kind:'remotion' = an authored composition module (video editor); everything else is
+  // the classic html render document. Same engine, same formats - just the composition.
+  const compositionId = manifest.kind === 'remotion' ? 'noacg-user' : 'noacg';
+  const composition = await selectComposition({ serveUrl, id: compositionId, inputProps: manifest });
   const totalFrames = composition.durationInFrames;
   mkdirSync(path.dirname(path.resolve(outputPath)), { recursive: true });
 
@@ -86,7 +89,11 @@ export async function renderManifest(manifest, outputPath, { onProgress = () => 
       onProgress: mediaProgress,
     });
   } else if (format === 'png-still') {
-    const stillMs = manifest.output.stillTimeMs ?? manifest.timing.totalDurationMs / 2;
+    const defaultStillMs =
+      manifest.kind === 'remotion'
+        ? (totalFrames / 2 / manifest.fps) * 1000 // the middle frame
+        : manifest.timing.totalDurationMs / 2;
+    const stillMs = manifest.output.stillTimeMs ?? defaultStillMs;
     const frame = Math.min(totalFrames - 1, Math.max(0, Math.round((stillMs / 1000) * manifest.fps)));
     onProgress({ stage: 'rendering', progress: 0.2, renderedFrames: 0, totalFrames: 1 });
     await renderStill({ ...common, imageFormat: 'png', frame, output: outputPath });

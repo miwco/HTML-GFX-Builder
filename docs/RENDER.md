@@ -4,6 +4,24 @@ How NoaCG Studio turns a graphic into finished media (MP4 / WebM / PNG still /
 PNG sequence ZIP / ProRes 4444 MOV). The user flow: open a graphic → Export tab →
 **Video & image** → pick format + total duration → Render → real progress → Download.
 
+## Two document kinds, one service
+
+The manifest (version 2) is a discriminated union on `kind`:
+
+- **`kind: 'html'`** — the classic path: an SPX/HTML graphic rendered as a self-contained
+  document driven by the virtual clock (everything below).
+- **`kind: 'remotion'`** — an authored composition from the AI video editor: ONE module
+  compiled in-browser (sucrase → CJS, imports limited to react/remotion), its input props
+  (assets as data URLs), and a fixed `durationInFrames`. The worker's second composition
+  `noacg-user` evaluates it under a require shim that supplies the worker's own React and
+  Remotion — the exact same shim contract as the live preview's player host, so the
+  preview and the render run identical code. No timing model, no schedule, no
+  measurement. Composition errors fail the job with the real message (cancelRender). The
+  UI side is `src/render/buildVideoManifest.ts` + `VideoRenderPanel`.
+
+Tiers, quotas, format rules, executors, and the job store are kind-agnostic and identical
+for both.
+
 ## Architecture (NoaCG stays the source of truth)
 
 No graphic is ever recreated as a Remotion composition and no GSAP animation is
@@ -15,10 +33,13 @@ SpxTemplate + Data panel values                       (the editor, source of tru
                                  virtual-clock runtime + GSAP + CSS (fonts inlined as
                                  data URLs) + template JS; live polling blocks stripped
   → RenderManifest               src/render/manifest.ts — the versioned job contract:
-                                 document + w/h/fps/scale + timing + data + format
+                                 kind:'html' — document + w/h/fps/scale + timing + data
+                                 + format (kind:'remotion' carries compiledJs +
+                                 inputProps + durationInFrames instead)
   → NoaCGGraphic composition     render-worker/remotion — ONE composition hosting the
                                  document in a srcdoc iframe, seeking its virtual clock
                                  to frame/fps under Remotion's delayRender protocol
+                                 (kind:'remotion' selects UserComposition instead)
   → executor                     api/_lib/executor.ts — LocalExecutor (dev/self-host:
                                  child process) | SandboxExecutor (hosted: Vercel Sandbox
                                  via @remotion/vercel, output to Vercel Blob)
@@ -119,9 +140,27 @@ Rendered documents contain user-authored HTML/CSS/JS — treated as untrusted co
   store rejects the upload. Switching to private + token-gated signed downloads (via
   `@vercel/blob`'s `issueSignedToken`/`presignUrl`, redirected through a jobToken-gated
   endpoint) is the documented next step and would be isolated to the worker + the file route.
+- **kind:'remotion' specifics:** the authored module executes in the render PAGE itself
+  (not a stubbed srcdoc iframe) — the microVM / self-host machine remains the security
+  boundary, and no secrets exist in the page (`BLOB_READ_WRITE_TOKEN` lives in the
+  worker's Node process env, never in Chrome). The page's network is deliberately NOT
+  stubbed: Remotion's own machinery (OffthreadVideo frame extraction, delayRender asset
+  loading) shares the page and needs fetch. Determinism guardrails live in the editor's
+  static validator (imports limited to react/remotion, no fetch/XHR/network URLs, no
+  wall clocks or Math.random in user SOURCE); a hostile client can skip the validator,
+  which is exactly why the boundary is the sandbox, not the validator. Worst case, a
+  malicious module corrupts or hangs its own render — bounded by the per-frame and
+  per-job timeouts.
 - Remaining hardening candidates: a pathname-scoped Blob token instead of the RW token
   in the sandbox env (blocked on @remotion/vercel's upload accepting client tokens) and
-  a deny-by-default sandbox network policy phase-switched after provisioning.
+  a deny-by-default sandbox network policy phase-switched after provisioning — which
+  would cover BOTH kinds' remaining network surface.
+- **Asset budget (kind:'remotion'):** assets travel as data URLs inside the manifest,
+  which is capped at 4 MB (Vercel body limit) — roughly 2.5–3 MB of raw media. The
+  editor enforces a 3 MB per-asset cap at upload and the export panel shows a budget
+  meter naming the largest assets. The documented follow-up for bigger media: a
+  client→Blob upload channel with URLs in inputProps and the executor pre-fetching
+  assets into the sandbox before render.
 
 ## Running it
 
@@ -175,17 +214,24 @@ deployed functions run as ESM (`type: module`), where Node requires them.
 
 - `npm run test:e2e` — offline suite; includes `render-schedule.spec.ts` (schedule +
   limits math) and `render.spec.ts` (panel states over a stubbed API).
-- `node scripts/render-smoke.mjs` — the REAL full loop on this machine: manifest from a
-  live catalog template → api → local Remotion render → download + MP4 sniff + token
-  probes. Not in CI (renders take minutes and download Chrome).
+- `node scripts/render-smoke.mjs` — the REAL full loop on this machine, BOTH kinds:
+  html manifest from a live catalog template → api → local Remotion render → download +
+  MP4 sniff + token probes, then a kind:'remotion' fixture through the same service plus
+  a throwing-module job that must fail with a useful message. Not in CI (renders take
+  minutes and download Chrome).
 - `node scripts/make-render-manifest.mjs <out> <variantId> [sec] [format] [fps] [scale]
   [createOptionsJson]` + `node render-worker/cli.mjs <manifest> <out>` — render any
   catalog variant by hand.
+- `node scripts/make-remotion-manifest.mjs <out> [frames] [format] [fps] [scale]` — a
+  kind:'remotion' fixture with a hand-written module (no browser needed), for the same
+  cli loop.
 
 ## License note
 
 Remotion is source-available: free for individuals and organizations up to 3 people,
 paid company license above that (https://remotion.dev/license). NoaCG Studio is
 currently a solo project, so the free tier applies. The dependency is isolated in
-`render-worker/` (its own package) and never enters the AGPL app bundle — revisit the
-license if the organization grows past 3 people.
+`render-worker/` (its own package) and never enters the AGPL app bundle — as is
+`@remotion/player`, which lives only in `player-host/` (its own package, built into
+`public/player-host/` as a standalone page the app talks to via postMessage). Revisit
+the license if the organization grows past 3 people.

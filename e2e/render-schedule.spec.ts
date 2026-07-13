@@ -77,11 +77,26 @@ test('render limits: tier gates on format, resolution, fps, and duration', async
     const { validateRenderRequest, formatNeedsSignIn, resolveTier, RENDER_LIMITS } =
       await import('/src/render/limits.ts');
     const base = {
+      kind: 'html',
       width: 1920, height: 1080, fps: 25, scale: 1,
       timing: { totalDurationMs: 10_000, outMode: 'auto', minHoldMs: 500, epochMs: 0 },
       output: { format: 'mp4' },
     };
+    // kind:'remotion' expresses duration as frames - the same caps must apply.
+    const remotion = {
+      kind: 'remotion',
+      width: 1920, height: 1080, fps: 25, scale: 1,
+      durationInFrames: 250, // 10 s
+      output: { format: 'mp4' },
+    };
     return {
+      remotionOk: validateRenderRequest(remotion, 'anonymous'),
+      remotionLong: validateRenderRequest({ ...remotion, durationInFrames: 25 * 30 }, 'anonymous'), // 30 s > 15 s cap
+      remotionFps: validateRenderRequest({ ...remotion, fps: 60, durationInFrames: 600 }, 'anonymous'),
+      remotionProresFreeLong: validateRenderRequest(
+        { ...remotion, durationInFrames: 25 * 45, output: { format: 'prores4444' } },
+        'free',
+      ),
       anonMp4: validateRenderRequest(base, 'anonymous'),
       anonProres: validateRenderRequest({ ...base, output: { format: 'prores4444' } }, 'anonymous'),
       anonLong: validateRenderRequest({ ...base, timing: { ...base.timing, totalDurationMs: 30_000 } }, 'anonymous'),
@@ -102,6 +117,10 @@ test('render limits: tier gates on format, resolution, fps, and duration', async
     };
   });
 
+  expect(r.remotionOk).toEqual([]);
+  expect(r.remotionLong.map((i: { code: string }) => i.code)).toContain('duration');
+  expect(r.remotionFps.map((i: { code: string }) => i.code)).toContain('fps');
+  expect(r.remotionProresFreeLong.map((i: { code: string }) => i.code)).toContain('duration');
   expect(r.anonMp4).toEqual([]);
   expect(r.anonProres.map((i: { code: string }) => i.code)).toContain('format-signin');
   expect(r.anonLong.map((i: { code: string }) => i.code)).toContain('duration');

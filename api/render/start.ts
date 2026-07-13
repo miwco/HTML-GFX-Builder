@@ -26,10 +26,36 @@ export default {
       return apiError(code as 'too_large' | 'invalid', (err as Error).message, code === 'too_large' ? 413 : 400);
     }
     if (manifest.version !== RENDER_MANIFEST_VERSION) {
-      return apiError('invalid', `unsupported manifest version ${manifest.version}`, 400);
+      // The only realistic sender of an old version is a stale open tab (manifests are
+      // built at click time, never persisted).
+      return apiError('invalid', `unsupported manifest version ${manifest.version} — reload the app`, 400);
     }
-    if (typeof manifest.documentHtml !== 'string' || manifest.documentHtml.length === 0) {
-      return apiError('invalid', 'manifest has no document', 400);
+    if (manifest.kind === 'remotion') {
+      if (typeof manifest.compiledJs !== 'string' || manifest.compiledJs.trim().length === 0) {
+        return apiError('invalid', 'manifest has no compiled composition module', 400);
+      }
+      if (manifest.compiledJs.length > RENDER_CONFIG.compiledJsMaxBytes) {
+        return apiError('too_large', 'compiled composition module too large', 413);
+      }
+      if (
+        !Number.isFinite(manifest.durationInFrames) ||
+        manifest.durationInFrames < 1 ||
+        manifest.durationInFrames > 3600 * manifest.fps
+      ) {
+        return apiError('invalid', 'bad durationInFrames', 400);
+      }
+      if (
+        manifest.inputProps !== undefined &&
+        (typeof manifest.inputProps !== 'object' || manifest.inputProps === null || Array.isArray(manifest.inputProps))
+      ) {
+        return apiError('invalid', 'inputProps must be a JSON object', 400);
+      }
+    } else if (manifest.kind === 'html') {
+      if (typeof manifest.documentHtml !== 'string' || manifest.documentHtml.length === 0) {
+        return apiError('invalid', 'manifest has no document', 400);
+      }
+    } else {
+      return apiError('invalid', 'unknown document kind', 400);
     }
 
     // Tier + authoritative limit re-check (client-side checks are UX only).

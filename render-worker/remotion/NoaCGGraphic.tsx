@@ -12,7 +12,7 @@
 import { AbsoluteFill, cancelRender, continueRender, delayRender, useCurrentFrame, useVideoConfig } from 'remotion';
 import { useEffect, useRef } from 'react';
 import { computeSchedule } from '../../src/render/schedule';
-import { RENDER_RUNTIME_VERSION, type MeasuredDurations, type RenderCue, type RenderManifest } from '../../src/render/manifest';
+import { RENDER_RUNTIME_VERSION, type HtmlRenderManifest, type MeasuredDurations, type RenderCue } from '../../src/render/manifest';
 
 interface RenderRuntime {
   version: number;
@@ -32,7 +32,7 @@ interface HostState {
 const settlePaint = () =>
   new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 
-export const NoaCGGraphic: React.FC<RenderManifest> = (manifest) => {
+export const NoaCGGraphic: React.FC<HtmlRenderManifest> = (manifest) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const containerRef = useRef<HTMLDivElement>(null);

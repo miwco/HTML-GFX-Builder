@@ -34,6 +34,9 @@ export default defineConfig({
     // VITE_RENDER_API is pinned ON: the render section is part of the offline surface the
     // suite covers (the local executor renders with zero backend — the self-host mode).
     // Render specs stub /api/render/* with page.route, so no real render runs in CI.
-    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_RENDER_API: '1' },
+    // VITE_ANTHROPIC_API_KEY is pinned EMPTY so AI-adjacent specs exercise the offline
+    // stub providers deterministically (a real key in the developer's .env must never
+    // leak into the suite - the video specs rely on the stub generator).
+    env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_RENDER_API: '1', VITE_ANTHROPIC_API_KEY: '', VITE_AI_MODEL: '', VITE_AI_PROXY_URL: '' },
   },
 });

@@ -125,6 +125,23 @@ src/
                (direct browser call with the user's key OR the VITE_AI_PROXY_URL gateway),
                settings.ts (localStorage + .env: key, model), index.ts (getAiProvider - Claude
                when configured, stub otherwise), stubProvider.ts, presets.ts
+  ai/video/    the VIDEO motion-design harness ("Video or animation with AI"): staged
+               generation - keyword-first skill detection (skills.ts; one cheap Haiku
+               call only when nothing matches) -> Motion Director (forced emit_motion_plan
+               tool, a timed plan) -> Remotion coder (forced emit_remotion_module tool
+               against prompts.ts: the composition contract + motion principles + a
+               canonical example module that itself passes the pipeline) -> bounded
+               repair (2 rounds, exact validator errors with frame numbers fed back).
+               stubVideoProvider serves offline; refinements send recent chat + the
+               current module and ask for minimal change
+  video/       the composition pipeline for the video project kind: compile.ts (sucrase
+               TSX->CJS + static contract checks: imports limited to react/remotion,
+               deterministic frame-derived animation, no network/DOM), validate.ts
+               (compile -> static -> live player probe of frames 0/mid/last),
+               playerBridge.ts (the postMessage client for the sandboxed player host;
+               SERIALIZED load/probe, disposed bridges resolve immediately),
+               bridgeRegistry.ts, types.ts (asset logical names - the `assets` prop
+               contract)
   validation/  validateTemplate.ts - runs before export and on AI output
   control/     the modular control-panel engine: controlModel.ts (fields -> operator control
                descriptors by ftype, ONE generator, no per-template code; controlChannelName +
@@ -163,7 +180,9 @@ src/
                (StepTimeline for data-block templates, the classic TimelineView for legacy
                ones), Inspector (properties + keyframes + Animations), the five-tab SidePanel
                (Data / Control / Style / AI / Export - Motion lives on the timeline), wizard/,
-               auth/
+               auth/, and video/ - the PARALLEL editor shell for the AI video project
+               kind (VideoAppShell: TSX Monaco + the sandboxed Remotion Player preview +
+               Chat/Settings/Assets/Export; App.tsx switches shells on docKindStore)
 public/fonts/  the 7 bundled woff2 fonts (served at /fonts, copied into exports;
                jetbrains-mono.woff2 doubles as the app UI's mono face)
 scripts/       dev-port.mjs (per-checkout port), l3-sweep.mjs (catalog sweep - see Verifying),
@@ -179,6 +198,16 @@ api/           the render service's Vercel functions (start/status/cancel/comple
                api/_lib; typechecked by tsconfig.api.json inside the build gate
 render-worker/ the Remotion renderer - its own exact-pinned package so the dependency (and
                its non-OSI license) never enters the AGPL app bundle
+player-host/   the Remotion Player host for the video editor's live preview - its own
+               exact-pinned package (same isolation posture as render-worker), built by
+               scripts/build-player-host.mjs into public/player-host/ as ONE
+               self-contained HTML page (inlined JS - module script fetches are
+               CORS-blocked from the sandbox's opaque origin). Loaded in an iframe with
+               sandbox="allow-scripts" ONLY (never add allow-same-origin: the opaque
+               origin keeps AI/user composition code away from localStorage and the
+               session); the app talks to it purely via postMessage with a per-session
+               nonce (protocol spec: player-host/src/protocol.ts, mirrored by
+               src/video/playerBridge.ts)
 ```
 
 ### Auth posture (the open editor)
@@ -194,7 +223,10 @@ src/components/CLAUDE.md.
 
 New projects go through the **CreationWizard** (Entry -> Category -> Template -> Fields -> Style
 -> Animation, persistent live preview); `variant.create(options)` generates the complete,
-commented template. After creation, code is the source of truth and two **live panels** keep
+commented template. A fifth entry card, **"Video or animation with AI"**, creates the parallel
+VIDEO project kind instead (React/Remotion, fixed duration - see src/ai/video, src/video, and
+components/video in the map above); creating/opening a video flips the persisted doc-kind
+switch and every SPX create path flips it back. After creation, code is the source of truth and two **live panels** keep
 working via deterministic patches: the **Style panel** writes the `:root` style contract
 (src/templates/CLAUDE.md) and **the timeline under the preview** — the step timeline for
 data-block templates, the classic strip for legacy ones — touches ONLY the marked ANIMATION region

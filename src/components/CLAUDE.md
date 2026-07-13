@@ -196,11 +196,39 @@ editing lives on the timeline (StepTimeline or TimelineView via TimelineDock) pl
   store with 📦 Packets), **SettingsDialog** (AI key/model + workflow defaults from
   model/prefs.ts).
 
+## Video editor shell (video/)
+
+The PARALLEL editor world for the AI video project kind (VideoProject, src/model/videoTypes.ts).
+App.tsx renders **VideoAppShell** instead of AppShell when docKindStore says 'video'; only the
+wizard flips that switch. Layout: TSX code pane (lazy Monaco, **VideoCodeEditor**, syntax-only
+TSX diagnostics from monacoSetup.ts) | splitter (model/videoLayout.ts `codeRatio` pref,
+independent of the SPX dockable workspace) | right column =
+**VideoPlayerFrame** (the player stage; the sandboxed Remotion Player iframe host) over a
+tabbed panel: **VideoAiChatPanel** (the primary authoring surface - auto-runs the FIRST
+generation when chat holds exactly one unanswered user turn, guarded PER PROJECT ID with a
+retry button on failure; every AI result applies as ONE undoable applyProject; failed
+validation keeps the previous working code and offers "Apply anyway"), **VideoSettingsPanel**
+(undoable patchSettings; duration edits in seconds, fps changes preserve seconds),
+**VideoAssetsPanel** (data-URL assets, 3 MB/asset hard cap - the render manifest budget),
+**VideoExportPanel** (mounts **VideoRenderPanel** when isRenderConfigured() - kind:'remotion'
+manifests through the shared render service, with an upload-budget meter; plus the .tsx
+source download). **SavedVideoProjects** = the 📁 My videos modal
+(explicit saves; the current slot autosaves separately). The shell binds the same global
+undo/redo keys as AppShell with the same Monaco/form-field guard. AI chat gates on
+`needsSignIn` (hosted mode) exactly like AIPromptPanel; everything else stays open.
+
 ## Wizard (wizard/)
 
 CreationWizard (Entry -> Category -> Template -> Fields -> Style -> Animation, persistent live
 preview), draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.create(options)`
 which generates the complete, commented template.
+
+**Video mode** (Entry card "Video or animation with AI" -> steps/VideoStep): prompt + duration/
+aspect/fps/transparency + asset upload -> an INSTANT create (`createDefaultVideoProject`, the
+brief seeded as chat[0]); generation runs in the video shell's chat, not the wizard. The step's
+reopen strip lists saved videos plus a "Continue" chip for the autosaved current video project
+(shown from the SPX shell). Creating/opening a video flips docKind to 'video'; every SPX create
+path (template/AI/blank/import) flips it back to 'spx'.
 
 **Sample data on create:** the wizard applies with
 `applyTemplate(template, { resetSampleData: true })` so a new project starts from ITS field

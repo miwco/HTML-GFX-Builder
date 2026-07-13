@@ -1,0 +1,233 @@
+// The video editor shell - the workspace for the "Video or animation with AI" project
+// kind. Deliberately simpler than AppShell: TSX code on the left (collapsible), the player
+// stage + a tabbed panel column (Chat / Settings / Assets / Export) on the right. Mounted
+// by App.tsx when docKind === 'video'; the wizard (galleryOpen lives in templateStore as
+// the app-wide flag) opens on top of either shell.
+
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { useTemplateStore } from '../../store/templateStore';
+import { useVideoProjectStore, type VideoPanelTab } from '../../store/videoProjectStore';
+import CreationWizard from '../wizard/CreationWizard';
+import BrandLogo from '../BrandLogo';
+import AuthStatus from '../auth/AuthStatus';
+import SignInDialog from '../auth/SignInDialog';
+import SyncStatus from '../SyncStatus';
+import { useIsMobile } from '../useIsMobile';
+import { useSplitter, type Splitter } from '../useSplitter';
+import { clampRatio } from '../../model/layout';
+import { loadVideoLayout, saveVideoLayout, type VideoLayout } from '../../model/videoLayout';
+import { useRef } from 'react';
+import VideoPlayerFrame from './VideoPlayerFrame';
+import VideoAiChatPanel from './VideoAiChatPanel';
+import VideoSettingsPanel from './VideoSettingsPanel';
+import VideoAssetsPanel from './VideoAssetsPanel';
+import VideoExportPanel from './VideoExportPanel';
+import SavedVideoProjects from './SavedVideoProjects';
+import { upsertSavedVideoProject } from '../../model/videoProject';
+
+const VideoCodeEditorLazy = lazy(() => import('./VideoCodeEditor'));
+function VideoCodeEditor() {
+  return (
+    <Suspense fallback={<div className="code-editor-loading">Loading the code editor…</div>}>
+      <VideoCodeEditorLazy />
+    </Suspense>
+  );
+}
+
+function Divider({ splitter, testid }: { splitter: Splitter; testid: string }) {
+  return (
+    <div
+      className={`workspace-divider${splitter.dragging ? ' dragging' : ''}`}
+      data-testid={testid}
+      role="separator"
+      aria-orientation="vertical"
+      onPointerDown={splitter.onPointerDown}
+      onPointerMove={splitter.onPointerMove}
+      onPointerUp={splitter.onPointerUp}
+    />
+  );
+}
+
+const PANEL_TABS: { id: VideoPanelTab; label: string }[] = [
+  { id: 'chat', label: '✦ Chat' },
+  { id: 'settings', label: 'Settings' },
+  { id: 'assets', label: 'Assets' },
+  { id: 'export', label: 'Export' },
+];
+
+export default function VideoAppShell() {
+  const project = useVideoProjectStore((s) => s.project);
+  const activePanel = useVideoProjectStore((s) => s.activePanel);
+  const setActivePanel = useVideoProjectStore((s) => s.setActivePanel);
+  const autosaveFailed = useVideoProjectStore((s) => s.autosaveFailed);
+  const undo = useVideoProjectStore((s) => s.undo);
+  const redo = useVideoProjectStore((s) => s.redo);
+  const openGallery = useTemplateStore((s) => s.openGallery);
+
+  const isMobile = useIsMobile();
+  const [layout, setLayout] = useState<VideoLayout>(loadVideoLayout);
+  const [savedOpen, setSavedOpen] = useState(false);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [mobileCodeOpen, setMobileCodeOpen] = useState(false);
+
+  const toggleCode = () =>
+    setLayout((l) => {
+      const codeCollapsed = !l.codeCollapsed;
+      saveVideoLayout({ codeCollapsed });
+      return { ...l, codeCollapsed };
+    });
+
+  const codeWidth = useSplitter(
+    'x',
+    workspaceRef,
+    (r) => setLayout((l) => ({ ...l, codeRatio: clampRatio(r, 0.2, 0.7) })),
+    (r) => saveVideoLayout({ codeRatio: clampRatio(r, 0.2, 0.7) }),
+  );
+
+  // Global undo/redo for AI/panel applies - same bindings and Monaco/form-field guard as
+  // AppShell (only one shell is mounted at a time, so no double handling).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isZ = e.key === 'z' || e.key === 'Z';
+      const isY = e.key === 'y' || e.key === 'Y';
+      if ((!isZ && !isY) || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName;
+      const inEditable =
+        !!el?.closest?.('.monaco-editor') ||
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        !!el?.isContentEditable;
+      if (inEditable) return;
+      e.preventDefault();
+      if (isY || e.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo, redo]);
+
+  const saveToList = () => {
+    const ok = upsertSavedVideoProject(project);
+    setSaveNote(ok ? '✓ Saved' : '✗ Storage full');
+    setTimeout(() => setSaveNote(null), 2500);
+  };
+
+  const panel = (
+    <section className="pane video-panel-pane" data-testid="video-panel-pane">
+      <div className="pane-header">
+        <div className="tabs">
+          {PANEL_TABS.map((t) => (
+            <button
+              key={t.id}
+              className={`tab ${activePanel === t.id ? 'active' : ''}`}
+              onClick={() => setActivePanel(t.id)}
+              data-testid={`video-tab-${t.id}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="video-panel-body">
+        {activePanel === 'chat' && <VideoAiChatPanel />}
+        {activePanel === 'settings' && <VideoSettingsPanel />}
+        {activePanel === 'assets' && <VideoAssetsPanel />}
+        {activePanel === 'export' && <VideoExportPanel />}
+      </div>
+    </section>
+  );
+
+  return (
+    <div className="app" data-testid="video-shell">
+      <header className="topbar">
+        <button className="brand brand-home" onClick={openGallery} title="NoaCG Studio - start a new project">
+          <BrandLogo size={24} />
+        </button>
+        <span className="divider-dot" aria-hidden="true">·</span>
+        <span className="tpl-name">{project.name}</span>
+        <span className="mono muted" style={{ fontSize: 11, marginLeft: 6 }}>
+          {project.width}×{project.height} · {project.fps}&thinsp;fps ·{' '}
+          {(project.durationInFrames / project.fps).toFixed(1)}&thinsp;s
+        </span>
+        {autosaveFailed && (
+          <span className="status-bad" style={{ fontSize: 11, marginLeft: 10 }} title="Browser storage is full - remove large assets or save space, or your latest changes won't survive a reload">
+            ⚠ autosave failing
+          </span>
+        )}
+        <div className="spacer" />
+        {!isMobile && (
+          <button
+            className={layout.codeCollapsed ? '' : 'active'}
+            onClick={toggleCode}
+            data-testid="video-toggle-code"
+            title={layout.codeCollapsed ? 'Show the code editor' : 'Collapse the code editor'}
+          >
+            {layout.codeCollapsed ? '▸ Show code' : '▾ Hide code'}
+          </button>
+        )}
+        <button onClick={saveToList} title="Keep this project in My videos" data-testid="video-save">
+          💾 Save{saveNote ? ` ${saveNote}` : ''}
+        </button>
+        <button onClick={() => setSavedOpen(true)} title="Your saved video projects" data-testid="video-my-videos">
+          📁 My videos
+        </button>
+        <button onClick={openGallery} title="Start a new project">
+          + New project
+        </button>
+        <SyncStatus />
+        <AuthStatus />
+      </header>
+
+      {isMobile ? (
+        <div className="workspace workspace-mobile">
+          <VideoPlayerFrame />
+          {panel}
+          <div className="mobile-code">
+            <button className="mobile-code-toggle" onClick={() => setMobileCodeOpen((o) => !o)}>
+              {mobileCodeOpen ? '▾ Hide code' : '▸ Show code'}
+            </button>
+            {mobileCodeOpen && (
+              <section className="pane" style={{ height: 380 }}>
+                <VideoCodeEditor />
+              </section>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div
+          className="workspace video-workspace"
+          ref={workspaceRef}
+          style={{
+            gridTemplateColumns: layout.codeCollapsed
+              ? '1fr'
+              : `${layout.codeRatio}fr 6px ${1 - layout.codeRatio}fr`,
+          }}
+        >
+          {!layout.codeCollapsed && (
+            <>
+              <section className="pane" data-testid="video-code-pane">
+                <VideoCodeEditor />
+              </section>
+              <Divider splitter={codeWidth} testid="video-workspace-divider" />
+            </>
+          )}
+          <div className="video-right">
+            <VideoPlayerFrame />
+            {panel}
+          </div>
+        </div>
+      )}
+
+      {/* Creation wizard overlay - the app-wide new-project flow (both shells mount it). */}
+      <CreationWizard />
+
+      {savedOpen && <SavedVideoProjects onClose={() => setSavedOpen(false)} />}
+
+      {/* On-demand sign-in dialog - opened by account-gated features (AI chat, sync). */}
+      <SignInDialog />
+    </div>
+  );
+}

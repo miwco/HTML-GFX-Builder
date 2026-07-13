@@ -48,6 +48,7 @@ export async function buildRenderManifest(
   };
   const manifest: RenderManifest = {
     version: RENDER_MANIFEST_VERSION,
+    kind: 'html',
     projectName: template.name,
     documentHtml,
     width: template.resolution.width,

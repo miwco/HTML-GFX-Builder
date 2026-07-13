@@ -9,8 +9,10 @@
 // travels here — the fully self-contained document, the data snapshot, the timing model,
 // and the virtual-clock epoch (so even wall-clock graphics render reproducibly).
 
-/** Bump when the manifest shape changes incompatibly. The worker rejects unknown versions. */
-export const RENDER_MANIFEST_VERSION = 1;
+/** Bump when the manifest shape changes incompatibly. The worker rejects unknown versions.
+ *  v2: a `kind` discriminator - 'html' (the SPX document path, unchanged behavior) or
+ *  'remotion' (an authored composition module from the video editor). */
+export const RENDER_MANIFEST_VERSION = 2;
 
 /** Bump when the in-document __noacgRender API changes. The host handshakes on it. */
 export const RENDER_RUNTIME_VERSION = 1;
@@ -129,14 +131,11 @@ export interface RenderSchedule {
   durationMs: number;
 }
 
-/** The full render job input. documentHtml is completely self-contained (assets and fonts
- *  as data URLs, GSAP inlined, __noacgRender injected) — the renderer needs no network
- *  and no knowledge of templates. */
-export interface RenderManifest {
+/** Fields shared by both manifest kinds. */
+interface RenderManifestBase {
   version: typeof RENDER_MANIFEST_VERSION;
   projectName: string;
-  documentHtml: string;
-  /** The AUTHORED template resolution. Never change it for output sizing — layout math
+  /** The AUTHORED resolution. Never change it for output sizing — layout math
    *  (marquee widths, credit roll heights, --scale) depends on it. Use `scale`. */
   width: number;
   height: number;
@@ -144,18 +143,50 @@ export interface RenderManifest {
   fps: number;
   /** Remotion render scale: output pixels = width×scale — same CSS layout, higher density. */
   scale: number;
+  output: RenderOutput;
+}
+
+/** The SPX/HTML document path. documentHtml is completely self-contained (assets and
+ *  fonts as data URLs, GSAP inlined, __noacgRender injected) — the renderer needs no
+ *  network and no knowledge of templates. */
+export interface HtmlRenderManifest extends RenderManifestBase {
+  kind: 'html';
+  documentHtml: string;
   timing: RenderTiming;
   /** The Data panel snapshot fed to update(). */
   data: Record<string, string>;
-  output: RenderOutput;
   /** Advisory client-side measurement (UI breakdown + preflight). The worker re-measures
    *  in its own page and those numbers are authoritative. */
   estimatedDurations?: MeasuredDurations;
 }
 
+/** An authored Remotion composition from the video editor: ONE module compiled in-browser
+ *  to plain CJS (sucrase; the same output the live preview runs), imports limited to
+ *  react/remotion and resolved by the worker's require shim. No timing model, no schedule,
+ *  no measurement — the duration is fixed by the project. */
+export interface RemotionRenderManifest extends RenderManifestBase {
+  kind: 'remotion';
+  /** The compiled module source. Default export = the composition component. */
+  compiledJs: string;
+  /** JSON-serializable props, including `assets: Record<name, dataUrl>`. */
+  inputProps: Record<string, unknown>;
+  durationInFrames: number;
+  /** Advisory: the comp paints no own background (UI hints; alpha formats simply render
+   *  whatever the comp paints — nothing to enforce). */
+  transparent?: boolean;
+}
+
+export type RenderManifest = HtmlRenderManifest | RemotionRenderManifest;
+
+/** The subset either kind needs for duration math (limits, timeouts, calculateMetadata). */
+export type ManifestTimingSummary =
+  | { kind: 'html'; fps: number; timing: RenderTiming }
+  | { kind: 'remotion'; fps: number; durationInFrames: number };
+
 /** Frames in the finished output — fixed by the manifest alone, so Remotion's
  *  calculateMetadata never waits on measurement. */
-export function durationInFrames(manifest: Pick<RenderManifest, 'fps' | 'timing'>): number {
+export function durationInFrames(manifest: ManifestTimingSummary): number {
+  if (manifest.kind === 'remotion') return Math.max(1, Math.round(manifest.durationInFrames));
   return Math.max(1, Math.round((manifest.timing.totalDurationMs / 1000) * manifest.fps));
 }
 
