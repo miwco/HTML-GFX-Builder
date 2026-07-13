@@ -155,3 +155,39 @@ test('a drag on empty canvas lassos the parts it touches — no code, no history
   await page.keyboard.press('Escape');
   await page.mouse.up();
 });
+
+test('canvas: a selected layer shows scale + rotate handles that key at the playhead', async ({ page }) => {
+  await createHairline(page);
+  const hasProp = async (prop: string) =>
+    page.evaluate(async (p) => {
+      const { useTemplateStore } = await import('/src/store/templateStore.ts');
+      const { parseAnimData } = await import('/src/blocks/animData.ts');
+      const d = parseAnimData(useTemplateStore.getState().template.js)!;
+      return d.steps.some((s) => (s.layers['#f0']?.[p]?.length ?? 0) > 0);
+    }, prop);
+
+  // Select the Name line via its timeline row (a clean single-layer selection).
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  const scaleHandle = page.getByTestId('layer-scale-handle');
+  const rotateHandle = page.getByTestId('layer-rotate-handle');
+  await expect(scaleHandle).toBeVisible();
+  await expect(rotateHandle).toBeVisible();
+  expect(await hasProp('scale')).toBe(false);
+  expect(await hasProp('rotation')).toBe(false);
+
+  // Drag the corner handle out → a scale keyframe lands on #f0 at the playhead.
+  const sh = (await scaleHandle.boundingBox())!;
+  await page.mouse.move(sh.x + sh.width / 2, sh.y + sh.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sh.x + 70, sh.y + 70, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(() => hasProp('scale')).toBe(true);
+
+  // Drag the top handle sideways → a rotation keyframe lands too.
+  const rh = (await rotateHandle.boundingBox())!;
+  await page.mouse.move(rh.x + rh.width / 2, rh.y + rh.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(rh.x + 60, rh.y + 30, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(() => hasProp('rotation')).toBe(true);
+});

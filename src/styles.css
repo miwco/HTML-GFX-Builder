@@ -1240,6 +1240,44 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .scale-handle.dragging { box-shadow: 0 0 14px rgba(246, 166, 35, 0.8); }
 
+/* A selected layer's scale (corner square) + rotate (top circle) handles. */
+.layer-scale-handle,
+.layer-rotate-handle {
+  position: absolute;
+  background: var(--amber);
+  box-shadow: 0 0 8px rgba(246, 166, 35, 0.5);
+  touch-action: none;
+  z-index: 6;
+}
+.layer-scale-handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(10, 12, 16, 0.9);
+  cursor: nwse-resize;
+}
+.layer-rotate-handle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(10, 12, 16, 0.9);
+  cursor: grab;
+}
+/* A short stem from the rotate handle down to the selection's top edge. */
+.layer-rotate-handle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 1px;
+  height: 12px;
+  background: rgba(246, 166, 35, 0.6);
+  transform: translateX(-50%);
+}
+.layer-scale-handle.dragging,
+.layer-rotate-handle.dragging { box-shadow: 0 0 14px rgba(246, 166, 35, 0.9); }
+.layer-rotate-handle.dragging { cursor: grabbing; }
+
 /* The inline text editor floated over the text element it edits. */
 .inline-edit { position: absolute; z-index: 6; }
 .inline-edit input,

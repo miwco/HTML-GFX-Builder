@@ -70,6 +70,26 @@ interface ScaleDrag {
   value: number;
 }
 
+/** A selected LAYER's scale- or rotate-handle drag (data-block templates): live GSAP preview
+ *  on the layer, then one scale/rotation keyframe committed at the playhead on release —
+ *  pivoting around the layer's transform-origin (the Inspector pivot). */
+interface LayerTransformDrag {
+  kind: 'scale' | 'rotate';
+  selector: string;
+  /** baseScale (unitless) or baseRotation (deg) at drag start. */
+  base: number;
+  startX: number; // pointer start, screen px
+  startY: number;
+  /** scale: the layer's size (screen px) — the diagonal-drag reference. */
+  refSize: number;
+  /** rotate: the layer centre in screen px, and the pointer's initial angle (deg). */
+  centerX: number;
+  centerY: number;
+  startAngle: number;
+  value: number;
+  active: boolean;
+}
+
 // A real drag, not a shaky click (screen px).
 const DRAG_THRESHOLD = 4;
 // Sanity bounds for the drag, not a design limit — the Style panel accepts any typed
@@ -120,6 +140,9 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const [scaleDrag, setScaleDrag] = useState<ScaleDrag | null>(null);
   const scaleDragRef = useRef<ScaleDrag | null>(null);
   scaleDragRef.current = scaleDrag;
+  const [layerTf, setLayerTf] = useState<LayerTransformDrag | null>(null);
+  const layerTfRef = useRef<LayerTransformDrag | null>(null);
+  layerTfRef.current = layerTf;
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
   // Mirror of `editing` so blur-after-Escape can't commit a cancelled edit (the blur handler
@@ -132,8 +155,8 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   // must never resize the workspace while the pointer is mid-gesture or the inline editor is
   // open — the canvas (and the edit overlay anchored to it) would shift under the user.
   useEffect(() => {
-    setCanvasGestureActive(Boolean(drag || layerDrag || scaleDrag || editing || lasso));
-  }, [drag, layerDrag, scaleDrag, editing, lasso, setCanvasGestureActive]);
+    setCanvasGestureActive(Boolean(drag || layerDrag || scaleDrag || layerTf || editing || lasso));
+  }, [drag, layerDrag, scaleDrag, layerTf, editing, lasso, setCanvasGestureActive]);
 
   // ── Selection model (editor UI state only — never written into the template).
   // The selectors live in the STORE so the timeline highlights the same elements
@@ -259,6 +282,14 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   // The corner scale handle anchors to the hovered root — or to the selection while the
   // WHOLE GRAPHIC is selected, so the chip's one existing root action stays reachable.
   const handleRect = hoverRect ?? (selectedPart?.kind === 'root' ? selRect : null);
+
+  // A single selected NON-ROOT layer on a data-block template gets scale + rotate handles on
+  // its selection box; dragging them keys scale/rotation at the playhead (pivoting around the
+  // layer's transform-origin — the Inspector pivot). The root keeps its own --scale handle.
+  const layerTfSel =
+    dataModel && selectedParts.length === 1 && selectedPart && selectedPart.kind !== 'root'
+      ? selectedPart.selector
+      : null;
 
   const doc = () => iframeRef.current?.contentDocument ?? null;
   const rootEl = () => doc()?.querySelector<HTMLElement>(rootSelector) ?? null;
@@ -408,6 +439,16 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     if (!selected) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if (layerTfRef.current) {
+        // Spring the layer back to where the drag found it, keep it selected. Refs only, so
+        // this Escape effect needs no extra deps.
+        const d = layerTfRef.current;
+        const w = iframeRef.current?.contentWindow as SpxWindow | null;
+        const el = iframeRef.current?.contentDocument?.querySelector<HTMLElement>(d.selector);
+        if (el) w?.gsap?.set(el, d.kind === 'scale' ? { scale: d.base } : { rotation: d.base });
+        setLayerTf(null);
+        return;
+      }
       if (dragRef.current || editingRef.current || scaleDragRef.current || layerDragRef.current || lassoRef.current) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest?.('input, textarea, select, .monaco-editor')) return;
@@ -415,7 +456,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, setSelected]);
+  }, [selected, setSelected, iframeRef]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (editing) return; // the editor overlay handles its own events
@@ -627,6 +668,83 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     // committed as one undoable apply; the editor highlights it and jumps to it.
     applyTemplate({ ...template, css: setCssVariable(template.css, 'scale', String(d.value)) });
     setActiveTab('css');
+  };
+
+  // ── The selected layer's scale + rotate handles (data-block templates). Live GSAP preview
+  //    on the layer; release keys scale/rotation at the playhead — the same animEdit +
+  //    spliceAnimData path everything else edits through, pivoting around the layer's
+  //    transform-origin (GSAP honours the element's current transformOrigin). ──
+  const resetLayerTf = (d: LayerTransformDrag) => {
+    const el = doc()?.querySelector<HTMLElement>(d.selector);
+    if (el) gsapOf()?.set(el, d.kind === 'scale' ? { scale: d.base } : { rotation: d.base });
+  };
+  const cancelLayerTf = () => {
+    const d = layerTfRef.current;
+    if (d) resetLayerTf(d);
+    setLayerTf(null);
+  };
+  const startLayerTf = (e: React.PointerEvent, kind: 'scale' | 'rotate') => {
+    if (!layerTfSel || !selRect) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const g = gsapOf();
+    const el = doc()?.querySelector<HTMLElement>(layerTfSel);
+    const raw = kind === 'scale' ? Number(g?.getProperty?.(el, 'scaleX')) : Number(g?.getProperty?.(el, 'rotation'));
+    const base = Number.isFinite(raw) ? raw : kind === 'scale' ? 1 : 0;
+    // The layer centre in SCREEN px (the overlay's own screen origin + the rect centre).
+    const layerBox = (e.currentTarget as HTMLElement).closest('.canvas-layer')?.getBoundingClientRect();
+    const cx = (layerBox?.left ?? 0) + (selRect.left + selRect.width / 2) * scale;
+    const cy = (layerBox?.top ?? 0) + (selRect.top + selRect.height / 2) * scale;
+    setLayerTf({
+      kind,
+      selector: layerTfSel,
+      base,
+      startX: e.clientX,
+      startY: e.clientY,
+      refSize: (selRect.width + selRect.height) * scale,
+      centerX: cx,
+      centerY: cy,
+      startAngle: (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI,
+      value: base,
+      active: false,
+    });
+  };
+  const moveLayerTf = (e: React.PointerEvent) => {
+    const d = layerTfRef.current;
+    if (!d) return;
+    e.stopPropagation();
+    const el = doc()?.querySelector<HTMLElement>(d.selector);
+    const g = gsapOf();
+    let value: number;
+    if (d.kind === 'scale') {
+      // Diagonal corner drag, proportional to the layer's size at start.
+      const gesture = e.clientX - d.startX + (e.clientY - d.startY);
+      const factor = 1 + gesture / Math.max(80, d.refSize);
+      value = Math.round(Math.min(SCALE_MAX, Math.max(SCALE_MIN, d.base * factor)) * 100) / 100;
+      if (el) g?.set(el, { scale: value });
+    } else {
+      const angle = (Math.atan2(e.clientY - d.centerY, e.clientX - d.centerX) * 180) / Math.PI;
+      value = Math.round((d.base + (angle - d.startAngle)) * 10) / 10;
+      if (el) g?.set(el, { rotation: value });
+    }
+    const active = d.active || Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > DRAG_THRESHOLD;
+    setLayerTf({ ...d, value, active });
+  };
+  const endLayerTf = (e: React.PointerEvent) => {
+    const d = layerTfRef.current;
+    setLayerTf(null);
+    if (!d) return;
+    e.stopPropagation();
+    if (!d.active || !dataModel || Math.abs(d.value - d.base) < 0.001) return;
+    const at = keyframePlace(d.selector);
+    if (!at) return;
+    const next = setKeyframe(dataModel, at.step, d.selector, d.kind === 'scale' ? 'scale' : 'rotation', at.tRel, d.value);
+    const js = spliceAnimData(template.js, next);
+    if (!js || js === template.js) return;
+    applyTemplate({ ...template, js });
+    const place = playhead;
+    if (place) setTimeout(() => sendScrub(phaseIdOf(dataModel, place.step), place.t), 650);
   };
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -875,6 +993,39 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
       )}
       {scaleDrag && (
         <div className="move-hint">×{scaleDrag.value.toFixed(2)} — release to apply</div>
+      )}
+
+      {/* The selected layer's scale (corner) + rotate (top) handles — key scale/rotation at
+          the playhead, pivoting around the Inspector pivot. Data-block, single-layer only. */}
+      {layerTfSel && selRect && !ghost && !editing && !layerDrag?.active && (
+        <>
+          <div
+            className={`layer-scale-handle${layerTf?.kind === 'scale' ? ' dragging' : ''}`}
+            data-testid="layer-scale-handle"
+            style={{ left: (selRect.left + selRect.width) * scale - 6, top: (selRect.top + selRect.height) * scale - 6 }}
+            title="Drag to scale — keys the scale at the playhead (pivots around the Inspector pivot)"
+            onPointerDown={(e) => startLayerTf(e, 'scale')}
+            onPointerMove={moveLayerTf}
+            onPointerUp={endLayerTf}
+            onPointerCancel={cancelLayerTf}
+          />
+          <div
+            className={`layer-rotate-handle${layerTf?.kind === 'rotate' ? ' dragging' : ''}`}
+            data-testid="layer-rotate-handle"
+            style={{ left: (selRect.left + selRect.width / 2) * scale - 7, top: selRect.top * scale - 24 }}
+            title="Drag to rotate — keys the rotation at the playhead"
+            onPointerDown={(e) => startLayerTf(e, 'rotate')}
+            onPointerMove={moveLayerTf}
+            onPointerUp={endLayerTf}
+            onPointerCancel={cancelLayerTf}
+          />
+        </>
+      )}
+      {layerTf?.active && (
+        <div className="move-hint">
+          {layerTf.kind === 'scale' ? `×${layerTf.value.toFixed(2)}` : `${Math.round(layerTf.value)}°`}
+          {' '}— release to key at the playhead · Esc cancels
+        </div>
       )}
 
       {/* The position-keyframe drag's hint: live x/y, committed at the playhead. */}

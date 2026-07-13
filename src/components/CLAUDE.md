@@ -47,6 +47,11 @@ in src/blocks/CLAUDE.md.
   corner handle -> live --scale preview, diagonal-aware, clamped 0.25-4. Every gesture commits as
   ONE undoable applyTemplate and jumps the editor to the changed tab, highlighted; the root is
   detected via model/structure.ts detectPrefix.
+  LAYER SCALE/ROTATE HANDLES (data-block, a single selected non-root layer): a corner scale
+  handle + a top rotate handle on the selection box; dragging previews live via GSAP and, on
+  release, keys `scale` / `rotation` at the playhead (keyframePlace + setKeyframe + spliceAnimData,
+  ONE undoable apply, re-parked) - pivoting around the layer's transform-origin (the Inspector
+  pivot). Escape springs it back. The root keeps its own --scale corner handle.
   CANVAS POSITION KEYFRAMING (docs/TIMELINE_INTERACTION_MODEL.md, amendment 3): on a
   data-block template, dragging any SELECTED non-root layer moves the WHOLE selection (layers
   contained in another dragged layer are excluded - the parent's transform carries them) and,

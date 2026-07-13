@@ -50,9 +50,10 @@ parse-degrades-gracefully contract. None require a graph editor or expressions.
   `transformOrigin` keyframe on the layer's activation step (string, e.g. `"0% 100%"`); the
   runtime honours it as an ordinary set (backward-compatible — no interpreter change needed).
   The Inspector's Properties tab has a nine-box pivot picker. So any keyframed scale/rotation now
-  pivots correctly. The remaining convenience on top is the **canvas scale/rotate handles** (drag
-  a corner to scale, a handle to rotate — writing scale/rotation keyframes at the playhead around
-  this pivot, mirroring the existing position-keyframe drag in CanvasInteraction).
+  pivots correctly. **Canvas scale/rotate handles — DONE**: a single selected non-root layer shows
+  a corner scale handle and a top rotate handle; dragging them previews live via GSAP and keys
+  scale/rotation at the playhead around this pivot (CanvasInteraction, mirroring the
+  position-keyframe drag).
 - **`hides?: string[]` on a step** (gap 9) — **DONE**. The data twin of `reveals`: the layer's
   existence span ends where it is hidden; the timeline layer-block's right edge drags to set it,
   and the runtime hides the layer at the step boundary (setLayerHide + the block right edge +
