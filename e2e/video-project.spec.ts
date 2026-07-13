@@ -45,6 +45,23 @@ test('create -> stub generation -> live preview renders the composition', async 
   await expect(page.getByTestId('video-preview-error')).toHaveCount(0);
 });
 
+test('the logo-reveal example renders a designed wordmark, not a placeholder', async ({ page }) => {
+  // The built-in examples act as acceptance tests. With no logo uploaded, the reveal must
+  // set a real typographic wordmark - never a grey box or the literal text "LOGO".
+  await page.goto('/app');
+  await page.getByRole('button', { name: 'Video or animation with AI' }).click();
+  await page.getByRole('button', { name: 'Logo reveal', exact: true }).click();
+  await page.getByTestId('video-create').click();
+  await expect(page.getByTestId('video-shell')).toBeVisible();
+  await waitForGeneration(page);
+
+  // It renders cleanly and shows the designed wordmark, not a placeholder.
+  await expect(page.getByTestId('video-code-error')).toHaveCount(0);
+  await expect(page.getByTestId('video-preview-error')).toHaveCount(0);
+  await expect(player(page).getByText('Studio')).toBeVisible({ timeout: 10_000 });
+  await expect(player(page).getByText('LOGO', { exact: true })).toHaveCount(0);
+});
+
 test('scrubbing seeks the composition deterministically', async ({ page }) => {
   await createCountdownProject(page);
   await expect(player(page).getByText('5', { exact: true })).toBeVisible({ timeout: 10_000 });
