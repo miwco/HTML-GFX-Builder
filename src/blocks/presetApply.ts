@@ -141,6 +141,16 @@ export function applyPresetData(
       const t = ph === 'in' ? next.steps[0] : next.steps[next.steps.length - 1];
       t.duration = chosen !== undefined && chosen > 0 ? round(chosen * speed) : Math.max(donorStep.duration, longest);
       t.ease = donorStep.ease;
+      // Lifecycle hooks are step-level, not layer motion — the whole-graphic swap replaces
+      // the target phase's calls with the donor's (a clock preset carries its start/stop),
+      // scaled to the settled duration so the call keeps its place in the entrance.
+      if (donorStep.calls && donorStep.calls.length > 0) {
+        const scale = donorStep.duration > 0 ? t.duration / donorStep.duration : 1;
+        t.calls = donorStep.calls.map((c) => ({ time: round(c.time * scale), call: c.call }));
+        touched = true;
+      } else {
+        delete t.calls;
+      }
     } else {
       // One layer: its own donor tracks when the donor animates it; otherwise the donor's
       // first line's motion, retargeted (so an image/block can take a line-style preset).

@@ -278,22 +278,26 @@ export function setStepEase(data: AnimData, stepIndex: number, ease: string): An
 
 // ── Phase 6: steps as clips ──────────────────────────────────────────────────
 
-/** The latest keyframe time in a step (0 when it animates nothing). */
-function lastKeyframeTime(step: AnimStep): number {
+/** The latest keyframe OR call time in a step (0 when it does nothing). Both are events on
+ *  the step's clock: shrinking past a call would silently drop it, so the preserve floor
+ *  must honour calls too. */
+function lastEventTime(step: AnimStep): number {
   let last = 0;
   for (const tracks of Object.values(step.layers)) {
     for (const kfs of Object.values(tracks)) {
       for (const kf of kfs) last = Math.max(last, kf.time);
     }
   }
+  for (const c of step.calls ?? []) last = Math.max(last, c.time);
   return last;
 }
 
 /**
  * Resize a step (the clip's right-edge drag). Default 'preserve' keeps every keyframe's
- * timing — extending leaves settled air, shrinking clamps at the last keyframe (motion
- * never silently truncates). 'stretch' (Alt-drag) scales all keyframe times
- * proportionally — "make this step faster/slower". Returns null on a no-op.
+ * timing — extending leaves settled air, shrinking clamps at the last keyframe or call
+ * (motion and lifecycle hooks never silently truncate). 'stretch' (Alt-drag) scales all
+ * keyframe AND call times proportionally — "make this step faster/slower". Returns null on
+ * a no-op.
  */
 export function resizeStep(
   data: AnimData,
@@ -306,7 +310,7 @@ export function resizeStep(
   if (!step) return null;
   const to =
     mode === 'preserve'
-      ? round(Math.max(0.05, Math.max(duration, lastKeyframeTime(step))))
+      ? round(Math.max(0.05, Math.max(duration, lastEventTime(step))))
       : round(Math.max(0.05, duration));
   if (Math.abs(to - step.duration) < EPS) return null;
   if (mode === 'stretch' && step.duration > 0) {
@@ -316,6 +320,7 @@ export function resizeStep(
         for (const kf of kfs) kf.time = round(kf.time * f);
       }
     }
+    for (const c of step.calls ?? []) c.time = round(c.time * f);
   }
   step.duration = to;
   return next;
@@ -329,8 +334,9 @@ function renumberSteps(data: AnimData): void {
 }
 
 /**
- * Duplicate a step: keyframes copy verbatim in local time (the duplicate's resolved
- * starting state comes from its new predecessor — correct by construction). Its
+ * Duplicate a step: keyframes and calls copy verbatim in local time (the duplicate's
+ * resolved starting state comes from its new predecessor — correct by construction; a
+ * copied call is data, not magic, and the clock's start/stop are idempotent). Its
  * `reveals` are NOT copied: a layer activates once, and a second reveal of an
  * already-visible layer would replay its hidden state on air. The copy lands right
  * after the original — duplicating Out lands the copy before it, as a content step.

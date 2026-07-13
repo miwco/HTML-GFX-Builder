@@ -31,11 +31,14 @@ src/templates/shared/animRuntime.ts). These modules are the editor's side of tha
 editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
 
 - **animData.ts** - the schema + the literal's read/write. AnimData = version/root/speed/steps;
-  a step = name/duration/ease/reveals?/hides?/layers (durations and keyframe times are
+  a step = name/duration/ease/reveals?/hides?/calls?/layers (durations and keyframe times are
   speed-relative: playback divides by `speed`; `reveals` names the layers that FIRST become
   visible in that step, `hides` the layers that LEAVE in it - the early-exit twin, its existence
   span ends there instead of at the final Out; both are explicit data, never inferred from
-  keyframes). A keyframe is
+  keyframes). `calls` are lifecycle hooks - `{ time, call }` where `call` is a bare identifier
+  naming a global template function (a clock engine's `startClock`/`stopClock`); the interpreter
+  fires them via `window[name]` at their moment on the step's clock (no eval, ever), and settle
+  suppresses them like any GSAP callback (docs/TIMELINE_V2_PLAN.md §3b). A keyframe is
   `{ time, value, ease? }` - value is a number or a string (filter/clipPath interpolate as
   strings); `ease` is the ease INTO the keyframe, defaulting to the step's. `locateAnimData`
   brace-matches respecting JSON strings (a hand-edited block need not match the canonical
@@ -69,9 +72,13 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   its `hides` step else the final Out).
 - **animImport.ts** - the one-time legacy converter: parses a legacy marked region via
   timelineModel's parseTimeline and converts the choreography into AnimData (a `to()`'s from
-  values come from the settled DESIGN_STATE table). Used for read-only rendering of legacy
-  templates on the new timeline AND the explicit, undoable convert-on-first-motion-edit;
-  templates the old parser cannot read stay hand-crafted - the importer never guesses.
+  values come from the settled DESIGN_STATE table). `parseTimeline` also reads `tl.call(fn)`
+  hooks with their resolved positions (parsePhase walks tweens + calls in one document-ordered
+  pass; a call never shifts a tween's INDEX, so the legacy patchers are untouched), and the
+  importer attaches them to the enter/out step as speed-relative `calls` - this is what lets
+  game timers flip to data blocks. Used for read-only rendering of legacy templates on the new
+  timeline AND the explicit, undoable convert-on-first-motion-edit; templates the old parser
+  cannot read stay hand-crafted - the importer never guesses.
 - **presetApply.ts** - presets as keyframe generators DERIVED from their legacy emitters
   through the parity-proven importer (emit the preset's region against a scratch copy of this
   template, convert it, lift out the tracks - one choreography source, zero taste drift).
@@ -83,14 +90,17 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   to fit). 'in' is layer-relative (it targets the step where THAT layer becomes active), 'out'
   always targets the final step, 'both' writes both - independently editable after. Scope 'all'
   = the whole graphic adopting the donor's full choreography and the chosen/donor step duration
-  and ease - skipping press-revealed layers, whose entrance belongs to their » press.
+  and ease - skipping press-revealed layers, whose entrance belongs to their » press; it also
+  swaps the target phase's step `calls` for the donor's (a clock preset carries its
+  startClock/stopClock), scaled to the settled duration. Per-layer applies never touch calls -
+  they are step-level lifecycle, not layer motion.
 
 ## The legacy patchers (animPatch / stepAssign / timelineModel)
 
 These literal patchers still serve the categories that have NOT migrated to the data region
-(info cards, starting soon, game timers, quiz, credits, tickers, infographics — lower
-thirds, corner bug, and scoreboards create as data blocks), plus every SAVED legacy
-template until its owner presses "use keyframes". Deleting them and the classic strip is
+(info cards, starting soon, quiz, credits, tickers, infographics — lower thirds, corner bug,
+scoreboards, and game timers create as data blocks), plus every SAVED legacy template until
+its owner presses "use keyframes". Deleting them and the classic strip is
 Phase 8 of docs/TIMELINE_V2_PLAN.md - deferred by design until the remaining categories
 migrate (the blockers per category are documented in src/templates/CLAUDE.md and the plan's
 status block).

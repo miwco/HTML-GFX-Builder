@@ -333,15 +333,22 @@ property's diamonds on the row. No After Effects-style per-property subrows in v
     drag-state machinery. Much of this shipped THIS WEEK — sunk cost is not a reason to
     keep an architecture that fights the product.
 
-## 3b. Step calls — lifecycle hooks in the data model (DRAFT, awaiting ratification)
+## 3b. Step calls — lifecycle hooks in the data model (RATIFIED · SHIPPED 2026-07-13)
 
 The migration audit (2026-07-11) found the keyframe model cannot carry the clock
 categories: starting soon and game timers embed `tl.call(startClock)` /
 `tl.call(stopClock)` inside the marked region, and the importer silently drops call
-lines — converting those templates would kill the countdown. This section drafts the
-representation that unblocks them. **Explicitly out of scope:** quiz's wrapper-driven
-Continue (a steps-representation question, not a lifecycle one) and the loop categories'
-endless timelines.
+lines — converting those templates would kill the countdown. This section defines the
+representation that unblocks them; it is now implemented, and **game timers create as data
+blocks** on the back of it (the parity harness in `e2e/anim-engine.spec.ts` pins the clock
+lifecycle). **Explicitly out of scope:** quiz's wrapper-driven Continue (a
+steps-representation question, not a lifecycle one) and the loop categories' endless
+timelines — starting soon stays on the legacy emit because its ambient hold is an infinite
+loop the importer refuses (`inPhase.infinite`), not because of the calls.
+
+**Reconciliation note:** the `hides` early-exit twin shipped after this section was drafted,
+so the step's canonical key order is `name, duration, ease, reveals, hides, calls, layers`
+(the twins stay adjacent; calls, a lifecycle concern, sit just before the layer motion).
 
 ### The data
 

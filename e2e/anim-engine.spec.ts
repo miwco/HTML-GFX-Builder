@@ -146,6 +146,67 @@ test('parity: the press chain — pre-hidden reveals, per-press timelines, exhau
   });
 });
 
+test('parity: clock templates carry startClock/stopClock through the step-call model', async ({ page }) => {
+  test.setTimeout(60_000);
+  await toApp(page);
+  // Game timers create as data blocks now (docs/TIMELINE_V2_PLAN.md §3b): the preset's
+  // tl.call(startClock)/tl.call(stopClock) hooks must survive the conversion as step calls,
+  // and the data interpreter must run them exactly where the legacy emit did.
+  const failures = await page.evaluate(`(async () => {
+    ${HARNESS}
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { parseAnimData } = await import('/src/blocks/animData.ts');
+    const failures = [];
+    for (const pair of [['gt01', 'timer-line-reveal'], ['gt02', 'timer-run']]) {
+      const variant = pair[0], presetId = pair[1];
+      const tpl = variantById(variant).create({ animation: { presetId } });
+      if (!tpl.js.includes('var NOACG_ANIM')) { failures.push(variant + ': the flip did not emit the data block'); continue; }
+      const data = parseAnimData(tpl.js);
+      if (!data) { failures.push(variant + ': the data block is not readable'); continue; }
+      // The hooks land on the right steps: startClock on the entrance, stopClock on the Out.
+      const enter = (data.steps[0].calls || []).map((c) => c.call);
+      const out = (data.steps[data.steps.length - 1].calls || []).map((c) => c.call);
+      if (!enter.includes('startClock')) failures.push(variant + ': entrance missing startClock (' + JSON.stringify(enter) + ')');
+      if (!out.includes('stopClock')) failures.push(variant + ': Out missing stopClock (' + JSON.stringify(out) + ')');
+
+      const wNew = await boot(tpl);
+      const wOld = await boot(await legacyTwin(tpl, presetId, false));
+
+      // Entrance + exit: identical length and settled look as the legacy emit.
+      const inOld = wOld.buildInTimeline(); inOld.pause();
+      const inNew = wNew.buildInTimeline(); inNew.pause();
+      if (Math.abs(inOld.duration() - inNew.duration()) > 0.05) failures.push(variant + ': in duration ' + inOld.duration() + ' vs ' + inNew.duration());
+      inOld.progress(1, true); inNew.progress(1, true);
+      for (const sel of ['.game-timer', '.game-timer-box', '#f0', '.game-timer-clock']) {
+        if (!sameStyle(styleOf(wOld, sel), styleOf(wNew, sel)))
+          failures.push(variant + ': settled IN mismatch on ' + sel + ' ' + JSON.stringify(styleOf(wOld, sel)) + ' vs ' + JSON.stringify(styleOf(wNew, sel)));
+      }
+      const outOld = wOld.buildOutTimeline(); outOld.pause();
+      const outNew = wNew.buildOutTimeline(); outNew.pause();
+      if (Math.abs(outOld.duration() - outNew.duration()) > 0.05) failures.push(variant + ': out duration ' + outOld.duration() + ' vs ' + outNew.duration());
+
+      // Clock lifecycle: with the clock functions spied, a real (non-suppressed) run fires
+      // startClock during the entrance and stopClock during the exit — identically in both
+      // representations. (The data interpreter resolves window[name] at fire time; the legacy
+      // emit captured the identifier at build time — reassigning before build covers both.)
+      for (const w of [wOld, wNew]) { w.__started = 0; w.__stopped = 0; w.startClock = function () { w.__started++; }; w.stopClock = function () { w.__stopped++; }; }
+      wOld.buildInTimeline().progress(1); wNew.buildInTimeline().progress(1);
+      wOld.buildOutTimeline().progress(1); wNew.buildOutTimeline().progress(1);
+      if (wOld.__started < 1) failures.push(variant + ': legacy startClock never fired under the trigger');
+      if (wOld.__started !== wNew.__started) failures.push(variant + ': startClock count ' + wOld.__started + ' vs ' + wNew.__started);
+      if (wOld.__stopped !== wNew.__stopped) failures.push(variant + ': stopClock count ' + wOld.__stopped + ' vs ' + wNew.__stopped);
+
+      // The settle contract: progress(1, true) suppresses callbacks, so a scrubbed/settled
+      // state never ticks the clock.
+      wNew.__started = 0; wNew.__stopped = 0;
+      wNew.buildInTimeline().progress(1, true); wNew.buildOutTimeline().progress(1, true);
+      if (wNew.__started !== 0 || wNew.__stopped !== 0) failures.push(variant + ': settle re-fired the clock (' + wNew.__started + '/' + wNew.__stopped + ')');
+    }
+    return failures;
+  })()`);
+  expect(failures).toEqual([]);
+});
+
 test('resolver: agrees with the real interpreter at keyframe times', async ({ page }) => {
   await toApp(page);
   const mismatches = await page.evaluate(`(async () => {

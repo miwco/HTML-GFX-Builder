@@ -16,14 +16,16 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
   marked region converts (category-owned runtime around it - score pops, clock painters -
   stays); a conversion failure keeps the legacy emit, never a broken template.
   `CategorySpec.dataRegion` triggers it inside assembleStandard; self-assembled categories
-  (scoreboards) call it directly. FLIPPED: lower thirds, corner bug, scoreboards.
-  BLOCKED on data-model gaps (do NOT flip by flag alone): starting soon + game timers embed
-  `tl.call(startClock/stopClock)` in the region (the keyframe model has no call
-  representation - the importer silently drops them, killing the countdown); quiz's Continue
-  is wrapper-driven (`next()` -> revealAnswer with settings.steps='2' but NO data step - the
-  timeline's steps derivation would rewrite steps to '1' on the first edit and break the
-  reveal). Info cards flip LAST: they host the classic strip's spec suite until Phase 8
-  (docs/TIMELINE_V2_PLAN.md).
+  (scoreboards, game timers) call it directly. FLIPPED: lower thirds, corner bug,
+  scoreboards, game timers. The step-calls model (docs/TIMELINE_V2_PLAN.md §3b) carries
+  `tl.call(startClock/stopClock)` through the conversion as step `calls`, so a countdown
+  survives the flip (the clock runtime itself lives OUTSIDE the region and is untouched).
+  STILL BLOCKED (do NOT flip by flag alone): starting soon - its ambient hold is an infinite
+  loop the importer refuses (`inPhase.infinite`), so conversion no-ops regardless of the
+  calls; quiz's Continue is wrapper-driven (`next()` -> revealAnswer with settings.steps='2'
+  but NO data step - the timeline's steps derivation would rewrite steps to '1' on the first
+  edit and break the reveal). Info cards flip LAST: they host the classic strip's spec suite
+  until Phase 8 (docs/TIMELINE_V2_PLAN.md).
   A wrapper that needs the motion speed must read it via a `motionSpeed()` helper (NOACG_ANIM
   .speed, else legacy animSpeed, else 1) - never the bare animSpeed global (scoreboards/quiz
   do this already).
@@ -56,8 +58,10 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
   width, linear repeat:-1 (seamless loop).
 - **startingSoon/** - ss01…ss03 (prefix 'starting-soon', hold-loop preset: entrance + calm
   .starting-soon-pulse breathing + clock via shared/clock.ts, minutes in f2).
-- **gameTimers/** - gt01…gt02 (prefix 'game-timer', type 'countdown'; timer-run pop +
-  timer-line-reveal; minutes in f1; .game-timer-done styles time-up).
+- **gameTimers/** - gt01…gt02 (prefix 'game-timer', type 'countdown'; data blocks via
+  convertToDataRegion; timer-run pop + timer-line-reveal; minutes in f1; .game-timer-done
+  styles time-up). The preset's startClock()/stopClock() ride the conversion as step `calls`
+  (§3b); the clock runtime (shared/clock.ts) stays outside the region.
 - **scoreboards/** - sb01…sb02 (prefix 'scoreboard', data blocks via convertToDataRegion;
   fixed 4-field contract f0-f3 as scoreboard-masks so the standard presets drive them;
   update() pops a score's mask when it changes on air - speed via motionSpeed()).

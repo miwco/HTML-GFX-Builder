@@ -36,6 +36,7 @@ import {
   zoneCssText,
 } from '../shared/base';
 import { clockRuntimeJs } from '../shared/clock';
+import { convertToDataRegion } from '../shared/standard';
 import type { PresetConfig } from '../lowerThirds/animPresets';
 import { gameTimerPresetById } from './gtPresets';
 
@@ -175,7 +176,7 @@ ${design.css}
 ${preset.emit(cfg)}`,
   );
 
-  return {
+  const template: SpxTemplate = {
     name: meta.name,
     type: 'countdown',
     resolution: o.resolution,
@@ -188,6 +189,13 @@ ${preset.emit(cfg)}`,
     assets: [...o.importedImages, ...(o.customFont ? [o.customFont.asset] : [])],
     layers: [],
   };
+
+  // Timeline v2: convert the marked region into the NOACG_ANIM data block + interpreter.
+  // The step-calls model (docs/TIMELINE_V2_PLAN.md §3b) carries the preset's
+  // startClock()/stopClock() hooks, so the countdown survives the flip; the clock runtime
+  // itself lives OUTSIDE the region and is untouched. A conversion failure keeps the legacy
+  // emit — never a broken template.
+  return convertToDataRegion(template);
 }
 
 /** The authoring API for game-timer variant modules. */

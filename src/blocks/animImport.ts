@@ -5,11 +5,11 @@
 // undoable convert-on-first-motion-edit. Templates the old parser cannot read stay
 // hand-crafted (the honest banner) — this importer never guesses.
 
-import { parseTimeline, type TimelineTween } from './timelineModel';
+import { parseTimeline, type TimelineCall, type TimelineTween } from './timelineModel';
 import { getTemplateParts } from '../model/structure';
 import { detectPrefix } from '../model/structure';
 import type { SpxTemplate } from '../model/types';
-import type { AnimData, AnimKeyframe, AnimStep } from './animData';
+import type { AnimCall, AnimData, AnimKeyframe, AnimStep } from './animData';
 
 /** The settled design state per property — the FROM value for legacy `to()` tweens (a
  *  to() animates from "wherever the element rests", which for the catalog's emitted
@@ -73,6 +73,17 @@ function tweenToKeyframes(step: AnimStep, tween: TimelineTween, speed: number, r
   });
 }
 
+/** Carry a phase's `tl.call` hooks onto a step as speed-relative step calls (the model's
+ *  post-division seconds multiply back by speed, exactly like keyframe times). Sorted by
+ *  time; only written when the phase actually has hooks, so a motion-only step stays lean. */
+function attachCalls(step: AnimStep, calls: TimelineCall[], speed: number): void {
+  if (calls.length === 0) return;
+  const converted: AnimCall[] = calls
+    .map((c) => ({ time: round(Math.max(0, c.start) * speed), call: c.name }))
+    .sort((a, b) => a.time - b.time);
+  step.calls = converted;
+}
+
 /**
  * Convert a legacy template's marked region into AnimData. Returns null when the old
  * parser can't read the region (hand-crafted code — the honest-banner case) or the
@@ -102,6 +113,7 @@ export function importAnimData(template: SpxTemplate): AnimData | null {
     layers: {},
   };
   for (const tween of inPhase.tweens) tweenToKeyframes(enter, tween, speed, root);
+  attachCalls(enter, inPhase.calls, speed);
 
   // Each legacy » press becomes one middle step; its reveal choreography (the channel
   // motion the old stepsBlock emitted) becomes ordinary keyframes.
@@ -136,6 +148,7 @@ export function importAnimData(template: SpxTemplate): AnimData | null {
     layers: {},
   };
   for (const tween of outPhase.tweens) tweenToKeyframes(out, tween, speed, root);
+  attachCalls(out, outPhase.calls, speed);
 
   return { version: 1, root, speed, steps: [enter, ...middles, out] };
 }
