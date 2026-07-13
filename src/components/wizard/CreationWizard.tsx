@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTemplateStore } from '../../store/templateStore';
 import { variantById, variantsFor } from '../../templates/catalog';
 import { createBlankTemplate } from '../../templates/blank';
@@ -49,6 +49,11 @@ export default function CreationWizard() {
   // graphics in the same package).
   const [brand, setBrand] = useState<ProjectBrand | null>(null);
   const [matchBrand, setMatchBrand] = useState(false);
+  // Backdrop click-to-close must only fire on a genuine outside click - not when a text
+  // selection drag STARTED inside an input (e.g. the video duration field) and released
+  // over the backdrop. The browser routes that release's `click` to the backdrop (the
+  // nearest common ancestor), so we additionally require the press to have begun there.
+  const pressedOnBackdrop = useRef(false);
 
   // Fresh wizard every time it opens; reload the brand (it may have just been saved).
   useEffect(() => {
@@ -162,7 +167,14 @@ export default function CreationWizard() {
   });
 
   return (
-    <div className="gallery-backdrop" onClick={(e) => { if (e.target === e.currentTarget) closeGallery(); }}>
+    <div
+      className="gallery-backdrop"
+      onMouseDown={(e) => { pressedOnBackdrop.current = e.target === e.currentTarget; }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && pressedOnBackdrop.current) closeGallery();
+        pressedOnBackdrop.current = false;
+      }}
+    >
       <div className="wz-modal">
         {/* Header: title + step dots */}
         <div className="wz-header">

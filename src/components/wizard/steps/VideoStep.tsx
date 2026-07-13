@@ -17,26 +17,55 @@ const ASSET_ACCEPT = '.png,.jpg,.jpeg,.webp,.gif,.svg,.mp4,.webm,.mov';
 /** Same hard cap as the Assets panel - assets ride in the render upload + autosave. */
 const MAX_ASSET_BYTES = 3_000_000;
 
-const EXAMPLES: { label: string; prompt: string }[] = [
+/**
+ * The starter suggestions. Each carries the canvas settings that match its prompt, so
+ * tapping one loads a self-consistent brief (the duration in the words matches the field)
+ * - they double as the feature's acceptance tests: each should reliably produce a genuinely
+ * good result out of the box.
+ */
+interface Example {
+  label: string;
+  prompt: string;
+  durationSec: number;
+  transparent: boolean;
+}
+const EXAMPLES: Example[] = [
   {
     label: 'Sports stinger',
     prompt:
-      'A fast 3-second sports stinger with sharp geometric shapes in team colors and a dramatic title reveal.',
+      'A high-energy 3-second sports stinger: bold angled panels in deep team colours slash across the frame, a heavy condensed uppercase title snaps in at centre, then everything clears out fast.',
+    durationSec: 3,
+    transparent: false,
   },
   {
     label: 'News intro',
     prompt:
-      'A clean, modern 5-second news intro with elegant typography and abstract blue shapes sweeping through.',
+      'A modern 5-second news intro: precise horizontal rules extend across a deep navy backdrop, a confident grotesque headline slides in from behind a mask, one amber accent keyline lands last.',
+    durationSec: 5,
+    transparent: false,
   },
   {
     label: 'Logo reveal',
-    prompt: 'A transparent 2-second logo reveal - the mark scales in with a light sweep across it.',
+    prompt:
+      'A premium 2.5-second logo reveal on a deep graphite gradient: a bold wordmark settles in at centre with an overshoot, a specular light sweep passes across it, and it breathes gently before a clean close. If no logo image is provided, set the wordmark in confident type - never a placeholder box.',
+    durationSec: 2.5,
+    transparent: false,
   },
   {
     label: 'Countdown',
-    prompt: 'A 10-second countdown from 10 to 1 with strong broadcast typography and a pulse on every beat.',
+    prompt:
+      'A 5-second broadcast countdown: each number lands at centre with a decisive spring and a ring pulse on the beat, big tabular numerals with strong contrast, the final number amplified.',
+    durationSec: 5,
+    transparent: false,
   },
 ];
+
+/** Clamp a raw duration string to the allowed range (min 1s, max 60s, half-second grid). */
+function clampDuration(raw: string): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return Math.min(60, Math.max(1, Math.round(n * 2) / 2));
+}
 
 interface Props {
   onCreate: (project: VideoProject) => void;
@@ -51,7 +80,9 @@ export default function VideoStep({ onCreate, onOpen }: Props) {
   const [aspectId, setAspectId] = useState(ASPECTS[0].id);
   const [resIndex, setResIndex] = useState(0);
   const [fps, setFps] = useState(30);
-  const [durationSec, setDurationSec] = useState(6);
+  // Kept as a string so the field can be temporarily cleared while editing; the value is
+  // validated (clamped to 1-60s) on blur and again at create, not on every keystroke.
+  const [durationText, setDurationText] = useState('6');
   const [transparent, setTransparent] = useState(false);
   const [assets, setAssets] = useState<AssetFile[]>([]);
   const [assetError, setAssetError] = useState<string | null>(null);
@@ -85,9 +116,16 @@ export default function VideoStep({ onCreate, onOpen }: Props) {
     setAssets(next);
   };
 
+  const applyExample = (ex: Example) => {
+    setPrompt(ex.prompt);
+    setDurationText(String(ex.durationSec));
+    setTransparent(ex.transparent);
+  };
+
   const create = () => {
     const brief = prompt.trim();
     if (!brief) return;
+    const durationSec = clampDuration(durationText);
     onCreate(
       createDefaultVideoProject({
         name: brief.length > 42 ? `${brief.slice(0, 42)}…` : brief,
@@ -144,9 +182,18 @@ export default function VideoStep({ onCreate, onOpen }: Props) {
             </p>
           </div>
 
+          <p className="hint" style={{ margin: '0 0 6px' }}>
+            Need a starting point? Tap an example to load a ready-made brief and matching
+            settings - then edit the text freely. These are just suggestions.
+          </p>
           <div className="row wrap" style={{ marginBottom: 6, gap: 6 }}>
             {EXAMPLES.map((ex) => (
-              <button key={ex.label} className="wz-example" title={ex.prompt} onClick={() => setPrompt(ex.prompt)}>
+              <button
+                key={ex.label}
+                className="wz-example"
+                title={`Load this example: ${ex.prompt}`}
+                onClick={() => applyExample(ex)}
+              >
                 {ex.label}
               </button>
             ))}
@@ -168,8 +215,9 @@ export default function VideoStep({ onCreate, onOpen }: Props) {
                 min={1}
                 max={60}
                 step={0.5}
-                value={durationSec}
-                onChange={(e) => setDurationSec(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                value={durationText}
+                onChange={(e) => setDurationText(e.target.value)}
+                onBlur={() => setDurationText(String(clampDuration(durationText)))}
                 style={{ width: 90 }}
                 data-testid="video-step-duration"
               />

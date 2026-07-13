@@ -10,6 +10,16 @@ function player(page: Page) {
   return page.frameLocator('.video-player-frame');
 }
 
+/**
+ * Wait until the generation (or refinement) has actually applied - i.e. an ASSISTANT reply
+ * exists in the chat. Matching on summary text is fragile: the offline hint and the example
+ * prompts can contain the same words, so a text wait can pass before the result is applied.
+ * The assistant bubble only appears once a result lands.
+ */
+async function waitForGeneration(page: Page) {
+  await expect(page.locator('.ai-msg.assistant').first()).toBeVisible({ timeout: 10_000 });
+}
+
 async function createCountdownProject(page: Page): Promise<void> {
   await page.goto('/app');
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
@@ -24,26 +34,43 @@ test('create -> stub generation -> live preview renders the composition', async 
   await createCountdownProject(page);
 
   // The stub's assistant reply lands in the chat.
-  await expect(page.getByTestId('video-chat')).toContainText('broadcast countdown', { timeout: 10_000 });
+  await waitForGeneration(page);
 
   // The composition actually renders inside the player host: the countdown shows its
-  // first number (6s at 30fps -> starts at 6).
-  await expect(player(page).getByText('6', { exact: true })).toBeVisible({ timeout: 10_000 });
+  // first number (the Countdown example is 5s at 30fps -> starts at 5).
+  await expect(player(page).getByText('5', { exact: true })).toBeVisible({ timeout: 10_000 });
 
   // No error banners.
   await expect(page.getByTestId('video-code-error')).toHaveCount(0);
   await expect(page.getByTestId('video-preview-error')).toHaveCount(0);
 });
 
+test('the logo-reveal example renders a designed wordmark, not a placeholder', async ({ page }) => {
+  // The built-in examples act as acceptance tests. With no logo uploaded, the reveal must
+  // set a real typographic wordmark - never a grey box or the literal text "LOGO".
+  await page.goto('/app');
+  await page.getByRole('button', { name: 'Video or animation with AI' }).click();
+  await page.getByRole('button', { name: 'Logo reveal', exact: true }).click();
+  await page.getByTestId('video-create').click();
+  await expect(page.getByTestId('video-shell')).toBeVisible();
+  await waitForGeneration(page);
+
+  // It renders cleanly and shows the designed wordmark, not a placeholder.
+  await expect(page.getByTestId('video-code-error')).toHaveCount(0);
+  await expect(page.getByTestId('video-preview-error')).toHaveCount(0);
+  await expect(player(page).getByText('Studio')).toBeVisible({ timeout: 10_000 });
+  await expect(player(page).getByText('LOGO', { exact: true })).toHaveCount(0);
+});
+
 test('scrubbing seeks the composition deterministically', async ({ page }) => {
   await createCountdownProject(page);
-  await expect(player(page).getByText('6', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await expect(player(page).getByText('5', { exact: true })).toBeVisible({ timeout: 10_000 });
 
-  // Pause, then scrub to the middle: second 3 of 6 -> the countdown shows 3.
+  // Pause, then scrub to the middle: second 3 of 5 (frame 75 at 30fps) -> the countdown shows 3.
   const scrubber = page.getByTestId('video-scrubber');
   await scrubber.evaluate((el: HTMLInputElement) => {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-    setter.call(el, '95');
+    setter.call(el, '75');
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
   });
@@ -54,15 +81,15 @@ test('scrubbing seeks the composition deterministically', async ({ page }) => {
     setter.call(el, '10');
     el.dispatchEvent(new Event('input', { bubbles: true }));
   });
-  await expect(player(page).getByText('6', { exact: true })).toBeVisible({ timeout: 5_000 });
+  await expect(player(page).getByText('5', { exact: true })).toBeVisible({ timeout: 5_000 });
 });
 
 test('manual code edits update the preview; broken code keeps the last good version', async ({ page }) => {
   await createCountdownProject(page);
   // Wait for the auto-generation to COMPLETE (assistant reply) - an edit made while it
   // is still in flight would be overwritten by the AI apply.
-  await expect(page.getByTestId('video-chat')).toContainText('broadcast countdown', { timeout: 10_000 });
-  await expect(player(page).getByText('6', { exact: true })).toBeVisible({ timeout: 10_000 });
+  await waitForGeneration(page);
+  await expect(player(page).getByText('5', { exact: true })).toBeVisible({ timeout: 10_000 });
 
   // Replace the module through the store (Monaco's editor surface is not reliably
   // driveable headless - the store IS what the editor writes to).
@@ -92,7 +119,7 @@ export default function Composition() {
 
 test('chat refinement applies an undoable change', async ({ page }) => {
   await createCountdownProject(page);
-  await expect(page.getByTestId('video-chat')).toContainText('broadcast countdown', { timeout: 10_000 });
+  await waitForGeneration(page);
 
   const before = await page.evaluate(async () => {
     const { useVideoProjectStore } = await import('/src/store/videoProjectStore.ts');
@@ -122,14 +149,14 @@ test('chat refinement applies an undoable change', async ({ page }) => {
 
 test('reload restores the project; save/reopen and the SPX switch work', async ({ page }) => {
   await createCountdownProject(page);
-  await expect(page.getByTestId('video-chat')).toContainText('broadcast countdown', { timeout: 10_000 });
+  await waitForGeneration(page);
 
   // Reload: the video shell and project come back (the wizard opens on top - close it;
   // the ✕ button's accessible name is its glyph, so target the class).
   await page.reload();
   await page.locator('.gallery-close').click();
   await expect(page.getByTestId('video-shell')).toBeVisible();
-  await expect(page.getByTestId('video-chat')).toContainText('broadcast countdown');
+  await waitForGeneration(page);
 
   // Explicit save, then create an SPX blank - the app switches to the SPX shell.
   await page.getByTestId('video-save').click();
@@ -143,7 +170,7 @@ test('reload restores the project; save/reopen and the SPX switch work', async (
   await page.getByRole('button', { name: '+ New project' }).click();
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   await expect(page.getByTestId('video-step')).toBeVisible();
-  await page.getByRole('button', { name: /^▶ A 10-second countdown/ }).click();
+  await page.getByRole('button', { name: /^▶ A 5-second broadcast countdown/ }).click();
   await expect(page.getByTestId('video-shell')).toBeVisible();
-  await expect(page.getByTestId('video-chat')).toContainText('broadcast countdown');
+  await waitForGeneration(page);
 });

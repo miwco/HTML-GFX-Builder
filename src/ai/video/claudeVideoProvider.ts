@@ -96,6 +96,18 @@ ${MOTION_PRINCIPLES}
 
 ${[BASE_SKILL, ...skills].map((s) => s.prompt).join('\n\n')}
 
+Make the plan CONCRETE and BUILDABLE, not generic:
+- Name the actual on-screen elements (the exact title/word, the shapes, the accent), where
+  each sits, and how big it is relative to the frame. Every phase says what enters, moves,
+  or exits and when - no vague "elements animate in".
+- State how the frame is filled at the hero moment - what the viewer sees edge to edge.
+  Reject any plan that would leave a small element floating in empty space.
+- If the brief expects an asset that isn't in the provided list (e.g. a logo with none
+  uploaded), plan the designed substitute explicitly (a typographic wordmark), never a
+  placeholder. Put that decision in assetUsage.
+- Pick real, tasteful specifics: a font direction, an accent colour that isn't default blue
+  or pure red, a deliberate background. The plan is the taste; the coder executes it.
+
 Return the plan ONLY via the emit_motion_plan tool.`;
 }
 

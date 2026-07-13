@@ -173,7 +173,12 @@ export default function PreviewFrame({ iframeRef }: Props) {
             transform: `translate(-50%, -50%) scale(${effScale})`,
           }}
         />
-        <CanvasGuides width={stageW * effScale} height={stageH * effScale} />
+        <CanvasGuides
+          width={stageW * effScale}
+          height={stageH * effScale}
+          safeAreas={guides.safeAreas}
+          grid={guides.grid}
+        />
         {/* Direct manipulation — always on: drag the graphic, double-click text to edit. */}
         <CanvasInteraction iframeRef={iframeRef} width={stageW * effScale} height={stageH * effScale} />
       </div>

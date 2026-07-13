@@ -22,7 +22,16 @@ export const MOTION_PRINCIPLES = `## NoaCG motion-design principles (the permane
 - Restraint: 1-2 typefaces, one accent color doing sharp small work, black/white/greys
   doing the heavy lifting. Fewer, better-choreographed elements over busy scenes.
 - Broadcast polish: subtle depth (soft shadows, layered darks), no default-blue, no pure
-  #FF0000, no rainbow gradients.`;
+  #FF0000, no rainbow gradients.
+- Compose for the WHOLE frame: the hero occupies a confident share of it (a title spans
+  roughly half the width; a full-frame piece like a stinger covers the frame at its peak).
+  Never a small element adrift in empty space - if it reads as under-scale, it is. Use the
+  frame's own width/height fractions to size things.
+- No placeholder design, ever. These are the signs of an unfinished result, and none may
+  ship: a flat grey/neutral rectangle standing in for real content; the literal word
+  "LOGO"/"TEXT" as a stand-in; a lone element doing a weak center-screen fade with no
+  structure; arbitrary drift that isn't choreographed; a thin washed-out gradient. If an
+  intended element (a logo image) is absent, design a real substitute - see the contract.`;
 
 export const REMOTION_CONTRACT = `## The composition contract (hard requirements - the validator enforces these)
 - ONE complete TSX module. Imports ONLY from 'react' and 'remotion'. Default-export the
@@ -41,8 +50,12 @@ export const REMOTION_CONTRACT = `## The composition contract (hard requirements
   string> }\` mapping logical asset names to URLs. Use <Img src={assets['name']}/> from
   remotion for images and <Video src={assets['name']}/> for video assets - NEVER
   OffthreadVideo (asset URLs are data/blob URLs, which its frame extractor cannot read).
-  NEVER invent URLs or file paths; only use the asset names you were given. Guard
-  gracefully when an asset is missing.
+  NEVER invent URLs or file paths; only use the asset names you were given.
+- Missing assets are the common case (the brief may name a "logo" with none uploaded). When
+  an expected image is absent, design a REAL substitute, never a placeholder: for a logo or
+  brand reveal, set a typographic WORDMARK (bold, tight-tracked, uppercase - a designed
+  logotype), the same hero the image would have been. Under NO circumstances render a grey
+  box or the literal text "LOGO". Only branch to <Img> when the named asset actually exists.
 - Transparent projects: the root <AbsoluteFill> paints NO background. Opaque projects:
   paint a deliberate background (a designed dark gradient beats flat black).
 - Write clean, readable code a motion designer can edit: descriptive names, short comments
