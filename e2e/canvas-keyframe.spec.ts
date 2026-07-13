@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { elementPoint } from './_canvas';
 
 // Canvas position keyframing (the interaction model, amendment 3): with a parked
 // playhead, dragging a SELECTED non-root layer on a data-block template writes/updates
@@ -35,19 +36,13 @@ async function historyLen(page: Page) {
   });
 }
 
-/** An element's center in PAGE coordinates plus the screen→canvas scale. Maps through the
- *  interaction overlay (canvas-layer), which is exactly the canvas scaled — the dock stage
- *  may letterbox it, so the stage's own width is not the canvas width. */
+/** An element's center in PAGE coordinates plus the screen→canvas scale. Pad-agnostic: maps
+ *  the element's doc-px rect through the overlay origin and derives the scale from the DOM,
+ *  so it works whether the pasteboard is on or off (see e2e/_canvas.ts). */
 async function centerOf(page: Page, selector: string) {
   const frame = page.frameLocator('iframe.preview-frame');
   await expect(frame.locator(selector)).toBeVisible();
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  const rect = await frame.locator(selector).evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: document.body.getBoundingClientRect().width };
-  });
-  const scale = layer.width / rect.w; // screen px per canvas px
-  return { x: layer.x + rect.x * scale, y: layer.y + rect.y * scale, scale };
+  return elementPoint(page, selector);
 }
 
 /** Select the Name line via its row label and park the playhead mid-Enter. */

@@ -19,8 +19,20 @@ export function stripLocalAssetTags(html: string): string {
     .replace(/<script\b[^>]*src=["'](?:\.\/)?(?:js\/|css\/)[^"']*["'][^>]*>\s*<\/script>/gi, '');
 }
 
+/** Options for the live preview composition. */
+export interface ComposeOptions {
+  /**
+   * Authoring/pasteboard mode — the EDITOR PREVIEW ONLY. Render the canvas inset by this pad
+   * (canvas px) inside a larger viewport so content positioned OUTSIDE the canvas (an
+   * entrance that starts off the left edge) is still painted and reachable. Pad is a pure
+   * editor-view concept: it never enters the template code, keyframes, or any persisted
+   * state, and it is NEVER used by exports/renders/thumbnails (those use their own composers).
+   */
+  authoring?: { padX: number; padY: number };
+}
+
 /** Inject inline <style>, GSAP, and the template JS into the document <head>/<body>. */
-export function composeDocument(template: SpxTemplate): string {
+export function composeDocument(template: SpxTemplate, options: ComposeOptions = {}): string {
   // Inline uploaded assets (assets/foo.png -> data URL) so the preview renders media
   // without a server. The exported package keeps the relative paths + real files.
   let html = stripLocalAssetTags(inlineAssetRefs(template.html, template.assets));
@@ -33,6 +45,23 @@ export function composeDocument(template: SpxTemplate): string {
   const baseStyle = `html, body { width: ${width}px; height: ${height}px; overflow: hidden; }`;
 
   const styleTag = `<style id="spx-base-style">\n${baseStyle}\n</style>\n<style id="spx-inline-css">\n${css}\n</style>`;
+
+  // Authoring/pasteboard mode (editor preview only, never exported): the iframe VIEWPORT is
+  // grown to canvas + pad on every side (by PreviewFrame), so painting off-canvas content
+  // requires a viewport larger than the canvas. This style — injected AFTER the template CSS
+  // so it wins the cascade — insets the canvas by `pad` and stops the body from clipping.
+  // `position: relative` is the least-invasive containing block: it keeps the root and every
+  // absolutely-positioned descendant resolving against the canvas-sized body, so a 1920x1080
+  // template lays out exactly as it does on air (verified by the pasteboard spike). No
+  // transform/contain (would add a compositing layer) and no innerWidth shim — the residual
+  // divergences (position:fixed, vw/vh, window.innerWidth reflecting the padded viewport) are
+  // unused by the house px-based templates and stay honest rather than half-shimmed.
+  const authoringStyleTag = options.authoring
+    ? `<style id="spx-authoring-style">
+html { overflow: hidden; }
+body { position: relative; overflow: visible !important; margin: ${options.authoring.padY}px ${options.authoring.padX}px !important; }
+</style>`
+    : '';
   const gsapTag = `<script id="spx-gsap">\n${gsapSource}\n</script>`;
   const jsTag = `<script id="spx-template-js">\n${template.js}\n</script>`;
 
@@ -85,8 +114,9 @@ window.addEventListener('unhandledrejection', function (ev) {
   // Exported packages don't get this tag; playout servers control their own background.
   const colorSchemeTag = `<meta name="color-scheme" content="dark">`;
 
-  // GSAP must load before the template JS. Put both at the end of <head> if possible.
-  const headInjection = `${colorSchemeTag}\n${assetShimTag}${gsapTag}\n${styleTag}\n`;
+  // GSAP must load before the template JS. Put both at the end of <head> if possible. The
+  // authoring style comes LAST so it overrides the template's own resetCanvasCss.
+  const headInjection = `${colorSchemeTag}\n${assetShimTag}${gsapTag}\n${styleTag}\n${authoringStyleTag ? `${authoringStyleTag}\n` : ''}`;
   if (/<\/head>/i.test(html)) {
     html = html.replace(/<\/head>/i, `${headInjection}</head>`);
   } else {

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { canvasBox, elementPoint } from './_canvas';
 
 // The interaction model's selection foundations (docs/TIMELINE_INTERACTION_MODEL.md):
 // one ordered multi-selection in the store — plain click replaces, shift-click toggles,
@@ -21,21 +22,10 @@ async function createHairline(page: Page) {
     .toBe('1');
 }
 
-/** Screen point over a preview element (canvas rect mapped through the stage scale). */
+/** Screen point over a preview element (pad-agnostic — see e2e/_canvas.ts). */
 async function partPoint(page: Page, selector: string, dx = 0.5, dy = 0.5) {
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  const t = await page
-    .frameLocator('iframe.preview-frame')
-    .locator(selector)
-    .evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return { left: r.left, top: r.top, width: r.width, height: r.height, canvasW: document.body.getBoundingClientRect().width };
-    });
-  const scale = layer.width / t.canvasW;
-  return {
-    x: layer.x + (t.left + (dx <= 1 ? t.width * dx : dx)) * scale,
-    y: layer.y + (t.top + (dy <= 1 ? t.height * dy : dy)) * scale,
-  };
+  const p = await elementPoint(page, selector, dx, dy);
+  return { x: p.x, y: p.y };
 }
 
 async function storeSelection(page: Page) {
@@ -125,12 +115,14 @@ test('timeline labels shift-click into the same multi-selection', async ({ page 
 test('a drag on empty canvas lassos the parts it touches — no code, no history', async ({ page }) => {
   await createHairline(page);
   const baseline = (await storeSelection(page)).history;
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
+  // Fractions are of the TRUE canvas (not the pasteboard overlay), so the lasso starts on
+  // empty canvas near the left edge exactly as before the pasteboard existed.
+  const canvas = await canvasBox(page);
   const target = await partPoint(page, '.lower-third-box', 0.5, 0.5);
 
-  // Start well above the graphic (empty canvas at 25% width — the stage toolbar floats
-  // top-right) and sweep down across the whole lower third.
-  await page.mouse.move(layer.x + layer.width * 0.02, layer.y + layer.height * 0.4);
+  // Start well above the graphic (empty canvas near the left edge) and sweep down across the
+  // whole lower third.
+  await page.mouse.move(canvas.x + canvas.width * 0.02, canvas.y + canvas.height * 0.4);
   await page.mouse.down();
   await page.mouse.move(target.x + 60, target.y + 60, { steps: 8 });
   // The marquee is visible mid-drag.

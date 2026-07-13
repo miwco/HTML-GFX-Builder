@@ -9,7 +9,8 @@
 
 import type { ReactNode } from 'react';
 
-/** A rect in CANVAS px (the preview iframe's internal, native-resolution space). */
+/** A rect in the preview iframe's internal space (doc px — canvas px offset by the pasteboard
+ *  pad; both share the same pixel grid, so × scale positions it in the doc-space overlay). */
 export interface CanvasRect {
   left: number;
   top: number;
@@ -18,9 +19,9 @@ export interface CanvasRect {
 }
 
 interface Props {
-  /** Screen px per canvas px (the iframe renders at native resolution, then scales). */
+  /** Screen px per doc px (= fit × zoom). */
   scale: number;
-  /** The canvas layer's on-screen width — keeps the chip/tag inside the stage. */
+  /** The overlay's on-screen width — keeps the chip/tag inside the stage. */
   width: number;
   selection: { rect: CanvasRect; label: string; hint?: string; action?: ReactNode } | null;
   hover: { rect: CanvasRect; label: string } | null;

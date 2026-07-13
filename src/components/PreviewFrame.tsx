@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { composeDocument } from '../preview/composeDocument';
 import { useTemplateStore } from '../store/templateStore';
+import { computePad } from './pasteboard';
 import CanvasGuides from './CanvasGuides';
 import CanvasInteraction from './CanvasInteraction';
 
@@ -44,25 +45,33 @@ export default function PreviewFrame({ iframeRef }: Props) {
   const { width: stageW, height: stageH } = template.resolution;
   const effScale = fit * zoom;
 
+  // The pasteboard: an always-on working margin so off-canvas content is visible and editable.
+  // The iframe VIEWPORT, the gesture overlay, and the guides all grow to this padded document
+  // together, so the coordinate origin moves with them (see CanvasInteraction). Pad is a pure
+  // view concept — it never enters the template or any persisted coordinate.
+  const { padX, padY } = computePad(template.resolution);
+  const docW = stageW + 2 * padX;
+  const docH = stageH + 2 * padY;
+
   const resetView = () => {
     setZoom(1);
     setPan({ x: 0, y: 0 });
   };
 
-  // Scale the template iframe (stageW × stageH) to fit the stage pane.
-  // Re-runs when the stage is resized OR when the template resolution changes.
+  // Scale the padded document (canvas + pasteboard) to fit the stage pane.
+  // Re-runs when the stage is resized OR when the padded document size changes.
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
     const fitNow = () => {
       const { width, height } = stage.getBoundingClientRect();
-      setFit(Math.min(width / stageW, height / stageH));
+      setFit(Math.min(width / docW, height / docH));
     };
     fitNow();
     const ro = new ResizeObserver(fitNow);
     ro.observe(stage);
     return () => ro.disconnect();
-  }, [stageW, stageH]);
+  }, [docW, docH]);
 
   // A new graphic (resolution change) starts framed to fit.
   useEffect(() => {
@@ -143,16 +152,18 @@ export default function PreviewFrame({ iframeRef }: Props) {
       const iframe = iframeRef.current;
       if (!iframe) return;
       setPreviewError(null);
-      iframe.srcdoc = composeDocument(template);
+      // Authoring mode: render the canvas inset inside the padded document so off-canvas
+      // content is painted. Never used by exports/renders (pad is editor-only).
+      iframe.srcdoc = composeDocument(template, { authoring: { padX, padY } });
     }, RELOAD_DEBOUNCE_MS);
     return () => clearTimeout(handle);
-  }, [template, iframeRef, setPreviewError]);
+  }, [template, iframeRef, setPreviewError, padX, padY]);
 
   return (
     <div
       className={`preview-stage ${previewBg}`}
       ref={stageRef}
-      style={{ aspectRatio: `${stageW} / ${stageH}` }}
+      style={{ aspectRatio: `${docW} / ${docH}` }}
       onPointerDownCapture={onStagePointerDown}
       onPointerMove={onStagePointerMove}
       onPointerUp={onStagePointerUp}
@@ -162,25 +173,41 @@ export default function PreviewFrame({ iframeRef }: Props) {
         className="canvas-world"
         style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}
       >
+        {/* The iframe viewport is the padded document; the authoring CSS insets the real
+            canvas by (padX, padY) inside it (see composeDocument). */}
         <iframe
           ref={iframeRef}
           className="preview-frame"
           title="SPX live preview"
           sandbox="allow-scripts allow-same-origin"
           style={{
-            width: stageW,
-            height: stageH,
+            width: docW,
+            height: docH,
             transform: `translate(-50%, -50%) scale(${effScale})`,
           }}
         />
         <CanvasGuides
-          width={stageW * effScale}
-          height={stageH * effScale}
+          width={docW * effScale}
+          height={docH * effScale}
           safeAreas={guides.safeAreas}
           grid={guides.grid}
+          canvasRect={{
+            left: padX * effScale,
+            top: padY * effScale,
+            width: stageW * effScale,
+            height: stageH * effScale,
+          }}
         />
-        {/* Direct manipulation — always on: drag the graphic, double-click text to edit. */}
-        <CanvasInteraction iframeRef={iframeRef} width={stageW * effScale} height={stageH * effScale} />
+        {/* Direct manipulation — always on: drag the graphic, double-click text to edit.
+            The overlay spans the padded document; padX/padY convert to canvas-logical
+            coordinates at the write boundary. */}
+        <CanvasInteraction
+          iframeRef={iframeRef}
+          width={docW * effScale}
+          height={docH * effScale}
+          padX={padX}
+          padY={padY}
+        />
       </div>
 
       <div className="preview-toolbar">

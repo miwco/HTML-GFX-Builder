@@ -413,9 +413,9 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   border: 0;
   transform-origin: center center;
   background: transparent;
-  /* A soft shadow frames the canvas so its bounds read against the stage. */
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.55);
-  /* width/height set dynamically by PreviewFrame based on template.resolution */
+  /* The iframe now spans the padded pasteboard document, so no frame here — the true canvas
+     bounds are drawn by CanvasGuides (the outline + the dimmed pasteboard around it). */
+  /* width/height set dynamically by PreviewFrame based on the padded document size */
 }
 /* The zoom/pan viewport: fills the stage and is translated by `pan`; its absolutely
    positioned children (iframe + overlays) centre within it, then scale by fit × zoom. */

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { canvasBox, elementPoint } from './_canvas';
 
 // Era 6 — the canvas SELECTION model. Clicking a structural element selects it: an amber
 // outline plus a chip speaking the TemplatePart registry's label (the same words the
@@ -26,22 +27,11 @@ async function waitSettled(page: Page) {
     .toBe('1');
 }
 
-/** Screen point over a preview element: canvas rect (iframe px) mapped through the stage scale.
+/** Screen point over a preview element (pad-agnostic — see e2e/_canvas.ts).
  *  dx/dy pick the spot inside the rect — fractions when <= 1, canvas px offsets when > 1. */
 async function partPoint(page: Page, selector: string, dx = 0.5, dy = 0.5) {
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  const t = await page
-    .frameLocator('iframe.preview-frame')
-    .locator(selector)
-    .evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return { left: r.left, top: r.top, width: r.width, height: r.height, canvasW: document.body.getBoundingClientRect().width };
-    });
-  const scale = layer.width / t.canvasW;
-  return {
-    x: layer.x + (t.left + (dx <= 1 ? t.width * dx : dx)) * scale,
-    y: layer.y + (t.top + (dy <= 1 ? t.height * dy : dy)) * scale,
-  };
+  const p = await elementPoint(page, selector, dx, dy);
+  return { x: p.x, y: p.y };
 }
 
 /** The root rule's anchoring sides from the preview's stylesheet (proof the code is untouched). */
@@ -87,9 +77,9 @@ test('hovering a selectable element previews its name; leaving clears it', async
   await expect(page.getByTestId('canvas-hover')).toBeVisible();
   await expect(page.getByTestId('hover-tag')).toHaveText('Name');
 
-  // Top-center is empty canvas for a bottom-left lower third.
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  await page.mouse.move(layer.x + layer.width / 2, layer.y + layer.height * 0.1);
+  // Top-center is empty canvas for a bottom-left lower third (fractions of the TRUE canvas).
+  const canvas = await canvasBox(page);
+  await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height * 0.1);
   await expect(page.getByTestId('canvas-hover')).toBeHidden();
 });
 
@@ -103,8 +93,8 @@ test('clicking empty canvas or pressing Escape deselects', async ({ page }) => {
 
   // The first selection auto-opened the Inspector and narrowed the stage — read the
   // canvas fresh, and probe empty canvas at 25% width (the stage toolbar floats top-right).
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  await page.mouse.click(layer.x + layer.width * 0.25, layer.y + layer.height * 0.1);
+  const canvas = await canvasBox(page);
+  await page.mouse.click(canvas.x + canvas.width * 0.25, canvas.y + canvas.height * 0.1);
   await expect(page.getByTestId('canvas-selection')).toBeHidden();
 
   const p2 = await partPoint(page, '#f0');
@@ -134,8 +124,8 @@ test('clicking the selected part again climbs to its container; the whole graphi
   // The root's one existing action stays reachable: the handle holds even off-hover.
   // Empty canvas is probed at 25% width — the stage toolbar floats top-RIGHT, and the
   // auto-opened Inspector narrows the stage enough for it to reach the horizontal center.
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  await page.mouse.move(layer.x + layer.width * 0.25, layer.y + layer.height * 0.1);
+  const canvas = await canvasBox(page);
+  await page.mouse.move(canvas.x + canvas.width * 0.25, canvas.y + canvas.height * 0.1);
   await expect(page.getByTestId('scale-handle')).toBeVisible();
   await expect(page.getByTestId('canvas-hover')).toBeHidden(); // hover cleared, selection held
 
@@ -162,10 +152,10 @@ test('selection layers cleanly under inline editing and never blocks drag-to-mov
   expect(await rootAnchor(page)).toEqual(before); // still nothing written
 
   // A drag that starts on the graphic still re-anchors it (selection is not a mode).
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  await page.mouse.move(layer.x + layer.width * 0.15, layer.y + layer.height * 0.82);
+  const canvas = await canvasBox(page);
+  await page.mouse.move(canvas.x + canvas.width * 0.15, canvas.y + canvas.height * 0.82);
   await page.mouse.down();
-  await page.mouse.move(layer.x + layer.width * 0.85, layer.y + layer.height * 0.15, { steps: 8 });
+  await page.mouse.move(canvas.x + canvas.width * 0.85, canvas.y + canvas.height * 0.15, { steps: 8 });
   await page.mouse.up();
   await page.waitForTimeout(650);
   const anchor = await rootAnchor(page);

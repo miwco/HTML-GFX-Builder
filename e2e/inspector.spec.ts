@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { elementPoint } from './_canvas';
 
 // Timeline v2 Phase 2 — the Inspector column (the shared selection's third consumer) and
 // the redo stack. The Inspector is the persistent panel right of the preview: identity +
@@ -65,17 +66,12 @@ test('inspector: selecting a timeline row shows that layer — selection synced 
 test('inspector: canvas clicks drive it too (select it to affect it)', async ({ page }) => {
   await createHairline(page);
   await openInspector(page);
-  // Click the Name line on the CANVAS. Map through the interaction overlay (the canvas-layer),
-  // which is exactly the canvas scaled — the stage may letterbox it in the dock centre.
+  // Click the Name line on the CANVAS. Pad-agnostic mapping (see e2e/_canvas.ts) — the overlay
+  // spans the pasteboard, so derive the point from the DOM rather than assuming overlay=canvas.
   const frame = page.frameLocator('iframe.preview-frame');
   await expect(frame.locator('#f0')).toBeVisible();
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  const rect = await frame.locator('#f0').evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: document.body.getBoundingClientRect().width };
-  });
-  const scale = layer.width / rect.w;
-  await page.mouse.click(layer.x + rect.x * scale, layer.y + rect.y * scale);
+  const p = await elementPoint(page, '#f0');
+  await page.mouse.click(p.x, p.y);
   await expect(page.getByTestId('inspector-part-label')).toHaveText('Name');
 });
 

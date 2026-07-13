@@ -16,9 +16,15 @@ import type { SpxWindow } from './PlayoutSimulator';
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement | null>;
-  /** On-screen size of the canvas (template resolution × current scale), in CSS pixels. */
+  /** On-screen size of the overlay, in CSS pixels. In pasteboard mode this is the padded
+   *  document (canvas + pad); the overlay is congruent with the iframe viewport. */
   width: number;
   height: number;
+  /** Pasteboard margin, in canvas px (0 = no pasteboard). The overlay and the iframe both span
+   *  the padded document, so the coordinate origin is the pasteboard corner ("doc px"); pad is
+   *  the constant offset from doc px to canvas-logical px (see the coordinate-space note below). */
+  padX?: number;
+  padY?: number;
 }
 
 interface DragState {
@@ -30,7 +36,8 @@ interface DragState {
   dy: number;
   /** Past the threshold — the ghost + zone grid show and release commits. */
   active: boolean;
-  /** The graphic root's rect at drag start, in CANVAS px (the iframe's internal space). */
+  /** The graphic root's rect at drag start, in DOC px (the iframe's internal space, which in
+   *  pasteboard mode is offset from canvas by pad — converted with docToCanvas at commit). */
   root: { left: number; top: number; width: number; height: number };
 }
 
@@ -114,7 +121,7 @@ const SCALE_MAX = 4;
  * (panel → whole graphic), and empty canvas or Escape deselects. Selection is editor UI
  * state ONLY: it never writes a byte into the template.
  */
-export default function CanvasInteraction({ iframeRef, width, height }: Props) {
+export default function CanvasInteraction({ iframeRef, width, height, padX = 0, padY = 0 }: Props) {
   const template = useTemplateStore((s) => s.template);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
@@ -129,13 +136,15 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const [layerDrag, setLayerDrag] = useState<LayerDrag | null>(null);
   const layerDragRef = useRef<LayerDrag | null>(null);
   layerDragRef.current = layerDrag;
-  /** A lasso in flight: start + current corner, in canvas px. */
+  /** A lasso in flight: start + current corner, in doc px (matched against part rects, which
+   *  are also doc px — a pure hit-test space, no logical conversion needed). */
   const [lasso, setLasso] = useState<{ x0: number; y0: number; x1: number; y1: number; active: boolean; additive: boolean } | null>(null);
   const lassoRef = useRef<typeof lasso>(null);
   lassoRef.current = lasso;
   const [editing, setEditing] = useState<EditState | null>(null);
   const [cursor, setCursor] = useState<'default' | 'grab' | 'text'>('default');
-  // The root's rect (canvas px) while the pointer is over it — anchors the scale handle.
+  // The root's rect (doc px) while the pointer is over it — anchors the scale handle. Rendered
+  // via × scale into the doc-space overlay, so no logical conversion is needed.
   const [hoverRect, setHoverRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const [scaleDrag, setScaleDrag] = useState<ScaleDrag | null>(null);
   const scaleDragRef = useRef<ScaleDrag | null>(null);
@@ -168,15 +177,27 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const setSelected = useTemplateStore((s) => s.setSelectedPart);
   const setSelectedParts = useTemplateStore((s) => s.setSelectedParts);
   const toggleSelectedPart = useTemplateStore((s) => s.toggleSelectedPart);
-  /** The selected elements' live rects in CANVAS px (rAF-tracked below); the PRIMARY
-   *  (first selected) carries the chip, the rest get plain outlines. */
+  /** The selected elements' live rects in DOC px (rAF-tracked below; rendered via × scale into
+   *  the doc-space overlay); the PRIMARY (first selected) carries the chip, the rest get plain
+   *  outlines. */
   const [selRect, setSelRect] = useState<CanvasRect | null>(null);
   const [extraRects, setExtraRects] = useState<CanvasRect[]>([]);
   /** The innermost part under the pointer — the "what would a click select" preview. */
   const [hoverPart, setHoverPart] = useState<{ selector: string; label: string; rect: CanvasRect } | null>(null);
 
   const res = template.resolution;
-  const scale = width / res.width; // screen px per canvas px
+  // Coordinate spaces (docs/happy-marinating-pebble.md, invariant #3):
+  //   • client px  — screen/event coordinates.
+  //   • doc px     — the pasteboard document: the iframe viewport and this overlay share it,
+  //                  origin at the pasteboard corner. ALL hit-testing runs here, because an
+  //                  element's getBoundingClientRect() inside the iframe is in doc px too.
+  //   • canvas px  — logical template coordinates (0,0 = canvas top-left). Everything PERSISTED
+  //                  (keyframes, zone insets, inspector) is canvas px; doc px = canvas px + pad.
+  // `scale` is screen px per doc px (numerically fit × zoom); when padX = 0 doc px ≡ canvas px
+  // and this is exactly the pre-pasteboard behaviour.
+  const scale = width / (res.width + 2 * padX);
+  /** doc px → canvas-logical px (used only at write/display boundaries). */
+  const docToCanvas = (p: { x: number; y: number }) => ({ x: p.x - padX, y: p.y - padY });
   // The structure contract: every generated template has one root `.{prefix}` holding a
   // `.{prefix}-box` — the same detection every live panel uses (model/structure.ts).
   const prefix = detectPrefix(template.html) ?? 'lower-third';
@@ -294,8 +315,11 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const doc = () => iframeRef.current?.contentDocument ?? null;
   const rootEl = () => doc()?.querySelector<HTMLElement>(rootSelector) ?? null;
 
-  /** Pointer event → canvas px (the iframe renders at native resolution). */
-  const toCanvas = (e: React.PointerEvent | React.MouseEvent) => {
+  /** Pointer event → doc px. The overlay's top-left is the pasteboard corner, and iframe
+   *  element rects are in the same doc space, so this is the one space hit-testing uses.
+   *  Convert to canvas-logical px with `docToCanvas` only where a persisted/logical value is
+   *  needed. */
+  const clientToDoc = (e: React.PointerEvent | React.MouseEvent) => {
     const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
     return { x: (e.clientX - box.left) / scale, y: (e.clientY - box.top) / scale };
   };
@@ -460,7 +484,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (editing) return; // the editor overlay handles its own events
-    const p = toCanvas(e);
+    const p = clientToDoc(e);
     // The keyframe drag has first claim: pointer down ON any selected non-root layer
     // moves the whole selection (works outside the root too — block parts live there).
     if (kfDraggable) {
@@ -536,7 +560,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const ls = lassoRef.current;
     if (ls) {
-      const p = toCanvas(e);
+      const p = clientToDoc(e);
       const active =
         ls.active || Math.hypot((p.x - ls.x0) * scale, (p.y - ls.y0) * scale) > DRAG_THRESHOLD;
       setLasso({ ...ls, x1: p.x, y1: p.y, active });
@@ -570,7 +594,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     // Hover affordances: hand on the graphic, text cursor on an editable line, and the
     // corner scale handle anchored to the root while the pointer is over it. A selected,
     // position-armed layer reads as grabbable everywhere (its drag keys x/y).
-    const p = toCanvas(e);
+    const p = clientToDoc(e);
     const overKfLayer =
       kfDraggable &&
       kfSelectors.some((sel) => {
@@ -754,7 +778,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
       if (!ls.active) {
         // A click on empty canvas (below the threshold) deselects — or shift-toggles
         // an outside-the-root part under the point.
-        if (!editingRef.current) selectAt(toCanvas(e), e.shiftKey);
+        if (!editingRef.current) selectAt(clientToDoc(e), e.shiftKey);
         return;
       }
       commitLasso(ls);
@@ -765,7 +789,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
       setLayerDrag(null);
       if (!ld.active) {
         // A click stays a click — the selection still climbs through containers.
-        if (!editingRef.current) selectAt(toCanvas(e), e.shiftKey);
+        if (!editingRef.current) selectAt(clientToDoc(e), e.shiftKey);
         return;
       }
       commitLayerDrag(ld);
@@ -775,13 +799,17 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
     setDrag(null);
     if (!d || !d.active) {
       // A click (below the drag threshold) is not a move — it updates the SELECTION.
-      if (!editingRef.current) selectAt(toCanvas(e), e.shiftKey);
+      if (!editingRef.current) selectAt(clientToDoc(e), e.shiftKey);
       return;
     }
 
-    // The dragged root rect in canvas px.
-    const left = d.root.left + d.dx / scale;
-    const top = d.root.top + d.dy / scale;
+    // The dragged root position, converted from doc (pasteboard) px to canvas-logical px: the
+    // zone decision and the zoneDecls inset solve below are all defined against the canvas
+    // origin, so the pad comes off here (the one place this drag needs a logical coordinate).
+    // The root can now land partly or fully in the pasteboard; the nudge captures that offset.
+    const dragged = docToCanvas({ x: d.root.left + d.dx / scale, y: d.root.top + d.dy / scale });
+    const left = dragged.x;
+    const top = dragged.y;
     const centerX = left + d.root.width / 2;
     const centerY = top + d.root.height / 2;
 
@@ -820,7 +848,7 @@ export default function CanvasInteraction({ iframeRef, width, height }: Props) {
 
   const onDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (editing) return;
-    const p = toCanvas(e);
+    const p = clientToDoc(e);
     const hit = textFieldAt(p);
     if (!hit) return;
     const r = hit.el.getBoundingClientRect();

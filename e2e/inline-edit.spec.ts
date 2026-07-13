@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { elementPoint } from './_canvas';
 
 // Era 6 — inline text editing (docs/WYSIWYG_PLAN.md W3): double-click a text line in the
 // preview, type, Enter. The edit updates the LIVE value (preview + Data panel) AND the
@@ -16,18 +17,10 @@ async function createHairline(page: Page) {
   await page.waitForTimeout(650);
 }
 
-/** Screen position of the center of a preview element, mapped through the canvas scale. */
+/** Screen position of the center of a preview element (pad-agnostic — see e2e/_canvas.ts). */
 async function screenPointOf(page: Page, selector: string): Promise<{ x: number; y: number }> {
-  const rect = await page
-    .frameLocator('iframe.preview-frame')
-    .locator(selector)
-    .evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; // canvas px (iframe space)
-    });
-  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
-  const scale = layer.width / 1920; // the canvas renders at the template's native width
-  return { x: layer.x + rect.x * scale, y: layer.y + rect.y * scale };
+  const p = await elementPoint(page, selector);
+  return { x: p.x, y: p.y };
 }
 
 /** The field's DEFAULT in the SPX definition, read from the live preview document. */
