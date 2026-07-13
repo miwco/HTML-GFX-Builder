@@ -230,6 +230,23 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
           });
         }
       }
+      // Step calls name template functions the interpreter resolves by window[name] — a
+      // missing one is a silent no-op at runtime, so flag it here (a warning, in the same
+      // spirit as the dangling-selector check: the graphic still plays).
+      const calledNames = new Set<string>();
+      for (const step of data.steps) for (const c of step.calls ?? []) calledNames.add(c.call);
+      for (const name of calledNames) {
+        const defined =
+          new RegExp(`function\\s+${name}\\s*\\(`).test(template.js) ||
+          new RegExp(`\\b${name}\\s*=\\s*function`).test(template.js) ||
+          new RegExp(`\\bwindow\\.${name}\\s*=`).test(template.js);
+        if (!defined) {
+          warnings.push({
+            rule: 'anim-data-call',
+            message: `The animation data calls "${name}()", but no such function is defined in template.js — it will do nothing when the step plays.`,
+          });
+        }
+      }
     }
   }
 

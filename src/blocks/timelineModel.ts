@@ -56,12 +56,25 @@ export const DRAWER_PROPS = ['x', 'y', 'scale', 'opacity', 'rotation', 'blur'] a
 export type DrawerProp = (typeof DRAWER_PROPS)[number];
 export const DRAWER_IDENTITY: Record<DrawerProp, number> = { x: 0, y: 0, scale: 1, opacity: 1, rotation: 0, blur: 0 };
 
+/** Timeline v2 importer: one `tl.call(fnName)` lifecycle hook found in a phase, resolved to
+ *  its start time on the phase's clock (docs/TIMELINE_V2_PLAN.md §3b). Zero-duration — it
+ *  never advances the phase, exactly as GSAP treats a call. */
+export interface TimelineCall {
+  /** The named global function invoked (a bare identifier — `startClock`). */
+  name: string;
+  /** Start on the phase's clock, in seconds (position math shared with tweens). */
+  start: number;
+}
+
 export interface TimelinePhase {
   id: 'in' | 'out';
   label: string;
   /** Total phase length in seconds (the last tween's end). */
   duration: number;
   tweens: TimelineTween[];
+  /** Timeline v2: the phase's `tl.call(fnName)` lifecycle hooks (clock start/stop), in
+   *  document order with their resolved positions. Empty for motion-only phases. */
+  calls: TimelineCall[];
   /** True when the phase contains an endless loop (repeat: -1) — tickers, holds. */
   infinite: boolean;
 }
@@ -213,7 +226,12 @@ export function buildOverview(model: TimelineModel, partOrder: string[], alwaysR
 const BOOKKEEPING_PROPS = new Set(['duration', 'stagger', 'ease', 'transformOrigin', 'clearProps', 'repeat', 'delay', 'onComplete']);
 
 const REGION_RE = /\/\* == ANIMATION[\s\S]*?== END ANIMATION == \*\//;
+// Tween calls only — the tween-INDEX contract the patchers rely on (locateCall/splitTween
+// count these). `tl.call` is NOT here: a lifecycle hook must never shift a tween's index.
 const CALL_RE = /tl\.(set|to|fromTo)\(([\s\S]*?)\);/g;
+// The full call surface parsePhase walks in document order — tweens PLUS `tl.call` hooks —
+// so a call's position math sees the timeline end at the point it appears.
+const PHASE_CALL_RE = /tl\.(set|to|fromTo|call)\(([\s\S]*?)\);/g;
 
 function fnBodyRe(name: string): RegExp {
   return new RegExp(`function ${name}\\(\\) \\{([\\s\\S]*?)\\n\\}`);
@@ -308,13 +326,53 @@ function parseCall(kind: TimelineTween['kind'], args: string, animSpeed: number)
   };
 }
 
-/** Parse one build function's body into positioned tweens (GSAP position semantics). */
+/**
+ * Parse a `tl.call(...)` hook's argument text into { name, start }. Handles the two shapes
+ * the presets emit: `tl.call(fnName)` (appended at the current timeline end) and
+ * `tl.call(fnName, null, position)` (an explicit `'-=N'` overlap or `N / animSpeed`
+ * absolute). Returns null for anything else — an inline function, a computed callback — so
+ * an unrecognized call is dropped rather than guessed (the honest fallback). `phaseEnd` is
+ * the timeline end at the point the call appears, for the default append position.
+ */
+function parseCallHook(args: string, animSpeed: number, phaseEnd: number): TimelineCall | null {
+  // Callbacks carry no eases or nested-comma objects, so a plain split is safe here.
+  const parts = args.split(',').map((s) => s.trim());
+  const nameMatch = parts[0]?.match(/^'?([A-Za-z_$][\w$]*)'?$/);
+  if (!nameMatch) return null; // an inline/anonymous callback — not a named hook we can carry
+  const name = nameMatch[1];
+
+  // GSAP signature: call(callback, params, position). Default = append at the current end.
+  let start = phaseEnd;
+  const posTok = parts[2];
+  if (posTok) {
+    const overlap = posTok.match(/^'-=([\d.]+)'$/);
+    if (overlap) {
+      start = Math.max(0, phaseEnd - Number(overlap[1]));
+    } else {
+      const abs = posTok.match(/^([\d.]+)\s*(\/\s*animSpeed)?$/);
+      if (abs) start = Number(abs[1]) / (abs[2] ? animSpeed : 1);
+    }
+  }
+  return { name, start };
+}
+
+/** Parse one build function's body into positioned tweens (GSAP position semantics), plus
+ *  any `tl.call` lifecycle hooks in the same document-ordered pass so their positions see
+ *  the timeline end at the point each appears. */
 function parsePhase(id: TimelinePhase['id'], body: string, animSpeed: number): TimelinePhase {
   const tweens: TimelineTween[] = [];
+  const calls: TimelineCall[] = [];
   let phaseEnd = 0;
-  const re = new RegExp(CALL_RE.source, 'g');
+  const re = new RegExp(PHASE_CALL_RE.source, 'g');
   let m: RegExpExecArray | null;
   while ((m = re.exec(body))) {
+    if (m[1] === 'call') {
+      // A zero-duration hook: record it, never advance the phase (its index among tweens is
+      // untouched — the patchers still count only set/to/fromTo).
+      const hook = parseCallHook(m[2], animSpeed, phaseEnd);
+      if (hook) calls.push(hook);
+      continue;
+    }
     const parsed = parseCall(m[1] as TimelineTween['kind'], m[2], animSpeed);
     const span = parsed.duration + parsed.stagger * Math.max(0, parsed.targets.length - 1);
     // GSAP position semantics: default = append at the timeline's current end; '-=N' starts
@@ -343,6 +401,7 @@ function parsePhase(id: TimelinePhase['id'], body: string, animSpeed: number): T
     label: id === 'in' ? 'In' : 'Out',
     duration: phaseEnd,
     tweens,
+    calls,
     infinite: /repeat:\s*-1/.test(body),
   };
 }

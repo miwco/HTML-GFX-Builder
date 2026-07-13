@@ -48,6 +48,19 @@ function buildStepTimeline(index) {
   (step.hides || []).forEach(function (selector) {
     tl.set(selector, { opacity: 0 }, step.duration / speed);
   });
+  // Step calls: named template functions fire at their moment on the step's clock (the
+  // clock engine's startClock/stopClock — the timeline never owns that logic). Resolved by
+  // name at fire time so hand edits and load order never matter; a missing function is a
+  // silent no-op. Scrub/settle inherit GSAP's own callback suppression (progress(1, true)),
+  // so a settled state never re-fires the clock.
+  for (var c = 0; c < (step.calls || []).length; c++) {
+    (function (name, at) {
+      tl.call(function () {
+        var fn = window[name];
+        if (typeof fn === 'function') fn();
+      }, null, at / speed);
+    })(step.calls[c].call, step.calls[c].time);
+  }
   // Pad to the step's full duration — settled air at the end is part of the step.
   tl.set({ noacgPad: 0 }, { noacgPad: 1 }, step.duration / speed);
   return tl;
@@ -115,8 +128,9 @@ const DATA_HEADER = `// The graphic's animation as DATA. Steps play in order —
 // middle step on one » next() press (SPX Continue), the last on ■ stop(). Each layer's
 // properties are keyframe lists on the step's local clock: { "time", "value", "ease" }.
 // "reveals" names the layers that first become visible in that step; "hides" names the
-// layers that leave in it. The timeline UI reads and writes this block — and so can you:
-// edit a number and press play.`;
+// layers that leave in it; "calls" fires named template functions (a clock engine's
+// startClock/stopClock) at their moment on the step's clock. The timeline UI reads and
+// writes this block — and so can you: edit a number and press play.`;
 
 /** Emit the full marked ANIMATION region for a data-driven template. */
 export function emitAnimRegion(data: AnimData): string {

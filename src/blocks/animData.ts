@@ -17,6 +17,19 @@ export interface AnimKeyframe {
 /** Property tracks for one layer: prop name → keyframes sorted by time. */
 export type AnimLayerTracks = Record<string, AnimKeyframe[]>;
 
+/** One lifecycle hook on a step's local clock — a side effect, not layer motion. `call` is
+ *  the NAME of a global function defined in the template's own JS (e.g. the clock engine's
+ *  `startClock`); the interpreter resolves it by name at fire time. Strictly a bare
+ *  identifier — never an expression, never arguments (docs/TIMELINE_V2_PLAN.md §3b). */
+export interface AnimCall {
+  time: number;
+  call: string;
+}
+
+/** A valid `call` value: a bare JS identifier, so the interpreter's `window[name]` lookup
+ *  never becomes an expression evaluator (the no-eval posture is absolute). */
+export const ANIM_CALL_NAME_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
 /** One step — the timeline's "clip". steps[0] plays on ▶ Play, the middle steps each on
  *  one » Next press, the last on ■ Stop (the Out step). */
 export interface AnimStep {
@@ -32,6 +45,10 @@ export interface AnimStep {
    *  animates out with this step's keyframes and is hidden afterward (its existence span
    *  ends here instead of at the final Out). Only meaningful on the middle steps. */
   hides?: string[];
+  /** Lifecycle hooks that fire at their moment on the step's clock — named template
+   *  functions (a clock engine's `startClock`/`stopClock`), not layer motion. Written by
+   *  the importer and whole-graphic preset applies; pros edit the JSON line. */
+  calls?: AnimCall[];
   layers: Record<string, AnimLayerTracks>;
 }
 
@@ -103,6 +120,15 @@ export function isAnimData(raw: unknown): raw is AnimData {
     if (typeof step.ease !== 'string') return false;
     if (step.reveals !== undefined && !Array.isArray(step.reveals)) return false;
     if (step.hides !== undefined && !Array.isArray(step.hides)) return false;
+    if (step.calls !== undefined) {
+      if (!Array.isArray(step.calls)) return false;
+      for (const c of step.calls) {
+        if (!c || typeof c !== 'object') return false;
+        if (typeof c.time !== 'number' || c.time < 0) return false;
+        // A bare identifier only — anything else degrades the block to "hand-crafted".
+        if (typeof c.call !== 'string' || !ANIM_CALL_NAME_RE.test(c.call)) return false;
+      }
+    }
     if (!step.layers || typeof step.layers !== 'object') return false;
     for (const tracks of Object.values(step.layers)) {
       if (!tracks || typeof tracks !== 'object') return false;
@@ -131,10 +157,11 @@ function serializeKeyframe(kf: AnimKeyframe): string {
 
 /**
  * Serialize the data canonically. Deterministic by construction: fixed key order
- * (version/root/speed/steps; name/duration/ease/reveals/layers; time/value/ease), fixed
- * 2-space indentation, keyframes one per line, keyframes sorted by time, numbers rounded
- * to 3 decimals. serialize(parse(serialize(x))) === serialize(x) — a fixed point — so a
- * small visual edit only ever touches the lines it changed.
+ * (version/root/speed/steps; name/duration/ease/reveals/hides/calls/layers;
+ * time/value/ease), fixed 2-space indentation, keyframes and calls one per line, both
+ * sorted by time, numbers rounded to 3 decimals. serialize(parse(serialize(x))) ===
+ * serialize(x) — a fixed point — so a small visual edit only ever touches the lines it
+ * changed.
  */
 export function serializeAnimData(data: AnimData): string {
   const lines: string[] = ['{'];
@@ -152,6 +179,15 @@ export function serializeAnimData(data: AnimData): string {
     }
     if (step.hides && step.hides.length > 0) {
       lines.push(`      "hides": [${step.hides.map((s) => JSON.stringify(s)).join(', ')}],`);
+    }
+    // Step calls: one per line, key order time/call — sorted so the diff stays stable.
+    if (step.calls && step.calls.length > 0) {
+      lines.push('      "calls": [');
+      const calls = [...step.calls].sort((a, b) => a.time - b.time);
+      calls.forEach((c, ci) => {
+        lines.push(`        { "time": ${round(c.time)}, "call": ${JSON.stringify(c.call)} }${ci < calls.length - 1 ? ',' : ''}`);
+      });
+      lines.push('      ],');
     }
     // "layers" is always present (possibly empty) — one canonical shape, no comma games.
     const selectors = Object.keys(step.layers);
