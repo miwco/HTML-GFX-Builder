@@ -2,6 +2,7 @@
 // Every commit is ONE undoable patchSettings. Duration is edited in seconds (the natural
 // unit) and stored in frames; changing fps keeps the duration in seconds constant.
 
+import { useState } from 'react';
 import { ASPECTS, FPS_OPTIONS } from '../../model/types';
 import { AI_MODELS } from '../../ai/settings';
 import { useVideoProjectStore } from '../../store/videoProjectStore';
@@ -11,6 +12,17 @@ export default function VideoSettingsPanel() {
   const patchSettings = useVideoProjectStore((s) => s.patchSettings);
 
   const durationSec = project.durationInFrames / project.fps;
+  // While the field is being edited it holds a raw string (which may be temporarily empty);
+  // when not editing it mirrors the stored value. Committing on blur/Enter both clamps the
+  // value and keeps duration edits to ONE undoable step instead of one per keystroke.
+  const [durationDraft, setDurationDraft] = useState<string | null>(null);
+  const durationShown = durationDraft ?? String(Number(durationSec.toFixed(2)));
+  const commitDuration = () => {
+    if (durationDraft === null) return;
+    const sec = Math.min(600, Math.max(0.5, Number(durationDraft) || 0.5));
+    patchSettings({ durationInFrames: Math.max(1, Math.round(sec * project.fps)) });
+    setDurationDraft(null);
+  };
   const aspect =
     ASPECTS.find((a) =>
       a.resolutions.some((r) => r.width === project.width && r.height === project.height),
@@ -36,10 +48,11 @@ export default function VideoSettingsPanel() {
           min={0.5}
           max={600}
           step={0.5}
-          value={Number(durationSec.toFixed(2))}
-          onChange={(e) => {
-            const sec = Math.min(600, Math.max(0.5, Number(e.target.value) || 0.5));
-            patchSettings({ durationInFrames: Math.max(1, Math.round(sec * project.fps)) });
+          value={durationShown}
+          onChange={(e) => setDurationDraft(e.target.value)}
+          onBlur={commitDuration}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitDuration();
           }}
           data-testid="video-duration"
         />
