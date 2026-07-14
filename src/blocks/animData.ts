@@ -26,9 +26,29 @@ export interface AnimCall {
   call: string;
 }
 
-/** A valid `call` value: a bare JS identifier, so the interpreter's `window[name]` lookup
- *  never becomes an expression evaluator (the no-eval posture is absolute). */
+/** A valid `call` / `build` value: a bare JS identifier, so the interpreter's `window[name]`
+ *  lookup never becomes an expression evaluator (the no-eval posture is absolute). */
 export const ANIM_CALL_NAME_RE = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+/** One DYNAMIC motion segment — motion whose shape is MEASURED from the live DOM and so
+ *  cannot be written as static keyframes (docs/DYNAMIC_MOTION_SCOPE.md): a marquee travels
+ *  by its track's scrollWidth, a credits roll by its content height, a ticker flip runs one
+ *  segment per item. `build` is the NAME of a global builder function defined in the
+ *  template's own JS OUTSIDE the marked region (design-owned runtime, exactly like the clock
+ *  engine); it measures the DOM and RETURNS a GSAP tween/timeline that the interpreter adds
+ *  to the step. Strictly a bare identifier — the data holds a name and a target, never code.
+ *
+ *  This is the motion twin of `calls`: the timeline UI renders it read-only, because "travel
+ *  by measured width" is not something you can meaningfully keyframe by hand — it is honestly
+ *  code-owned, and the visual editor steps aside for it. */
+export interface AnimDynamic {
+  /** When the segment joins the step's clock (speed-relative seconds; default 0). */
+  time?: number;
+  /** The builder's global name (a bare identifier — resolved via `window[name]`, no eval). */
+  build: string;
+  /** Optional selector handed to the builder, so one builder can serve many targets. */
+  target?: string;
+}
 
 /** How one track repeats within its step — the loop/yoyo/repeat primitive
  *  (docs/PRESET_MODEL_REVIEW.md gap 6). Values mirror GSAP: `repeat` -1 loops forever,
@@ -64,6 +84,10 @@ export interface AnimStep {
    *  functions (a clock engine's `startClock`/`stopClock`), not layer motion. Written by
    *  the importer and whole-graphic preset applies; pros edit the JSON line. */
   calls?: AnimCall[];
+  /** Measured motion segments — a named builder returns a GSAP tween/timeline the
+   *  interpreter adds to this step (a marquee's width-derived travel, a credits roll). The
+   *  keyframe model deliberately cannot express these; see AnimDynamic. */
+  dynamics?: AnimDynamic[];
   /** Looping tracks: `loops[selector][prop]` makes that layer's track repeat (an ambient
    *  breath, a marquee-style cycle). Per-track so an element can hold a one-shot entrance on
    *  one property and loop on another; a track with no entry plays once, exactly as before. */
@@ -148,6 +172,16 @@ export function isAnimData(raw: unknown): raw is AnimData {
         if (typeof c.call !== 'string' || !ANIM_CALL_NAME_RE.test(c.call)) return false;
       }
     }
+    if (step.dynamics !== undefined) {
+      if (!Array.isArray(step.dynamics)) return false;
+      for (const d of step.dynamics) {
+        if (!d || typeof d !== 'object') return false;
+        // A bare identifier only — the `window[name]` lookup must never become an evaluator.
+        if (typeof d.build !== 'string' || !ANIM_CALL_NAME_RE.test(d.build)) return false;
+        if (d.time !== undefined && (typeof d.time !== 'number' || d.time < 0)) return false;
+        if (d.target !== undefined && (typeof d.target !== 'string' || !d.target)) return false;
+      }
+    }
     if (step.loops !== undefined) {
       if (typeof step.loops !== 'object' || step.loops === null || Array.isArray(step.loops)) return false;
       for (const perProp of Object.values(step.loops)) {
@@ -189,9 +223,9 @@ function serializeKeyframe(kf: AnimKeyframe): string {
 
 /**
  * Serialize the data canonically. Deterministic by construction: fixed key order
- * (version/root/speed/steps; name/duration/ease/reveals/hides/calls/layers;
- * time/value/ease), fixed 2-space indentation, keyframes and calls one per line, both
- * sorted by time, numbers rounded to 3 decimals. serialize(parse(serialize(x))) ===
+ * (version/root/speed/steps; name/duration/ease/reveals/hides/calls/dynamics/loops/layers;
+ * time/value/ease), fixed 2-space indentation, keyframes, calls and dynamics one per line,
+ * all sorted by time, numbers rounded to 3 decimals. serialize(parse(serialize(x))) ===
  * serialize(x) — a fixed point — so a small visual edit only ever touches the lines it
  * changed.
  */
@@ -218,6 +252,18 @@ export function serializeAnimData(data: AnimData): string {
       const calls = [...step.calls].sort((a, b) => a.time - b.time);
       calls.forEach((c, ci) => {
         lines.push(`        { "time": ${round(c.time)}, "call": ${JSON.stringify(c.call)} }${ci < calls.length - 1 ? ',' : ''}`);
+      });
+      lines.push('      ],');
+    }
+    // Dynamics: one measured-motion segment per line, key order time/build/target — sorted
+    // by time so the diff stays stable. `time` is written even at 0: it is the segment's
+    // placement on the step clock, and a hand editor should see the knob.
+    if (step.dynamics && step.dynamics.length > 0) {
+      lines.push('      "dynamics": [');
+      const dyns = [...step.dynamics].sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+      dyns.forEach((d, di) => {
+        const target = d.target ? `, "target": ${JSON.stringify(d.target)}` : '';
+        lines.push(`        { "time": ${round(d.time ?? 0)}, "build": ${JSON.stringify(d.build)}${target} }${di < dyns.length - 1 ? ',' : ''}`);
       });
       lines.push('      ],');
     }

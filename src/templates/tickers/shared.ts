@@ -34,7 +34,9 @@ import {
   zoneCssText,
 } from '../shared/base';
 import type { PresetConfig } from '../lowerThirds/animPresets';
+import { convertToDataRegion } from '../shared/standard';
 import { tickerPresetById } from './tickerPresets';
+import { TICKER_MOTION_JS } from './tickerMotion';
 
 export interface TickerDesign {
   /** Inner HTML of .ticker — must contain .ticker-box > .ticker-viewport > #ticker-track. */
@@ -180,10 +182,12 @@ var TICKER_DOUBLE_ITEMS = ${design.doubleItems};
 
 ${design.rowBuilderJs}
 
+${TICKER_MOTION_JS}
+
 ${preset.emit(cfg)}`,
   );
 
-  return {
+  const template: SpxTemplate = {
     name: meta.name,
     type: 'ticker',
     resolution: o.resolution,
@@ -196,6 +200,12 @@ ${preset.emit(cfg)}`,
     assets: [...o.importedImages, ...(o.customFont ? [o.customFont.asset] : [])],
     layers: [],
   };
+
+  // Timeline v2: convert the emitted region into the NOACG_ANIM data block. The strip's fade
+  // becomes ordinary keyframes; the measured travel rides across as a `dynamics` segment
+  // naming its builder above (docs/DYNAMIC_MOTION_SCOPE.md). The builders themselves sit
+  // outside the region and are untouched by the conversion.
+  return convertToDataRegion(template);
 }
 
 /** The authoring API for ticker variant modules. */

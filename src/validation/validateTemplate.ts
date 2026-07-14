@@ -216,6 +216,9 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
       for (const step of data.steps) {
         Object.keys(step.layers).forEach((s) => selectors.add(s));
         (step.reveals ?? []).forEach((s) => selectors.add(s));
+        // A dynamic segment's target is handed to its builder, which will query for it —
+        // a dangling one silently produces no motion, so it earns the same guard.
+        (step.dynamics ?? []).forEach((d) => d.target && selectors.add(d.target));
       }
       for (const sel of selectors) {
         const exists = sel.startsWith('#')
@@ -230,20 +233,35 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
           });
         }
       }
-      // Step calls name template functions the interpreter resolves by window[name] — a
-      // missing one is a silent no-op at runtime, so flag it here (a warning, in the same
-      // spirit as the dangling-selector check: the graphic still plays).
+      // Step calls and dynamic-motion builders both name template functions the interpreter
+      // resolves by window[name] — a missing one is a silent no-op at runtime, so flag it
+      // here (a warning, in the same spirit as the dangling-selector check: the graphic
+      // still plays).
+      const definedInJs = (name: string): boolean =>
+        new RegExp(`function\\s+${name}\\s*\\(`).test(template.js) ||
+        new RegExp(`\\b${name}\\s*=\\s*function`).test(template.js) ||
+        new RegExp(`\\bwindow\\.${name}\\s*=`).test(template.js);
+
       const calledNames = new Set<string>();
       for (const step of data.steps) for (const c of step.calls ?? []) calledNames.add(c.call);
       for (const name of calledNames) {
-        const defined =
-          new RegExp(`function\\s+${name}\\s*\\(`).test(template.js) ||
-          new RegExp(`\\b${name}\\s*=\\s*function`).test(template.js) ||
-          new RegExp(`\\bwindow\\.${name}\\s*=`).test(template.js);
-        if (!defined) {
+        if (!definedInJs(name)) {
           warnings.push({
             rule: 'anim-data-call',
             message: `The animation data calls "${name}()", but no such function is defined in template.js — it will do nothing when the step plays.`,
+          });
+        }
+      }
+
+      // A dynamic segment's builder measures the DOM and returns the tween. Without it the
+      // step loses its measured motion entirely — a ticker would fade in and never travel.
+      const builderNames = new Set<string>();
+      for (const step of data.steps) for (const d of step.dynamics ?? []) builderNames.add(d.build);
+      for (const name of builderNames) {
+        if (!definedInJs(name)) {
+          warnings.push({
+            rule: 'anim-data-dynamic',
+            message: `The animation data builds measured motion with "${name}()", but no such function is defined in template.js — that motion will not play.`,
           });
         }
       }

@@ -144,12 +144,27 @@ export function applyPresetData(
       // Lifecycle hooks are step-level, not layer motion — the whole-graphic swap replaces
       // the target phase's calls with the donor's (a clock preset carries its start/stop),
       // scaled to the settled duration so the call keeps its place in the entrance.
+      const scale = donorStep.duration > 0 ? t.duration / donorStep.duration : 1;
       if (donorStep.calls && donorStep.calls.length > 0) {
-        const scale = donorStep.duration > 0 ? t.duration / donorStep.duration : 1;
         t.calls = donorStep.calls.map((c) => ({ time: round(c.time * scale), call: c.call }));
         touched = true;
       } else {
         delete t.calls;
+      }
+      // Measured motion is step-level too, and it is the WHOLE point of a dynamic category's
+      // preset: swapping a ticker from Marquee to Item flip is swapping which builder the
+      // step names. Carrying the donor's `dynamics` here is what makes that swap a pure data
+      // edit — the builders themselves already ship in the template, outside the region, so
+      // nothing outside the marked block has to be rewritten (docs/DYNAMIC_MOTION_SCOPE.md §7).
+      if (donorStep.dynamics && donorStep.dynamics.length > 0) {
+        t.dynamics = donorStep.dynamics.map((d) => ({
+          time: round((d.time ?? 0) * scale),
+          build: d.build,
+          ...(d.target ? { target: d.target } : {}),
+        }));
+        touched = true;
+      } else {
+        delete t.dynamics;
       }
     } else {
       // One layer: its own donor tracks when the donor animates it; otherwise the donor's

@@ -4,7 +4,13 @@
 // The ticker structure contract (see shared.ts):
 //   .ticker (root, opacity:0) → .ticker-box (the strip) → [.ticker-label with #f1]
 //     → .ticker-viewport (overflow hidden) → #ticker-track (items injected by rebuildTicker())
-// The marquee renders the items TWICE so the loop is seamless (xPercent -50 = one full set).
+//
+// The strip's fade is ordinary keyframeable motion and lives here. The TRAVEL is not: a
+// marquee slides by its track's measured width, a flip runs one segment per item, and both
+// depend on the operator's text. So the region does not inline that code — it calls a named
+// builder from tickerMotion.ts (emitted outside the region) and adds what it returns. That
+// keeps the region fully parseable, which is what lets these templates be data blocks with a
+// read-only "measured motion" segment on the timeline (docs/DYNAMIC_MOTION_SCOPE.md).
 
 import type { AnimPresetId } from '../../model/wizard';
 import type { AnimPreset, PresetConfig } from '../lowerThirds/animPresets';
@@ -18,6 +24,17 @@ var easeIn = '${cfg.easeIn}';   // entrance ease (the strip's fade-in — the lo
 var easeOut = '${cfg.easeOut}';   // exit ease (the fade-out)`;
 }
 
+/** The exit is the same fade for every ticker preset — the loop just stops. */
+function outTimeline(): string {
+  return `// buildOutTimeline(): fade the strip away and stop the motion.
+function buildOutTimeline() {
+  var tl = gsap.timeline();
+  tl.to('.ticker-box', { opacity: 0, duration: 0.4 / animSpeed, ease: easeOut });
+  tl.set('.ticker', { opacity: 0 });           // fully hidden; ready to play again
+  return tl;
+}`;
+}
+
 export const TICKER_PRESETS: AnimPreset[] = [
   {
     id: 'ticker-marquee' as AnimPresetId,
@@ -25,38 +42,20 @@ export const TICKER_PRESETS: AnimPreset[] = [
     description: 'The classic news ticker — items travel across the strip in a seamless, endless loop.',
     autoEase: { easeIn: 'power2.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
-// Preset: Marquee loop — a seamless, endless right-to-left travel. The track holds the
-// items TWICE, so sliding exactly one set (-50%) and repeating looks continuous.
+// Preset: Marquee loop — a seamless, endless right-to-left travel.
 ${knobs(cfg)}
 
-// buildInTimeline(): fade the strip in, then run the loop forever (until stop()).
+// buildInTimeline(): fade the strip in, then run the marquee forever (until stop()).
 function buildInTimeline() {
-  var track = document.getElementById('ticker-track');
-  var oneSetWidth = track.scrollWidth / 2;     // the items are rendered twice
-  var pixelsPerSecond = 140 * animSpeed;       // travel speed — raise for a faster ticker
-
   var tl = gsap.timeline();
   tl.set('.ticker', { opacity: 1 });           // reveal the (CSS-hidden) graphic
   tl.fromTo('.ticker-box', { opacity: 0 }, { opacity: 1, duration: 0.5 / animSpeed, ease: easeIn });
-  tl.fromTo(track,
-    { x: 0 },
-    {
-      x: -oneSetWidth,                         // one full set = a perfect loop point
-      duration: oneSetWidth / pixelsPerSecond,
-      ease: 'none',                            // constant speed — never eased
-      repeat: -1,                              // loop until stop()
-    }
-  );
+  // The travel itself is MEASURED from the rendered items — see tickerMarquee() above.
+  tl.add(tickerMarquee('#ticker-track'));
   return tl;
 }
 
-// buildOutTimeline(): fade the strip away and stop the loop.
-function buildOutTimeline() {
-  var tl = gsap.timeline();
-  tl.to('.ticker-box', { opacity: 0, duration: 0.4 / animSpeed, ease: easeOut });
-  tl.set('.ticker', { opacity: 0 });           // fully hidden; ready to play again
-  return tl;
-}
+${outTimeline()}
 ${MARK_CLOSE}`,
   },
 
@@ -71,29 +70,15 @@ ${knobs(cfg)}
 
 // buildInTimeline(): fade the strip in, then cycle the items (until stop()).
 function buildInTimeline() {
-  var items = document.querySelectorAll('#ticker-track .ticker-item');
   var tl = gsap.timeline();
   tl.set('.ticker', { opacity: 1 });           // reveal the (CSS-hidden) graphic
   tl.fromTo('.ticker-box', { opacity: 0 }, { opacity: 1, duration: 0.5 / animSpeed, ease: easeIn });
-  tl.set(items, { opacity: 0 });               // all items start hidden
-
-  var cycle = gsap.timeline({ repeat: -1 });   // the endless item rotation
-  items.forEach(function (item) {
-    var holdSeconds = 3.2 / animSpeed;         // reading time per item
-    cycle.fromTo(item, { y: 18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 / animSpeed, ease: easeIn });
-    cycle.to(item, { y: -18, opacity: 0, duration: 0.35 / animSpeed, ease: easeOut }, '+=' + holdSeconds);
-  });
-  tl.add(cycle);
+  // One flip segment PER ITEM — the count comes from the operator's text. See tickerFlipCycle().
+  tl.add(tickerFlipCycle('#ticker-track'));
   return tl;
 }
 
-// buildOutTimeline(): fade the strip away and stop the cycle.
-function buildOutTimeline() {
-  var tl = gsap.timeline();
-  tl.to('.ticker-box', { opacity: 0, duration: 0.4 / animSpeed, ease: easeOut });
-  tl.set('.ticker', { opacity: 0 });           // fully hidden; ready to play again
-  return tl;
-}
+${outTimeline()}
 ${MARK_CLOSE}`,
   },
 ];

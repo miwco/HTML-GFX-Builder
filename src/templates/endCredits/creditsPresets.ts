@@ -6,6 +6,14 @@
 //   .credits (root, opacity:0) → .credits-box (viewport, overflow hidden)
 //     → #credits-track (rows injected by rebuildCredits())
 // The end of the track is the .credits-end block (logo placeholder + year).
+//
+// The box's fade is ordinary keyframeable motion and lives here. The TRAVEL is not: a roll
+// covers its own content height, a crawl its own width, a page swap runs one segment per
+// page — all measured from the operator's text. So the region does not inline that code — it
+// calls a named builder from creditsMotion.ts (emitted outside the region) and adds what it
+// returns. That keeps the region fully parseable, which is what lets these templates be data
+// blocks with a read-only "measured motion" segment on the timeline
+// (docs/DYNAMIC_MOTION_SCOPE.md).
 
 import type { AnimPresetId } from '../../model/wizard';
 import type { AnimPreset, PresetConfig } from '../lowerThirds/animPresets';
@@ -17,6 +25,17 @@ function knobs(cfg: PresetConfig): string {
   return `var animSpeed = ${cfg.speed};  // 1 = normal · 0.75 = slower · 1.5 = faster (scales travel speed)
 var easeIn = '${cfg.easeIn}';   // entrance ease (the fade-in — travel itself stays linear)
 var easeOut = '${cfg.easeOut}';   // exit ease (the fade-out)`;
+}
+
+/** The exit is the same clean fade for every credits preset — credits never roll back down. */
+function outTimeline(seconds: number): string {
+  return `// buildOutTimeline(): a clean fade — credits don't animate back down.
+function buildOutTimeline() {
+  var tl = gsap.timeline();
+  tl.to('.credits-box', { opacity: 0, duration: ${seconds} / animSpeed, ease: easeOut });
+  tl.set('.credits', { opacity: 0 });          // fully hidden; ready to play again
+  return tl;
+}`;
 }
 
 export const CREDITS_PRESETS: AnimPreset[] = [
@@ -31,33 +50,15 @@ ${knobs(cfg)}
 
 // buildInTimeline(): fade in, then roll the track up at a steady reading speed.
 function buildInTimeline() {
-  var box = document.querySelector('.credits-box');
-  var track = document.getElementById('credits-track');
-  var endBlock = track.querySelector('.credits-end');
-
-  // Start with the track just below the viewport; stop when the end block is centered.
-  var startY = box.clientHeight;
-  var endY = -(track.scrollHeight - box.clientHeight / 2 - endBlock.offsetHeight / 2);
-  var distance = startY - endY;
-  var pixelsPerSecond = 90 * animSpeed;        // reading speed — raise for faster credits
-
   var tl = gsap.timeline();
   tl.set('.credits', { opacity: 1 });          // reveal the (CSS-hidden) graphic
   tl.fromTo('.credits-box', { opacity: 0 }, { opacity: 1, duration: 0.6 / animSpeed, ease: easeIn });
-  tl.fromTo(track,
-    { y: startY },
-    { y: endY, duration: distance / pixelsPerSecond, ease: 'none' }  // constant speed — never eased
-  );
+  // The roll's distance is MEASURED from the rendered rows — see creditsRoll() above.
+  tl.add(creditsRoll('#credits-track'));
   return tl;
 }
 
-// buildOutTimeline(): a clean fade — credits don't animate back down.
-function buildOutTimeline() {
-  var tl = gsap.timeline();
-  tl.to('.credits-box', { opacity: 0, duration: 0.5 / animSpeed, ease: easeOut });
-  tl.set('.credits', { opacity: 0 });          // fully hidden; ready to play again
-  return tl;
-}
+${outTimeline(0.5)}
 ${MARK_CLOSE}`,
   },
 
@@ -71,33 +72,17 @@ ${MARK_CLOSE}`,
 // (logo + year) stays up until stop().
 ${knobs(cfg)}
 
-// buildInTimeline(): sequence every .credits-page, then the .credits-end block.
+// buildInTimeline(): sequence every page in the track.
 function buildInTimeline() {
-  var pages = document.querySelectorAll('#credits-track .credits-page, #credits-track .credits-end');
   var tl = gsap.timeline();
   tl.set('.credits', { opacity: 1 });          // reveal the (CSS-hidden) graphic
-  tl.set('.credits-box', { opacity: 1 });      // undo a previous stop()'s box fade - replays start visible
-  tl.set(pages, { opacity: 0 });               // all pages start hidden
-
-  pages.forEach(function (page, i) {
-    var rows = page.children.length;
-    var holdSeconds = Math.max(2.5, rows * 0.9) / animSpeed;  // longer pages hold longer
-    tl.fromTo(page, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5 / animSpeed, ease: easeIn });
-    if (i < pages.length - 1) {
-      // Hold, then hand over to the next page. The final page holds until stop().
-      tl.to(page, { opacity: 0, duration: 0.4 / animSpeed, ease: easeOut }, '+=' + holdSeconds);
-    }
-  });
+  tl.set('.credits-box', { opacity: 1 });      // undo a previous stop()'s box fade — replays start visible
+  // One segment PER PAGE, each holding as long as its own row count needs. See creditsPages().
+  tl.add(creditsPages('#credits-track'));
   return tl;
 }
 
-// buildOutTimeline(): fade whatever is on screen.
-function buildOutTimeline() {
-  var tl = gsap.timeline();
-  tl.to('.credits-box', { opacity: 0, duration: 0.5 / animSpeed, ease: easeOut });
-  tl.set('.credits', { opacity: 0 });          // fully hidden; ready to play again
-  return tl;
-}
+${outTimeline(0.5)}
 ${MARK_CLOSE}`,
   },
 
@@ -108,36 +93,20 @@ ${MARK_CLOSE}`,
     autoEase: { easeIn: 'power2.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Horizontal crawl — the track travels across the frame at constant speed and
-// finishes with the logo + year block. Flip the direction by swapping startX/endX.
+// finishes with the logo + year block.
 ${knobs(cfg)}
 
 // buildInTimeline(): fade in the strip, then crawl the track from right to left.
 function buildInTimeline() {
-  var box = document.querySelector('.credits-box');
-  var track = document.getElementById('credits-track');
-
-  var startX = box.clientWidth;                          // enter from the right edge…
-  var endX = -(track.scrollWidth - box.clientWidth);     // …stop with the track's end visible
-  var distance = startX - endX;
-  var pixelsPerSecond = 160 * animSpeed;                 // crawl speed
-
   var tl = gsap.timeline();
   tl.set('.credits', { opacity: 1 });          // reveal the (CSS-hidden) graphic
   tl.fromTo('.credits-box', { opacity: 0 }, { opacity: 1, duration: 0.4 / animSpeed, ease: easeIn });
-  tl.fromTo(track,
-    { x: startX },
-    { x: endX, duration: distance / pixelsPerSecond, ease: 'none' }  // constant speed — never eased
-  );
+  // The crawl's distance is MEASURED from the rendered track — see creditsCrawl() above.
+  tl.add(creditsCrawl('#credits-track'));
   return tl;
 }
 
-// buildOutTimeline(): fade the strip away.
-function buildOutTimeline() {
-  var tl = gsap.timeline();
-  tl.to('.credits-box', { opacity: 0, duration: 0.4 / animSpeed, ease: easeOut });
-  tl.set('.credits', { opacity: 0 });          // fully hidden; ready to play again
-  return tl;
-}
+${outTimeline(0.4)}
 ${MARK_CLOSE}`,
   },
 ];

@@ -84,7 +84,23 @@ function buildStepTimeline(index) {
       }, null, at / speed);
     })(step.calls[c].call, step.calls[c].time);
   }
+  // Dynamic motion: a design-owned builder MEASURES the DOM and returns a GSAP
+  // tween/timeline (a marquee's width-derived travel, a credits roll, one flip per item).
+  // The keyframe data above cannot describe motion whose magnitude depends on the
+  // operator's content, so it names a builder instead — the logic stays readable JS,
+  // outside this region, where you can edit it. Resolved by name at build time (no eval);
+  // a missing builder is a silent no-op.
+  for (var d = 0; d < (step.dynamics || []).length; d++) {
+    (function (name, target, at) {
+      var build = window[name];
+      if (typeof build !== 'function') return;
+      var segment = build(target, { speed: speed, ease: step.ease });
+      if (segment) tl.add(segment, (at || 0) / speed);
+    })(step.dynamics[d].build, step.dynamics[d].target, step.dynamics[d].time);
+  }
   // Pad to the step's full duration — settled air at the end is part of the step.
+  // (A dynamic segment may run LONGER than this: its length is measured at play time, so
+  // the step's authored duration is a floor, not a cap.)
   tl.set({ noacgPad: 0 }, { noacgPad: 1 }, step.duration / speed);
   return tl;
 }
@@ -153,8 +169,11 @@ const DATA_HEADER = `// The graphic's animation as DATA. Steps play in order —
 // "reveals" names the layers that first become visible in that step; "hides" names the
 // layers that leave in it; "calls" fires named template functions (a clock engine's
 // startClock/stopClock) at their moment on the step's clock; "loops" makes a layer's track
-// repeat (repeat -1 = forever, yoyo = breathe back and forth). The timeline UI reads and
-// writes this block — and so can you: edit a number and press play.`;
+// repeat (repeat -1 = forever, yoyo = breathe back and forth); "dynamics" adds MEASURED
+// motion — a named builder function (defined below, outside this block) reads the DOM and
+// returns the tween, which is how a marquee travels exactly one track-width no matter how
+// much text the operator types. The timeline UI reads and writes this block — and so can
+// you: edit a number and press play.`;
 
 /** Emit the full marked ANIMATION region for a data-driven template. */
 export function emitAnimRegion(data: AnimData): string {
