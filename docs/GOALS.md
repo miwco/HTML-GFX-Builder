@@ -597,11 +597,16 @@ Sub-phases (see ERA5_PLAN.md for full scope + per-phase live-verify checklists):
       warnings, the AI prompt teaches the data shape, l3-sweep updated); and the polish
       pass — playhead grab cap + auto-follow scroll, 1000 px/s deep zoom, per-keyframe
       and per-step ease menus (right-click), ◀◆▶ keyframe navigation, label
-      drag-scrubbing. **Phase 8 (delete the literal patchers + the classic strip) waits
-      for the remaining category migrations**: standard-contract categories next (info
-      cards, scoreboards, corner bug, starting-soon, timers, quiz — the importer already
-      converts them), loop categories (credits/tickers/infographics) after a loop
-      representation lands in the data model. Original plan entry follows — the
+      drag-scrubbing. **Phase 8 (retire the literal patchers + the classic strip) waits
+      for the remaining category migrations.** Since shipped, each unblocking a wave:
+      the §3b STEP CALLS (a named lifecycle hook — game timers), LOOP/YOYO (a repeating
+      track — starting soon), and MEASURED MOTION (a named builder that reads the DOM and
+      returns the tween — **tickers and end credits**, docs/DYNAMIC_MOTION_SCOPE.md).
+      **Only quiz (wrapper-driven Continue) and info cards (they host the classic strip's
+      spec suite) remain on the legacy region.** Phase 8 is ratified to retire the strip's
+      EDITING patchers while keeping a minimal read-only renderer: a saved template whose
+      measured motion is hand-written inline can never be auto-converted, and silently
+      regenerating it would discard its owner's tuning. Original plan entry follows — the
       CapCut-style rethink: steps as clips, a real playhead/ruler, an Inspector panel,
       proper keyframes, presets as keyframe generators with In/Out/Both. The audit
       concluded the parse-by-construction patcher architecture is at end of life for this
