@@ -1994,6 +1994,17 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   overflow-wrap: anywhere;
 }
 .inspector-hint { margin-top: 10px; font-size: 10.5px; line-height: 1.5; }
+/* A labelled sub-section of the property list (the 3D transform block). */
+.inspector-group-label {
+  margin-top: 9px;
+  padding-bottom: 1px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  opacity: 0.72;
+}
 /* Phase 4 — editable properties: value/input + the keyframe diamond side by side. */
 .inspector-row-edit { display: inline-flex; align-items: center; gap: 6px; }
 .inspector-input {

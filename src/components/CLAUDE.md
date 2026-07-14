@@ -127,7 +127,11 @@ in src/blocks/CLAUDE.md.
   diamond sitting ON a keyframe to remove it; ‹ › navigate the layer's keyframes, labels
   drag-scrub the value, blur is the one non-transform (its keyframes live on `filter` as
   'blur(Npx)'), and arming BOTH Position X and Y also unlocks the canvas position-keyframe
-  drag (see CanvasInteraction). The Animations tab names which steps move the layer and holds the preset
+  drag (see CanvasInteraction). The vocabulary (PROP_ROWS) is x/y/yPercent/scale/opacity/
+  rotation/blur plus a **3D transform** group - `rotationX`/`rotationY`/`z` and `perspective`
+  (`transformPerspective`), ordinary numeric tracks the interpreter tweens with no special-casing
+  (perspective enables the 3D look; they pivot around the Pivot's transform-origin). Adding a
+  numeric prop needs only a PROP_ROWS entry - no runtime/resolver/validation change. The Animations tab names which steps move the layer and holds the preset
   picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
   blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
   blends with the previous preset), and re-parks the preview at the playhead. Legacy templates get a

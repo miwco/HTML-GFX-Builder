@@ -246,6 +246,56 @@ test('resolver: agrees with the real interpreter at keyframe times', async ({ pa
   expect(mismatches).toEqual([]);
 });
 
+test('3D transforms: rotationX/Y/z + perspective author and play through the real interpreter', async ({ page }) => {
+  // docs/PRESET_MODEL_REVIEW.md gap 7 — the 3D vocabulary is ordinary numeric tracks: the
+  // model round-trips them, and the SAME interpreter (no special-casing) applies them via
+  // GSAP as a genuine 3D transform. Author a card-flip on #f0 through the real mutators,
+  // then prove the played result is 3D and settles to the resolver's values.
+  await toApp(page);
+  const problems = await page.evaluate(`(async () => {
+    ${HARNESS}
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { parseAnimData, spliceAnimData } = await import('/src/blocks/animData.ts');
+    const { setKeyframe } = await import('/src/blocks/animEdit.ts');
+    const { resolveValue } = await import('/src/blocks/animEval.ts');
+    const tpl = variantById('lt01').create({});
+    let data = parseAnimData(tpl.js);
+    const enterDur = data.steps[0].duration;
+    // Perspective set once at the entrance; rotationY 90 -> 0 (the card flip), plus an X
+    // tilt and a depth push, all resolving to identity by the settled state.
+    data = setKeyframe(data, 0, '#f0', 'transformPerspective', 0, 600);
+    data = setKeyframe(data, 0, '#f0', 'rotationY', 0, 90);
+    data = setKeyframe(data, 0, '#f0', 'rotationY', enterDur, 0);
+    data = setKeyframe(data, 0, '#f0', 'rotationX', 0, 20);
+    data = setKeyframe(data, 0, '#f0', 'rotationX', enterDur, 0);
+    data = setKeyframe(data, 0, '#f0', 'z', 0, -200);
+    data = setKeyframe(data, 0, '#f0', 'z', enterDur, 0);
+    const js = spliceAnimData(tpl.js, data);
+    if (!js || js === tpl.js) return ['splice produced no change'];
+    const w = await boot({ ...tpl, js });
+    const tl = w.buildInTimeline(); tl.pause();
+    const problems = [];
+    // Near the start: #f0 is mid-flip — the live transform must be a real 3D matrix and
+    // rotationY still near its 90deg 'from' value.
+    tl.pause(0.001);
+    const startTransform = w.getComputedStyle(w.document.querySelector('#f0')).transform;
+    if (!/matrix3d/.test(startTransform)) problems.push('entrance is not 3D: ' + startTransform);
+    const startRotY = Number(w.gsap.getProperty('#f0', 'rotationY'));
+    if (Math.abs(startRotY - 90) > 3) problems.push('start rotationY ' + startRotY + ' not ~90');
+    // Settled: every 3D prop matches the resolver AND the authored end values.
+    tl.progress(1, true);
+    for (const spec of [['rotationX', 0], ['rotationY', 0], ['z', 0], ['transformPerspective', 600]]) {
+      const prop = spec[0], want = spec[1];
+      const live = Number(w.gsap.getProperty('#f0', prop));
+      const resolved = Number(resolveValue(data, '#f0', prop, 0, enterDur));
+      if (Math.abs(live - want) > 1) problems.push(prop + ' settled live ' + live + ' != ' + want);
+      if (Math.abs(live - resolved) > 1) problems.push(prop + ' live/resolver drift ' + live + ' / ' + resolved);
+    }
+    return problems;
+  })()`);
+  expect(problems).toEqual([]);
+});
+
 test('serializer: canonical fixed point, lossless splice, hand-edit round-trip', async ({ page }) => {
   await toApp(page);
   const result = await page.evaluate(`(async () => {

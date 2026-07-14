@@ -140,6 +140,42 @@ test('inspector: the pivot sets the transform-origin, and the runtime honours it
   expect(applied).toMatch(/^0px /); // left-anchored (0%), not the default centre
 });
 
+test('inspector: the 3D transform rows arm and key a rotation (docs/PRESET_MODEL_REVIEW.md gap 7)', async ({ page }) => {
+  await createHairline(page);
+  await openInspector(page);
+  await page.locator('.timeline-label[data-part="#f0"]').click();
+  await expect(page.getByTestId('inspector-part-label')).toHaveText('Name');
+
+  // The 3D block is present, grouped and labelled under its own divider.
+  await expect(page.getByTestId('inspector-group-3d-transform')).toBeVisible();
+  await expect(page.getByTestId('inspector-kf-perspective')).toBeVisible();
+  await expect(page.getByTestId('inspector-kf-rotationX')).toBeVisible();
+  await expect(page.getByTestId('inspector-kf-z')).toBeVisible();
+
+  // Arm Rotate Y (its diamond) — it stamps the first keyframe at the settled state and the
+  // row becomes an editable input.
+  await page.getByTestId('inspector-kf-rotationY').click();
+  await page.waitForTimeout(700);
+  const input = page.getByTestId('inspector-input-rotationY');
+  await expect(input).toBeVisible();
+
+  // Set a flip value; the data records a rotationY track on #f0 (an ordinary numeric track).
+  await input.fill('45');
+  await input.blur();
+  await page.waitForTimeout(700);
+  const rotY = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { parseAnimData } = await import('/src/blocks/animData.ts');
+    const d = parseAnimData(useTemplateStore.getState().template.js)!;
+    for (const s of d.steps) {
+      const k = s.layers['#f0']?.rotationY;
+      if (k?.length) return k[k.length - 1].value;
+    }
+    return null;
+  });
+  expect(rotY).toBe(45);
+});
+
 test('redo: Ctrl+Shift+Z restores an undone edit; a new edit clears the redo branch', async ({ page }) => {
   await createHairline(page);
   // The speed knob writes the data block's speed field (one undoable apply per pick).

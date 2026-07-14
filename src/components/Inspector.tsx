@@ -21,8 +21,21 @@ import { phaseIdOf } from './StepTimeline';
 
 /** The editable property vocabulary. `track` is the data-model property the keyframes
  *  live on (blur is presentation for filter: 'blur(Npx)'); `base` is the design-state
- *  value used when arming a property that has never animated. */
-const PROP_ROWS: { prop: string; track: string; label: string; base: number; step: number; min?: number; max?: number }[] = [
+ *  value used when arming a property that has never animated. `group` marks the first row
+ *  of a labelled section (the 3D block); `hint` is an optional row tooltip. Every row here
+ *  is an ordinary GSAP property — the runtime interpreter tweens it with no special-casing
+ *  (blur is the one exception, serialized as a filter string). */
+const PROP_ROWS: {
+  prop: string;
+  track: string;
+  label: string;
+  base: number;
+  step: number;
+  min?: number;
+  max?: number;
+  group?: string;
+  hint?: string;
+}[] = [
   { prop: 'x', track: 'x', label: 'Position X', base: 0, step: 1 },
   { prop: 'y', track: 'y', label: 'Position Y', base: 0, step: 1 },
   { prop: 'yPercent', track: 'yPercent', label: 'Y (mask %)', base: 0, step: 1 },
@@ -30,6 +43,23 @@ const PROP_ROWS: { prop: string; track: string; label: string; base: number; ste
   { prop: 'opacity', track: 'opacity', label: 'Opacity', base: 1, step: 0.1, min: 0, max: 1 },
   { prop: 'rotation', track: 'rotation', label: 'Rotation', base: 0, step: 1 },
   { prop: 'blur', track: 'filter', label: 'Blur (px)', base: 0, step: 1, min: 0 },
+  // 3D transforms (docs/PRESET_MODEL_REVIEW.md gap 7). Ordinary numeric GSAP tracks —
+  // rotationX/Y spin the layer in depth, z pushes it toward/away from the viewer, and
+  // perspective is the depth that makes the rotations read as 3D (set it first, usually
+  // once at the entrance). They pivot around the layer's transform-origin (the Pivot below).
+  {
+    prop: 'perspective',
+    track: 'transformPerspective',
+    label: 'Perspective',
+    base: 600,
+    step: 20,
+    min: 0,
+    group: '3D transform',
+    hint: 'The depth of the 3D scene, in px. Without it, Rotate X/Y look flat — set it once (usually at the entrance).',
+  },
+  { prop: 'rotationX', track: 'rotationX', label: 'Rotate X', base: 0, step: 1, hint: 'Tilt around the horizontal axis (degrees).' },
+  { prop: 'rotationY', track: 'rotationY', label: 'Rotate Y', base: 0, step: 1, hint: 'Spin around the vertical axis (degrees) — the card-flip axis.' },
+  { prop: 'z', track: 'z', label: 'Depth (Z)', base: 0, step: 1, hint: 'Move toward or away from the viewer, in px (needs perspective to show).' },
 ];
 
 const KIND_LABEL: Record<string, string> = {
@@ -227,10 +257,16 @@ export default function Inspector() {
                 const value = display(row);
                 const scrubbable = native && isArmed && value !== '—';
                 return (
-                  <div className="inspector-row" key={row.prop}>
+                  <div className="inspector-prop" key={row.prop}>
+                    {row.group && (
+                      <div className="inspector-group-label" data-testid={`inspector-group-${row.group.replace(/\s+/g, '-').toLowerCase()}`}>
+                        {row.group}
+                      </div>
+                    )}
+                    <div className="inspector-row">
                     <span
                       className={`inspector-row-label${scrubbable ? ' scrubbable' : ''}`}
-                      title={scrubbable ? 'Drag left/right to change the value (keys at the playhead)' : undefined}
+                      title={scrubbable ? 'Drag left/right to change the value (keys at the playhead)' : row.hint}
                       onPointerDown={(e) => {
                         if (!scrubbable) return;
                         e.preventDefault();
@@ -322,6 +358,7 @@ export default function Inspector() {
                         </button>
                       )}
                     </span>
+                    </div>
                   </div>
                 );
               })}

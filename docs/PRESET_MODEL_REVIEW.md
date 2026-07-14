@@ -33,7 +33,7 @@ interpolate at runtime. The editable vocabulary (Inspector `PROP_ROWS`) is
 | 4 | **Stagger as an authored control** | The legacy importer bakes `stagger` into per-keyframe time offsets; the schema has **no stagger field**, so once imported it is frozen as individual times. A preset cannot re-express it and the user cannot adjust it as one knob. |
 | 5 | **Physics / spring parameters** | Springiness exists only as a GSAP ease string (`elastic.out`, `back.out`) on a keyframe; there are no mass/tension/velocity params (the resolver interpolates linearly and defers the curve to the runtime). |
 | 6 | **Loop / yoyo / repeat** | No `repeat`/`yoyo`/`repeatDelay`. Infinite/looping motion (ticker marquees, credit rolls) is outside the model — `importAnimData` returns `null` for infinite phases, so those categories stay hand-written. |
-| 7 | **3D transforms** | `DESIGN_STATE` knows `rotationX/Y`, `skewX/Y` for import fidelity, but the editable vocabulary exposes none of them (no `z`, `rotationX/Y`, `perspective`). |
+| 7 | ~~**3D transforms**~~ **(DONE — see Tier 2)** | `DESIGN_STATE` knew `rotationX/Y`, `skewX/Y` for import fidelity but the vocabulary exposed none. Now `rotationX/Y`, `z`, and `perspective` are editable numeric tracks (`skewX/Y` remain import-only). |
 | 8 | **Composed / multiple filters** | `blur` is special-cased as `filter: 'blur(Npx)'`, a single string track. You cannot animate two independent filters (blur + brightness), and strings are stepped editor-side (only the runtime interpolates them). |
 | 9 | **Early exit (a layer leaving before the final Out)** | A layer's lifecycle is hidden → entering → visible → exiting-with-the-root. `reveals` is the only lifecycle data; there is no `hides`. |
 | 10 | **Lifecycle calls (start/stop a clock, side effects)** | A step has no `calls` field; `importAnimData` drops `tl.call` lines. This is why starting-soon and game-timers can't migrate to the data model. |
@@ -68,9 +68,14 @@ parse-degrades-gracefully contract. None require a graph editor or expressions.
 
 - **More filter rows + a composed filter track** (gap 8): drop-shadow/brightness/hue as their own
   editable rows, serialized into one `filter` string the runtime interpolates.
-- **3D transform rows** (gap 7): expose `rotationX/Y`, `z`, `perspective` as ordinary numeric
-  tracks — the runtime already understands them; only the vocabulary and Inspector rows are
-  missing.
+- **3D transform rows** (gap 7) — **DONE**. `rotationX`, `rotationY`, `z`, and `perspective`
+  (`transformPerspective`) are ordinary numeric tracks in the editable vocabulary, grouped under a
+  "3D transform" divider in the Inspector's Properties tab (perspective first, with a hint that the
+  rotations need it to read as 3D). No interpreter, resolver, validation, or preset change was
+  needed — the runtime already tweens any GSAP property via `vars[prop]`, numbers interpolate in
+  the resolver, and a preset clean-swap clears every track in its target step regardless of name.
+  They pivot around the layer's transform-origin (the existing Pivot control). Parity + a UI arm/key
+  path are pinned by `e2e/anim-engine.spec.ts` and `e2e/inspector.spec.ts`.
 - **Per-property duration** (gap 1): keep step duration as the frame, but let a track carry a
   local time-scale, or simply lean on keyframe placement (the current, workable answer).
 

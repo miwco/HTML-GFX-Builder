@@ -56,6 +56,10 @@ const PROP_LABELS: Record<string, string> = {
   opacity: 'Opacity',
   rotation: 'Rotation',
   filter: 'Blur',
+  rotationX: 'Rotate X',
+  rotationY: 'Rotate Y',
+  z: 'Depth (Z)',
+  transformPerspective: 'Perspective',
 };
 
 interface Props {
