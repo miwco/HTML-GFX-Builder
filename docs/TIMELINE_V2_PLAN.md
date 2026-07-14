@@ -19,12 +19,18 @@ first; QUIZ's Continue is wrapper-driven (next() → revealAnswer, settings.step
 no data step) — the steps derivation would rewrite steps to '1' on the first edit and
 break the reveal, so it needs a wrapper-steps representation. GAME TIMERS flipped on the
 step-call model (§3b), and STARTING SOON flipped on the loop model (gap 6 — its ambient breath
-is a repeating scale track; the countdown rides the step calls). A correction to the original
-audit: TICKERS and CREDITS are NOT loop-blocked — their travel is DOM-measured (`scrollWidth`,
-`clientHeight`), which the static keyframe model cannot express, so loop/yoyo does not unblock
-them; they need a separate dynamic-value primitive. INFO CARDS flip LAST of all: they host the
-classic strip's spec suite (Hairline Card), and after this wave no other legacy category supports
-the steps toggle — the suite retires together with the strip in Phase 8.**
+is a repeating scale track; the countdown rides the step calls). TICKERS and END CREDITS then
+flipped on the MEASURED-MOTION model (`docs/DYNAMIC_MOTION_SCOPE.md`): their travel is DOM-measured
+(`scrollWidth`, `clientHeight`), which the static keyframe model deliberately cannot express, so a
+step gained `dynamics` — a named builder that measures the DOM and returns the tween, the motion
+twin of §3b's calls. INFO CARDS flip LAST of all: they host the classic strip's spec suite
+(Hairline Card), and after this wave no other legacy category supports the steps toggle — the suite
+retires together with the strip in Phase 8. **Only QUIZ and INFO CARDS remain on the legacy region.**
+
+**Phase 8 scope, RATIFIED (DYNAMIC_MOTION_SCOPE §8.1):** it removes the classic strip's EDITING
+patchers but KEEPS a minimal read-only renderer. A saved template whose measured motion is
+hand-written inline can never be auto-converted — the importer refuses it rather than guessing —
+and silently regenerating it would discard the owner's tuning. It must still render truthfully.**
 
 **Ratified (2026-07-10) with twelve review adjustments, integrated below.**
 The governing principle, stated at ratification:
@@ -349,12 +355,16 @@ lifecycle). **Explicitly out of scope for this section:** quiz's wrapper-driven 
 steps-representation question, not a lifecycle one) and the loop categories' endless timelines.
 *(Update: the loop/yoyo primitive — PRESET_MODEL_REVIEW gap 6 — since landed, and STARTING SOON
 now flips too: its ambient breath imports as a looping scale track, and these same step calls
-carry its startClock/stopClock. Tickers/credits still don't flip — their travel is DOM-measured,
-a separate gap, not a loop one.)*
+carry its startClock/stopClock. TICKERS and CREDITS then flipped on the MOTION twin of this
+section — a step's `dynamics`, a named builder that measures the DOM and returns the tween. Same
+shape, same no-eval `window[name]` lookup, same "the data holds a name, the code holds the logic"
+posture; see docs/DYNAMIC_MOTION_SCOPE.md.)*
 
-**Reconciliation note:** the `hides` early-exit twin shipped after this section was drafted,
-so the step's canonical key order is `name, duration, ease, reveals, hides, calls, layers`
-(the twins stay adjacent; calls, a lifecycle concern, sit just before the layer motion).
+**Reconciliation note:** the `hides` early-exit twin, the `dynamics` measured-motion segments, and
+the `loops` per-track repeats all shipped after this section was drafted, so the step's canonical
+key order is now `name, duration, ease, reveals, hides, calls, dynamics, loops, layers` (the
+reveals/hides twins stay adjacent; the by-name concerns — calls and dynamics — sit together just
+before the motion; loops modify the layer tracks, so they sit right against `layers`).
 
 ### The data
 

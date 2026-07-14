@@ -6,7 +6,17 @@ loop/yoyo work named: loop/yoyo unblocked starting-soon, but explicitly **not** 
 because their motion is computed from live DOM measurement, which the static keyframe model
 deliberately cannot express (`docs/PRESET_MODEL_REVIEW.md` gap 6, and gap 3's spirit).
 
-Status: **DESIGN / awaiting ratification.** Nothing here is built.
+Status: **BUILT AND SHIPPED.** The `dynamics` primitive is in the model, the interpreter, the
+importer, validation, and the timeline; tickers and end credits create as data blocks on it. The
+open questions in §8 are ratified below. This document is now the *rationale* record — the
+binding contracts live in `src/blocks/CLAUDE.md` (the engine) and `src/templates/CLAUDE.md` (the
+category runtimes).
+
+**The one design change from the sketch below:** the region does not need a new "reference a
+builder" syntax invented for it, because the preset emits an ordinary `tl.add(builderName(target))`
+and the *legacy* reader was taught to see it. That single move keeps ONE choreography source (the
+preset emitter) and means measured motion rides the existing importer exactly as `tl.call` hooks
+already do — no second code path, and the parity harness compares data against the real legacy emit.
 
 ## 1. What these categories actually need (from the code)
 
@@ -119,13 +129,16 @@ into a named function the data references.
 
 ## 5. How each preset maps
 
+As built (the builders live in `src/templates/tickers/tickerMotion.ts` and
+`src/templates/endCredits/creditsMotion.ts`):
+
 | Preset | Static (keyframes) | Dynamic segment (builder) |
 |---|---|---|
-| ticker-marquee | `.ticker-box` opacity fade in/out | `marqueeLoop(#ticker-track)` — measured, `repeat:-1` |
-| ticker-flip | box fade | `itemFlipCycle(#ticker-track)` — per-item `timeline({repeat:-1})` |
-| credits-roll | box fade | `creditsRoll(#credits-track)` — three-measurement linear travel |
-| credits-crawl | box fade | `creditsCrawl(#credits-track)` — measured horizontal travel |
-| credits-pages | box fade | `creditsPages(#credits-track)` — per-page fade/hold sequence |
+| ticker-marquee | `.ticker-box` opacity fade in/out | `tickerMarquee('#ticker-track')` — measured, `repeat:-1` |
+| ticker-flip | box fade | `tickerFlipCycle('#ticker-track')` — per-item `timeline({repeat:-1})` |
+| credits-roll | box fade | `creditsRoll('#credits-track')` — three-measurement linear travel |
+| credits-crawl | box fade | `creditsCrawl('#credits-track')` — measured horizontal travel |
+| credits-pages | box set | `creditsPages('#credits-track')` — per-page fade/hold sequence |
 
 ## 6. Validation & timeline UI
 
@@ -145,21 +158,32 @@ into a named function the data references.
   regenerating, not a keyframe edit. `presetApply` (or a category-specific regenerate path) must learn
   to carry a dynamic segment. **Open question** (§8).
 
-## 8. Open questions to ratify before building
+## 8. The open questions — RATIFIED
 
-1. **Saved / community / AI legacy tickers.** The importer cannot reliably extract arbitrary measured
-   JS from an old `buildInTimeline` into a named builder, so `importAnimData` will keep **refusing**
-   legacy measured tickers — they render on the classic strip until regenerated. That means Phase 8
-   cannot delete the classic strip outright while such saved templates exist; it needs either a
-   one-time regenerate-to-new-shape path for them, or a minimal read-only legacy renderer retained as
-   a fallback. **Decision needed:** which.
-2. **Preset swap semantics** for dynamic categories (regenerate vs. a `presetApply` that swaps the
-   `dynamics` entry). §7.
-3. **Is the speed knob editable from the UI, or only in the builder?** v1 keeps `pixelsPerSecond` in
-   the builder (code-owned). Surfacing it as a Style/Inspector knob is a possible later enhancement
-   (it would read a `--motion-speed`-style var the builder honors).
-4. **Builder naming & namespacing** — bare globals (`marqueeLoop`) vs a small namespace to avoid
-   collisions across composed packets.
+1. **Saved / community / AI legacy tickers → keep a READ-ONLY legacy renderer.** The importer can
+   carry a *named* builder across; it cannot lift arbitrary measured JS out of somebody's
+   hand-written `buildInTimeline`, and it never guesses. So a saved ticker that inlines its own
+   `scrollWidth` math is **refused honestly** and stays legacy.
+   **Decision:** Phase 8 retires the classic strip's *editing* patchers (timelineModel's
+   `splitTween` / `patchTweenTiming` / … — the bulk of the code) but **keeps a minimal read-only
+   view**, so such a template still renders truthfully on the timeline. Converting stays an
+   explicit, undoable user action. Auto-regenerating was rejected: it would silently discard
+   hand-tuning, which "code is the single source of truth" forbids. Pinned by the refusal test in
+   `e2e/anim-engine.spec.ts`.
+2. **Preset swap → a pure data edit.** Every builder for a category ships in every template of it
+   (a ticker carries both `tickerMarquee` and `tickerFlipCycle`), so swapping the preset swaps the
+   `dynamics` entry's `build` name and nothing outside the marked region is touched — which the
+   marker contract requires. `presetApply` carries `dynamics` on a whole-graphic swap exactly as it
+   already carries `calls`; per-layer applies never touch either, because both are step-level.
+   The cost is one or two unused (but commented, and callable) builders in an export — a fair price
+   for a swap that stays a one-line data change, and arguably a feature: the template ships its
+   category's small motion library.
+3. **Speed knob stays in the builder** (code-owned), read through `motionSpeed()`. Unchanged from
+   the sketch; surfacing it as a Style knob remains a possible later enhancement.
+4. **Builder naming: bare globals, category-prefixed** (`tickerMarquee`, `creditsRoll`) rather than
+   a namespace object. The prefix is what avoids collisions across composed packets, and a bare
+   function keeps the `window[name]` lookup — and the generated code — as plain as everything else
+   in a template.
 
 ## 9. Explicitly NOT in this primitive
 
@@ -167,12 +191,19 @@ No expression language, no measured-value keyframe type, no arbitrary JS in the 
 name and a target — the logic stays in code), no visual editing of measured travel, no attempt to make
 the importer auto-convert arbitrary hand-written measured motion.
 
-## 10. Recommendation
+## 10. What shipped
 
-Build the `dynamics` primitive as the direct §3b twin (schema + interpreter + validation + the
-read-only timeline block), regenerate the ticker/credits catalog onto it, and pin it with a parity
-harness (legacy emit vs regenerated data → identical measured motion at sampled times, across a
-matrix of content lengths). Resolve open question §8.1 before promising Phase 8 can retire the classic
-strip. This is a Tier-3-sized effort comparable to the loop/yoyo work: contained, additive, and
-philosophically clean — the visual timeline steps aside for motion that is honestly code-owned, which
-is exactly what the "code is real, view optional" pillar intends.
+The `dynamics` primitive as the direct §3b twin — schema, interpreter, importer, validation, and the
+read-only timeline block — with tickers and end credits created onto it, and a parity harness that
+compares each measured preset against its legacy emit at sampled times across short and long content
+(`e2e/anim-engine.spec.ts`).
+
+Where it landed differently from the sketch: the region references its builder with an ordinary
+`tl.add(builderName(target))` and the legacy reader parses that, so there is exactly ONE choreography
+source (the preset emitter) and the measured motion rides the existing importer the same way `tl.call`
+hooks do. That also made the preset swap fall out for free as a pure data edit (§8.2).
+
+**What it unblocks:** tickers and credits are off the legacy patchers. The remaining blockers for
+Phase 8 are the quiz's wrapper-driven Continue and info cards (which host the classic strip's spec
+suite) — see `docs/TIMELINE_V2_PLAN.md`. Per §8.1, Phase 8 retires the strip's *editing* patchers but
+keeps a read-only renderer for legacy templates that can never be auto-converted.

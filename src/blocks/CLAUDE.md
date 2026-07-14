@@ -31,7 +31,7 @@ src/templates/shared/animRuntime.ts). These modules are the editor's side of tha
 editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
 
 - **animData.ts** - the schema + the literal's read/write. AnimData = version/root/speed/steps;
-  a step = name/duration/ease/reveals?/hides?/calls?/loops?/layers (durations and keyframe times
+  a step = name/duration/ease/reveals?/hides?/calls?/dynamics?/loops?/layers (durations and keyframe times
   are speed-relative: playback divides by `speed`; `reveals` names the layers that FIRST become
   visible in that step, `hides` the layers that LEAVE in it - the early-exit twin, its existence
   span ends there instead of at the final Out; both are explicit data, never inferred from
@@ -42,7 +42,17 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   lifecycle hooks - `{ time, call }` where `call` is a bare identifier
   naming a global template function (a clock engine's `startClock`/`stopClock`); the interpreter
   fires them via `window[name]` at their moment on the step's clock (no eval, ever), and settle
-  suppresses them like any GSAP callback (docs/TIMELINE_V2_PLAN.md §3b). A keyframe is
+  suppresses them like any GSAP callback (docs/TIMELINE_V2_PLAN.md §3b). `dynamics` is the MOTION
+  twin of `calls` - `{ time, build, target? }`, where `build` names a global BUILDER function that
+  measures the DOM and RETURNS a GSAP tween/timeline the interpreter adds to the step
+  (docs/DYNAMIC_MOTION_SCOPE.md). This is the ONLY way motion whose magnitude comes from the
+  operator's content can live in the data at all - a marquee's track-width travel, a credits roll's
+  content-height, one flip segment per item: no static keyframe number can hold a value that changes
+  the moment the text does. The data holds a NAME and a TARGET, never code; the measured logic stays
+  readable JS OUTSIDE the marked region (the category motion runtimes - see src/templates/CLAUDE.md),
+  which is also why it survives export untouched. The timeline renders these READ-ONLY: you cannot
+  meaningfully keyframe "travel by measured width", so the visual editor steps aside and names the
+  builder instead of implying an affordance it doesn't have. A keyframe is
   `{ time, value, ease? }` - value is a number or a string (filter/clipPath interpolate as
   strings); `ease` is the ease INTO the keyframe, defaulting to the step's. `locateAnimData`
   brace-matches respecting JSON strings (a hand-edited block need not match the canonical
@@ -85,11 +95,18 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   game timers flip to data blocks. It also reads a repeating tween's loop (repeat/yoyo/
   repeatDelay) and writes a step `loop` when the tween's values are finite LITERALS (a breathing
   pulse - this is what lets STARTING SOON flip); a DOM-measured loop (a marquee's `x:-scrollWidth`)
-  or a nested-timeline loop (ticker's item flip) fails the phase's `loopsConvertible` gate and the
-  whole template stays legacy - tickers/credits are NOT unblocked by loop/yoyo (their travel is
-  DOM-measured, a separate gap). Used for read-only rendering of legacy templates on the new
-  timeline AND the explicit, undoable convert-on-first-motion-edit; templates the old parser
-  cannot read stay hand-crafted - the importer never guesses.
+  or a nested-timeline loop written INLINE fails the phase's `loopsConvertible` gate and the whole
+  template stays legacy. It also reads `tl.add(builderName(target))` as a `dynamics` segment
+  (parseTimeline's `TimelineDynamic`) - which is what unblocked TICKERS and CREDITS: their presets
+  no longer inline the measured math, they call a named builder that lives outside the region, so
+  the region parses and the measured motion rides across as data. A `tl.add(...)` in any OTHER
+  shape (a bare local timeline variable) fails `dynamicsConvertible` and the template stays legacy -
+  the importer can carry a NAME, it cannot lift arbitrary measured JS out of a hand-written
+  buildInTimeline, and it never guesses (docs/DYNAMIC_MOTION_SCOPE.md §8.1 - the ratified reason
+  Phase 8 keeps a read-only legacy renderer rather than deleting the classic strip outright).
+  Neither calls nor dynamics shift a tween's INDEX, so the legacy patchers are untouched.
+  Used for read-only rendering of legacy templates on the new timeline AND the explicit, undoable
+  convert-on-first-motion-edit; templates the old parser cannot read stay hand-crafted.
 - **presetApply.ts** - presets as keyframe generators DERIVED from their legacy emitters
   through the parity-proven importer (emit the preset's region against a scratch copy of this
   template, convert it, lift out the tracks - one choreography source, zero taste drift).
@@ -103,18 +120,27 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   = the whole graphic adopting the donor's full choreography and the chosen/donor step duration
   and ease - skipping press-revealed layers, whose entrance belongs to their » press; it also
   swaps the target phase's step `calls` for the donor's (a clock preset carries its
-  startClock/stopClock), scaled to the settled duration. Per-layer applies never touch calls -
-  they are step-level lifecycle, not layer motion.
+  startClock/stopClock) and its `dynamics` for the donor's (a ticker preset carries its measured
+  builder), both scaled to the settled duration. Per-layer applies never touch calls or dynamics -
+  they are step-level, not layer motion. Because every builder of a category ships in every template
+  of it (a ticker carries BOTH tickerMarquee and tickerFlipCycle), swapping the motion preset of a
+  measured category is a PURE DATA EDIT - one `build` name - and nothing outside the marked region
+  is rewritten, which is what the marker contract requires (docs/DYNAMIC_MOTION_SCOPE.md §8.2).
 
 ## The legacy patchers (animPatch / stepAssign / timelineModel)
 
 These literal patchers still serve the categories that have NOT migrated to the data region
-(info cards, starting soon, quiz, credits, tickers, infographics — lower thirds, corner bug,
-scoreboards, and game timers create as data blocks), plus every SAVED legacy template until
-its owner presses "use keyframes". Deleting them and the classic strip is
-Phase 8 of docs/TIMELINE_V2_PLAN.md - deferred by design until the remaining categories
-migrate (the blockers per category are documented in src/templates/CLAUDE.md and the plan's
-status block).
+(info cards, quiz, infographics — lower thirds, corner bug, scoreboards, game timers, starting
+soon, TICKERS and END CREDITS create as data blocks), plus every SAVED legacy template until
+its owner presses "use keyframes". Phase 8 of docs/TIMELINE_V2_PLAN.md retires them - deferred by
+design until the remaining categories migrate (the blockers per category are documented in
+src/templates/CLAUDE.md and the plan's status block).
+RATIFIED (docs/DYNAMIC_MOTION_SCOPE.md §8.1): Phase 8 removes the classic strip's EDITING patchers
+(timelineModel's splitTween/patchTweenTiming/… - the bulk of the code) but KEEPS a minimal
+read-only view. A saved template whose measured motion is hand-written inline can never be
+auto-converted (the importer refuses it rather than guessing), and silently regenerating it would
+discard the owner's tuning - which "code is the single source of truth" forbids. So it must still
+render truthfully somewhere; converting stays an explicit, undoable user action.
 
 ## animPatch.ts - the marked ANIMATION region
 

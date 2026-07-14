@@ -262,11 +262,15 @@ test('parity: starting-soon flips to a data block and its ambient loop matches t
     if (wOld.__started !== wNew.__started) failures.push('startClock count ' + wOld.__started + ' vs ' + wNew.__started);
     if (wOld.__stopped !== wNew.__stopped) failures.push('stopClock count ' + wOld.__stopped + ' vs ' + wNew.__stopped);
 
-    // Tickers stay legacy: their motion is DOM-measured / nested, so the importer refuses.
+    // Tickers now flip too: their measured travel lives in a named builder outside the
+    // region, which the importer carries as a dynamics segment
+    // (docs/DYNAMIC_MOTION_SCOPE.md). The behaviour itself is pinned by the measured-motion
+    // parity test below; here we only pin that they ARE data blocks now.
     for (const v of ['tk01', 'tk02']) {
       const t = variantById(v).create({});
-      if (t.js.includes('var NOACG_ANIM')) failures.push(v + ' should NOT have flipped (DOM-measured loop)');
+      if (!t.js.includes('var NOACG_ANIM')) failures.push(v + ' should have flipped to a data block');
     }
+
     return failures;
   })()`);
   expect(failures).toEqual([]);
@@ -411,4 +415,189 @@ test('serializer: canonical fixed point, lossless splice, hand-edit round-trip',
     loopFixedPoint: true,
     loopSurvives: true,
   });
+});
+
+// ── Measured motion (docs/DYNAMIC_MOTION_SCOPE.md) ──
+// Tickers and end credits move by magnitudes that only exist once the operator's text is
+// rendered: a marquee slides one track-width, a roll covers its own content height, a flip
+// runs one segment per item. Those live in named builder functions outside the marked
+// region, and the animation data references them with a `dynamics` segment.
+//
+// The parity bar is the same as every other preset's: the created DATA template must behave
+// exactly like that preset's LEGACY emit. Because the builders are shared by both, this is a
+// real test of the CONVERSION — that the importer placed the segment at the right moment on
+// the step clock and kept the fade around it. It runs across two very different content
+// lengths, since a measured value that ignored the content would pass at one and fail at the
+// other.
+
+const MEASURED_CASES = [
+  { variant: 'tk01', presetId: 'ticker-marquee', build: 'tickerMarquee', track: '#ticker-track', box: '.ticker-box', times: [0, 0.25, 0.5, 2, 6, 11] },
+  { variant: 'tk01', presetId: 'ticker-flip', build: 'tickerFlipCycle', track: '#ticker-track', box: '.ticker-box', times: [0, 0.5, 0.9, 2, 4.8] },
+  { variant: 'cr01', presetId: 'credits-roll', build: 'creditsRoll', track: '#credits-track', box: '.credits-box', times: [0, 0.3, 0.6, 5, 15] },
+  { variant: 'cr01', presetId: 'credits-crawl', build: 'creditsCrawl', track: '#credits-track', box: '.credits-box', times: [0, 0.2, 0.4, 4, 12] },
+  { variant: 'cr01', presetId: 'credits-pages', build: 'creditsPages', track: '#credits-track', box: '.credits-box', times: [0, 0.5, 3, 4, 7] },
+];
+
+// Short vs long: the measured travel must scale with the content, and both twins must agree.
+const SHORT_TEXT = 'One line only\nAnd a second';
+const LONG_TEXT = Array.from({ length: 12 }, (_, i) => `Role ${i + 1} | Person Number ${i + 1}`).join('\n');
+
+test('parity: measured motion matches the legacy emit across content lengths', async ({ page }) => {
+  test.setTimeout(180_000);
+  await toApp(page);
+  const failures = await page.evaluate(
+    `(async (cases, texts) => {
+      ${HARNESS}
+      const { variantById } = await import('/src/templates/catalog.ts');
+      const { parseAnimData } = await import('/src/blocks/animData.ts');
+      const failures = [];
+
+      for (const c of cases) {
+        const tpl = variantById(c.variant).create({ animation: { presetId: c.presetId } });
+        const data = parseAnimData(tpl.js);
+        if (!data) { failures.push(c.presetId + ': creation did not emit the data block'); continue; }
+
+        // The measured travel must ride across as a dynamics segment naming its builder.
+        const dyn = (data.steps[0].dynamics || [])[0];
+        if (!dyn || dyn.build !== c.build) {
+          failures.push(c.presetId + ': expected a dynamics segment building ' + c.build + ', got ' + JSON.stringify(dyn));
+          continue;
+        }
+        // The builder itself must ship OUTSIDE the marked region — otherwise the data names
+        // a function the export would not carry.
+        const outside = tpl.js.split('/* == ANIMATION')[0];
+        if (!outside.includes('function ' + c.build + '(')) {
+          failures.push(c.presetId + ': ' + c.build + '() is not defined outside the marked region');
+        }
+
+        const wNew = await boot(tpl);
+        const wOld = await boot(await legacyTwin(tpl, c.presetId, false));
+
+        for (const [label, text] of Object.entries(texts)) {
+          // Feed both the same operator text and let each rebuild + re-measure.
+          for (const w of [wOld, wNew]) w.update(JSON.stringify({ f0: text }));
+          await new Promise((r) => setTimeout(r, 30));
+
+          const tlOld = wOld.buildInTimeline(); tlOld.pause();
+          const tlNew = wNew.buildInTimeline(); tlNew.pause();
+          // Prime a render before sampling. A legacy fromTo() applies its from-value eagerly
+          // at construction; the interpreter's set()-at-0 only lands when the timeline first
+          // renders. Both agree from the first drawn frame on (and the root is CSS-hidden
+          // until that frame, so nothing is ever visible un-faded) — but a paused timeline
+          // that has never rendered would compare against stale CSS defaults at t=0.
+          tlOld.seek(0.001); tlNew.seek(0.001);
+
+          for (const t of c.times) {
+            tlOld.seek(t); tlNew.seek(t);
+            for (const sel of [c.track, c.box]) {
+              if (!sameStyle(styleOf(wOld, sel), styleOf(wNew, sel))) {
+                failures.push(
+                  c.presetId + ' [' + label + ' @' + t + 's] ' + sel + ': ' +
+                  JSON.stringify(styleOf(wOld, sel)) + ' vs ' + JSON.stringify(styleOf(wNew, sel)),
+                );
+              }
+            }
+          }
+          tlOld.kill(); tlNew.kill();
+        }
+      }
+      return failures;
+    })(${JSON.stringify(MEASURED_CASES)}, ${JSON.stringify({ short: SHORT_TEXT, long: LONG_TEXT })})`,
+  );
+  expect(failures).toEqual([]);
+});
+
+test('measured motion actually tracks the content — and the timeline shows it read-only', async ({ page }) => {
+  test.setTimeout(90_000);
+  await toApp(page);
+  const result = await page.evaluate(
+    `(async (short, long) => {
+      ${HARNESS}
+      const { variantById } = await import('/src/templates/catalog.ts');
+      const tpl = variantById('tk01').create({ animation: { presetId: 'ticker-marquee' } });
+      const w = await boot(tpl);
+
+      // The travel is MEASURED: more text must mean a longer marquee. A baked-in keyframe
+      // would give the same number twice — that is the whole reason this primitive exists.
+      const travelFor = (text) => {
+        w.update(JSON.stringify({ f0: text }));
+        const seg = w.tickerMarquee('#ticker-track');
+        const d = seg.duration();
+        seg.kill();
+        return d;
+      };
+      const shortTravel = travelFor(short);
+      const longTravel = travelFor(long);
+
+      // A missing builder must be a silent no-op, never a crash (the interpreter's contract).
+      const broken = { ...tpl, js: tpl.js.replace('"build": "tickerMarquee"', '"build": "goneAway"') };
+      const wBroken = await boot(broken);
+      let survived = true;
+      try { wBroken.buildInTimeline().pause(); } catch (e) { survived = false; }
+
+      return { shortTravel, longTravel, longerWithMoreText: longTravel > shortTravel * 1.5, survived };
+    })(${JSON.stringify(SHORT_TEXT)}, ${JSON.stringify(LONG_TEXT)})`,
+  );
+  expect(result.longerWithMoreText).toBe(true);
+  expect(result.survived).toBe(true);
+
+  // The timeline surfaces the segment read-only: it names the builder, and it carries no
+  // keyframe diamonds — there is nothing here to edit visually, and the UI must not pretend.
+  await page.evaluate(`(async () => {
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    useTemplateStore.getState().applyTemplate(variantById('tk01').create(), { resetSampleData: true });
+  })()`);
+  const bar = page.getByTestId('tlv2-measured-tickerMarquee');
+  await expect(bar).toBeVisible();
+  await expect(bar).toContainText('tickerMarquee()');
+  await expect(page.locator('.tlv2-measured-row .tlv2-diamond')).toHaveCount(0);
+});
+
+// The importer can carry a NAMED builder across (that is what `tl.add(tickerMarquee(...))`
+// buys us). It cannot lift arbitrary measured JS out of somebody's hand-written
+// buildInTimeline — so a saved/community ticker that inlines its own scrollWidth math is
+// REFUSED honestly: it stays legacy and renders read-only on the classic strip, rather than
+// being half-converted or guessed at (docs/DYNAMIC_MOTION_SCOPE.md §8.1 — the ratified reason
+// Phase 8 keeps a read-only legacy renderer instead of deleting the strip outright).
+const HAND_WRITTEN_MEASURED_REGION = [
+  '/* == ANIMATION (generated — the Animation panel rewrites this block) == */',
+  'var animSpeed = 1;',
+  "var easeIn = 'power2.out';",
+  "var easeOut = 'power2.in';",
+  'function buildInTimeline() {',
+  "  var track = document.getElementById('ticker-track');",
+  '  var oneSet = track.scrollWidth / 2;', // measured inline — nothing here can be named
+  '  var tl = gsap.timeline();',
+  "  tl.set('.ticker', { opacity: 1 });",
+  "  tl.fromTo(track, { x: 0 }, { x: -oneSet, duration: 8, ease: 'none', repeat: -1 });",
+  '  return tl;',
+  '}',
+  'function buildOutTimeline() {',
+  '  var tl = gsap.timeline();',
+  "  tl.set('.ticker', { opacity: 0 });",
+  '  return tl;',
+  '}',
+  '/* == END ANIMATION == */',
+].join('\n');
+
+test('a hand-written DOM-measured region is refused, not guessed at', async ({ page }) => {
+  await toApp(page);
+  const result = await page.evaluate(async (region) => {
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { importAnimData } = await import('/src/blocks/animImport.ts');
+    const tpl = variantById('tk01').create({});
+    const OPEN = '/* == ANIMATION';
+    const CLOSE = '/* == END ANIMATION == */';
+    const s = tpl.js.indexOf(OPEN);
+    const e = tpl.js.indexOf(CLOSE) + CLOSE.length;
+    const handWritten = { ...tpl, js: tpl.js.slice(0, s) + region + tpl.js.slice(e) };
+    return {
+      handWrittenRefused: importAnimData(handWritten) === null,
+      // …while the catalog's own ticker, whose region names its builder instead of inlining
+      // the measurement, creates as a data block in the first place.
+      catalogIsDataBlock: tpl.js.includes('var NOACG_ANIM'),
+    };
+  }, HAND_WRITTEN_MEASURED_REGION);
+  expect(result).toEqual({ handWrittenRefused: true, catalogIsDataBlock: true });
 });

@@ -21,17 +21,16 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
   carries `tl.call(startClock/stopClock)` through the conversion as step `calls`, so a countdown
   survives the flip (the clock runtime itself lives OUTSIDE the region and is untouched), and the
   loop model (gap 6) carries the ambient breath as a step `loop` (a repeating scale track) - this
-  is what let STARTING SOON flip.
+  is what let STARTING SOON flip. The MEASURED-MOTION model (docs/DYNAMIC_MOTION_SCOPE.md) carries a
+  `tl.add(builderName(target))` across as a step `dynamic` - this is what let TICKERS and END
+  CREDITS flip (see their motion runtimes below).
   STILL BLOCKED (do NOT flip by flag alone): quiz's Continue is wrapper-driven (`next()` ->
   revealAnswer with settings.steps='2' but NO data step - the timeline's steps derivation would
-  rewrite steps to '1' on the first edit and break the reveal); TICKERS and CREDITS are
-  DOM-measured (a marquee's `x:-scrollWidth`, a roll's `clientHeight`), which the static keyframe
-  model cannot express - loop/yoyo does NOT unblock them (they need a separate dynamic-value
-  primitive). Info cards flip LAST: they host the classic strip's spec suite
-  until Phase 8 (docs/TIMELINE_V2_PLAN.md).
-  A wrapper that needs the motion speed must read it via a `motionSpeed()` helper (NOACG_ANIM
-  .speed, else legacy animSpeed, else 1) - never the bare animSpeed global (scoreboards/quiz
-  do this already).
+  rewrite steps to '1' on the first edit and break the reveal). Info cards flip LAST: they host the
+  classic strip's spec suite until Phase 8 (docs/TIMELINE_V2_PLAN.md).
+  A wrapper that needs the motion speed must read it via the shared `motionSpeed()` helper
+  (base.ts `motionSpeedJs`: NOACG_ANIM.speed, else legacy animSpeed, else 1) - never the bare
+  animSpeed global, which only exists inside a legacy region.
 - **shared/animRuntime.ts** - the emitted ES5 interpreter (Timeline v2), identical in every
   data-driven template: reads the NOACG_ANIM literal and defines the SAME builder globals the
   whole platform depends on (buildInTimeline / buildOutTimeline / revealNextStep), so the
@@ -55,11 +54,34 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
   keyframes from the same emitters after).
 - **infoCards/** - card01…card05 (prefix 'info-card').
 - **endCredits/** - cr01…cr04 (prefix 'credits') + creditsPresets.ts (credits-roll /
-  credits-pages / credits-crawl); data-driven: a hidden #f0 textarea holds "Role | Name" lines,
-  template JS parses and rebuilds #credits-track, ends with logo + year (.credits-end).
-- **tickers/** - tk01…tk06 (prefix 'ticker') + tickerPresets.ts (ticker-marquee / ticker-flip);
-  data-driven: #f0 lines -> #ticker-track items; marquee = items rendered twice, slide one set
-  width, linear repeat:-1 (seamless loop).
+  credits-pages / credits-crawl) + **creditsMotion.ts**; data-driven: a hidden #f0 textarea holds
+  "Role | Name" lines, template JS parses and rebuilds #credits-track, ends with logo + year
+  (.credits-end). DATA BLOCKS via convertToDataRegion.
+- **tickers/** - tk01…tk06 (prefix 'ticker') + tickerPresets.ts (ticker-marquee / ticker-flip) +
+  **tickerMotion.ts**; data-driven: #f0 lines -> #ticker-track items; marquee = items rendered
+  twice, slide one set width, linear repeat:-1 (seamless loop). DATA BLOCKS via convertToDataRegion.
+
+### The category MOTION RUNTIMES (tickerMotion.ts / creditsMotion.ts)
+
+These two categories move by magnitudes that only exist once the operator's text is RENDERED: a
+marquee slides exactly one track-width, a roll covers its own content height, a flip runs one
+segment per item. No static keyframe can hold a number that changes the moment the text does - which
+is why these were the last categories on the legacy patchers.
+
+The fix (docs/DYNAMIC_MOTION_SCOPE.md): each measured motion is a named BUILDER - a plain function
+that measures the DOM and RETURNS a GSAP object - emitted OUTSIDE the marked ANIMATION region, in
+the design-owned runtime, exactly like shared/clock.ts. The preset's region does not inline the
+math; it just calls it: `tl.add(tickerMarquee('#ticker-track'))`. Consequences, all load-bearing:
+
+- the region stays fully PARSEABLE, so the ordinary importer converts it (the segment becomes a step
+  `dynamic`) - ONE choreography source, no second code path;
+- the builders survive the conversion and the export untouched (they're outside the markers);
+- **every builder of a category ships in every template of it**, so swapping the motion preset is a
+  pure data edit (one `build` name) with nothing outside the markers rewritten;
+- the speed knob is read through `motionSpeed()`, never the region's `animSpeed`.
+
+Adding a measured motion to another category = add a builder to its runtime + have the preset
+`tl.add()` it. Do NOT inline measured math in a region: it makes the template unconvertible.
 - **startingSoon/** - ss01…ss03 (prefix 'starting-soon', hold-loop preset: entrance + calm
   .starting-soon-pulse breathing + clock via shared/clock.ts, minutes in f2). DATA BLOCKS via
   convertToDataRegion (self-assembled, calls it directly): the breath imports as a looping scale

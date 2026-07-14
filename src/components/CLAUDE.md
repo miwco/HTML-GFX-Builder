@@ -104,7 +104,16 @@ in src/blocks/CLAUDE.md.
   edge drags between step boundaries as the same activation move the gutter/chip make, and its
   RIGHT edge drags to set an EARLY EXIT (blocks/animEdit setLayerHide writes the step's `hides`;
   dragging to Out clears it). Setting a hide on a template whose interpreter predates the
-  feature re-emits the whole region so the exit actually plays. KEYFRAME SETS: click selects a diamond, shift-click builds a set,
+  feature re-emits the whole region so the exit actually plays.
+  MEASURED-MOTION ROWS (docs/DYNAMIC_MOTION_SCOPE.md): a step's `dynamics` get their own rows
+  BELOW the layer rows - one per target, rendered READ-ONLY as a hatched, open-ended bar naming
+  the builder (`tickerMarquee()`), with no diamonds and no drag. The bar runs from the segment's
+  start to the end of the timeline because its real length is measured from the operator's content
+  at play time, so any fixed width would be a lie. This is deliberate, not a limitation: you cannot
+  meaningfully keyframe "travel by measured width", so the visual editor steps aside and says where
+  the motion is edited (in the code) instead of implying an affordance it doesn't have. The target
+  (`#ticker-track`) is intentionally NOT a registry part - it isn't canvas-selectable.
+  KEYFRAME SETS: click selects a diamond, shift-click builds a set,
   dragging any selected diamond moves the WHOLE set (magnetic snap to playhead/step
   edges/other keyframes within ~7px, Alt free, 0.05s grid fallback), Delete clears the set,
   ←/→ nudges it, Ctrl/Cmd+C/V copies and pastes the group at the playhead, Ctrl/Cmd+D

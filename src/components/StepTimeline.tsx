@@ -42,6 +42,7 @@ const RULER_H = 20;
 const CLIPS_H = 30;
 const ROW_H = 28;
 const PROP_ROW_H = 22; // property sub-rows: real targets, slightly denser than layers
+const MEASURED_ROW_H = 26; // measured-motion rows: read-only, below the keyframed layers
 const HOLD_PX = 30; // the un-clocked hold break (manual/none) — a fixed visual pause
 
 /** Readable sub-row names for the animated properties (raw prop name for anything else) —
@@ -393,6 +394,27 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
     }
     return { list, height: top };
   }, [rows, expanded, data]);
+
+  // ── Measured-motion rows (docs/DYNAMIC_MOTION_SCOPE.md): a step's `dynamics` name a
+  //    builder function that reads the DOM and returns the tween — a marquee's travel is one
+  //    track-width, a credits roll is one content-height, and those magnitudes only exist at
+  //    play time. There is nothing here to keyframe, so the timeline shows the segment
+  //    READ-ONLY and says where it is edited: in the code, where it honestly lives.
+  //    One row per target; its bar runs from the segment's start to the end of the timeline,
+  //    because the real length is not knowable until the graphic plays.
+  const measuredRows = useMemo(() => {
+    const byTarget = new Map<string, { target: string; segments: { step: number; time: number; build: string }[] }>();
+    data.steps.forEach((step, si) => {
+      for (const d of step.dynamics ?? []) {
+        const target = d.target ?? data.root;
+        const row = byTarget.get(target) ?? { target, segments: [] };
+        row.segments.push({ step: si, time: d.time ?? 0, build: d.build });
+        byTarget.set(target, row);
+      }
+    });
+    return [...byTarget.values()];
+  }, [data]);
+  const measuredH = measuredRows.length * MEASURED_ROW_H;
 
   /** Aggregate keyframe diamonds for one layer: the union of keyframe times across props,
    *  per step (one diamond may stand for several properties — the sub-rows split them).
@@ -969,12 +991,24 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
               </span>
             ),
           )}
+          {/* Measured motion: not a selectable layer — a code-owned segment. */}
+          {measuredRows.map((m) => (
+            <span
+              key={`measured-${m.target}`}
+              className="timeline-label tlv2-measured-label"
+              title={`${m.target} — measured motion, built in code by ${m.segments.map((s) => `${s.build}()`).join(', ')}`}
+              style={{ height: MEASURED_ROW_H, lineHeight: `${MEASURED_ROW_H}px` }}
+            >
+              <span className="tlv2-expand-spacer" aria-hidden="true" />
+              {m.target}
+            </span>
+          ))}
         </div>
 
         <div className="tlv2-scroll" ref={scrollRef}>
           <div
             className="tlv2-canvas"
-            style={{ width: canvasW, height: RULER_H + CLIPS_H + displayRows.height }}
+            style={{ width: canvasW, height: RULER_H + CLIPS_H + displayRows.height + measuredH }}
             onPointerDown={onCanvasDown}
             onPointerMove={onCanvasMove}
             onPointerUp={onCanvasUp}
@@ -1194,6 +1228,39 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
                 </div>
               );
             })}
+
+            {/* Measured-motion rows: read-only bars for the step `dynamics`. The bar starts
+                where the segment joins the step clock and runs to the end of the timeline —
+                its true length is measured from the operator's content at play time, so any
+                fixed width we drew would be a lie. There are no diamonds and no drag: this
+                motion is code-owned by design, and the bar says where to edit it. */}
+            {measuredRows.map((m, mi) => (
+              <div
+                key={`measured-${m.target}`}
+                className="tlv2-row tlv2-measured-row"
+                style={{ top: RULER_H + CLIPS_H + displayRows.height + mi * MEASURED_ROW_H, height: MEASURED_ROW_H }}
+              >
+                {m.segments.map((s, si) => {
+                  const seg = segs[s.step];
+                  if (!seg) return null;
+                  const x = seg.x + (s.time / (data.speed || 1)) * pxPerSec;
+                  return (
+                    <span
+                      key={si}
+                      className="tlv2-measured"
+                      style={{ left: x, width: Math.max(24, canvasW - x - 4) }}
+                      title={`Measured motion — built by ${s.build}() in template.js, which reads the DOM and returns the tween. Its length depends on the content, so it isn't keyframed here; edit it in the code.`}
+                      data-testid={`tlv2-measured-${s.build}`}
+                    >
+                      <span className="tlv2-measured-name">{s.build}()</span>
+                      <span className="tlv2-measured-tail" aria-hidden="true">
+                        measured at play
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            ))}
 
             {/* The keyframe lasso marquee — same amber box as the canvas selection. */}
             {tlLasso?.active && (

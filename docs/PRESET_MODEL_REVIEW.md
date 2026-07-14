@@ -32,7 +32,8 @@ interpolate at runtime. The editable vocabulary (Inspector `PROP_ROWS`) is
 | 3 | **Motion paths / curved position** | `x` and `y` are independent scalar tracks interpolated linearly. No bezier/path property. (Deliberately excluded in the interaction model — "no motion paths".) |
 | 4 | **Stagger as an authored control** | The legacy importer bakes `stagger` into per-keyframe time offsets; the schema has **no stagger field**, so once imported it is frozen as individual times. A preset cannot re-express it and the user cannot adjust it as one knob. |
 | 5 | **Physics / spring parameters** | Springiness exists only as a GSAP ease string (`elastic.out`, `back.out`) on a keyframe; there are no mass/tension/velocity params (the resolver interpolates linearly and defers the curve to the runtime). |
-| 6 | ~~**Loop / yoyo / repeat**~~ **(DONE — see Tier 3)** | A step gains `loops[selector][prop] = { repeat, yoyo?, repeatDelay? }`: a track plays in a repeating sub-timeline. The importer converts a *static* loop (a breathing pulse) and still refuses a DOM-measured one (a marquee's `x:-scrollWidth`) or a nested-timeline loop (ticker's item flip). Starting-soon migrated on it. |
+| 6 | ~~**Loop / yoyo / repeat**~~ **(DONE — see Tier 3)** | A step gains `loops[selector][prop] = { repeat, yoyo?, repeatDelay? }`: a track plays in a repeating sub-timeline. The importer converts a *static* loop (a breathing pulse) and still refuses an inline DOM-measured one. Starting-soon migrated on it. |
+| 6b | ~~**Measured motion**~~ **(DONE — see Tier 3)** | A step gains `dynamics: [{ time, build, target? }]`: a named builder measures the DOM and returns the tween (a marquee's track-width travel, a credits roll, one flip per item). The motion twin of the §3b calls. Tickers and end credits migrated on it. |
 | 7 | ~~**3D transforms**~~ **(DONE — see Tier 2)** | `DESIGN_STATE` knew `rotationX/Y`, `skewX/Y` for import fidelity but the vocabulary exposed none. Now `rotationX/Y`, `z`, and `perspective` are editable numeric tracks (`skewX/Y` remain import-only). |
 | 8 | **Composed / multiple filters** | `blur` is special-cased as `filter: 'blur(Npx)'`, a single string track. You cannot animate two independent filters (blur + brightness), and strings are stepped editor-side (only the runtime interpolates them). |
 | 9 | **Early exit (a layer leaving before the final Out)** | A layer's lifecycle is hidden → entering → visible → exiting-with-the-root. `reveals` is the only lifecycle data; there is no `hides`. |
@@ -90,10 +91,20 @@ parse-degrades-gracefully contract. None require a graph editor or expressions.
   (its ambient breath is a looping `scale` track; the countdown rides the §3b step calls). A
   correction to the original framing: **tickers and credit rolls are NOT unblocked by loop/yoyo** —
   their travel is computed from live DOM measurement (`scrollWidth`, `clientHeight`), which the
-  static keyframe model deliberately cannot express. Retiring their patchers needs a separate
-  dynamic-value primitive — scoped in `docs/DYNAMIC_MOTION_SCOPE.md` (named dynamic motion
-  segments, the §3b twin for motion). Loops (like §3b calls) are data-visible and code-editable
-  but have no dedicated timeline glyph yet — a future polish.
+  static keyframe model deliberately cannot express.
+- **Measured motion** (the follow-up gap loop/yoyo exposed) — **DONE**. A step carries
+  `dynamics: [{ time, build, target? }]`, where `build` names a global BUILDER function that
+  measures the DOM and returns a GSAP tween/timeline the interpreter adds to the step — the motion
+  twin of the §3b step calls, with the same no-eval `window[name]` lookup and the same posture (the
+  data holds a name and a target; the logic stays readable JS outside the marked region). The
+  builders ship in the category motion runtimes (`tickerMotion.ts`, `creditsMotion.ts`), the preset
+  region references one with an ordinary `tl.add(builderName(target))`, and the legacy reader parses
+  that — so there is ONE choreography source and the existing importer carries it. **Tickers and end
+  credits flipped to data blocks on this**, leaving only quiz and info cards on the legacy region.
+  Design + the ratified decisions: `docs/DYNAMIC_MOTION_SCOPE.md`. The timeline renders a measured
+  segment READ-ONLY (a hatched, open-ended bar naming the builder) — there is nothing to keyframe,
+  and the UI says so rather than implying an affordance. Loops and §3b calls are still
+  data-visible and code-editable but have no dedicated timeline glyph — a remaining polish.
 - **Stagger as a step/tween field** (gap 4), **motion paths** (gap 3), **spring params** (gap 5).
   Each is a genuinely new primitive with its own UI; the interaction model currently, and
   deliberately, excludes motion paths and a graph editor.

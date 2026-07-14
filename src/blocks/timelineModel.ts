@@ -70,6 +70,19 @@ export interface TimelineCall {
   start: number;
 }
 
+/** Timeline v2 importer: one `tl.add(builderName('#target'))` MEASURED motion segment found
+ *  in a phase (docs/DYNAMIC_MOTION_SCOPE.md). The builder lives outside the marked region
+ *  (design-owned runtime) and returns a GSAP object; the region only references it by name,
+ *  which is what lets the importer carry a marquee or a credits roll into the data model. */
+export interface TimelineDynamic {
+  /** The named global builder invoked (a bare identifier — `tickerMarquee`). */
+  name: string;
+  /** The selector argument, when the emit passes one. */
+  target?: string;
+  /** Start on the phase's clock, in seconds (position math shared with tweens). */
+  start: number;
+}
+
 export interface TimelinePhase {
   id: 'in' | 'out';
   label: string;
@@ -79,12 +92,19 @@ export interface TimelinePhase {
   /** Timeline v2: the phase's `tl.call(fnName)` lifecycle hooks (clock start/stop), in
    *  document order with their resolved positions. Empty for motion-only phases. */
   calls: TimelineCall[];
+  /** Timeline v2: the phase's `tl.add(builder(target))` measured-motion segments, in
+   *  document order with their resolved positions. Empty for fully-keyframed phases. */
+  dynamics: TimelineDynamic[];
   /** True when the phase contains an endless loop (repeat: -1) — tickers, holds. */
   infinite: boolean;
   /** True when every `repeat:` in the phase is a `tl` loop tween with finite literal values
    *  the keyframe converter can carry (an ambient breath), false when a repeat lives on a
    *  nested timeline or a DOM-measured tween (a marquee) the importer must refuse. */
   loopsConvertible: boolean;
+  /** True when every `tl.add(...)` in the phase is a recognizable `builder(target)` segment.
+   *  A hand-written `tl.add(someLocalTimeline)` carries motion this model cannot name, so
+   *  the importer refuses the template outright rather than silently dropping it. */
+  dynamicsConvertible: boolean;
 }
 
 /** T3 — one Continue press: which line GROUP reveals, how long, with which ease. */
@@ -237,9 +257,10 @@ const REGION_RE = /\/\* == ANIMATION[\s\S]*?== END ANIMATION == \*\//;
 // Tween calls only — the tween-INDEX contract the patchers rely on (locateCall/splitTween
 // count these). `tl.call` is NOT here: a lifecycle hook must never shift a tween's index.
 const CALL_RE = /tl\.(set|to|fromTo)\(([\s\S]*?)\);/g;
-// The full call surface parsePhase walks in document order — tweens PLUS `tl.call` hooks —
-// so a call's position math sees the timeline end at the point it appears.
-const PHASE_CALL_RE = /tl\.(set|to|fromTo|call)\(([\s\S]*?)\);/g;
+// The full call surface parsePhase walks in document order — tweens PLUS the zero-advance
+// members (`tl.call` hooks and `tl.add` measured-motion segments) — so their position math
+// sees the timeline end at the point each appears. Neither shifts a tween's INDEX.
+const PHASE_CALL_RE = /tl\.(set|to|fromTo|call|add)\(([\s\S]*?)\);/g;
 
 function fnBodyRe(name: string): RegExp {
   return new RegExp(`function ${name}\\(\\) \\{([\\s\\S]*?)\\n\\}`);
@@ -377,12 +398,45 @@ function parseCallHook(args: string, animSpeed: number, phaseEnd: number): Timel
   return { name, start };
 }
 
+/**
+ * Parse a `tl.add(...)` argument text into a measured-motion segment. The one shape the
+ * presets emit is `tl.add(builderName('#target'))` — optionally with an explicit position,
+ * `tl.add(builderName('#target'), 0.5 / animSpeed)`. The builder itself lives OUTSIDE the
+ * marked region (design-owned runtime), so the region stays fully parseable and the segment
+ * can be carried into the data model as a `dynamics` entry.
+ *
+ * Returns null for any other shape (a bare local variable, an inline timeline) — the caller
+ * then refuses the whole template rather than dropping motion it cannot name.
+ */
+function parseAddSegment(args: string, animSpeed: number, phaseEnd: number): TimelineDynamic | null {
+  const m = args.match(/^\s*([A-Za-z_$][\w$]*)\s*\(\s*(?:'([^']*)')?\s*\)\s*(?:,\s*([\s\S]+))?$/);
+  if (!m) return null; // not a named builder call — unnameable motion
+  const [, name, target, posTok] = m;
+
+  // GSAP signature: add(child, position). Default = append at the current timeline end.
+  let start = phaseEnd;
+  if (posTok) {
+    const tok = posTok.trim();
+    const overlap = tok.match(/^'-=([\d.]+)'$/);
+    if (overlap) {
+      start = Math.max(0, phaseEnd - Number(overlap[1]));
+    } else {
+      const abs = tok.match(/^([\d.]+)\s*(\/\s*animSpeed)?$/);
+      if (abs) start = Number(abs[1]) / (abs[2] ? animSpeed : 1);
+    }
+  }
+  return { name, ...(target ? { target } : {}), start };
+}
+
 /** Parse one build function's body into positioned tweens (GSAP position semantics), plus
- *  any `tl.call` lifecycle hooks in the same document-ordered pass so their positions see
- *  the timeline end at the point each appears. */
+ *  the zero-advance members — `tl.call` lifecycle hooks and `tl.add` measured-motion
+ *  segments — in the same document-ordered pass, so their positions see the timeline end at
+ *  the point each appears. */
 function parsePhase(id: TimelinePhase['id'], body: string, animSpeed: number): TimelinePhase {
   const tweens: TimelineTween[] = [];
   const calls: TimelineCall[] = [];
+  const dynamics: TimelineDynamic[] = [];
+  let unnamedAdds = 0;
   let phaseEnd = 0;
   const re = new RegExp(PHASE_CALL_RE.source, 'g');
   let m: RegExpExecArray | null;
@@ -392,6 +446,15 @@ function parsePhase(id: TimelinePhase['id'], body: string, animSpeed: number): T
       // untouched — the patchers still count only set/to/fromTo).
       const hook = parseCallHook(m[2], animSpeed, phaseEnd);
       if (hook) calls.push(hook);
+      continue;
+    }
+    if (m[1] === 'add') {
+      // A measured segment. Its LENGTH is unknown here (the builder measures the DOM at play
+      // time), so like a call it never advances the phase — the phase's duration stays the
+      // length of its authored, keyframeable motion.
+      const seg = parseAddSegment(m[2], animSpeed, phaseEnd);
+      if (seg) dynamics.push(seg);
+      else unnamedAdds++;
       continue;
     }
     const parsed = parseCall(m[1] as TimelineTween['kind'], m[2], animSpeed);
@@ -437,8 +500,12 @@ function parsePhase(id: TimelinePhase['id'], body: string, animSpeed: number): T
     duration: phaseEnd,
     tweens,
     calls,
+    dynamics,
     infinite: /repeat:\s*-1/.test(body),
     loopsConvertible,
+    // One unrecognizable `tl.add` is enough to refuse: the phase carries motion this model
+    // cannot name, and a partial conversion would silently lose it.
+    dynamicsConvertible: unnamedAdds === 0,
   };
 }
 

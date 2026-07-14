@@ -5,7 +5,7 @@
 // undoable convert-on-first-motion-edit. Templates the old parser cannot read stay
 // hand-crafted (the honest banner) — this importer never guesses.
 
-import { parseTimeline, type TimelineCall, type TimelineTween } from './timelineModel';
+import { parseTimeline, type TimelineCall, type TimelineDynamic, type TimelineTween } from './timelineModel';
 import { getTemplateParts } from '../model/structure';
 import { detectPrefix } from '../model/structure';
 import type { SpxTemplate } from '../model/types';
@@ -96,6 +96,22 @@ function attachCalls(step: AnimStep, calls: TimelineCall[], speed: number): void
   step.calls = converted;
 }
 
+/** Carry a phase's `tl.add(builder(target))` measured-motion segments onto a step as
+ *  `dynamics` (docs/DYNAMIC_MOTION_SCOPE.md). Times multiply back to the speed-relative
+ *  clock exactly like keyframes and calls. This is what lets a marquee or a credits roll —
+ *  motion the static keyframe model deliberately cannot express — ride the conversion: the
+ *  measured logic stays in its named builder outside the region, and the data references it. */
+function attachDynamics(step: AnimStep, dynamics: TimelineDynamic[], speed: number): void {
+  if (dynamics.length === 0) return;
+  step.dynamics = dynamics
+    .map((d) => ({
+      time: round(Math.max(0, d.start) * speed),
+      build: d.name,
+      ...(d.target ? { target: d.target } : {}),
+    }))
+    .sort((a, b) => a.time - b.time);
+}
+
 /**
  * Convert a legacy template's marked region into AnimData. Returns null when the old
  * parser can't read the region (hand-crafted code — the honest-banner case) or the
@@ -114,10 +130,15 @@ export function importAnimData(template: SpxTemplate): AnimData | null {
   const outPhase = model.phases.find((p) => p.id === 'out') ?? model.phases[model.phases.length - 1];
   if (!inPhase || !outPhase) return null;
   // A loop the keyframe model can describe — a `tl` tween repeating over finite literal
-  // values (a breathing pulse) — imports as step data (see loops below). A loop that is
-  // DOM-measured (a marquee's x:-scrollWidth) or lives on a nested gsap.timeline (ticker's
-  // item flip) can't be described, so those templates stay legacy (the honest refusal).
+  // values (a breathing pulse) — imports as step data (see loops below). A loop whose values
+  // are DOM-MEASURED (a marquee's x:-scrollWidth) or that lives on a nested gsap.timeline
+  // (a ticker's item flip) can't be described as keyframes. The CATALOG's tickers and credits
+  // now factor that motion into a named builder outside the region and reference it with
+  // `tl.add(builder(target))`, which imports as a `dynamics` segment (see attachDynamics) —
+  // but a HAND-WRITTEN legacy region still holds the measured code inline, and that we refuse
+  // honestly: it stays legacy and renders read-only on the classic strip.
   if (!inPhase.loopsConvertible || !outPhase.loopsConvertible) return null;
+  if (!inPhase.dynamicsConvertible || !outPhase.dynamicsConvertible) return null;
 
   const enter: AnimStep = {
     name: 'Enter',
@@ -127,6 +148,7 @@ export function importAnimData(template: SpxTemplate): AnimData | null {
   };
   for (const tween of inPhase.tweens) tweenToKeyframes(enter, tween, speed, root);
   attachCalls(enter, inPhase.calls, speed);
+  attachDynamics(enter, inPhase.dynamics, speed);
 
   // Each legacy » press becomes one middle step; its reveal choreography (the channel
   // motion the old stepsBlock emitted) becomes ordinary keyframes.
@@ -162,6 +184,7 @@ export function importAnimData(template: SpxTemplate): AnimData | null {
   };
   for (const tween of outPhase.tweens) tweenToKeyframes(out, tween, speed, root);
   attachCalls(out, outPhase.calls, speed);
+  attachDynamics(out, outPhase.dynamics, speed);
 
   return { version: 1, root, speed, steps: [enter, ...middles, out] };
 }

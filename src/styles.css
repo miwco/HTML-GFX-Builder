@@ -1815,6 +1815,62 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   border-left: 2px solid rgba(246, 166, 35, 0.45);
 }
 .tlv2-block-edge.tlv2-block-edge-right:hover { border-left-color: var(--amber); }
+
+/* ── Measured motion (docs/DYNAMIC_MOTION_SCOPE.md) ──
+   A code-owned segment: a builder reads the DOM and returns the tween, so its length only
+   exists at play time. It reads as deliberately UNLIKE a keyframed block — no amber, no
+   handles, a hatched open-ended tail — because there is nothing here to edit visually and
+   the timeline should say so plainly rather than imply an affordance it doesn't have. */
+.tlv2-measured-row { pointer-events: none; }
+.tlv2 .timeline-label.tlv2-measured-label {
+  color: var(--text-dim);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-style: italic;
+  cursor: default;
+}
+.tlv2-measured {
+  position: absolute;
+  top: 14%;
+  bottom: 14%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 7px;
+  line-height: 1;
+  overflow: hidden;
+  border-radius: 3px;
+  border: 1px dashed rgba(232, 237, 242, 0.22);
+  /* The hatch reads "this keeps going" — the same visual language as the hold break. */
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(232, 237, 242, 0.05) 0 6px,
+    transparent 6px 12px
+  );
+  pointer-events: auto;
+  cursor: help;
+  white-space: nowrap;
+}
+/* The builder's name is the point — it never shrinks. The tail is a hint, so it ellipsizes
+   away in a narrow dock rather than squeezing the name out. */
+.tlv2-measured-name {
+  flex: 0 0 auto;
+  color: var(--text-color);
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  opacity: 0.75;
+}
+.tlv2-measured-tail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
 /* The layer's expand caret — one row per animated property behind it. */
 .tlv2-expand {
   background: transparent;

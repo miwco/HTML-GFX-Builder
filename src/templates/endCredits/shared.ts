@@ -32,7 +32,9 @@ import {
   zoneCssText,
 } from '../shared/base';
 import type { PresetConfig } from '../lowerThirds/animPresets';
+import { convertToDataRegion } from '../shared/standard';
 import { creditsPresetById } from './creditsPresets';
+import { CREDITS_MOTION_JS } from './creditsMotion';
 
 export interface CreditsDesign {
   /** Inner HTML of .credits — must contain .credits-box > #credits-track. */
@@ -211,9 +213,12 @@ ${design.css}
     easeOut: ease.easeOut,
   };
 
-  const js = creditsRuntimeJs(meta.name, `${design.rowBuilderJs}\n\n${preset.emit(cfg)}`);
+  const js = creditsRuntimeJs(
+    meta.name,
+    `${design.rowBuilderJs}\n\n${CREDITS_MOTION_JS}\n\n${preset.emit(cfg)}`,
+  );
 
-  return {
+  const template: SpxTemplate = {
     name: meta.name,
     type: 'end-credits',
     resolution: o.resolution,
@@ -226,6 +231,12 @@ ${design.css}
     assets: [...o.importedImages, ...(o.customFont ? [o.customFont.asset] : [])],
     layers: [],
   };
+
+  // Timeline v2: convert the emitted region into the NOACG_ANIM data block. The box's fade
+  // becomes ordinary keyframes; the measured travel rides across as a `dynamics` segment
+  // naming its builder above (docs/DYNAMIC_MOTION_SCOPE.md). The builders themselves sit
+  // outside the region and are untouched by the conversion.
+  return convertToDataRegion(template);
 }
 
 /** The authoring API for end-credits variant modules. */

@@ -176,6 +176,20 @@ export function baseSettings(meta: { name: string; uicolor: string }, o: Resolve
 }
 
 /**
+ * The speed knob, read from wherever the template keeps it. Design-owned runtime code lives
+ * OUTSIDE the marked ANIMATION region, so it must never reach for the region's `animSpeed`
+ * variable directly — that variable only exists in a legacy emit. This helper is the one
+ * sanctioned reader (src/templates/CLAUDE.md, "Template runtime rule").
+ */
+export const motionSpeedJs = `// motionSpeed(): the template's speed knob. The NOACG_ANIM data block owns it; a legacy
+// animSpeed variable is honored too, and hand-written animation code defaults to 1.
+function motionSpeed() {
+  if (typeof NOACG_ANIM !== 'undefined' && NOACG_ANIM.speed) return NOACG_ANIM.speed;
+  if (typeof animSpeed !== 'undefined' && animSpeed) return animSpeed;
+  return 1;
+}`;
+
+/**
  * The teachable field writer shared by every category's update(): text into text elements,
  * image PATHS into <img id="fN"> elements (SPX image fields — ftype "filelist" — send the
  * picked file's path, e.g. "images/logo.png").
