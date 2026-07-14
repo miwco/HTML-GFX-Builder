@@ -7,6 +7,13 @@ import { test, expect, type Page } from '@playwright/test';
 // is what this suite runs against — the production chunk split falls out of the same import().
 
 async function createHairline(page: Page) {
+  // Creating a project now formats its HTML through Prettier, whose lazy dev-module graph adds
+  // hundreds of resource fetches at create time. The performance resource-timing buffer holds
+  // only 250 entries by default and silently drops the rest once full - which can evict the
+  // (later) Monaco module entry these tests look for. Enlarge it before any load so the resource
+  // detection stays reliable; the lazy-loading contract itself is still asserted by whether the
+  // editor is visible / fetched. Must run before goto so it is in place before the first fetch.
+  await page.addInitScript(() => performance.setResourceTimingBufferSize(10000));
   await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();

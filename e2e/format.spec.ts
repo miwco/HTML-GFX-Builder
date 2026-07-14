@@ -129,3 +129,24 @@ test('the Format button is disabled on the JS tab of a data-block template (regi
   await expect(button).toBeDisabled();
   await expect(button).toHaveAttribute('title', /animation region/i);
 });
+
+// ── Format-on-create: every generated project starts from a Prettier-tidied HTML baseline ──
+
+test('a newly created project starts from a Prettier-formatted HTML baseline', async ({ page }) => {
+  await createLowerThird(page); // drives the wizard's Create, which routes through applyGenerated
+
+  const result = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { formatHtml } = await import('/src/format/formatCode.ts');
+    const t = useTemplateStore.getState().template;
+    return {
+      // Already-formatted HTML is a fixed point of formatHtml - so re-formatting is a no-op.
+      alreadyFormatted: (await formatHtml(t.html)) === t.html,
+      // The SPX definition survived the format-on-create re-parse: fields are intact.
+      fieldCount: t.fields.length,
+    };
+  });
+
+  expect(result.alreadyFormatted).toBe(true); // format-on-create left the HTML tidy at birth
+  expect(result.fieldCount).toBeGreaterThan(0); // the definition parsed back to real fields
+});

@@ -5,6 +5,7 @@ import { createBlankTemplate } from '../../templates/blank';
 import { brandPatch, buildDraftTemplate, draftResolution, initialDraft, mergeDraft, type DraftPatch, type WizardDraft } from './draft';
 import { loadBrand, saveBrand, type ProjectBrand } from '../../model/brand';
 import { importTemplateFile } from '../../model/importTemplate';
+import { formatTemplate } from '../../format/formatCode';
 import { paletteById } from '../../model/wizard';
 import WizardPreview from './WizardPreview';
 import BrandLogo from '../BrandLogo';
@@ -110,24 +111,31 @@ export default function CreationWizard() {
     closeGallery();
   };
 
-  const startBlank = () => {
-    applyTemplate(createBlankTemplate(draftResolution(draft), draft.fps), { resetSampleData: true });
+  // Apply a freshly GENERATED template as a new project. Its HTML is tidied through Prettier
+  // first (HTML only - the CSS keeps its hand-aligned property comments and the JS animation
+  // region stays strict-JSON; see formatTemplate's defaults / docs/FORMATTING.md), so every
+  // project starts from one consistent, formatted baseline. Formatting once at birth also keeps
+  // later canvas/timeline edits to tight, minimal diffs - the editor's change-highlight stays
+  // accurate. Imported templates are NOT routed here: they stay byte-faithful to the user's file.
+  const applyGenerated = async (template: SpxTemplate) => {
+    const formatted = await formatTemplate(template); // HTML-only by default
+    applyTemplate(formatted, { resetSampleData: true });
     setActiveTab('html');
     toSpxShell();
+  };
+
+  const startBlank = () => {
+    void applyGenerated(createBlankTemplate(draftResolution(draft), draft.fps));
   };
 
   const createFromAi = () => {
     if (!aiResult?.valid) return;
-    applyTemplate(aiResult.template, { resetSampleData: true });
-    setActiveTab('html');
-    toSpxShell();
+    void applyGenerated(aiResult.template);
   };
 
   const create = () => {
     if (!previewTemplate || !variant) return;
-    applyTemplate(previewTemplate, { resetSampleData: true });
-    setActiveTab('html');
-    toSpxShell();
+    void applyGenerated(previewTemplate);
     // Remember this look as the project brand so the next graphic matches it.
     saveBrand({
       styleTag: variant.styleTag,

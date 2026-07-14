@@ -29,26 +29,49 @@ other systems and must never be silently rewritten:
 - **After an AI Generate** - `AIPromptPanel` formats the proposed template's **HTML only** before
   showing it for review (`formatTemplate`, HTML default). Modify / Fix / Make-SPX-ready stay
   byte-faithful to the AI's surgical edit so the review diff stays focused.
+- **On create (every generated project)** - the creation wizard formats a freshly generated
+  template's **HTML only** before the create apply (`applyGenerated` in
+  `src/components/wizard/CreationWizard.tsx`, routing the template / blank / describe-it paths
+  through `formatTemplate`). This gives every new project ONE consistent, Prettier-tidied HTML
+  baseline, which matters beyond tidiness: because generated markup is otherwise 4-space body
+  under a 2-space head, formatting it once **at birth** keeps every later canvas/timeline edit to
+  a tight, minimal diff - the editor's change-highlight ("canvas editing shows the code it wrote")
+  stays accurate. The first create of a session pays the lazy Prettier import once (a small,
+  one-time cost off the create click); later creates reuse the memoized load. **Imported**
+  templates are deliberately NOT formatted here - they stay byte-faithful to the file the user
+  brought in (same posture as AI Modify/Fix), and the pristine `baseline` a `↺ Reset` restores is
+  the formatted create output.
 
 `formatTemplate(template, { html, css, js })` is the reusable entry point; the defaults
 (`html: true`, `css: false`, `js: false`) encode the safety table above. A formatter error on any
-file falls back to the original, so formatting can never break an apply.
+file falls back to the original, so formatting can never break an apply. Formatting is idempotent
+and preserves the SPX definition across its re-parse (`withParsedFields`), verified across every
+catalog category - fields, validation, CSS, and JS all survive untouched.
 
-## Deliberately deferred (connect after the timeline/canvas work merges)
+## Evaluated and intentionally NOT wired (the once-deferred hooks)
 
-These integration points are intentionally left unwired while other worktrees are actively
-refactoring the timeline, canvas, and animation code. The service is ready for them - connect once
-those land, using `formatTemplate` at the transaction boundary:
+The timeline/canvas refactors have merged, so the originally deferred integration points were
+re-examined against the shipped architecture. The **create-time** hook was the valuable one and is
+now wired (see "On create" above). The rest were evaluated and left out on purpose - wiring them
+as first imagined would degrade quality, not improve it:
 
-- **Visual-editor transaction boundaries** - format once a completed canvas/timeline gesture
-  commits its single undoable `applyTemplate`, never mid-drag. Because the timeline owns the JS
-  animation region, a canvas/timeline commit should format **HTML only** (the default) unless a
-  clean shared abstraction makes CSS/JS safe.
-- **On save/apply** - optionally format at the autosave or explicit-apply boundary. Same rule:
-  never on every keystroke or high-frequency update.
-- **CSS comment alignment** - if the house right-aligned comment style is ever encoded as a
-  Prettier plugin or a post-pass, CSS could join the auto-format set. Until then, keep CSS
-  explicit-only.
+- **Per-gesture visual-editor formatting** - NOT wired. Two reasons. (1) Every canvas/timeline
+  gesture already commits through a structured patcher (`setCssDeclaration`, `setCssVariable`,
+  `spliceAnimData`, `setFieldDefault`) that emits clean, targeted code by design (root
+  non-negotiables 2 and 5) - there is nothing messy to tidy at that boundary. (2) `applyTemplate`
+  derives the editor's change-highlight from a whole-file diff (`diffTemplates` in
+  `src/store/templateStore.ts`); formatting HTML at a gesture commit would reflow the whole
+  document and light up the entire file, breaking the "canvas editing shows the code it wrote"
+  contract. **Format-on-create solves the underlying want instead**: a Prettier-shaped baseline
+  means the one HTML-touching gesture (inline text edit) already produces a minimal diff.
+- **Autosave / on-save formatting** - NOT wired. The autosave subscription fires 800 ms after
+  *any* template change, including manual Monaco typing, and cannot tell a committed gesture from
+  a keystroke - so formatting there (and writing the result back into the live store) would reflow
+  under the user's cursor mid-pause, violating "never on keystroke".
+- **CSS comment alignment** - unchanged: if the house right-aligned comment style is ever encoded
+  as a Prettier plugin or a post-pass, CSS could join the auto-format set. Until then, CSS stays
+  explicit-only (the Format button), never automatic.
 
-Non-negotiable for any future hook: format at a completed **transaction boundary**, not
-continuously - never on a Monaco keystroke, a mouse move, or a drag frame.
+Non-negotiable for any future automatic hook: format at a completed, discrete **transaction
+boundary that is NOT the live editor** (create, export), not continuously - never on a Monaco
+keystroke, a mouse move, a drag frame, or an autosave tick that can't distinguish typing.
