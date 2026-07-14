@@ -147,8 +147,8 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
 ## The legacy patchers (animPatch / stepAssign / timelineModel)
 
 These literal patchers still serve the categories that have NOT migrated to the data region
-(info cards, quiz, infographics — lower thirds, corner bug, scoreboards, game timers, starting
-soon, TICKERS and END CREDITS create as data blocks), plus every SAVED legacy template until
+(info cards and infographics — lower thirds, corner bug, scoreboards, game timers, starting
+soon, tickers, end credits and QUIZ create as data blocks), plus every SAVED legacy template until
 its owner presses "use keyframes". Phase 8 of docs/TIMELINE_V2_PLAN.md retires them - deferred by
 design until the remaining categories migrate (the blockers per category are documented in
 src/templates/CLAUDE.md and the plan's status block).

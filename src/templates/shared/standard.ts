@@ -26,6 +26,7 @@ import {
 } from './base';
 import { presetById, type PresetConfig } from '../lowerThirds/animPresets';
 import { importAnimData } from '../../blocks/animImport';
+import type { AnimData } from '../../blocks/animData';
 import { replaceRegionWithAnimData } from './animRuntime';
 
 export interface StandardDesign {
@@ -82,9 +83,20 @@ export interface CategorySpec {
  * identical). Only the marked region changes — category-owned runtime around it (score
  * pops, clock painters) is untouched. A conversion failure keeps the legacy emit:
  * never a broken template.
+ *
+ * `refine` is the seam for a step the legacy region cannot express. The importer builds a
+ * middle step out of a » press (the old stepGroups block), so a category whose Continue does
+ * something else — the quiz's answer reveal, which is a lifecycle CALL, not a reveal group —
+ * has no legacy shape to be imported from. Rather than teach the legacy model a step kind
+ * Phase 8 will delete, such a category authors that step directly as data here, on top of the
+ * imported choreography.
  */
-export function convertToDataRegion(template: SpxTemplate): SpxTemplate {
-  const data = importAnimData(template);
+export function convertToDataRegion(
+  template: SpxTemplate,
+  refine?: (data: AnimData) => AnimData,
+): SpxTemplate {
+  const imported = importAnimData(template);
+  const data = imported && refine ? refine(imported) : imported;
   const converted = data ? replaceRegionWithAnimData(template.js, data) : null;
   if (converted) template.js = converted;
   return template;

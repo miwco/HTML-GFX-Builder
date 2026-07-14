@@ -140,7 +140,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
         w.__activeTl = { phase: `step-${stepRef.current}`, tl: tw };
       }
     } else {
-      w.next?.(); // template-defined next (quiz reveal, …)
+      w.next?.(); // no builder contract (blank/imported/hand-written) — the template's own next()
     }
   };
 

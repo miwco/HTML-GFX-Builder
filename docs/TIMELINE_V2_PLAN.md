@@ -15,17 +15,22 @@ remaining categories migrate off the legacy region. The migration audit correcte
 original "standard contract" assumption: STARTING SOON and GAME TIMERS embed
 tl.call(startClock/stopClock) inside the region — the keyframe model has no call
 representation and the importer silently drops them, so they need a lifecycle-hook design
-first; QUIZ's Continue is wrapper-driven (next() → revealAnswer, settings.steps='2' with
-no data step) — the steps derivation would rewrite steps to '1' on the first edit and
-break the reveal, so it needs a wrapper-steps representation. GAME TIMERS flipped on the
+first; QUIZ's Continue was wrapper-driven (next() → revealAnswer, settings.steps='2' with
+no data step) — the steps derivation would have rewritten steps to '1' on the first edit and
+broken the reveal, so it needed a representation for that step (§3c). GAME TIMERS flipped on the
 step-call model (§3b), and STARTING SOON flipped on the loop model (gap 6 — its ambient breath
 is a repeating scale track; the countdown rides the step calls). TICKERS and END CREDITS then
 flipped on the MEASURED-MOTION model (`docs/DYNAMIC_MOTION_SCOPE.md`): their travel is DOM-measured
 (`scrollWidth`, `clientHeight`), which the static keyframe model deliberately cannot express, so a
 step gained `dynamics` — a named builder that measures the DOM and returns the tween, the motion
-twin of §3b's calls. INFO CARDS flip LAST of all: they host the classic strip's spec suite
+twin of §3b's calls. QUIZ then flipped with NO new primitive (§3c): its Continue reveal is a
+lifecycle CALL — which row lights up comes from the operator's f5 at play time — so the reveal
+became a real middle step whose whole content is `calls: [revealAnswer]`, and `settings.steps`
+went from a hard-coded '2' fighting the derivation to a value the derivation produces.
+INFO CARDS flip LAST of all: they host the classic strip's spec suite
 (Hairline Card), and after this wave no other legacy category supports the steps toggle — the suite
-retires together with the strip in Phase 8. **Only QUIZ and INFO CARDS remain on the legacy region.**
+retires together with the strip in Phase 8. **Only INFO CARDS and INFOGRAPHICS remain on the
+legacy region.**
 
 **Phase 8 scope, RATIFIED (DYNAMIC_MOTION_SCOPE §8.1):** it removes the classic strip's EDITING
 patchers but KEEPS a minimal read-only renderer. A saved template whose measured motion is
@@ -447,6 +452,49 @@ no per-layer calls; no editor UI for authoring calls in v1 (presets and the impo
 write them; pros edit the JSON line). If a future category needs parameters, the answer
 is a named wrapper function in the template's own code — the data stays a name and a
 time.
+
+## 3c. The quiz's Continue — a step, not a wrapper (SHIPPED 2026-07-14)
+
+The last "wrapper-driven" blocker, and it needed **no new primitive**: the quiz's Continue
+already fit the §3b call model, once the reveal was seen for what it is.
+
+**The old shape.** `next()` called `revealAnswer()` directly, and `settings.steps` was a
+hard-coded `'2'` while the animation data held only two steps (In + Out). Those two facts
+contradicted each other: the timeline derives the Continue count as `steps.length - 1`, so the
+first timeline edit rewrote `steps` to `'1'`, SPX stopped sending Continue, and the reveal
+never fired. That is why quiz could not be flipped by a flag.
+
+**The shape now.** The reveal is a real middle step whose entire content is a lifecycle call:
+
+```json
+{ "name": "Reveal", "duration": 0.45, "ease": "power3.out",
+  "calls": [ { "time": 0, "call": "revealAnswer" } ], "layers": {} }
+```
+
+and `next()` is the ordinary scaffold's `revealNextStep()`. `settings.steps` is now *derived*
+(three steps → one press → `'2'`) instead of asserted, so every timeline edit agrees with it by
+construction. `revealAnswer()` stays where it was — design-owned JS outside the marked region,
+exactly like a clock engine.
+
+**Why a call and not keyframes:** WHICH row lights up is the operator's `f5`, read at play time.
+The target does not exist until the graphic is on air, so no static keyframe can name it. This is
+honestly code-owned motion, and the model's answer for that is a name (§3b), not an escape hatch.
+The timeline shows it as a read-only lifecycle pin — `revealAnswer()` — like every other call.
+
+**The seam:** `convertToDataRegion(template, refine?)`. The importer builds a middle step only
+from a legacy » press (the old `stepGroups` block), and the quiz's Continue has no such shape.
+Rather than teach the legacy model a step kind Phase 8 is about to delete, the category authors
+that one step directly as data, on top of the imported choreography.
+
+**The stagger it exposed.** The quiz's four answers walk in one after another. The importer bakes
+a stagger into per-target keyframe offsets — but only for a target LIST (`['#f0','#f1']`); a bare
+class matching four elements has nowhere to put four start times, so the stagger silently
+vanished and all four rows arrived together. The fix follows the lower-thirds precedent rather
+than inventing a stagger field: each row carries its own identity (`quiz-option-1..4`, registered
+in `model/structure.ts` and labelled "Answer A".."Answer D"), the preset targets the four, and the
+offsets bake exactly as they always did — with each row now separately selectable and editable.
+Stagger as a single authored KNOB (PRESET_MODEL_REVIEW gap 4) stays open, and is only really
+needed where the element count is content-driven.
 
 ## 4. Keep / Refactor / Replace / Remove
 

@@ -16,18 +16,24 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
   marked region converts (category-owned runtime around it - score pops, clock painters -
   stays); a conversion failure keeps the legacy emit, never a broken template.
   `CategorySpec.dataRegion` triggers it inside assembleStandard; self-assembled categories
-  (scoreboards, game timers, starting soon) call it directly. FLIPPED: lower thirds, corner bug,
-  scoreboards, game timers, starting soon. The step-calls model (docs/TIMELINE_V2_PLAN.md §3b)
+  (scoreboards, game timers, starting soon, quiz) call it directly. FLIPPED: lower thirds, corner
+  bug, scoreboards, game timers, starting soon, tickers, end credits, quiz. The step-calls model
+  (docs/TIMELINE_V2_PLAN.md §3b)
   carries `tl.call(startClock/stopClock)` through the conversion as step `calls`, so a countdown
   survives the flip (the clock runtime itself lives OUTSIDE the region and is untouched), and the
   loop model (gap 6) carries the ambient breath as a step `loop` (a repeating scale track) - this
   is what let STARTING SOON flip. The MEASURED-MOTION model (docs/DYNAMIC_MOTION_SCOPE.md) carries a
   `tl.add(builderName(target))` across as a step `dynamic` - this is what let TICKERS and END
   CREDITS flip (see their motion runtimes below).
-  STILL BLOCKED (do NOT flip by flag alone): quiz's Continue is wrapper-driven (`next()` ->
-  revealAnswer with settings.steps='2' but NO data step - the timeline's steps derivation would
-  rewrite steps to '1' on the first edit and break the reveal). Info cards flip LAST: they host the
-  classic strip's spec suite until Phase 8 (docs/TIMELINE_V2_PLAN.md).
+  `convertToDataRegion(template, refine?)` takes an optional refinement of the imported data -
+  the seam for a step the LEGACY region has no shape for, so a category can author it directly
+  instead of growing a legacy step kind Phase 8 will delete. QUIZ is the one user
+  (docs/TIMELINE_V2_PLAN.md §3c): its Continue reveal is a lifecycle CALL, not a reveal group,
+  so it inserts a middle step `{ calls: [revealAnswer] }` before Out - which makes SPX's
+  `steps: '2'` DERIVED (three steps -> one press) instead of a hard-coded value the timeline's
+  steps re-sync would overwrite with '1' on the first edit, killing the reveal.
+  STILL LEGACY: info cards (they flip LAST - they host the classic strip's spec suite until
+  Phase 8) and infographics.
   A wrapper that needs the motion speed must read it via the shared `motionSpeed()` helper
   (base.ts `motionSpeedJs`: NOACG_ANIM.speed, else legacy animSpeed, else 1) - never the bare
   animSpeed global, which only exists inside a legacy region.
@@ -101,8 +107,13 @@ Adding a measured motion to another category = add a builder to its runtime + ha
 - **infographics/** - ig01…ig06 (prefix 'infographic'; design owns fields + runtimeExtraJs;
   igPresets: count-up - a suffix-preserving number tween - and bars-grow over #infographic-bars
   `.infographic-bar-fill[data-value]`).
-- **quiz/** - qz01 (prefix 'quiz'; f0 question, f1-f4 options, hidden f5 correct-answer dropdown;
-  next() -> revealAnswer() adds .quiz-correct/.quiz-dim, update() clears the reveal).
+- **quiz/** - qz01 (prefix 'quiz'; f0 question, f1-f4 options, hidden f5 correct-answer dropdown).
+  DATA BLOCKS via convertToDataRegion + a refinement (§3c above): the Continue reveal is a real
+  middle step that CALLS revealAnswer() (adds .quiz-correct/.quiz-dim + pops the winner;
+  update() clears the reveal). Each answer ROW carries `quiz-option` (the shared look) AND
+  `quiz-option-N` (its own animation identity) - the entrance staggers the four, and a stagger
+  lives in the keyframe model as per-row start times, which one class matching four elements
+  cannot carry. The numbered rows are registry parts, labelled by their field ("Answer B").
 
 ## The :root style contract
 

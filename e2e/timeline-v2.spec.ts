@@ -884,3 +884,56 @@ test('v2 read-only glyphs: a finite repeat ends where it really ends, and is cap
   });
   expect(result).toEqual({ label: '↻×2', capped: true, endsAtTheLoopsTrueEnd: true });
 });
+
+test('v2: the quiz Continue is a real step — its reveal is a lifecycle call, and the SPX steps setting is derived', async ({ page }) => {
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Quiz' }).click();
+  await page.locator('.wz-variant').first().click();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await page.waitForTimeout(650);
+
+  // Quiz creates as a data block: the step timeline, not the classic strip.
+  await expect(page.getByTestId('timeline-v2')).toBeVisible();
+
+  // The operator's Continue IS the middle step. Its content is a lifecycle call, because
+  // WHICH row lights up comes from the operator's f5 at play time and cannot be keyframed.
+  await expect(page.getByTestId('tlv2-clip-1')).toContainText('»');
+  await expect(page.getByTestId('tlv2-clip-1')).toContainText('Reveal');
+  await expect(page.getByTestId('tlv2-call-revealAnswer')).toContainText('revealAnswer()');
+
+  // The four answers each have their own identity and their own start time — the entrance
+  // walks them in, which is a stagger, which the model can only hold as per-row keyframes.
+  const starts = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { parseAnimData } = await import('/src/blocks/animData.ts');
+    const d = parseAnimData(useTemplateStore.getState().template.js)!;
+    return [1, 2, 3, 4].map((n) => d.steps[0].layers[`.quiz-option-${n}`].x[0].time);
+  });
+  expect(starts).toEqual([0.6, 0.7, 0.8, 0.9]);
+
+  // The regression this migration exists to prevent: SPX's `steps` is DERIVED from the data
+  // (three steps → one Continue press between Play and Stop → steps '2'), so an ordinary
+  // timeline edit must leave it alone. While the reveal lived only in next(), the data held
+  // two steps, and the first edit rewrote `steps` to '1' — SPX would stop sending Continue
+  // and the reveal would never fire on air.
+  const stepsSetting = async () =>
+    page.evaluate(async () => {
+      const { useTemplateStore } = await import('/src/store/templateStore.ts');
+      return useTemplateStore.getState().template.settings.steps;
+    });
+  expect(await stepsSetting()).toBe('2');
+  await page.getByTestId('tlv2-clip-0').click({ button: 'right' });
+  await page.getByTestId('tlv2-menu-ease').selectOption('power2.out');
+  await page.waitForTimeout(650);
+  expect(await stepsSetting()).toBe('2');
+
+  // And it still plays: Continue runs the step, the step fires the call, the answer lands.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.getByRole('button', { name: '» Next' }).click();
+  const preview = page.frameLocator('iframe.preview-frame');
+  await expect(preview.locator('.quiz-option.quiz-correct')).toHaveCount(1);
+  await expect(preview.locator('.quiz-correct #f2')).toHaveText('Mars'); // f5 default 'B'
+});

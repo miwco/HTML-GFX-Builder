@@ -1,6 +1,8 @@
-// Quiz motion presets. Same marked-region + knob contract as every category. The entrance
-// choreographs box → question → answer rows; the answer REVEAL itself is not part of the
-// preset — it lives in the runtime's revealAnswer(), triggered by SPX Continue (next()).
+// Quiz motion presets. Same marked-region + knob contract as every category — this emit is the
+// SOURCE the data block is converted from at create (shared/standard.ts convertToDataRegion).
+// The entrance choreographs box → question → answer rows; the answer REVEAL itself is not part
+// of the preset — which row lights up depends on the operator's f5, so it is code-owned motion:
+// it lives in the runtime's revealAnswer(), fired by the Reveal step's lifecycle call.
 //
 // The quiz structure contract (see shared.ts):
 //   .quiz (root, opacity:0) → .quiz-box (the panel) → .quiz-mask > #f0 (question)
@@ -26,7 +28,7 @@ export const QUIZ_PRESETS: AnimPreset[] = [
     autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
 // Preset: Quiz reveal — panel in, question mask-up, answers stagger in one by one.
-// The correct-answer highlight is NOT here: next() (SPX Continue) runs revealAnswer().
+// The correct-answer highlight is NOT here: the Reveal step calls revealAnswer() on Continue.
 ${knobs(cfg)}
 
 // buildInTimeline(): choreographed entrance — box, then question, then the answer rows.
@@ -39,7 +41,10 @@ function buildInTimeline() {
   tl.fromTo('#f0',                             // the question slides up from behind its mask
     { yPercent: 110 },
     { yPercent: 0, duration: 0.55 / animSpeed, ease: easeIn }, '-=0.25');
-  tl.fromTo('.quiz-option',                      // the four answers walk in one after another
+  // The four answers walk in one after another. They are named row by row (not by the shared
+  // .quiz-option class) so each keeps its own start time — that is what a stagger IS, and it
+  // keeps every row independently editable on the timeline.
+  tl.fromTo(['.quiz-option-1', '.quiz-option-2', '.quiz-option-3', '.quiz-option-4'],
     { x: -24, opacity: 0 },
     { x: 0, opacity: 1, duration: 0.45 / animSpeed, ease: easeIn, stagger: 0.1 / animSpeed },
     '-=0.2');

@@ -43,12 +43,15 @@ export const qz01: TemplateVariant = defineQuizVariant(
     <div class="quiz-box">
       <!-- The question - slides up from behind this overflow mask on entrance. -->
       <div class="quiz-mask"><span id="f0">${o.lines[0]?.sample || 'Which planet is known as the Red Planet?'}</span></div>
-      <!-- The answers: letter chip + text. next() marks one row quiz-correct, the rest quiz-dim. -->
+      <!-- The answers: letter chip + text. Continue marks one row quiz-correct, the rest
+           quiz-dim. Each row also carries a NUMBERED class - .quiz-option styles all four the
+           same, while .quiz-option-1..4 give each row its own animation identity, so the
+           entrance can walk them in one after another and each stays separately editable. -->
       <div class="quiz-options">
-        <div class="quiz-option"><span class="quiz-letter">A</span><span class="quiz-text" id="f1">Venus</span></div>
-        <div class="quiz-option"><span class="quiz-letter">B</span><span class="quiz-text" id="f2">Mars</span></div>
-        <div class="quiz-option"><span class="quiz-letter">C</span><span class="quiz-text" id="f3">Pluto</span></div>
-        <div class="quiz-option"><span class="quiz-letter">D</span><span class="quiz-text" id="f4">Titan</span></div>
+        <div class="quiz-option quiz-option-1"><span class="quiz-letter">A</span><span class="quiz-text" id="f1">Venus</span></div>
+        <div class="quiz-option quiz-option-2"><span class="quiz-letter">B</span><span class="quiz-text" id="f2">Mars</span></div>
+        <div class="quiz-option quiz-option-3"><span class="quiz-letter">C</span><span class="quiz-text" id="f3">Pluto</span></div>
+        <div class="quiz-option quiz-option-4"><span class="quiz-letter">D</span><span class="quiz-text" id="f4">Titan</span></div>
       </div>
     </div>`,
     css: `/* The card: the preset tweens THIS element (y + opacity), so it carries no lean of its

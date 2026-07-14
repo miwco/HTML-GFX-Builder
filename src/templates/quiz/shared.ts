@@ -7,20 +7,27 @@
 //     <div class="quiz-box">           the panel; presets tween this
 //       <div class="quiz-mask"><span id="f0">…</span></div>      the question (mask-up reveal)
 //       <div class="quiz-options">                               the four answer rows
-//         <div class="quiz-option">
+//         <div class="quiz-option quiz-option-1">                shared look + its own identity
 //           <span class="quiz-letter">A</span>                   static letter chip
 //           <span id="f1">…</span>                             the answer text
 //         </div>
-//         …same for B/#f2, C/#f3, D/#f4…
+//         …same for B/#f2, C/#f3, D/#f4 (quiz-option-2..4)…
 //       </div>
 //     </div>
 //     hidden #f5 source SPX writes the correct letter into
 //   </div>
 //
-// The reveal: SPX's Continue button calls next(), which reads the letter in #f5, marks
-// that .quiz-option with 'quiz-correct' (accent treatment) and the other three with 'quiz-dim'
-// (faded) — designs MUST style both classes. Presets tween .quiz-box and .quiz-option, so
-// designs never put skew/rotation on those elements (paint it on ::before/::after layers).
+// The reveal: SPX's Continue button calls next(), which plays the graphic's second step —
+// the "Reveal" step, whose whole content is a lifecycle call to revealAnswer(). That reads the
+// letter in #f5, marks that .quiz-option with 'quiz-correct' (accent treatment) and the other
+// three with 'quiz-dim' (faded) — designs MUST style both classes. Presets tween .quiz-box and
+// .quiz-option, so designs never put skew/rotation on those elements (paint it on
+// ::before/::after layers).
+//
+// Why a CALL and not keyframes: WHICH row lights up is chosen by the operator at play time
+// (field f5), so the reveal has no fixed target and no static keyframe can describe it. It is
+// honestly code-owned motion — the same posture as a clock's startClock() — so the data names
+// the function and the logic stays readable JS outside the marked region.
 
 import type { SpxField, SpxTemplate } from '../../model/types';
 import { definitionScriptBlock } from '../../model/spxDefinition';
@@ -42,13 +49,21 @@ import {
   setFieldValueJs,
   zoneCssText,
 } from '../shared/base';
+import { convertToDataRegion } from '../shared/standard';
+import type { AnimData, AnimStep } from '../../blocks/animData';
 import type { PresetConfig } from '../lowerThirds/animPresets';
 import { quizPresetById } from './quizPresets';
 
 export interface QuizDesign {
   /**
    * Inner HTML of .quiz — must contain .quiz-box with .quiz-mask > span#f0 and .quiz-options
-   * holding the four .quiz-option rows (.quiz-letter chip + span#f1..#f4).
+   * holding the four answer rows (.quiz-letter chip + span#f1..#f4).
+   *
+   * Each row carries TWO classes: `quiz-option` (the shared look — all four style alike, and
+   * revealAnswer() marks the winner through it) and `quiz-option-N`, N = 1..4 (its animation
+   * identity). The numbered class is required: the entrance staggers the rows, and a stagger
+   * lives in the keyframe model as per-row start times, which a single class matching four
+   * elements cannot carry. It is also what makes each row selectable and separately editable.
    */
   html: string;
   /**
@@ -87,6 +102,41 @@ const QUIZ_FIELDS: SpxField[] = [
     ],
   },
 ];
+
+/**
+ * How long the reveal takes: the winning row's spring pop. It is BOTH the tween's length in
+ * revealAnswer() and the Reveal step's authored duration, so the step on the timeline is as
+ * long as the motion it fires. Speed-relative, like every other time in the data model —
+ * playback divides by the speed knob (revealAnswer reads the same knob via motionSpeed()).
+ */
+const REVEAL_SECONDS = 0.45;
+
+/**
+ * The Continue reveal as a real STEP (Timeline v2), inserted just before Out.
+ *
+ * The reveal is a lifecycle CALL, not layer motion (see the file header), so the legacy region
+ * has no shape for it and the importer builds nothing here. Authoring it as data is what makes
+ * SPX's `steps: '2'` DERIVED — In + Reveal + Out is three steps, and the timeline computes the
+ * Continue count as steps − 1. Without it the data would say one step and the first timeline
+ * edit would rewrite `steps` to '1', after which SPX stops sending Continue and the reveal never
+ * fires. The step is otherwise ordinary: it can be renamed, retimed, and keyframed (dim the
+ * panel as the answer lands), and preset applies never touch it — they only write the first and
+ * last steps.
+ */
+function withRevealStep(ease: string) {
+  return (data: AnimData): AnimData => {
+    const reveal: AnimStep = {
+      name: 'Reveal',
+      duration: REVEAL_SECONDS,
+      ease,
+      calls: [{ time: 0, call: 'revealAnswer' }],
+      layers: {},
+    };
+    const steps = [...data.steps];
+    steps.splice(steps.length - 1, 0, reveal); // before the Out step
+    return { ...data, steps };
+  };
+}
 
 /** The quiz runtime: the standard scaffold plus the Continue-driven answer reveal. */
 function quizRuntimeJs(name: string, animationBlock: string): string {
@@ -139,7 +189,7 @@ function revealAnswer() {
   // Pop the correct row: enter slightly enlarged, spring back to rest.
   gsap.fromTo(options[index],
     { scale: 1.06 },
-    { scale: 1, duration: 0.45 / motionSpeed(), ease: 'back.out(2)' }
+    { scale: 1, duration: ${REVEAL_SECONDS} / motionSpeed(), ease: 'back.out(2)' }
   );
 }
 
@@ -156,9 +206,10 @@ function stop() {
   buildOutTimeline();
 }
 
-// next(): SPX Continue — step 2 of the graphic reveals the correct answer.
+// next(): SPX Continue — play the graphic's next step. Step 2 is the answer reveal: the
+// animation data below fires revealAnswer() on it (see that step's "calls").
 function next() {
-  revealAnswer();
+  if (typeof revealNextStep === 'function') revealNextStep();
 }
 
 ${animationBlock}
@@ -230,7 +281,7 @@ ${design.css}
     prefix: 'quiz',
     lineCount: 5, // f0 question · f1–f4 answers (f5 is the hidden correct letter)
     hasAccent: design.hasAccent,
-    steps: false, // the reveal is the second step — handled by next(), not the preset
+    steps: false, // no » press reveals a line here — the one Continue is the answer reveal step
     speed: o.animation.speed,
     easeIn: ease.easeIn,
     easeOut: ease.easeOut,
@@ -238,7 +289,7 @@ ${design.css}
 
   const js = quizRuntimeJs(meta.name, preset.emit(cfg));
 
-  return {
+  const template: SpxTemplate = {
     name: meta.name,
     type: 'quiz',
     resolution: o.resolution,
@@ -258,6 +309,10 @@ ${design.css}
       styles: {},
     })),
   };
+
+  // Timeline v2: the preset's region becomes the NOACG_ANIM data block, and the operator's
+  // Continue becomes a real middle step (the answer reveal) on top of it.
+  return convertToDataRegion(template, withRevealStep(ease.easeIn));
 }
 
 /** The authoring API for quiz variant modules. */

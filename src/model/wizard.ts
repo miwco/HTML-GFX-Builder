@@ -115,7 +115,8 @@ export type AnimPresetId =
   | 'bars-grow'
   | 'ring-fill'
   | 'rows-cascade'
-  // Quiz format (templates/quiz/quizPresets.ts) — next() reveals the correct answer:
+  // Quiz format (templates/quiz/quizPresets.ts) — Continue plays the Reveal step, which
+  // calls revealAnswer() to light up the correct row:
   | 'quiz-reveal';
 
 export type AnimSpeed = 0.75 | 1 | 1.5;

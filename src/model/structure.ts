@@ -87,6 +87,26 @@ export function getTemplateParts(html: string, fields: SpxField[] = []): Templat
     // registry parts — they are either not visual or not reveal-capable yet.
   }
 
+  // Answer ROWS (the quiz structure contract): sibling `.<prefix>-option` rows, each a letter
+  // chip plus its answer field, NUMBERED so every row is its own identity. They must be: the
+  // entrance walks them in one after another, and a stagger only survives the keyframe model as
+  // per-target keyframe OFFSETS (docs/PRESET_MODEL_REVIEW.md gap 4 — the model has no stagger
+  // field, and one class matching four elements has nowhere to put four different start times).
+  // Numbering them buys the honest version of that: four rows, four editable tracks. Labelled by
+  // the field each row holds, so every surface says "Answer B", never ".quiz-option-2".
+  if (prefix) {
+    for (let n = 1; unique(`.${prefix}-option-${n}`); n++) {
+      const row = unique(`.${prefix}-option-${n}`)!;
+      const field = Array.from(row.querySelectorAll('[id]')).find((el) => /^f\d+$/.test(el.id));
+      parts.push({
+        selector: `.${prefix}-option-${n}`,
+        kind: 'block',
+        label: (field && fieldTitle(field.id)) ?? `Answer ${n}`,
+        channel: 'rise',
+      });
+    }
+  }
+
   // Building-block inserted elements (blocks tag them data-gfx and give them an id).
   for (const el of Array.from(doc.querySelectorAll('[data-gfx][id]'))) {
     if (/^f\d+$/.test(el.id) || !unique(`#${el.id}`)) continue; // field imgs handled above

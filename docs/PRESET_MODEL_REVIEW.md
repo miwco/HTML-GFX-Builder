@@ -30,7 +30,7 @@ interpolate at runtime. The editable vocabulary (Inspector `PROP_ROWS`) is
 | 1 | **Per-property In/Out duration** (opacity fades in 0.2 s while x slides in 0.6 s _as first-class control_) | `duration` is a **step-level** scalar. All tracks in a step share it; different rates only exist by placing keyframes at different times inside the one duration. The Inspector now sets per-direction step durations, but not per-property. |
 | 2 | **Transform-origin for scale/rotate** | There is no `transformOrigin` track and no per-layer static prop. Scale/rotate always pivot around GSAP's default (element centre). This blocks corner-anchored scale and pivoted rotation — and the deferred canvas scale/rotate handles need it. |
 | 3 | **Motion paths / curved position** | `x` and `y` are independent scalar tracks interpolated linearly. No bezier/path property. (Deliberately excluded in the interaction model — "no motion paths".) |
-| 4 | **Stagger as an authored control** | The legacy importer bakes `stagger` into per-keyframe time offsets; the schema has **no stagger field**, so once imported it is frozen as individual times. A preset cannot re-express it and the user cannot adjust it as one knob. |
+| 4 | **Stagger as an authored control** | The legacy importer bakes `stagger` into per-keyframe time offsets; the schema has **no stagger field**, so once imported it is frozen as individual times. A preset cannot re-express it and the user cannot adjust it as one knob. **Sharpened by the quiz migration:** baking only works for a target LIST (`['#f0','#f1']`) — a bare class matching N elements has nowhere to put N start times, and the stagger silently VANISHES on import. The catalog's answer is per-element identity (quiz's `quiz-option-1..4`), which is also strictly more editable (N rows, N tracks). So the knob is only genuinely needed where N is CONTENT-driven — and that case already belongs to `dynamics` (a measured builder), not to keyframes. |
 | 5 | **Physics / spring parameters** | Springiness exists only as a GSAP ease string (`elastic.out`, `back.out`) on a keyframe; there are no mass/tension/velocity params (the resolver interpolates linearly and defers the curve to the runtime). |
 | 6 | ~~**Loop / yoyo / repeat**~~ **(DONE — see Tier 3)** | A step gains `loops[selector][prop] = { repeat, yoyo?, repeatDelay? }`: a track plays in a repeating sub-timeline. The importer converts a *static* loop (a breathing pulse) and still refuses an inline DOM-measured one. Starting-soon migrated on it. |
 | 6b | ~~**Measured motion**~~ **(DONE — see Tier 3)** | A step gains `dynamics: [{ time, build, target? }]`: a named builder measures the DOM and returns the tween (a marquee's track-width travel, a credits roll, one flip per item). The motion twin of the §3b calls. Tickers and end credits migrated on it. |
@@ -59,11 +59,13 @@ parse-degrades-gracefully contract. None require a graph editor or expressions.
   existence span ends where it is hidden; the timeline layer-block's right edge drags to set it,
   and the runtime hides the layer at the step boundary (setLayerHide + the block right edge +
   hideStep; a template with a pre-hides interpreter is re-emitted on first use).
-- **`calls?: { time, call }[]` on a step** (gap 10). The drafted step-calls design
-  (`docs/TIMELINE_V2_PLAN.md` §3b): the interpreter `tl.call`s `window[name]` at the local time,
-  name-resolved (no eval). `resizeStep`/`duplicateStep`/`deleteStep` carry them; `parseTimeline`
-  learns `tl.call` as a zero-duration entry; `presetApply` carries calls through `'all'` scope
-  only. Unblocks starting-soon + game-timers. **Awaiting explicit ratification before build.**
+- **`calls?: { time, call }[]` on a step** (gap 10) — **DONE** (`docs/TIMELINE_V2_PLAN.md` §3b).
+  The interpreter `tl.call`s `window[name]` at the local time, name-resolved (no eval).
+  `resizeStep`/`duplicateStep`/`deleteStep` carry them; `parseTimeline` learns `tl.call` as a
+  zero-duration entry; `presetApply` carries calls through `'all'` scope only. This unblocked
+  game timers and starting soon — and then QUIZ (§3c), whose Continue reveal turned out to be
+  a call too: which answer row lights up comes from the operator's f5 at play time, so it can
+  never be a keyframe. Its reveal is now a real middle step whose content is that one call.
 
 ### Tier 2 — richer per-property control
 
