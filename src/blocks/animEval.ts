@@ -53,13 +53,44 @@ function trackAt(data: AnimData, stepIndex: number, selector: string, prop: stri
   return kfs && kfs.length ? [...kfs].sort((a, b) => a.time - b.time) : [];
 }
 
+const NUM_RE = /-?\d*\.?\d+/g;
+
+/**
+ * Interpolate the numbers inside two structurally identical strings — `blur(0px)` →
+ * `blur(8px)`, `inset(0% 100% 0% 0%)` → `inset(0% 0% 0% 0%)`. This is what GSAP does to a
+ * complex string at runtime, so mirroring it here keeps the Inspector's number in step with the
+ * preview instead of stepping to the next keyframe.
+ *
+ * "Structurally identical" = the same text with the same COUNT of numbers in it. If the two
+ * differ in any other way (a different filter function list, a different clip-path shape) there
+ * is no meaningful in-between, and we hold `a` — the honest answer, and the one GSAP's own
+ * discrete swap gives.
+ */
+function lerpNumbersInString(a: string, b: string, f: number): string {
+  const an = a.match(NUM_RE);
+  const bn = b.match(NUM_RE);
+  if (!an || !bn || an.length !== bn.length) return a;
+  if (a.replace(NUM_RE, '#') !== b.replace(NUM_RE, '#')) return a; // different shape
+  let i = 0;
+  return a.replace(NUM_RE, () => {
+    const from = Number(an[i]);
+    const to = Number(bn[i]);
+    i++;
+    const v = from + (to - from) * f;
+    return String(Math.round(v * 1000) / 1000);
+  });
+}
+
 /**
  * Resolve a property's value at (stepIndex, localT) — localT in SPEED-RELATIVE seconds
  * (the stored clock). Semantics mirror the interpreter:
  * - within a step, the first keyframe holds backward to the step start;
  * - between keyframes, numbers interpolate (LINEARLY here — the eased in-between value
  *   is the preview's job; at keyframe times the two always agree exactly);
- * - strings (filter, clipPath) hold the previous keyframe until the next one's time;
+ * - STRINGS interpolate too, when both sides have the same shape — `blur(0px) brightness(1)`
+ *   → `blur(8px) brightness(1.4)` lerps each number in place, exactly as GSAP does at runtime,
+ *   so the Inspector's number tracks the preview instead of stepping. Strings whose shapes
+ *   differ have no meaningful in-between, so they hold the previous keyframe;
  * - a step without the track inherits the last keyframe value from an earlier step;
  * - null = no keyframe anywhere before this point: the layer's design (CSS) state.
  */
@@ -83,9 +114,14 @@ export function resolveValue(
       if (t < kfs[i].time) {
         const a = kfs[i - 1];
         const b = kfs[i];
-        if (typeof a.value !== 'number' || typeof b.value !== 'number') return a.value;
         const f = (t - a.time) / (b.time - a.time);
-        return a.value + (b.value - a.value) * f;
+        if (typeof a.value === 'number' && typeof b.value === 'number') {
+          return a.value + (b.value - a.value) * f;
+        }
+        if (typeof a.value === 'string' && typeof b.value === 'string') {
+          return lerpNumbersInString(a.value, b.value, f);
+        }
+        return a.value;
       }
     }
     return kfs[kfs.length - 1].value;

@@ -144,13 +144,18 @@ in src/blocks/CLAUDE.md.
   data-block template the Properties tab EDITS: each property carries a ◇/◆ diamond - arm it
   to stamp a keyframe at the store playhead, edit an armed value to auto-key there, click a
   diamond sitting ON a keyframe to remove it; ‹ › navigate the layer's keyframes, labels
-  drag-scrub the value, blur is the one non-transform (its keyframes live on `filter` as
-  'blur(Npx)'), and arming BOTH Position X and Y also unlocks the canvas position-keyframe
+  drag-scrub the value, and arming BOTH Position X and Y also unlocks the canvas position-keyframe
   drag (see CanvasInteraction). The vocabulary (PROP_ROWS) is x/y/yPercent/scale/opacity/
-  rotation/blur plus a **3D transform** group - `rotationX`/`rotationY`/`z` and `perspective`
+  rotation, a **Filter** group - blur/brightness/saturate/hueRotate/glow, which are NOT separate
+  tracks: they share the ONE composed `filter` track (blocks/filterTrack.ts), so a row edits one
+  function of the string and a keyframe there carries them ALL (the row hint says so). A filter
+  row carries `filter: <key>` in PROP_ROWS and writes through animEdit's `setFilterComponent` -
+  plus a **3D transform** group - `rotationX`/`rotationY`/`z` and `perspective`
   (`transformPerspective`), ordinary numeric tracks the interpreter tweens with no special-casing
   (perspective enables the 3D look; they pivot around the Pivot's transform-origin). Adding a
-  numeric prop needs only a PROP_ROWS entry - no runtime/resolver/validation change. The Animations tab names which steps move the layer and holds the preset
+  numeric prop needs only a PROP_ROWS entry - no runtime/resolver/validation change; a new FILTER
+  function needs only a FILTER_FUNCS entry in blocks/filterTrack.ts plus its PROP_ROWS row.
+  The Animations tab names which steps move the layer and holds the preset
   picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
   blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
   blends with the previous preset), and re-parks the preview at the playhead. Legacy templates get a

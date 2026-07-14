@@ -76,11 +76,28 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   duplicateStep (copies keyframes, NOT reveals or hides; never lands after Out), renameStep,
   deleteStep (layers it revealed return to "appears with ▶ Play" with the channel's default
   motion), addStep (an empty content step just before Out).
+- **filterTrack.ts** - the composed FILTER lens (docs/PRESET_MODEL_REVIEW.md gap 8). `filter` is
+  ONE CSS property holding a LIST of functions, so the data keeps ONE `filter` track of composed
+  strings (`blur(8px) brightness(1.6)`) - plain CSS can't keyframe its parts apart either. This
+  module parses/composes that string so each function (blur, brightness, saturate, hueRotate,
+  glow = a colourless centred drop-shadow) can be its own Inspector row. THE INVARIANT: every
+  keyframe in a step's filter track must list the SAME functions in the SAME order - that is what
+  lets the runtime tween `filter` as a plain string with NO interpreter special-case (GSAP matches
+  the numbers positionally; a track whose keyframes disagree on shape jumps instead of
+  interpolating). `normalizeFilterTrack` enforces it, filling a keyframe's missing functions with
+  their identity (what they were contributing anyway). Write through animEdit's
+  `setFilterComponent`, never `setKeyframe('filter', …)` directly - it resolves the OTHER functions
+  at that moment first, so editing brightness never silently resets a blur that was mid-tween.
+  CONSEQUENCE, by design: filter functions SHARE a keyframe (the diamond stamps them all at once).
 - **animEval.ts** - the editor-side playhead resolver, deliberately the ONLY logic duplicated
   from the runtime interpreter (the preview runs the real one): within a step the first
   keyframe holds backward to the step start; between keyframes numbers interpolate LINEARLY
   (the eased in-between is the preview's job - at keyframe times the two agree exactly);
-  strings hold the previous keyframe; a step without the track inherits the last keyframe
+  STRINGS interpolate too when both keyframes have the same shape (the numbers inside them lerp
+  in place - `blur(0px) brightness(1)` -> `blur(8px) brightness(1.4)`), which is what GSAP does at
+  runtime, so the Inspector tracks the preview instead of stepping; written generically, so
+  clipPath (mask-wipe) benefits identically. Differently-shaped strings have no meaningful
+  in-between and hold the previous keyframe; a step without the track inherits the last keyframe
   value from an earlier step; null = the layer's design (CSS) state. A LOOPING track folds the
   query time back into one pass (loopedTime: GSAP repeat/yoyo/repeatDelay math), so the
   Inspector number tracks the repeating preview. Plus

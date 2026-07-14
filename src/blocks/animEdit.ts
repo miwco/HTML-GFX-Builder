@@ -5,6 +5,8 @@
 // numbers), rounded to the same 3 decimals the serializer writes.
 
 import type { AnimData, AnimKeyframe, AnimLayerTracks, AnimStep } from './animData';
+import { resolveValue } from './animEval';
+import { filterKeysUsed, normalizeFilterTrack, withFilterComponent } from './filterTrack';
 
 /** Two stored times match within half a serializer step. */
 const EPS = 0.005;
@@ -63,6 +65,48 @@ export function setKeyframe(
     if (ease) kf.ease = ease;
     track.push(kf);
     track.sort((a, b) => a.time - b.time);
+  }
+  return next;
+}
+
+/**
+ * Set ONE filter function (blur, brightness, glow, …) at a moment, leaving the others alone
+ * (docs/PRESET_MODEL_REVIEW.md gap 8).
+ *
+ * `filter` is one CSS property holding a list of functions, so the data keeps ONE `filter` track
+ * of composed strings — you cannot keyframe `blur` apart from `brightness` any more than CSS can.
+ * Two things follow, and both are handled here:
+ *
+ * 1. The new keyframe must carry the OTHER functions' values as they are AT THIS MOMENT, or
+ *    writing brightness would silently reset the blur that was mid-tween. So we resolve the
+ *    track at `time` first and edit one number of it.
+ * 2. Every keyframe in the track must then list the same functions in the same order, because
+ *    that is what lets the runtime tween `filter` as a plain string (GSAP matches the numbers
+ *    positionally; a track whose keyframes disagree on their shape jumps instead of
+ *    interpolating). `normalizeFilterTrack` fills each keyframe's missing functions with their
+ *    identity — which is what they were contributing anyway, so nothing about the motion changes.
+ */
+export function setFilterComponent(
+  data: AnimData,
+  stepIndex: number,
+  selector: string,
+  key: string,
+  value: number,
+  time: number,
+  ease?: string,
+): AnimData {
+  const step = data.steps[stepIndex];
+  if (!step) return data;
+  const t = round(Math.max(0, Math.min(time, step.duration)));
+
+  // The composed value in force at this moment — the other functions ride along untouched.
+  const at = resolveValue(data, selector, 'filter', stepIndex, t);
+  const composed = withFilterComponent(at, key, value);
+
+  const next = setKeyframe(data, stepIndex, selector, 'filter', t, composed, ease);
+  const track = next.steps[stepIndex]?.layers[selector]?.filter;
+  if (track) {
+    next.steps[stepIndex].layers[selector].filter = normalizeFilterTrack(track, filterKeysUsed(track));
   }
   return next;
 }
