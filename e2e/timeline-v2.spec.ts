@@ -802,3 +802,85 @@ test('v2: legacy categories keep the classic strip, can peek at v2, and convert 
   await page.getByTestId('timeline-v2-toggle').click();
   await expect(page.getByTestId('timeline')).toBeVisible();
 });
+
+// ── Read-only, code-owned motion on the timeline ──
+// Three things in the animation data are NOT keyframes you can grab: a `loops` repeat (a
+// property of a TRACK, not a moment on it), a §3b `calls` lifecycle hook (a side effect with no
+// duration), and a `dynamics` measured segment (a builder that reads the DOM — pinned in
+// e2e/anim-engine.spec.ts). Each is SURFACED, so the timeline never silently hides motion, and
+// each is READ-ONLY, so it never implies an affordance it doesn't have. Starting Soon carries
+// both a loop and lifecycle calls.
+
+test('v2 read-only glyphs: a looping track shows a repeat tail, and lifecycle calls get their own row', async ({ page }) => {
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Starting soon' }).click();
+  await page.locator('.wz-variant').first().click();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await page.waitForTimeout(650);
+  await expect(page.getByTestId('timeline-v2')).toBeVisible();
+
+  // The ambient breath is an endless yoyo — the tail says so, and carries no diamonds.
+  const loop = page.getByTestId('tlv2-loop-starting-soon-pulse');
+  await expect(loop).toBeVisible();
+  await expect(loop).toContainText('↻∞');
+  await expect(loop).toContainText('⇄');
+  await expect(loop.locator('.tlv2-diamond')).toHaveCount(0);
+
+  // The countdown's lifecycle calls sit on their own row, named, one per firing moment.
+  await expect(page.getByTestId('tlv2-call-startClock')).toContainText('startClock()');
+  await expect(page.getByTestId('tlv2-call-stopClock')).toContainText('stopClock()');
+  await expect(page.locator('.tlv2-call .tlv2-diamond')).toHaveCount(0);
+
+  // The tail begins at the looping track's LAST keyframe — it annotates the pass, it doesn't
+  // invent one — and it runs to the end of the drawn timeline, because it never stops.
+  const geometry = await page.evaluate(() => {
+    const bar = document.querySelector('[data-testid="tlv2-loop-starting-soon-pulse"]')!.getBoundingClientRect();
+    const canvas = document.querySelector('.tlv2-canvas')!.getBoundingClientRect();
+    const diamonds = [...document.querySelectorAll('[data-testid="tlv2-kf-starting-soon-pulse"]')].map(
+      (d) => d.getBoundingClientRect().x + d.getBoundingClientRect().width / 2,
+    );
+    return {
+      startsAtLastKeyframe: Math.abs(bar.x - Math.max(...diamonds)) <= 2,
+      reachesTheEnd: Math.abs(bar.x + bar.width - (canvas.x + canvas.width)) <= 6,
+      staysInsideTheCanvas: bar.x + bar.width <= canvas.x + canvas.width + 1,
+    };
+  });
+  expect(geometry).toEqual({ startsAtLastKeyframe: true, reachesTheEnd: true, staysInsideTheCanvas: true });
+});
+
+test('v2 read-only glyphs: a finite repeat ends where it really ends, and is capped when it fits', async ({ page }) => {
+  await createHairline(page);
+  // Author a two-pass loop that finishes well inside a long step. The tail must CLOSE with a
+  // cap exactly at the loop's true end — which is the point of deriving it from the data
+  // instead of guessing a width. (Endless loops run off the end; covered above.)
+  const result = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { parseAnimData, spliceAnimData } = await import('/src/blocks/animData.ts');
+    const store = useTemplateStore.getState();
+    const tpl = store.template;
+    const d = parseAnimData(tpl.js)!;
+    const step = d.steps[0];
+    step.duration = 6;
+    step.layers['#f0'] = { scale: [{ time: 0, value: 1 }, { time: 1, value: 1.1 }] };
+    step.loops = { '#f0': { scale: { repeat: 1, repeatDelay: 0.5 } } };
+    store.applyTemplate({ ...tpl, js: spliceAnimData(tpl.js, d)! }, { resetSampleData: true });
+    await new Promise((r) => setTimeout(r, 900));
+
+    const bar = document.querySelector('[data-testid="tlv2-loop-f0"]') as HTMLElement | null;
+    if (!bar) return { missing: true };
+    const clip = document.querySelector('[data-testid="tlv2-clip-0"]')!.getBoundingClientRect();
+    const b = bar.getBoundingClientRect();
+    const pxPerSec = clip.width / 6; // the step spans 6s at speed 1
+    // GSAP: repeat 1 = one EXTRA pass. pass = 1s, delay = 0.5s → the loop ends at 1 + 1.5 = 2.5s.
+    const expectedEnd = clip.x + 2.5 * pxPerSec;
+    return {
+      label: bar.textContent,
+      capped: !bar.classList.contains('endless'),
+      endsAtTheLoopsTrueEnd: Math.abs(b.x + b.width - expectedEnd) <= 2,
+    };
+  });
+  expect(result).toEqual({ label: '↻×2', capped: true, endsAtTheLoopsTrueEnd: true });
+});

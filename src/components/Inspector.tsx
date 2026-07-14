@@ -3,7 +3,8 @@ import { useTemplateStore } from '../store/templateStore';
 import { getTemplateParts } from '../model/structure';
 import { parseAnimData, spliceAnimData, type AnimData } from '../blocks/animData';
 import { importAnimData } from '../blocks/animImport';
-import { deleteKeyframe, setKeyframe } from '../blocks/animEdit';
+import { deleteKeyframe, setFilterComponent, setKeyframe } from '../blocks/animEdit';
+import { filterComponent } from '../blocks/filterTrack';
 import { applyPresetData, presetDonor } from '../blocks/presetApply';
 import { presetsForType, anyPresetById } from '../blocks/animPatch';
 import { activationStep, animatedProps, resolveValue, stepSeconds } from '../blocks/animEval';
@@ -19,15 +20,18 @@ import { phaseIdOf } from './StepTimeline';
 // sits ON a keyframe to remove it. Legacy templates show read-only resolved values (the
 // timeline's "use keyframes" chip converts them).
 
-/** The editable property vocabulary. `track` is the data-model property the keyframes
- *  live on (blur is presentation for filter: 'blur(Npx)'); `base` is the design-state
- *  value used when arming a property that has never animated. `group` marks the first row
- *  of a labelled section (the 3D block); `hint` is an optional row tooltip. Every row here
- *  is an ordinary GSAP property — the runtime interpreter tweens it with no special-casing
- *  (blur is the one exception, serialized as a filter string). */
+/** The editable property vocabulary. `track` is the data-model property the keyframes live on;
+ *  `filter`, when set, means the row edits ONE function inside the composed `filter` track (see
+ *  blocks/filterTrack.ts) rather than owning a track of its own. `base` is the design-state value
+ *  used when arming a property that has never animated. `group` marks the first row of a labelled
+ *  section; `hint` is an optional row tooltip. Every row here is an ordinary GSAP property — the
+ *  runtime interpreter tweens it with no special-casing, filters included (GSAP interpolates a
+ *  composed filter string natively). */
 const PROP_ROWS: {
   prop: string;
   track: string;
+  /** The filterTrack key this row edits, for rows that share the composed `filter` track. */
+  filter?: string;
   label: string;
   base: number;
   step: number;
@@ -42,7 +46,25 @@ const PROP_ROWS: {
   { prop: 'scale', track: 'scale', label: 'Scale', base: 1, step: 0.05, min: 0 },
   { prop: 'opacity', track: 'opacity', label: 'Opacity', base: 1, step: 0.1, min: 0, max: 1 },
   { prop: 'rotation', track: 'rotation', label: 'Rotation', base: 0, step: 1 },
-  { prop: 'blur', track: 'filter', label: 'Blur (px)', base: 0, step: 1, min: 0 },
+  // Filters (docs/PRESET_MODEL_REVIEW.md gap 8). These are NOT independent tracks: `filter` is
+  // one CSS property holding a list of functions, so all five share a single composed `filter`
+  // track — exactly as CSS itself models it. Editing one row re-composes the string, preserving
+  // the others; a keyframe here therefore carries the whole filter.
+  {
+    prop: 'blur',
+    track: 'filter',
+    filter: 'blur',
+    label: 'Blur (px)',
+    base: 0,
+    step: 1,
+    min: 0,
+    group: 'Filter',
+    hint: 'These compose into one CSS filter, so they share a keyframe — the diamond stamps all of them at once.',
+  },
+  { prop: 'brightness', track: 'filter', filter: 'brightness', label: 'Brightness', base: 1, step: 0.05, min: 0, hint: '1 = unchanged. Below 1 darkens, above 1 blows out.' },
+  { prop: 'saturate', track: 'filter', filter: 'saturate', label: 'Saturation', base: 1, step: 0.05, min: 0, hint: '1 = unchanged, 0 = greyscale.' },
+  { prop: 'hueRotate', track: 'filter', filter: 'hueRotate', label: 'Hue (deg)', base: 0, step: 5 },
+  { prop: 'glow', track: 'filter', filter: 'glow', label: 'Glow (px)', base: 0, step: 1, min: 0, hint: "A centred drop-shadow. It takes the element's own colour, so it glows in the design's palette." },
   // 3D transforms (docs/PRESET_MODEL_REVIEW.md gap 7). Ordinary numeric GSAP tracks —
   // rotationX/Y spin the layer in depth, z pushes it toward/away from the viewer, and
   // perspective is the depth that makes the rotations read as 3D (set it first, usually
@@ -71,11 +93,11 @@ const KIND_LABEL: Record<string, string> = {
   block: 'Block element',
 };
 
-const blurPx = (v: number | string | null): number | null => {
-  if (v === null) return null;
-  if (typeof v === 'number') return v;
-  const m = v.match(/blur\((-?[\d.]+)px\)/);
-  return m ? Number(m[1]) : null;
+/** The row's current number: a filter row reads its function out of the composed string. */
+const rowValue = (row: { filter?: string }, raw: number | string | null): number | null => {
+  if (raw === null) return null;
+  if (row.filter) return filterComponent(raw, row.filter);
+  return typeof raw === 'number' ? raw : null;
 };
 
 export default function Inspector() {
@@ -155,13 +177,12 @@ export default function Inspector() {
       applyData(deleteKeyframe(native, at.step, part.selector, row.track, at.tRel));
       return;
     }
-    const current = row.prop === 'blur' ? blurPx(valueOf(row.track)) : valueOf(row.track);
-    const value = current === null ? row.base : (current as number);
+    const current = rowValue(row, valueOf(row.track));
+    const value = current === null ? row.base : current;
     applyData(
-      setKeyframe(
-        native, at.step, part.selector, row.track, at.tRel,
-        row.prop === 'blur' ? `blur(${value}px)` : value,
-      ),
+      row.filter
+        ? setFilterComponent(native, at.step, part.selector, row.filter, value, at.tRel)
+        : setKeyframe(native, at.step, part.selector, row.track, at.tRel, value),
     );
   };
 
@@ -186,17 +207,16 @@ export default function Inspector() {
   const commitValue = (row: (typeof PROP_ROWS)[number], raw: number) => {
     if (!native || !at || !Number.isFinite(raw)) return;
     applyData(
-      setKeyframe(
-        native, at.step, part.selector, row.track, at.tRel,
-        row.prop === 'blur' ? `blur(${raw}px)` : raw,
-      ),
+      row.filter
+        ? setFilterComponent(native, at.step, part.selector, row.filter, raw, at.tRel)
+        : setKeyframe(native, at.step, part.selector, row.track, at.tRel, raw),
     );
   };
 
   const display = (row: (typeof PROP_ROWS)[number]): string => {
-    const v = row.prop === 'blur' ? blurPx(valueOf(row.track)) : valueOf(row.track);
+    const v = rowValue(row, valueOf(row.track));
     if (v === null) return '—';
-    return typeof v === 'number' ? String(Math.round(v * 100) / 100) : v;
+    return String(Math.round(v * 100) / 100);
   };
 
   /** Every keyframe moment of one property, across all steps in playout order. */
@@ -326,7 +346,7 @@ export default function Inspector() {
                         <span
                           className="inspector-row-value"
                           title={value === '—' ? 'The design value from the stylesheet' : undefined}
-                          data-testid={`inspector-value-${row.prop === 'blur' ? 'blur' : row.track}`}
+                          data-testid={`inspector-value-${row.filter ? row.prop : row.track}`}
                         >
                           {value}
                         </span>

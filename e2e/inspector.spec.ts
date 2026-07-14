@@ -198,3 +198,119 @@ test('redo: Ctrl+Shift+Z restores an undone edit; a new edit clears the redo bra
   await page.keyboard.press('Control+Shift+z');
   expect(await speed()).toBe(0.75); // no stale redo applied
 });
+
+test('inspector: filter rows compose into one filter track without clobbering each other (gap 8)', async ({ page }) => {
+  await createHairline(page);
+  await openInspector(page);
+  await page.locator('.timeline-label[data-part="#f0"]').click();
+
+  // The filter block is present, grouped under its own divider.
+  await expect(page.getByTestId('inspector-group-filter')).toBeVisible();
+  for (const k of ['blur', 'brightness', 'saturate', 'hueRotate', 'glow']) {
+    await expect(page.getByTestId(`inspector-kf-${k}`)).toBeVisible();
+  }
+
+  const filterTrack = () =>
+    page.evaluate(async () => {
+      const { useTemplateStore } = await import('/src/store/templateStore.ts');
+      const { parseAnimData } = await import('/src/blocks/animData.ts');
+      const d = parseAnimData(useTemplateStore.getState().template.js)!;
+      for (const s of d.steps) {
+        const k = s.layers['#f0']?.filter;
+        if (k?.length) return k.map((x) => String(x.value));
+      }
+      return null;
+    });
+
+  // Arm BLUR and give it a value.
+  await page.getByTestId('inspector-kf-blur').click();
+  await page.waitForTimeout(700);
+  await page.getByTestId('inspector-input-blur').fill('8');
+  await page.getByTestId('inspector-input-blur').blur();
+  await page.waitForTimeout(700);
+  expect((await filterTrack())!.join(' ')).toContain('blur(8px)');
+
+  // Now edit BRIGHTNESS — the thing gap 8 said was impossible. It must COMPOSE with the blur,
+  // not replace it: `filter` is one CSS property, so both live in one string.
+  await page.getByTestId('inspector-input-brightness').fill('1.6');
+  await page.getByTestId('inspector-input-brightness').blur();
+  await page.waitForTimeout(700);
+  const composed = await filterTrack();
+  expect(composed!.every((v) => v.includes('blur(') && v.includes('brightness('))).toBe(true);
+  expect(composed!.join(' ')).toContain('blur(8px)');
+  expect(composed!.join(' ')).toContain('brightness(1.6)');
+
+  // And the rows read their OWN function back out of the shared string.
+  await expect(page.getByTestId('inspector-input-blur')).toHaveValue('8');
+  await expect(page.getByTestId('inspector-input-brightness')).toHaveValue('1.6');
+});
+
+test('filter track: every keyframe keeps the same shape, so the runtime really interpolates it', async ({ page }) => {
+  await createHairline(page);
+  // Author a two-filter entrance directly, then prove BOTH numbers move at runtime. This is the
+  // invariant the composed track rests on: GSAP matches a filter string's numbers positionally,
+  // so keyframes that disagreed on their function list would jump instead of tweening.
+  const result = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { parseAnimData, spliceAnimData } = await import('/src/blocks/animData.ts');
+    const { setFilterComponent } = await import('/src/blocks/animEdit.ts');
+    const { resolveValue } = await import('/src/blocks/animEval.ts');
+    const { composeDocument } = await import('/src/preview/composeDocument.ts');
+
+    const store = useTemplateStore.getState();
+    const tpl = store.template;
+    let d = parseAnimData(tpl.js)!;
+    const SEL = '#f0';
+    d = setFilterComponent(d, 0, SEL, 'blur', 12, 0);
+    d = setFilterComponent(d, 0, SEL, 'blur', 0, 0.6);
+    d = setFilterComponent(d, 0, SEL, 'brightness', 2, 0);
+    d = setFilterComponent(d, 0, SEL, 'brightness', 1, 0.6);
+    const track = d.steps[0].layers[SEL].filter.map((k) => String(k.value));
+
+    // One shape across the whole track — the interpolable invariant.
+    const shape = (s: string) => (s.match(/[a-z-]+\(/g) ?? []).join(',');
+    const shapes = [...new Set(track.map(shape))];
+
+    // The editor resolves the in-between too (strings used to STEP — the other half of gap 8).
+    const midEditor = String(resolveValue(d, SEL, 'filter', 0, 0.3));
+
+    // The runtime: boot it and read the computed filter mid-tween.
+    const js = spliceAnimData(tpl.js, d)!;
+    const midRuntime = await new Promise<string>((res) => {
+      const f = document.createElement('iframe');
+      f.style.cssText = 'position:fixed;left:-9999px;width:1280px;height:720px';
+      f.srcdoc = composeDocument({ ...tpl, js });
+      f.onload = () => {
+        const w = f.contentWindow as unknown as { buildInTimeline: () => gsap.core.Timeline; getComputedStyle: typeof getComputedStyle };
+        const el = f.contentDocument!.querySelector(SEL)!;
+        const tl = w.buildInTimeline();
+        tl.pause();
+        tl.seek(0.001);
+        tl.seek(0.3);
+        const v = w.getComputedStyle(el).filter;
+        f.remove();
+        res(v);
+      };
+      document.body.appendChild(f);
+    });
+
+    const nums = (s: string) => (s.match(/-?[\d.]+/g) ?? []).map(Number);
+    return { track, shapes, midEditor, midRuntime, runtimeNums: nums(midRuntime) };
+  });
+
+  expect(result.shapes).toHaveLength(1); // one function list across every keyframe
+  expect(result.track.every((v) => v.includes('blur(') && v.includes('brightness('))).toBe(true);
+
+  // Mid-tween, BOTH filters are strictly between their endpoints — they really interpolate,
+  // and neither has been frozen or dropped by the other.
+  const [blur, brightness] = result.runtimeNums;
+  expect(blur).toBeGreaterThan(0);
+  expect(blur).toBeLessThan(12);
+  expect(brightness).toBeGreaterThan(1);
+  expect(brightness).toBeLessThan(2);
+
+  // The editor no longer steps: it reports an in-between too (linear vs the preview's eased
+  // curve, which is the documented contract — they agree exactly at keyframe times).
+  expect(result.midEditor).toContain('blur(6px)');
+  expect(result.midEditor).toContain('brightness(1.5)');
+});

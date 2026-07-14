@@ -145,9 +145,12 @@ As built (the builders live in `src/templates/tickers/tickerMotion.ts` and
 - **Validation** (`validateTemplate.ts`): `build` is a bare identifier and the named function is
   defined in `template.js` (warning if missing — same spirit as the dangling-selector and undefined-
   call checks); `target`, when present, should match an element.
-- **Timeline** (`StepTimeline.tsx`): a read-only "measured motion" block on the target's row, naming
-  the builder, with a tooltip that it is edited in code. This is the same read-only treatment the
-  §3b calls glyph specifies (note: that glyph is itself still unbuilt — see §8).
+- **Timeline** (`StepTimeline.tsx`): a read-only "measured motion" row per target, naming the
+  builder, open-ended, with a tooltip that it is edited in code. The §3b calls glyph (a `lifecycle`
+  row of named pins) and the `loops` repeat tail shipped alongside it, on the same principle: the
+  timeline surfaces every code-owned thing in the data so it never silently hides motion, and makes
+  none of them draggable so it never implies an affordance it doesn't have. See
+  src/components/CLAUDE.md, "the three read-only surfaces".
 
 ## 7. Migration path
 

@@ -35,7 +35,7 @@ interpolate at runtime. The editable vocabulary (Inspector `PROP_ROWS`) is
 | 6 | ~~**Loop / yoyo / repeat**~~ **(DONE — see Tier 3)** | A step gains `loops[selector][prop] = { repeat, yoyo?, repeatDelay? }`: a track plays in a repeating sub-timeline. The importer converts a *static* loop (a breathing pulse) and still refuses an inline DOM-measured one. Starting-soon migrated on it. |
 | 6b | ~~**Measured motion**~~ **(DONE — see Tier 3)** | A step gains `dynamics: [{ time, build, target? }]`: a named builder measures the DOM and returns the tween (a marquee's track-width travel, a credits roll, one flip per item). The motion twin of the §3b calls. Tickers and end credits migrated on it. |
 | 7 | ~~**3D transforms**~~ **(DONE — see Tier 2)** | `DESIGN_STATE` knew `rotationX/Y`, `skewX/Y` for import fidelity but the vocabulary exposed none. Now `rotationX/Y`, `z`, and `perspective` are editable numeric tracks (`skewX/Y` remain import-only). |
-| 8 | **Composed / multiple filters** | `blur` is special-cased as `filter: 'blur(Npx)'`, a single string track. You cannot animate two independent filters (blur + brightness), and strings are stepped editor-side (only the runtime interpolates them). |
+| 8 | ~~**Composed / multiple filters**~~ **(DONE — see Tier 2)** | The `filter` track now holds a COMPOSED string (`blur(8px) brightness(1.6) drop-shadow(0px 0px 10px)`), with one Inspector row per function; and strings interpolate editor-side when both keyframes have the same shape. |
 | 9 | **Early exit (a layer leaving before the final Out)** | A layer's lifecycle is hidden → entering → visible → exiting-with-the-root. `reveals` is the only lifecycle data; there is no `hides`. |
 | 10 | **Lifecycle calls (start/stop a clock, side effects)** | A step has no `calls` field; `importAnimData` drops `tl.call` lines. This is why starting-soon and game-timers can't migrate to the data model. |
 
@@ -67,8 +67,24 @@ parse-degrades-gracefully contract. None require a graph editor or expressions.
 
 ### Tier 2 — richer per-property control
 
-- **More filter rows + a composed filter track** (gap 8): drop-shadow/brightness/hue as their own
-  editable rows, serialized into one `filter` string the runtime interpolates.
+- **More filter rows + a composed filter track** (gap 8) — **DONE**. `blur`, `brightness`,
+  `saturate`, `hue-rotate` and `glow` (a centred `drop-shadow`, colourless so it takes the
+  element's own colour) are each an Inspector row, and they compose into the ONE `filter` track
+  (`src/blocks/filterTrack.ts`).
+
+  They are deliberately NOT independent tracks. `filter` is a single CSS property holding a list
+  of functions — plain CSS can't keyframe its parts apart either — so splitting them would have
+  forced per-element proxy state and an `onUpdate` recomposition into the interpreter. Instead the
+  data keeps one composed string, and **the runtime needs no change at all**: GSAP interpolates a
+  filter string's numbers positionally. That holds only while every keyframe in a step's filter
+  track lists the same functions in the same order, which is the invariant `normalizeFilterTrack`
+  keeps (a function missing from a keyframe is filled with its identity — what it was contributing
+  anyway). The cost of the choice, stated plainly: filter functions **share a keyframe**, so the
+  diamond stamps all of them at once. The Inspector's row hint says so.
+
+  The second half of the gap is fixed too: `resolveValue` now interpolates the NUMBERS inside two
+  same-shaped strings instead of stepping, so the Inspector tracks the preview mid-tween. Written
+  generically, so `clipPath` (the mask-wipe presets) benefits identically.
 - **3D transform rows** (gap 7) — **DONE**. `rotationX`, `rotationY`, `z`, and `perspective`
   (`transformPerspective`) are ordinary numeric tracks in the editable vocabulary, grouped under a
   "3D transform" divider in the Inspector's Properties tab (perspective first, with a hint that the
@@ -103,8 +119,14 @@ parse-degrades-gracefully contract. None require a graph editor or expressions.
   credits flipped to data blocks on this**, leaving only quiz and info cards on the legacy region.
   Design + the ratified decisions: `docs/DYNAMIC_MOTION_SCOPE.md`. The timeline renders a measured
   segment READ-ONLY (a hatched, open-ended bar naming the builder) — there is nothing to keyframe,
-  and the UI says so rather than implying an affordance. Loops and §3b calls are still
-  data-visible and code-editable but have no dedicated timeline glyph — a remaining polish.
+  and the UI says so rather than implying an affordance.
+- **Read-only glyphs for loops and §3b calls** — **DONE**. The three code-owned things in the data
+  are now all surfaced on the timeline, and all three are read-only: measured motion (above), a
+  LOOP repeat tail on the looping track's own row (starting at its last keyframe — the keyframes
+  are the pass and stay editable; only the repeat is annotated; `↻∞` / `↻×N`, `⇄` for yoyo; a
+  finite repeat ends exactly where it really ends, an endless one runs off the end), and a
+  LIFECYCLE row of named call pins (`startClock()`). The principle: the timeline never silently
+  hides motion, and never implies an affordance it doesn't have.
 - **Stagger as a step/tween field** (gap 4), **motion paths** (gap 3), **spring params** (gap 5).
   Each is a genuinely new primitive with its own UI; the interaction model currently, and
   deliberately, excludes motion paths and a graph editor.

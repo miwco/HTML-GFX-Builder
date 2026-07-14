@@ -414,7 +414,89 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
     });
     return [...byTarget.values()];
   }, [data]);
-  const measuredH = measuredRows.length * MEASURED_ROW_H;
+
+  // ── Lifecycle calls (docs/TIMELINE_V2_PLAN.md §3b): `calls` fire a named template function
+  //    at a moment on the step's clock — a clock engine's startClock/stopClock. They are step
+  //    -level SIDE EFFECTS, not layer motion, so they get their own read-only row rather than
+  //    pretending to belong to some element. Like measured motion, they are code-owned: the
+  //    data names the function, the function lives in template.js.
+  const callMarks = useMemo(
+    () =>
+      data.steps.flatMap((step, si) =>
+        (step.calls ?? []).map((c) => ({ step: si, time: c.time, call: c.call })),
+      ),
+    [data],
+  );
+  const codeRowCount = measuredRows.length + (callMarks.length > 0 ? 1 : 0);
+  const measuredH = codeRowCount * MEASURED_ROW_H;
+  const callsRowTop = measuredRows.length * MEASURED_ROW_H;
+
+  // ── Looping tracks (docs/PRESET_MODEL_REVIEW.md gap 6): `loops[selector][prop]` makes one
+  //    of a layer's tracks repeat — an ambient breath, a shimmer. The keyframes are ordinary
+  //    and editable; the REPEAT itself is a property of the track, not a moment on it, so it
+  //    reads as a tail after the track's last keyframe rather than a diamond you could grab.
+  //    Read-only here (it is edited in the data), but drawn TRUTHFULLY: a finite repeat ends
+  //    where it really ends, and only an endless one runs off the end of the timeline.
+  interface LoopBar {
+    /** Where the first pass finishes — the tail starts here. */
+    from: number;
+    /** Where the repeats finish, or null when it never does. */
+    to: number | null;
+    label: string;
+    title: string;
+  }
+  const loopBarsFor = (stepIndex: number, key: string, prop?: string): LoopBar[] => {
+    const seg = segs[stepIndex];
+    const step = seg?.step;
+    const perProp = step?.loops?.[key];
+    if (!seg || !step || !perProp) return [];
+    const speed = data.speed || 1;
+    const props = prop !== undefined ? (perProp[prop] ? [prop] : []) : Object.keys(perProp);
+
+    const spans = props
+      .map((p) => {
+        const loop = perProp[p];
+        const kfs = step.layers[key]?.[p];
+        if (!loop || !kfs || kfs.length === 0) return null;
+        const first = kfs[0].time;
+        const last = kfs[kfs.length - 1].time;
+        const pass = Math.max(0, last - first); // one pass of the loop, on the stored clock
+        const delay = loop.repeatDelay ?? 0;
+        // GSAP: repeat N adds N passes AFTER the first; -1 never stops.
+        const end = loop.repeat < 0 ? null : last + loop.repeat * (pass + delay);
+        const times = loop.repeat < 0 ? '∞' : `×${loop.repeat + 1}`;
+        return {
+          prop: p,
+          last,
+          end,
+          label: `↻${times}${loop.yoyo ? ' ⇄' : ''}`,
+          note:
+            `${PROP_LABELS[p] ?? p} repeats ${loop.repeat < 0 ? 'forever' : `${loop.repeat + 1} times`}` +
+            (loop.yoyo ? ', reversing every other pass (yoyo)' : '') +
+            (delay ? `, pausing ${delay}s between passes` : ''),
+        };
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
+    if (spans.length === 0) return [];
+
+    const toX = (t: number) => seg.x + (t / speed) * pxPerSec;
+    // One tail per row: the aggregate layer row merges its props (their individual specs live
+    // on the property sub-rows behind the caret), a property row shows exactly its own.
+    const from = Math.min(...spans.map((s) => s.last));
+    const endless = spans.some((s) => s.end === null);
+    const to = endless ? null : Math.max(...spans.map((s) => s.end!));
+    const label = spans.length === 1 ? spans[0].label : '↻';
+    return [
+      {
+        from: toX(from),
+        to: to === null ? null : toX(to),
+        label,
+        title:
+          spans.map((s) => s.note).join(' · ') +
+          ' — a looping track. Its keyframes are the pass; the repeat is set in the animation data.',
+      },
+    ];
+  };
 
   /** Aggregate keyframe diamonds for one layer: the union of keyframe times across props,
    *  per step (one diamond may stand for several properties — the sub-rows split them).
@@ -1003,6 +1085,17 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
               {m.target}
             </span>
           ))}
+          {/* Lifecycle calls: step-level side effects, not a layer. */}
+          {callMarks.length > 0 && (
+            <span
+              className="timeline-label tlv2-measured-label"
+              title={`Lifecycle calls — named functions in template.js the steps fire: ${[...new Set(callMarks.map((c) => `${c.call}()`))].join(', ')}`}
+              style={{ height: MEASURED_ROW_H, lineHeight: `${MEASURED_ROW_H}px` }}
+            >
+              <span className="tlv2-expand-spacer" aria-hidden="true" />
+              lifecycle
+            </span>
+          )}
         </div>
 
         <div className="tlv2-scroll" ref={scrollRef}>
@@ -1189,6 +1282,30 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
                         </span>
                       ) : null,
                     )}
+                  {/* Looping tracks: a repeat tail after the pass's last keyframe. Read-only —
+                      the repeat is a property of the track, not a moment you could drag. */}
+                  {segs.flatMap((seg) =>
+                    loopBarsFor(seg.i, r.layerKey, r.prop).map((bar, bi) => {
+                      // A loop can outlive the authored timeline (an endless one always does;
+                      // a finite one can too, since a step's duration is a floor, not a cap).
+                      // Clamp the tail to the drawn extent and drop its closing cap, so it
+                      // reads as "still going past here" instead of spilling off the canvas.
+                      const limit = canvasW - 4;
+                      const runsOff = bar.to === null || bar.to > limit;
+                      const end = bar.to === null ? limit : Math.min(bar.to, limit);
+                      return (
+                        <span
+                          key={`loop-${seg.i}-${bi}`}
+                          className={`tlv2-loop${runsOff ? ' endless' : ''}`}
+                          style={{ left: bar.from, width: Math.max(18, end - bar.from) }}
+                          title={bar.title}
+                          data-testid={`tlv2-loop-${r.layerKey.replace(/[^\w-]/g, '')}${r.prop ? `-${r.prop}` : ''}`}
+                        >
+                          <span className="tlv2-loop-label">{bar.label}</span>
+                        </span>
+                      );
+                    }),
+                  )}
                   {diamonds.map((d, di) => {
                     const ref: KfRef = { key: r.layerKey, step: d.step, tRel: d.tRel, prop: r.prop };
                     const grabbed = kfDrag?.moved && sameRef(kfDrag.grabbed, ref);
@@ -1261,6 +1378,35 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
                 })}
               </div>
             ))}
+
+            {/* Lifecycle calls (§3b): one read-only mark per call, at its moment on the step's
+                clock, naming the function the step fires. A side effect has no duration and
+                nothing to interpolate, so it is a mark — not a keyframe you could drag. */}
+            {callMarks.length > 0 && (
+              <div
+                className="tlv2-row tlv2-measured-row"
+                style={{ top: RULER_H + CLIPS_H + displayRows.height + callsRowTop, height: MEASURED_ROW_H }}
+              >
+                {callMarks.map((c, ci) => {
+                  const seg = segs[c.step];
+                  if (!seg) return null;
+                  return (
+                    <span
+                      key={ci}
+                      className="tlv2-call"
+                      style={{ left: seg.x + (c.time / (data.speed || 1)) * pxPerSec }}
+                      title={`${c.call}() — a lifecycle call: this step runs that function from template.js at this moment. It is a side effect, not motion, so there is nothing to keyframe; edit it in the code.`}
+                      data-testid={`tlv2-call-${c.call}`}
+                    >
+                      <span className="tlv2-call-pin" aria-hidden="true">
+                        ⬧
+                      </span>
+                      <span className="tlv2-call-name">{c.call}()</span>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
 
             {/* The keyframe lasso marquee — same amber box as the canvas selection. */}
             {tlLasso?.active && (

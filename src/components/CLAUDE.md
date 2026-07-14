@@ -105,14 +105,24 @@ in src/blocks/CLAUDE.md.
   RIGHT edge drags to set an EARLY EXIT (blocks/animEdit setLayerHide writes the step's `hides`;
   dragging to Out clears it). Setting a hide on a template whose interpreter predates the
   feature re-emits the whole region so the exit actually plays.
-  MEASURED-MOTION ROWS (docs/DYNAMIC_MOTION_SCOPE.md): a step's `dynamics` get their own rows
-  BELOW the layer rows - one per target, rendered READ-ONLY as a hatched, open-ended bar naming
-  the builder (`tickerMarquee()`), with no diamonds and no drag. The bar runs from the segment's
-  start to the end of the timeline because its real length is measured from the operator's content
-  at play time, so any fixed width would be a lie. This is deliberate, not a limitation: you cannot
-  meaningfully keyframe "travel by measured width", so the visual editor steps aside and says where
-  the motion is edited (in the code) instead of implying an affordance it doesn't have. The target
-  (`#ticker-track`) is intentionally NOT a registry part - it isn't canvas-selectable.
+  THE THREE READ-ONLY SURFACES. Three things in the data are NOT keyframes you can grab, and each
+  is SURFACED (so the timeline never silently hides motion) but never draggable (so it never
+  implies an affordance it lacks). All three are code-owned; the tooltips say so.
+  - MEASURED MOTION (`dynamics`, docs/DYNAMIC_MOTION_SCOPE.md): its own rows BELOW the layer rows,
+    one per target, as a hatched OPEN-ENDED bar naming the builder (`tickerMarquee()`). It runs to
+    the end of the timeline because its real length is measured from the operator's content at play
+    time - any fixed width would be a lie. The target (`#ticker-track`) is intentionally NOT a
+    registry part, so it is not canvas-selectable.
+  - LOOPS (`loops[selector][prop]`, PRESET_MODEL_REVIEW gap 6): a repeat TAIL on the layer's own
+    row (and on its property sub-row when expanded), starting at the looping track's LAST keyframe -
+    the keyframes ARE the pass and stay editable; only the repeat is annotated. Labelled `↻∞` /
+    `↻×N` plus `⇄` for yoyo. Drawn from the data, so a FINITE repeat ends exactly where it really
+    ends (`last + repeat × (pass + repeatDelay)`) and closes with a cap; an endless one - or a
+    finite one that outlives the authored timeline, since a step's duration is a FLOOR not a cap -
+    clamps to the canvas and drops the cap, reading as "still going".
+  - LIFECYCLE CALLS (`calls`, TIMELINE_V2_PLAN §3b): their own `lifecycle` row, one PIN per call at
+    its moment, naming the function (`startClock()`). A side effect has no duration and nothing to
+    interpolate, so it is deliberately drawn unlike a keyframe diamond.
   KEYFRAME SETS: click selects a diamond, shift-click builds a set,
   dragging any selected diamond moves the WHOLE set (magnetic snap to playhead/step
   edges/other keyframes within ~7px, Alt free, 0.05s grid fallback), Delete clears the set,
@@ -134,13 +144,18 @@ in src/blocks/CLAUDE.md.
   data-block template the Properties tab EDITS: each property carries a ◇/◆ diamond - arm it
   to stamp a keyframe at the store playhead, edit an armed value to auto-key there, click a
   diamond sitting ON a keyframe to remove it; ‹ › navigate the layer's keyframes, labels
-  drag-scrub the value, blur is the one non-transform (its keyframes live on `filter` as
-  'blur(Npx)'), and arming BOTH Position X and Y also unlocks the canvas position-keyframe
+  drag-scrub the value, and arming BOTH Position X and Y also unlocks the canvas position-keyframe
   drag (see CanvasInteraction). The vocabulary (PROP_ROWS) is x/y/yPercent/scale/opacity/
-  rotation/blur plus a **3D transform** group - `rotationX`/`rotationY`/`z` and `perspective`
+  rotation, a **Filter** group - blur/brightness/saturate/hueRotate/glow, which are NOT separate
+  tracks: they share the ONE composed `filter` track (blocks/filterTrack.ts), so a row edits one
+  function of the string and a keyframe there carries them ALL (the row hint says so). A filter
+  row carries `filter: <key>` in PROP_ROWS and writes through animEdit's `setFilterComponent` -
+  plus a **3D transform** group - `rotationX`/`rotationY`/`z` and `perspective`
   (`transformPerspective`), ordinary numeric tracks the interpreter tweens with no special-casing
   (perspective enables the 3D look; they pivot around the Pivot's transform-origin). Adding a
-  numeric prop needs only a PROP_ROWS entry - no runtime/resolver/validation change. The Animations tab names which steps move the layer and holds the preset
+  numeric prop needs only a PROP_ROWS entry - no runtime/resolver/validation change; a new FILTER
+  function needs only a FILTER_FUNCS entry in blocks/filterTrack.ts plus its PROP_ROWS row.
+  The Animations tab names which steps move the layer and holds the preset
   picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
   blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
   blends with the previous preset), and re-parks the preview at the playhead. Legacy templates get a
