@@ -2,15 +2,18 @@
 // apply. The system prompt teaches the model this project's contracts (SPX runtime, :root
 // style vars, marked ANIMATION region, auto-fit, teachable ES5) and shows lt01's real
 // generated code as the canonical example — so AI output stays editable by the Style and
-// Motion panels exactly like wizard output. One automatic repair round runs when the
-// validator finds errors; anything still broken is surfaced to the user, never auto-applied.
+// Motion panels exactly like wizard output. Results run through the injected validation
+// pipeline (static validateTemplate + the runtime bench when the caller provides one) with
+// a bounded errors-back repair loop, RE-VALIDATED every round; anything still broken is
+// surfaced to the user with its findings attached, never auto-applied.
 
-import { callClaude, type ClaudeTool, type ContentBlock } from './anthropic';
-import type { AIProvider, GenerateContext } from './provider';
+import { callClaude, callClaudeDetailed, type ClaudeTool, type ContentBlock } from './anthropic';
+import type { AIProvider, AiTemplateChange, GenerateContext, GenerateOptions } from './provider';
+import { startAiRun, type AiRunKind, type AiRunRecorder } from './telemetry';
 import { parseDefinition } from '../model/spxDefinition';
-import { RESOLUTIONS, type SpxTemplate, type TemplateChange, type TemplateType, DEFAULT_SETTINGS } from '../model/types';
+import { RESOLUTIONS, type SpxTemplate, type TemplateType, DEFAULT_SETTINGS } from '../model/types';
 import { parseDataUrl } from '../assets/assetUtils';
-import { validateTemplate } from '../validation/validateTemplate';
+import { validateTemplate, type ValidationResult } from '../validation/validateTemplate';
 import { lt01 } from '../templates/lowerThirds/lt01';
 
 // ── Structured output: the model must return the template via this tool ─────
@@ -155,35 +158,69 @@ function toTemplate(emitted: EmittedTemplate, ctx?: GenerateContext, base?: SpxT
   };
 }
 
-/** One call → template; if validation fails, one repair round with the errors. */
+/** How many errors-back repair rounds the free-form path gets (video-harness parity). */
+const MAX_REPAIR_ROUNDS = 2;
+
+/** Run the injected validation pipeline (static + runtime bench) or plain static validation. */
+async function validateWith(
+  template: SpxTemplate,
+  options?: GenerateOptions,
+  run?: AiRunRecorder,
+): Promise<ValidationResult> {
+  const t0 = Date.now();
+  const result = options?.validate ? await options.validate(template) : validateTemplate(template);
+  run?.stage('validate', t0);
+  return result;
+}
+
+/**
+ * Emit → validate → bounded errors-back repair. Every round is RE-VALIDATED (a repair that
+ * comes back broken never masquerades as fixed); a result that still fails after the budget
+ * is returned with its validation attached — surfaced to the user, never auto-applied.
+ */
 async function generateValidated(
   userContent: ContentBlock[],
   ctx?: GenerateContext,
   base?: SpxTemplate,
-): Promise<TemplateChange> {
-  const emitted = (await callClaude({
-    system: systemPrompt(),
+  options?: GenerateOptions,
+  run?: AiRunRecorder,
+): Promise<AiTemplateChange> {
+  const system = systemPrompt();
+  options?.onProgress?.('Writing the code…');
+  let t0 = Date.now();
+  // The system prompt is byte-identical across the emit and its repair rounds — one
+  // prompt-cache breakpoint absorbs most of the loop's input cost.
+  const first = await callClaudeDetailed({
+    system,
     messages: [{ role: 'user', content: userContent }],
     tool: TEMPLATE_TOOL,
-  })) as EmittedTemplate;
+    cacheSystem: true,
+  });
+  run?.stage('coder', t0, first.model, first.usage);
 
+  let emitted = first.output as EmittedTemplate;
   let template = toTemplate(emitted, ctx, base);
   let summary = emitted.summary;
+  options?.onProgress?.('Testing it…');
+  let validation = await validateWith(template, options, run);
 
-  const validation = validateTemplate(template);
-  if (!validation.ok) {
-    // One automatic repair round: hand the exact validator errors back with the code.
-    const repair = (await callClaude({
-      system: systemPrompt(),
+  for (let round = 1; round <= MAX_REPAIR_ROUNDS && !validation.ok; round++) {
+    // Errors-back repair: the exact findings (validator rules + bench measurements) with
+    // the full current code, forced back through the same tool.
+    options?.onProgress?.(`Repairing (round ${round})…`);
+    run?.repair();
+    t0 = Date.now();
+    const repair = await callClaudeDetailed({
+      system,
       messages: [
         { role: 'user', content: userContent },
-        { role: 'assistant', content: `I generated a template but the validator rejected it.` },
+        { role: 'assistant', content: `I generated a template but it failed the platform's checks.` },
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `Your template failed validation. Fix ALL of these and re-emit the complete template:
+              text: `Your template failed these checks. Fix ALL of them and re-emit the complete template:
 ${validation.errors.map((e) => `- ${e.rule}: ${e.message}`).join('\n')}
 
 === index.html ===
@@ -197,12 +234,31 @@ ${template.js}`,
         },
       ],
       tool: TEMPLATE_TOOL,
-    })) as EmittedTemplate;
-    template = toTemplate(repair, ctx, base);
-    summary = repair.summary;
+      cacheSystem: true,
+    });
+    run?.stage(`repair-${round}`, t0, repair.model, repair.usage);
+    emitted = repair.output as EmittedTemplate;
+    template = toTemplate(emitted, ctx, base);
+    summary = emitted.summary;
+    options?.onProgress?.('Testing it…');
+    validation = await validateWith(template, options, run);
   }
 
-  return { summary, template };
+  return { summary, template, path: 'custom', validation };
+}
+
+/** Telemetry wrapper: record the run whether it returns or throws. */
+async function recorded(kind: AiRunKind, work: (run: AiRunRecorder) => Promise<AiTemplateChange>): Promise<AiTemplateChange> {
+  const run = startAiRun(kind);
+  try {
+    const result = await work(run);
+    if (result.path) run.route(result.path);
+    run.finish(result.validation?.ok ?? true, result.validation?.errors.map((e) => e.rule));
+    return result;
+  } catch (e) {
+    run.finish(false, ['exception']);
+    throw e;
+  }
 }
 
 // ── Prompt assembly ───────────────────────────────────────────────────────────
@@ -245,16 +301,15 @@ function imageBlocks(ctx?: GenerateContext): ContentBlock[] {
 
 // ── The provider ──────────────────────────────────────────────────────────────
 
-export const claudeProvider: AIProvider = {
-  async generate(prompt, context) {
-    return generateValidated(
-      [...imageBlocks(context), { type: 'text', text: contextText(prompt, context) }],
-      context,
-    );
-  },
-
-  async modify(prompt, template) {
-    return generateValidated(
+/** The modify flow shared by modify/fix/makeSpxReady/convertImport (each records its own kind). */
+function modifyAs(
+  kind: AiRunKind,
+  prompt: string,
+  template: SpxTemplate,
+  options?: GenerateOptions,
+): Promise<AiTemplateChange> {
+  return recorded(kind, (run) =>
+    generateValidated(
       [
         {
           type: 'text',
@@ -273,7 +328,27 @@ ${template.js}`,
       ],
       undefined,
       template,
+      options,
+      run,
+    ),
+  );
+}
+
+export const claudeProvider: AIProvider = {
+  async generate(prompt, context, options) {
+    return recorded('generate', (run) =>
+      generateValidated(
+        [...imageBlocks(context), { type: 'text', text: contextText(prompt, context) }],
+        context,
+        undefined,
+        options,
+        run,
+      ),
     );
+  },
+
+  async modify(prompt, template, options) {
+    return modifyAs('modify', prompt, template, options);
   },
 
   async explain(code) {
@@ -287,26 +362,29 @@ ${template.js}`,
     return text;
   },
 
-  async fix(template) {
+  async fix(template, options) {
     const validation = validateTemplate(template);
     const problems = validation.ok
       ? 'No validator errors — review the template for runtime bugs (replay-safety, missing ids) and fix what you find.'
       : validation.errors.map((e) => `- ${e.rule}: ${e.message}`).join('\n');
-    return this.modify(`Fix these validation problems:\n${problems}`, template);
+    return modifyAs('fix', `Fix these validation problems:\n${problems}`, template, options);
   },
 
-  async makeSpxReady(template) {
-    return this.modify(
+  async makeSpxReady(template, options) {
+    return modifyAs(
+      'make-ready',
       'Make this template fully SPX-ready: a complete SPXGCTemplateDefinition matching the DOM ' +
         '(every fN has exactly one element), global update/play/stop/next functions, relative asset ' +
         'paths only, and the standard external references (css/template.css, js/gsap.min.js, js/template.js).',
       template,
+      options,
     );
   },
 
   async convertImport(prompt, imported, _context, options) {
     const request = prompt.trim() || 'Bring it fully up to the house standards.';
-    return this.modify(
+    return modifyAs(
+      'convert',
       `This template was IMPORTED from the user's existing file — keep what it gets right ` +
         `(its content, its design intent, its working markup), and convert the rest to this ` +
         `tool's contracts: SPXGCTemplateDefinition + fN field mapping, the :root style vars, ` +

@@ -42,10 +42,12 @@ interface ClaudeResponse {
   usage?: { input_tokens?: number; output_tokens?: number };
 }
 
-/** A call's structured output (or text) plus its token usage, for telemetry. */
+/** A call's structured output (or text) plus its token usage and model, for telemetry. */
 export interface ClaudeResult {
   output: unknown;
   usage: AiUsage;
+  /** The model the call actually used (per-call override or the settings model). */
+  model: string;
 }
 
 /** Call Claude and also return token usage. Same contract as callClaude otherwise. */
@@ -104,13 +106,13 @@ export async function callClaudeDetailed(req: ClaudeRequest): Promise<ClaudeResu
     }
     const call = data.content.find((c) => c.type === 'tool_use');
     if (!call || call.type !== 'tool_use') throw new Error('The model did not return the expected structured result.');
-    return { output: call.input, usage };
+    return { output: call.input, usage, model: body.model };
   }
   const text = data.content
     .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
     .map((c) => c.text)
     .join('\n');
-  return { output: text, usage };
+  return { output: text, usage, model: body.model };
 }
 
 /** Call Claude. Returns the forced tool's input (when a tool is given) or the text. */
