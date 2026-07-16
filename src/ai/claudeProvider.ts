@@ -15,6 +15,9 @@ import { RESOLUTIONS, type SpxTemplate, type TemplateType, DEFAULT_SETTINGS } fr
 import { parseDataUrl } from '../assets/assetUtils';
 import { validateTemplate, type ValidationResult } from '../validation/validateTemplate';
 import { lt01 } from '../templates/lowerThirds/lt01';
+import { catalogDigest, DESIGN_SPEC_TOOL, specToTemplate, type DesignSpec } from './designSpec';
+import { variantsFor } from '../templates/catalog';
+import type { TemplateVariant } from '../model/wizard';
 
 // ── Structured output: the model must return the template via this tool ─────
 
@@ -49,11 +52,26 @@ interface EmittedTemplate {
   js: string;
 }
 
-// ── The system prompt: contracts + taste + one real example ─────────────────
+// ── The system prompts: contracts + taste-as-reasoning + one real example ────
 
-function systemPrompt(): string {
+// Taste is derived from the brief, never from a fixed aesthetic — shared by the design
+// stage and the coder so both reason the same way.
+const TASTE_REASONING = `## How to judge design (reason from the context, never from a house look)
+Taste is not a fixed aesthetic. Derive it from the brief, the programme's genre, the
+audience, and any references: clear hierarchy (what is read first, second, last),
+intentional contrast, information density suited to the audience and reading distance,
+strong typography, balanced spacing, coherent visual logic, motion that supports the
+reading order, restraint where the content is serious, distinctiveness without
+unnecessary decoration. A news lower third, an esports ranking, an election result, a
+financial ticker, an entertainment graphic, and a children's programme each earn
+DIFFERENT answers — density, weight, colour energy, motion speed. Never default to one
+look; make every choice follow the programme.`;
+
+function systemPrompt(exampleVariant: TemplateVariant = lt01): string {
   // The canonical example is REAL generated code — the same contracts the wizard writes.
-  const example = lt01.create();
+  // The caller picks the nearest catalog design so a scoreboard brief studies a real
+  // scoreboard's contracts, not always a lower third.
+  const example = exampleVariant.create();
   return `You are the template generator inside NoaCG Studio — a tool that creates
 broadcast graphics templates for SPX Graphics / CasparCG playout. You write COMPLETE, working,
 marketplace-quality templates. The user is learning to code from what you write.
@@ -122,8 +140,8 @@ marketplace-quality templates. The user is learning to code from what you write.
   clever one-liners unless they clearly make the code simpler to read — usually they do not here.
 - Teachable ES5 in template.js (var, function declarations), short useful comments that explain
   WHY (not that something changed). Rich but commented CSS. No frameworks, no build steps.
-- Broadcast taste: one accent color doing sharp small work, generous whitespace, real
-  typographic hierarchy, marketplace-grade composition — never a tutorial demo.
+
+${TASTE_REASONING}
 
 ## The canonical example (REAL output of this tool — match its structure exactly)
 === index.html ===
@@ -135,6 +153,42 @@ ${example.js}
 === end of example ===
 
 Return the template ONLY via the emit_template tool.`;
+}
+
+/** The design-stage prompt: decide the route and every design parameter — no code. */
+function specSystemPrompt(): string {
+  return `You are the design director inside NoaCG Studio — a tool that creates broadcast
+graphics templates. You do NOT write code here. You read the brief (and any attached
+reference images) and return ONE design decision via the emit_design_spec tool.
+
+${TASTE_REASONING}
+
+## Routing (fit)
+Choose "catalog" when a design family below carries the brief's STRUCTURE — the platform
+then assembles a guaranteed-correct template from your parameters, and styling differences
+(colour, typography, density, spacing, shape, motion character) are expressed through the
+parameters and the flourish, never by rejecting the chassis. Choose "custom" when the brief
+genuinely calls for a structure or composition no family expresses — a novel layout, an
+unlisted graphic kind, a composition that would be forced into the wrong shape. Custom is a
+real creative route; never cram a brief into an ill-fitting chassis, and never route to
+custom just for a styling difference.
+
+## Variety (a hard requirement)
+Different briefs must produce visibly different designs. Choose the chassis, zone, motion,
+typography, density, and palette from THIS brief's world — not the same safe family every
+time. Fill lines[] with realistic samples from the brief's world, never lorem ipsum.
+
+## References
+When images are attached: a logo means brand colours and useLogoSlot where the design has a
+slot; screenshots or style frames mean you read the SYSTEM behind them — grid, hierarchy,
+spacing rhythm, proportions, shape language, colour balance, density, motion cues — into
+referenceSystem, and let it drive your parameters. References outweigh every generic rule
+above.
+
+## What the platform can assemble
+${catalogDigest()}
+
+Return the design ONLY via the emit_design_spec tool.`;
 }
 
 // ── Building an SpxTemplate from the model's output ──────────────────────────
@@ -184,8 +238,9 @@ async function generateValidated(
   base?: SpxTemplate,
   options?: GenerateOptions,
   run?: AiRunRecorder,
+  exampleVariant?: TemplateVariant,
 ): Promise<AiTemplateChange> {
-  const system = systemPrompt();
+  const system = systemPrompt(exampleVariant);
   options?.onProgress?.('Writing the code…');
   let t0 = Date.now();
   // The system prompt is byte-identical across the emit and its repair rounds — one
@@ -334,17 +389,74 @@ ${template.js}`,
   );
 }
 
+/** The design stage's decisions, carried into the free-form coder as plain direction. */
+function designNotes(spec: DesignSpec): string {
+  return [
+    'Design direction (decided in the design stage — follow it):',
+    `- ${spec.reason}`,
+    spec.motionCharacter ? `- Motion: ${spec.motionCharacter}` : null,
+    spec.referenceSystem ? `- Reference system (read from the uploads): ${spec.referenceSystem}` : null,
+    spec.flourish ? `- Signature: ${spec.flourish}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 export const claudeProvider: AIProvider = {
   async generate(prompt, context, options) {
-    return recorded('generate', (run) =>
-      generateValidated(
-        [...imageBlocks(context), { type: 'text', text: contextText(prompt, context) }],
-        context,
-        undefined,
-        options,
-        run,
-      ),
-    );
+    return recorded('generate', async (run) => {
+      const userContent: ContentBlock[] = [
+        ...imageBlocks(context),
+        { type: 'text', text: contextText(prompt, context) },
+      ];
+
+      // Stage 1 — the design spec (also the router). A stage failure must never kill the
+      // generation: fall through to the free-form path with no spec.
+      options?.onProgress?.('Designing…');
+      let spec: DesignSpec | null = null;
+      try {
+        const t0 = Date.now();
+        const result = await callClaudeDetailed({
+          system: specSystemPrompt(),
+          messages: [{ role: 'user', content: userContent }],
+          tool: DESIGN_SPEC_TOOL,
+          maxTokens: 4000,
+        });
+        run.stage('design-spec', t0, result.model, result.usage);
+        spec = result.output as DesignSpec;
+        if (!Array.isArray(spec.lines)) spec.lines = [];
+      } catch {
+        // No spec — the free-form path below still serves the brief.
+      }
+
+      if (spec && spec.fit === 'catalog') {
+        // Stage 2 — deterministic assembly through the real catalog assemblers: correct
+        // by construction, panel- and timeline-editable like any wizard output.
+        options?.onProgress?.('Assembling…');
+        const t0 = Date.now();
+        const { template, diversity } = specToTemplate(spec, context);
+        run.stage('assemble', t0);
+        run.diversity(diversity);
+        options?.onProgress?.('Testing it…');
+        const validation = await validateWith(template, options, run);
+        // No repair loop here: a grounded assembly failing its own bench is a platform
+        // bug worth surfacing, not something a model round-trip should paper over.
+        return {
+          summary: spec.summary || 'Built from the catalog design system.',
+          template,
+          path: 'grounded',
+          validation,
+        };
+      }
+
+      // Custom route — the free-form coder, studying the NEAREST catalog design as its
+      // canonical example and carrying the design stage's direction.
+      const exampleVariant = spec ? variantsFor(spec.category)[0] : undefined;
+      const content: ContentBlock[] = spec
+        ? [...userContent, { type: 'text', text: designNotes(spec) }]
+        : userContent;
+      return generateValidated(content, context, undefined, options, run, exampleVariant);
+    });
   },
 
   async modify(prompt, template, options) {

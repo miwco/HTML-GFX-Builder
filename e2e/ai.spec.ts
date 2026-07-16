@@ -48,15 +48,51 @@ function next() {}`,
 // Same template but with a broken runtime — the validator must reject it.
 const INVALID_TEMPLATE = { ...VALID_TEMPLATE, js: 'var nothing = true;' };
 
-function toolResponse(input: unknown) {
+// Design-stage fixtures: the harness's first call is emit_design_spec (the router).
+// A 'custom' spec sends the flow to the free-form coder (the emit_template fixtures);
+// a 'catalog' spec is assembled by the platform with NO further model calls.
+const CUSTOM_SPEC = {
+  fit: 'custom',
+  reason: 'No catalog family carries this structure.',
+  name: 'Test Slate',
+  summary: 'A minimal test slate.',
+  category: 'info-card',
+  lines: [{ title: 'Name', sample: 'Hello AI' }],
+};
+
+const GROUNDED_SPEC = {
+  fit: 'catalog',
+  reason: 'A restrained lower third carries this brief.',
+  name: 'Grounded Strap',
+  summary: 'A clean lower third assembled from the catalog design system.',
+  category: 'lower-third',
+  variantId: 'lt01',
+  lines: [
+    { title: 'Name', sample: 'Ada Lovelace' },
+    { title: 'Title', sample: 'Analyst' },
+  ],
+};
+
+function toolUse(name: string, input: unknown) {
   return {
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({
-      content: [{ type: 'tool_use', id: 'tu_1', name: 'emit_template', input }],
+      content: [{ type: 'tool_use', id: 'tu_1', name, input }],
       stop_reason: 'tool_use',
     }),
   };
+}
+
+/** Which forced tool the request asked for — the mock dispatches on it. */
+function requestedTool(route: Route): string {
+  const body = route.request().postDataJSON() as { tools?: { name: string }[] };
+  return body.tools?.[0]?.name ?? '';
+}
+
+function toolResponse(route: Route, template: unknown) {
+  const tool = requestedTool(route);
+  return tool === 'emit_design_spec' ? toolUse(tool, CUSTOM_SPEC) : toolUse('emit_template', template);
 }
 
 async function openAiStep(page: Page) {
@@ -73,7 +109,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('describe-it: prompt → validated template → create project', async ({ page }) => {
-  await page.route('https://api.anthropic.com/v1/messages', (route: Route) => route.fulfill(toolResponse(VALID_TEMPLATE)));
+  await page.route('https://api.anthropic.com/v1/messages', (route: Route) => route.fulfill(toolResponse(route, VALID_TEMPLATE)));
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A simple test slate');
   await page.getByRole('button', { name: '✦ Generate' }).click();
@@ -87,26 +123,44 @@ test('describe-it: prompt → validated template → create project', async ({ p
   await expect(page.frameLocator('iframe.preview-frame').locator('#f0')).toHaveText('Hello AI');
 });
 
-test('describe-it: an invalid first answer triggers the automatic repair round', async ({ page }) => {
-  let calls = 0;
+test('describe-it: a catalog spec is assembled by the platform with no coder call', async ({ page }) => {
+  let templateCalls = 0;
   await page.route('https://api.anthropic.com/v1/messages', (route: Route) => {
-    calls += 1;
-    return route.fulfill(toolResponse(calls === 1 ? INVALID_TEMPLATE : VALID_TEMPLATE));
+    if (requestedTool(route) === 'emit_template') templateCalls += 1;
+    return route.fulfill(requestedTool(route) === 'emit_design_spec' ? toolUse('emit_design_spec', GROUNDED_SPEC) : toolUse('emit_template', VALID_TEMPLATE));
+  });
+  await openAiStep(page);
+  await page.locator('.wz-step textarea').fill('A clean news lower third');
+  await page.getByRole('button', { name: '✦ Generate' }).click();
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  expect(templateCalls).toBe(0); // grounded: the platform assembled it, the model wrote no code
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+  await expect(page.locator('.topbar .tpl-name')).toHaveText('Grounded Strap');
+});
+
+test('describe-it: an invalid first answer triggers the automatic repair round', async ({ page }) => {
+  let templateCalls = 0;
+  await page.route('https://api.anthropic.com/v1/messages', (route: Route) => {
+    if (requestedTool(route) !== 'emit_template') return route.fulfill(toolUse('emit_design_spec', CUSTOM_SPEC));
+    templateCalls += 1;
+    return route.fulfill(toolUse('emit_template', templateCalls === 1 ? INVALID_TEMPLATE : VALID_TEMPLATE));
   });
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A slate that needs a repair round');
   await page.getByRole('button', { name: '✦ Generate' }).click();
   await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
-  expect(calls).toBe(2); // generate + one repair
+  expect(templateCalls).toBe(2); // the coder emit + one validated repair
 });
 
 test('describe-it: refine sends the current code back through modify', async ({ page }) => {
   const prompts: string[] = [];
   await page.route('https://api.anthropic.com/v1/messages', async (route: Route) => {
+    if (requestedTool(route) !== 'emit_template') return route.fulfill(toolUse('emit_design_spec', CUSTOM_SPEC));
     const body = route.request().postDataJSON() as { messages: { content: { type: string; text?: string }[] }[] };
     const text = body.messages.map((m) => (Array.isArray(m.content) ? m.content.map((c) => c.text ?? '').join(' ') : '')).join(' ');
     prompts.push(text);
-    return route.fulfill(toolResponse({ ...VALID_TEMPLATE, name: prompts.length > 1 ? 'Test Slate v2' : 'Test Slate' }));
+    return route.fulfill(toolUse('emit_template', { ...VALID_TEMPLATE, name: prompts.length > 1 ? 'Test Slate v2' : 'Test Slate' }));
   });
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A simple test slate');
