@@ -19,6 +19,14 @@ applied to the element) and **GSAP** (tween injected into `play()/stop()`).
 
 Field/definition editing helpers: nextFieldId, addFieldToDefinition, setFieldDefault, …
 
+## assetOps.ts - the Assets panel's transforms
+
+`moveAsset(template, from, to)` - move/rename an asset path with an exact-string rewrite of
+every reference across html/css/js (the verbatim-path convention inlineAssetRefs relies on),
+plus `insertImageElement` - the drag-to-canvas drop: a commented, absolutely positioned
+`<img id="img-*" data-gfx>` + CSS rule at the drop point. Callers apply through ONE
+applyTemplate so a move (or a drop) is one undo step.
+
 ## cssVars.ts
 
 :root variable read/write helpers (the Style panel's patch layer).
