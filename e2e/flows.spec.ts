@@ -111,7 +111,8 @@ test('reset: the topbar button restores the original state, undoably', async ({ 
 
 test('import graphics: image lands in the logo slot', async ({ page }) => {
   await page.goto('/app');
-  await page.locator('[data-entry="import"]').click();
+  // Images enter through "Create with AI"; the catalog continuation designs around them.
+  await page.locator('[data-entry="ai"]').click();
   // A tiny 1×1 PNG.
   await page.locator('.wz-drop input[type="file"]').setInputFiles({
     name: 'team-logo.png',
@@ -121,6 +122,8 @@ test('import graphics: image lands in the logo slot', async ({ page }) => {
       'base64',
     ),
   });
+  await expect(page.locator('.wz-fid')).toHaveCount(1);
+  await page.getByRole('button', { name: /Design around these with a catalog template/ }).click();
   await expect(page.locator('.asset-card')).toHaveCount(1);
   await page.getByRole('button', { name: /Continue with 1 image/ }).click();
 

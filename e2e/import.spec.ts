@@ -33,8 +33,10 @@ const FOREIGN_HTML = `<!DOCTYPE html>
 async function dropTemplate(page: Page, name: string, buffer: Buffer) {
   await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="import"]').click();
+  // Import lives inside "Create with AI": drop the file, then the no-AI byte-faithful open.
+  await page.locator('[data-entry="ai"]').click();
   await page.locator('.wz-drop input[type="file"]').setInputFiles({ name, mimeType: 'text/html', buffer });
+  await page.getByRole('button', { name: /Open as code \(no AI\)/ }).click();
   await expect(page.locator('.wz-modal')).toBeHidden();
   await page.waitForTimeout(650);
 }
@@ -90,14 +92,15 @@ test('import round-trip: an exported Starter zip re-imports as the same code', a
   const zipBuffer = readFileSync(await download.path());
   await JSZip.loadAsync(zipBuffer); // sanity: it is a real zip
 
-  // Re-import the zip through the wizard.
+  // Re-import the zip through the wizard (inside "Create with AI", no AI involved).
   await page.getByRole('button', { name: '+ New project' }).click();
-  await page.locator('[data-entry="import"]').click();
+  await page.locator('[data-entry="ai"]').click();
   await page.locator('.wz-drop input[type="file"]').setInputFiles({
     name: 'hairline_spx.zip',
     mimeType: 'application/zip',
     buffer: zipBuffer,
   });
+  await page.getByRole('button', { name: /Open as code \(no AI\)/ }).click();
   await expect(page.locator('.wz-modal')).toBeHidden();
   const after = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');

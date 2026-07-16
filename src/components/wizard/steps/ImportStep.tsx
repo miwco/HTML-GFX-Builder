@@ -2,37 +2,25 @@ import { useRef, useState } from 'react';
 import { CATEGORIES, type TemplateCategory } from '../../../model/wizard';
 import type { AssetFile } from '../../../model/types';
 import { fileToDataUrl, isImageAsset, uniqueAssetPath } from '../../../assets/assetUtils';
-import { isTemplateFile } from '../../../model/importTemplate';
 
 interface Props {
   images: AssetFile[];
   onImages: (images: AssetFile[]) => void;
   onContinue: (category: TemplateCategory) => void;
-  /** An .html / .zip template import — resolves to an error message, or null on success. */
-  onTemplateFile: (file: File) => Promise<string | null>;
 }
 
 /**
- * "Import" — two flows in one drop zone:
- *   - images: they become template assets and the wizard continues with logo-slot
- *     designs first and your first image pre-placed;
- *   - an existing template (.html or SPX-style .zip): split into the editor panes to
- *     edit — or just re-export it as SPX / CasparCG / OGraf.
+ * "Images" — the catalog continuation of the Create-with-AI step: review the dropped
+ * images, add more, pick what you're making, and continue into the template picker with
+ * logo-slot designs first and the first image pre-placed. (Existing-template import lives
+ * in the Create-with-AI step itself; this step is images-only.)
  */
-export default function ImportStep({ images, onImages, onContinue, onTemplateFile }: Props) {
+export default function ImportStep({ images, onImages, onContinue }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [category, setCategory] = useState<TemplateCategory>('lower-third');
-  const [error, setError] = useState<string | null>(null);
 
   const addFiles = async (files: FileList | File[]) => {
-    setError(null);
-    const template = Array.from(files).find(isTemplateFile);
-    if (template) {
-      // A template import takes over the whole flow (the wizard closes on success).
-      setError(await onTemplateFile(template));
-      return;
-    }
     const next = [...images];
     for (const file of Array.from(files)) {
       if (!file.type.startsWith('image/')) continue;
@@ -56,21 +44,14 @@ export default function ImportStep({ images, onImages, onContinue, onTemplateFil
         <input
           ref={fileInput}
           type="file"
-          accept="image/*,.html,.htm,.zip"
+          accept="image/*"
           multiple
           style={{ display: 'none' }}
           onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = ''; }}
         />
-        <strong>Drop images — or an existing template — here</strong>
-        <span className="hint">
-          Images (logos work best as PNG with transparency) start a new design around them.
-          An <code className="inline">.html</code> file or an SPX-style{' '}
-          <code className="inline">.zip</code> opens as editable code — fix it up (the AI panel's
-          "Make SPX-ready" helps) or just re-export it as SPX / CasparCG / OGraf.
-        </span>
+        <strong>Add more images</strong>
+        <span className="hint">Logos work best as PNG with transparency.</span>
       </div>
-
-      {error && <p className="status-bad" style={{ marginTop: 10 }}>✗ {error}</p>}
 
       {images.length > 0 && (
         <div className="asset-grid" style={{ marginTop: 14 }}>

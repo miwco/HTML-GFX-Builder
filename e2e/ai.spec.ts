@@ -1,9 +1,12 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
 
-// AI mode (Describe it): the Anthropic API is mocked at the network level, so these specs
-// verify the full app flow — settings gate, generation, validation, repair round, refine,
-// and create — without a real key or cost.
+// AI mode (Create with AI): the Anthropic API is mocked at the network level, so these
+// specs verify the full app flow — settings gate, generation, the harness's validation +
+// runtime bench, the repair round, polish, refine, and create — without a real key or cost.
 
+// The fixture passes the FULL harness bar: house-shaped (a {prefix}-box structure, :root
+// vars, a readable NOACG_ANIM data block) and live-bench-clean (binds f0, plays, hides on
+// stop, replays, survives doubled text).
 const VALID_TEMPLATE = {
   name: 'Test Slate',
   type: 'info-card',
@@ -24,21 +27,30 @@ const VALID_TEMPLATE = {
   };</script>
 </head>
 <body>
-  <div class="slate"><span id="f0">Hello AI</span></div>
+  <div class="slate">
+    <div class="slate-box"><span id="f0">Hello AI</span></div>
+  </div>
 </body>
 </html>`,
   css: `:root { --accent: #e8c547; --text-color: #ffffff; --text-dim: rgba(255,255,255,0.7); --panel-bg: rgba(12,14,18,0.92); --font-heading: sans-serif; --scale: 1; }
-.slate { position: absolute; left: 80px; bottom: 80px; opacity: 0; color: var(--text-color); background: var(--panel-bg); padding: calc(20px * var(--scale)); }`,
+.slate { position: absolute; left: 80px; bottom: 80px; opacity: 0; }
+.slate-box { color: var(--text-color); background: var(--panel-bg); padding: calc(20px * var(--scale)); width: fit-content; max-width: calc(900px * var(--scale)); overflow-wrap: break-word; }`,
   js: `function update(data) {
   var fields = (typeof data === 'string') ? JSON.parse(data) : data;
   for (var key in fields) { var el = document.getElementById(key); if (el) el.textContent = fields[key]; }
 }
-/* == ANIMATION (generated — the Animation panel rewrites this block) == */
-var animSpeed = 1;
-var easeIn = 'power2.out';
-var easeOut = 'power2.in';
-function buildInTimeline() { var tl = gsap.timeline(); tl.to('.slate', { opacity: 1, duration: 0.5 / animSpeed, ease: easeIn }); return tl; }
-function buildOutTimeline() { var tl = gsap.timeline(); tl.to('.slate', { opacity: 0, duration: 0.3 / animSpeed, ease: easeOut }); return tl; }
+/* == ANIMATION (generated — the timeline edits the data block below) == */
+var NOACG_ANIM = {
+  "version": 1,
+  "root": ".slate",
+  "speed": 1,
+  "steps": [
+    { "name": "In", "duration": 0.5, "ease": "power2.out", "layers": { ".slate": { "opacity": [ { "time": 0, "value": 0 }, { "time": 0.5, "value": 1 } ] } } },
+    { "name": "Out", "duration": 0.3, "ease": "power2.in", "layers": { ".slate": { "opacity": [ { "time": 0.3, "value": 0 } ] } } }
+  ]
+};
+function buildInTimeline() { var tl = gsap.timeline(); tl.to('.slate', { opacity: 1, duration: 0.5, ease: 'power2.out' }); return tl; }
+function buildOutTimeline() { var tl = gsap.timeline(); tl.to('.slate', { opacity: 0, duration: 0.3, ease: 'power2.in' }); return tl; }
 /* == END ANIMATION == */
 function play() { gsap.killTweensOf('*'); buildInTimeline(); }
 function stop() { gsap.killTweensOf('*'); buildOutTimeline(); }
