@@ -127,7 +127,7 @@ test('start over: the escape hatch out of unconvertible code writes DATA, and un
 
   // The one write this surface offers. It does not edit the hand-written motion — it replaces
   // the region with a preset, as modern data, so the way out of legacy code leads FORWARD.
-  await page.getByTestId('timeline-preset-reset').selectOption('slide-fade');
+  await page.getByTestId('timeline-preset-reset').selectOption('slide-up');
   await page.waitForTimeout(650);
   const js = await templateJs(page);
   expect(js).toContain('var NOACG_ANIM'); // data, never a fresh legacy region

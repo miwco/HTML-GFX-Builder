@@ -164,11 +164,11 @@ test('preset-authored off-canvas: a slide preset entrance renders + selects on t
     const { computePad } = await import('/src/components/pasteboard.ts');
     const s = useTemplateStore.getState();
     const data = parseAnimData(s.template.js)!;
-    const donor = presetDonor(s.template, data, 'slide-fade');
+    const donor = presetDonor(s.template, data, 'slide-up');
     if (!donor) return { ok: false };
     const next = applyPresetData(data, donor, 'in', '.lower-third-box');
     if (!next) return { ok: false };
-    // slide-fade is a vertical slide: the panel enters on `y`. Compute the push from the box's
+    // slide-up is a vertical slide: the panel enters on `y`. Compute the push from the box's
     // SETTLED canvas position so its entrance start lands ~120 px below the canvas edge — well
     // off-canvas, inside the bottom pasteboard — regardless of the template layout.
     const ys = next.steps[0].layers['.lower-third-box']?.y;

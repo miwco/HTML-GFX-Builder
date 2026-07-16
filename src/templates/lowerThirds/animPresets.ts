@@ -189,14 +189,59 @@ function hideStepLines(cfg: PresetConfig): string {
   hidePendingSteps(tl);                            // parts on a » press start hidden`;
 }
 
-export const ANIM_PRESETS: AnimPreset[] = [
-  {
-    id: 'slide-fade',
-    name: 'Slide + fade',
-    description: 'In: the graphic rises into place, lines follow in sequence. Out: it sinks back down and fades. Quiet and universal.',
+/** The Slide family — one choreography, four directions of travel. Kept as four plain
+ *  presets (not one parameterized preset) so every consumer of the library — the preset
+ *  registry, the keyframe deriver, the Animations tab — handles them like any other id. */
+const SLIDE_DIRECTIONS = {
+  up: {
+    name: 'Slide up',
+    description: 'In: the graphic rises into place from below, lines follow in sequence. Out: it sinks back down and fades. Quiet and universal.',
+    comment: 'the whole graphic rises in from below; text lines follow in sequence',
+    boxFrom: 'y: 26',
+    boxOut: 'y: 18',
+    lineFrom: '{ yPercent: 110 }',                   // below the mask edge
+    lineTo: '{ yPercent: 0',
+  },
+  down: {
+    name: 'Slide down',
+    description: 'In: the graphic settles into place from above, lines follow. Out: it lifts back up and fades. Calm and headline-like.',
+    comment: 'the whole graphic settles in from above; text lines follow in sequence',
+    boxFrom: 'y: -26',
+    boxOut: 'y: -18',
+    lineFrom: '{ yPercent: -110 }',                  // above the mask edge
+    lineTo: '{ yPercent: 0',
+  },
+  left: {
+    name: 'Slide left',
+    description: 'In: the graphic glides in leftward from the right edge. Out: it slips back out to the right. Lateral and smooth.',
+    comment: 'the whole graphic glides in travelling left; text lines drift after it',
+    boxFrom: 'x: 60',
+    boxOut: 'x: 44',
+    lineFrom: '{ x: 24, opacity: 0 }',
+    lineTo: '{ x: 0, opacity: 1',
+  },
+  right: {
+    name: 'Slide right',
+    description: 'In: the graphic glides in rightward from the left edge. Out: it slips back out to the left. Lateral and smooth.',
+    comment: 'the whole graphic glides in travelling right; text lines drift after it',
+    boxFrom: 'x: -60',
+    boxOut: 'x: -44',
+    lineFrom: '{ x: -24, opacity: 0 }',
+    lineTo: '{ x: 0, opacity: 1',
+  },
+} as const;
+
+export type SlideDirection = keyof typeof SLIDE_DIRECTIONS;
+
+function makeSlidePreset(dir: SlideDirection): AnimPreset {
+  const d = SLIDE_DIRECTIONS[dir];
+  return {
+    id: `slide-${dir}` as AnimPresetId,
+    name: d.name,
+    description: d.description,
     autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
     emit: (cfg) => `${MARK_OPEN}
-// Preset: Slide + fade — the whole graphic rises in; text lines follow in sequence.
+// Preset: ${d.name} — ${d.comment}.
 ${knobs(cfg)}
 
 // buildInTimeline(): choreographs the entrance. Called by play().
@@ -204,26 +249,40 @@ function buildInTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeIn } });
   tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
   tl.fromTo('.${cfg.prefix}-box',
-    { y: 26, opacity: 0 },
-    { y: 0, opacity: 1, duration: 0.55 / animSpeed }
+    { ${d.boxFrom}, opacity: 0 },
+    { ${d.boxFrom.startsWith('x') ? 'x' : 'y'}: 0, opacity: 1, duration: 0.55 / animSpeed }
   );
   tl.fromTo([${linesInIntro(cfg)}],
-    { yPercent: 110 },
-    { yPercent: 0, duration: 0.5 / animSpeed, stagger: 0.09 / animSpeed },
+    ${d.lineFrom},
+    ${d.lineTo}, duration: 0.5 / animSpeed, stagger: 0.09 / animSpeed },
     '-=0.3'                                          // overlap with the box for flow
   );
   return tl;
 }
 
-// buildOutTimeline(): the exit — always faster than the entrance.
+// buildOutTimeline(): the exit — slips back toward where it came from, faster.
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
-  tl.to('.${cfg.prefix}-box', { y: 18, opacity: 0, duration: 0.35 / animSpeed });
+  tl.to('.${cfg.prefix}-box', { ${d.boxOut}, opacity: 0, duration: 0.35 / animSpeed });
   tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}
 ${MARK_CLOSE}`,
-  },
+  };
+}
+
+/** The four slide ids, adjacent so pickers can group them as one family. */
+export const SLIDE_FAMILY: AnimPresetId[] = ['slide-up', 'slide-down', 'slide-left', 'slide-right'];
+
+export function isSlidePreset(id: AnimPresetId): boolean {
+  return SLIDE_FAMILY.includes(id);
+}
+
+export const ANIM_PRESETS: AnimPreset[] = [
+  makeSlidePreset('up'),
+  makeSlidePreset('down'),
+  makeSlidePreset('left'),
+  makeSlidePreset('right'),
 
   {
     id: 'line-reveal',
@@ -444,41 +503,6 @@ function buildInTimeline() {
 function buildOutTimeline() {
   var tl = gsap.timeline({ defaults: { ease: easeOut } });
   tl.to('.${cfg.prefix}-box', { opacity: 0, duration: 0.4 / animSpeed });
-  tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
-  return tl;
-}${stepsBlock(cfg)}
-${MARK_CLOSE}`,
-  },
-
-  {
-    id: 'drop-in',
-    name: 'Drop in',
-    description: 'In: the card falls from above and lands with a soft overshoot. Out: it lifts straight back up and away.',
-    autoEase: { easeIn: 'back.out(1.4)', easeOut: 'power2.in' },
-    emit: (cfg) => `${MARK_OPEN}
-// Preset: Drop in — the card falls from above and settles with a small overshoot.
-${knobs(cfg)}
-
-// buildInTimeline(): choreographs the entrance. Called by play().
-function buildInTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: easeIn } });
-  tl.set('.${cfg.prefix}', { opacity: 1 });                     // reveal the (CSS-hidden) graphic${hideStepLines(cfg)}
-  tl.fromTo('.${cfg.prefix}-box',
-    { y: -70, opacity: 0 },                          // starts well above its resting spot…
-    { y: 0, opacity: 1, duration: 0.6 / animSpeed }  // …falls in and settles (Back Out)
-  );
-  tl.fromTo([${linesInIntro(cfg)}],
-    { y: -12, opacity: 0 },
-    { y: 0, opacity: 1, duration: 0.4 / animSpeed, stagger: 0.07 / animSpeed },
-    '-=0.3'
-  );
-  return tl;
-}
-
-// buildOutTimeline(): the exit — lifts straight back up and away, faster.
-function buildOutTimeline() {
-  var tl = gsap.timeline({ defaults: { ease: easeOut } });
-  tl.to('.${cfg.prefix}-box', { y: -40, opacity: 0, duration: 0.35 / animSpeed });
   tl.set('.${cfg.prefix}', { opacity: 0 });                     // fully hidden; ready to play again
   return tl;
 }${stepsBlock(cfg)}

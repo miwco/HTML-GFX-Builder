@@ -17,7 +17,7 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
     maxLines: 1,
     suggestedLines: [{ title: 'Team A', sample: 'HOME' }],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'slide-fade', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',
     defaultZone: 'top-left',

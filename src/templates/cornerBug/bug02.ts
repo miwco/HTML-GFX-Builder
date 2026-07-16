@@ -42,7 +42,7 @@ export const bug02: TemplateVariant = defineBugVariant(
     maxLines: 1,
     suggestedLines: [{ title: 'Caption', sample: 'On Air' }],
     hasLogoSlot: true,
-    animationPresets: ['slide-fade', 'blur-in', 'pop-spring', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['slide-up', 'blur-in', 'pop-spring', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',
     defaultZone: 'top-left',

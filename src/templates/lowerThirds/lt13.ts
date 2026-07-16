@@ -21,7 +21,7 @@ export const lt13: TemplateVariant = defineVariant(
       { title: 'Location', sample: 'Live · Helsinki' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['line-reveal', 'mask-wipe', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['line-reveal', 'mask-wipe', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',
     defaultZone: 'bottom-left',

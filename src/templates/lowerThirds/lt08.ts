@@ -18,7 +18,7 @@ export const lt08: TemplateVariant = defineVariant(
       { title: 'Title', sample: 'Creative Director' },
     ],
     hasLogoSlot: true,
-    animationPresets: ['pop-spring', 'blur-in', 'slide-fade', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',
     defaultZone: 'bottom-left',

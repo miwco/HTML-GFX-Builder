@@ -70,13 +70,14 @@ const HARNESS = `
 test('parity: created data templates match each preset\'s legacy emit', async ({ page }) => {
   test.setTimeout(120_000);
   await toApp(page);
-  // One variant × six presets covers every value type the emits use: mask reveals
-  // (yPercent), slides (x/y + opacity), scale pops, clip-path wipes, filter blurs, skews.
+  // One variant × the preset spread covers every value type the emits use: mask reveals
+  // (yPercent, both signs), slides on every axis (x/y + opacity), scale pops, clip-path
+  // wipes, filter blurs, skews.
   const failures = await page.evaluate(`(async () => {
     ${HARNESS}
     const { variantById } = await import('/src/templates/catalog.ts');
     const failures = [];
-    for (const presetId of ['line-reveal', 'slide-fade', 'pop-spring', 'mask-wipe', 'blur-in', 'snap-stinger']) {
+    for (const presetId of ['line-reveal', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'pop-spring', 'mask-wipe', 'blur-in', 'snap-stinger']) {
       const tpl = variantById('lt01').create({ animation: { presetId } });
       if (!tpl.js.includes('var NOACG_ANIM')) { failures.push(presetId + ': creation did not emit the data block'); continue; }
       const wNew = await boot(tpl);
@@ -104,6 +105,32 @@ test('parity: created data templates match each preset\'s legacy emit', async ({
     return failures;
   })()`);
   expect(failures).toEqual([]);
+});
+
+test('slide family: each direction produces its own axis and sign of travel', async ({ page }) => {
+  await toApp(page);
+  const entries = await page.evaluate(async () => {
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { parseAnimData } = await import('/src/blocks/animData.ts');
+    const out: Record<string, { axis: string; sign: number }> = {};
+    for (const presetId of ['slide-up', 'slide-down', 'slide-left', 'slide-right'] as const) {
+      const tpl = variantById('lt01')!.create({ animation: { presetId } });
+      const data = parseAnimData(tpl.js)!;
+      const box = data.steps[0].layers['.lower-third-box'];
+      const axis = box.x ? 'x' : 'y';
+      const first = (box.x ?? box.y)![0].value as number;
+      out[presetId] = { axis, sign: Math.sign(first) };
+    }
+    return out;
+  });
+  // The entrance's first keyframe sits on the origin side: up rises from below (+y),
+  // down settles from above (−y), left glides in from the right (+x), right from the left (−x).
+  expect(entries).toEqual({
+    'slide-up': { axis: 'y', sign: 1 },
+    'slide-down': { axis: 'y', sign: -1 },
+    'slide-left': { axis: 'x', sign: 1 },
+    'slide-right': { axis: 'x', sign: -1 },
+  });
 });
 
 test('parity: the press chain — pre-hidden reveals, per-press timelines, exhaustion', async ({ page }) => {

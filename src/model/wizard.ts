@@ -90,14 +90,18 @@ export interface Palette {
 }
 
 export type AnimPresetId =
-  | 'slide-fade'
+  // The Slide family — one choreography, four directions of travel (slide-up enters
+  // rising from below, slide-left enters travelling left from the right edge, …):
+  | 'slide-up'
+  | 'slide-down'
+  | 'slide-left'
+  | 'slide-right'
   | 'line-reveal'
   | 'mask-wipe'
   | 'pop-spring'
   | 'snap-stinger'
   | 'blur-in'
   | 'fade'
-  | 'drop-in'
   | 'flip-3d'
   // End-credits motion formats (templates/endCredits/creditsPresets.ts):
   | 'credits-roll'

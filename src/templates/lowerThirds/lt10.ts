@@ -4,7 +4,7 @@
 //
 // Sanctioned structure deviation: the shared.ts contract documents .lower-third-accent as a SIBLING of
 // .lower-third-box, but here the dot is intentionally the box's first flex child so it rides every box
-// preset for free. Box-level presets (blur-in, slide-fade, pop-spring) are unaffected; the
+// preset for free. Box-level presets (blur-in, the slide family, pop-spring) are unaffected; the
 // 'line-reveal' preset (a scaleX 0→1 draw) is deliberately left out of animationPresets below
 // because a horizontal draw reads oddly on a circular dot.
 
@@ -27,7 +27,7 @@ export const lt10: TemplateVariant = defineVariant(
     hasLogoSlot: false,
     // 'line-reveal' is intentionally omitted: its scaleX 0→1 accent draw reads oddly on
     // this variant's circular dot (see the structure-deviation note in the header comment).
-    animationPresets: ['blur-in', 'slide-fade', 'pop-spring', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['blur-in', 'slide-up', 'pop-spring', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('mint'),
     defaultFontId: 'space-grotesk',
     defaultZone: 'bottom-left',

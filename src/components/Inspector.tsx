@@ -7,6 +7,7 @@ import { deleteKeyframe, setFilterComponent, setKeyframe } from '../blocks/animE
 import { filterComponent } from '../blocks/filterTrack';
 import { applyPresetData, presetDonor } from '../blocks/presetApply';
 import { presetsForType, anyPresetById } from '../blocks/presetRegistry';
+import { isSlidePreset } from '../templates/lowerThirds/animPresets';
 import { activationStep, animatedProps, resolveValue, stepSeconds } from '../blocks/animEval';
 import type { AnimPresetId } from '../model/wizard';
 import { EASINGS, resolveEasing, type EasingId } from '../model/easings';
@@ -444,11 +445,30 @@ export default function Inspector() {
                 <option value="" disabled>
                   Choose a motion style…
                 </option>
-                {presetsForType(template.type).map((p) => (
-                  <option key={p.id} value={p.id} title={p.description}>
-                    {p.name}
-                  </option>
-                ))}
+                {/* The slide family groups under one label; everything else lists flat. */}
+                {(() => {
+                  const all = presetsForType(template.type);
+                  const slides = all.filter((p) => isSlidePreset(p.id));
+                  const rest = all.filter((p) => !isSlidePreset(p.id));
+                  return (
+                    <>
+                      {slides.length > 0 && (
+                        <optgroup label="Slide">
+                          {slides.map((p) => (
+                            <option key={p.id} value={p.id} title={p.description}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {rest.map((p) => (
+                        <option key={p.id} value={p.id} title={p.description}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </>
+                  );
+                })()}
               </select>
               <span className="inspector-preset-phase" role="group" aria-label="Apply to">
                 {(['in', 'out', 'both'] as const).map((ph) => (

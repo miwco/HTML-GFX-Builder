@@ -22,7 +22,7 @@ export const card02: TemplateVariant = defineCardVariant(
       { title: 'Line 2', sample: 'POSSESSION · 61%' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',
     defaultZone: 'mid-left',

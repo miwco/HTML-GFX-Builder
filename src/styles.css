@@ -870,6 +870,12 @@ kbd {
 .wz-anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .wz-anim { text-align: left; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
 .wz-anim.selected { border-color: var(--accent); }
+/* The Slide family's cell: the preset card plus its direction-of-travel picker. */
+.wz-anim-cell { display: flex; flex-direction: column; gap: 6px; }
+.wz-anim-cell .wz-anim { flex: 1; width: 100%; }
+.wz-anim-dirs { display: flex; gap: 4px; }
+.wz-anim-dirs button { flex: 1; padding: 4px 0; font-size: 14px; line-height: 1; }
+.wz-anim-dirs button.active { border-color: var(--accent); color: var(--accent); }
 
 .issue { padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 13px; line-height: 1.35; border: 1px solid var(--border); }
 .issue.error { background: rgba(255, 107, 107, 0.08); border-color: rgba(255, 107, 107, 0.4); }

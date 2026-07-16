@@ -20,7 +20,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
     maxLines: 1,
     suggestedLines: [{ title: 'Team A', sample: 'HOME' }],
     hasLogoSlot: false,
-    animationPresets: ['snap-stinger', 'slide-fade', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['snap-stinger', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',
     defaultZone: 'top-center',

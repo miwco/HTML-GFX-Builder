@@ -78,15 +78,16 @@ test('wizard: direction control mixes a different exit preset at create', async 
   await page.getByRole('button', { name: 'Next ›' }).click(); // Animation
   // Default direction: one matched style for the entrance AND the exit.
   await expect(page.locator('.wz-step button.active', { hasText: 'In and out' })).toBeVisible();
-  // Switch only the exit; the direction hint reflects the mix.
+  // Switch only the exit; the direction hint reflects the mix. The slide family is one
+  // card with a direction-of-travel picker — ↓ picks the slide-down exit.
   await page.getByRole('button', { name: 'Out only' }).click();
-  await page.locator('.wz-anim', { hasText: 'Drop in' }).click();
-  await expect(page.locator('.wz-step .hint').first()).toContainText('Out Drop in');
+  await page.locator('.wz-anim-dirs button', { hasText: '↓' }).click();
+  await expect(page.locator('.wz-step .hint').first()).toContainText('Out Slide down');
   await page.getByRole('button', { name: 'Create project' }).click();
   await expect(page.locator('.wz-modal')).toBeHidden();
   // Lower thirds create as data blocks: the mix is real keyframe data — the entrance
   // keeps Line reveal's choreography (the accent draws in) while the Out step carries
-  // Drop in's exit (the box lifts away: y + opacity keyframes).
+  // Slide down's exit (the box lifts away: y + opacity keyframes).
   const data = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     const { parseAnimData } = await import('/src/blocks/animData.ts');

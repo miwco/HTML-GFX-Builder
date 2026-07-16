@@ -18,7 +18,7 @@ export const lt03: TemplateVariant = defineVariant(
       { title: 'Title', sample: 'Climate Researcher' },
     ],
     hasLogoSlot: false,
-    animationPresets: ['slide-fade', 'line-reveal', 'mask-wipe', 'fade', 'drop-in', 'flip-3d'],
+    animationPresets: ['slide-up', 'line-reveal', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('mint'),
     defaultFontId: 'inter',
     defaultZone: 'bottom-left',

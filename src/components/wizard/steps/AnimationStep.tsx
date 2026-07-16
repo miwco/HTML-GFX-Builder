@@ -1,4 +1,4 @@
-import { ANIM_PRESETS } from '../../../templates/lowerThirds/animPresets';
+import { ANIM_PRESETS, SLIDE_FAMILY, isSlidePreset } from '../../../templates/lowerThirds/animPresets';
 import { CREDITS_PRESETS } from '../../../templates/endCredits/creditsPresets';
 import { TICKER_PRESETS } from '../../../templates/tickers/tickerPresets';
 import { SS_PRESETS } from '../../../templates/startingSoon/ssPresets';
@@ -39,9 +39,22 @@ const DIRECTIONS: { id: AnimPhase; label: string; hint: string }[] = [
 /** The categories whose presets share the standard in/out structure (mixable phases). */
 const PHASE_CATEGORIES = ['lower-third', 'info-card', 'scoreboard', 'corner-bug'];
 
+/** The Slide family's direction picker: arrows point the way the graphic travels in. */
+const SLIDE_DIRS: { id: AnimPresetId; arrow: string; hint: string }[] = [
+  { id: 'slide-up', arrow: '↑', hint: 'Up — enters from below' },
+  { id: 'slide-down', arrow: '↓', hint: 'Down — enters from above' },
+  { id: 'slide-left', arrow: '←', hint: 'Left — enters from the right edge' },
+  { id: 'slide-right', arrow: '→', hint: 'Right — enters from the left edge' },
+];
+
 /** Step 5 — motion: direction, preset, speed, easing, and multi-step mode. */
 export default function AnimationStep({ variant, draft, onDraft, onReplay }: Props) {
-  const presets = ALL_PRESETS.filter((p) => variant.animationPresets.includes(p.id));
+  // The slide family renders as ONE card with a direction picker: a variant that lists
+  // any member offers all four (the standard structure takes any direction).
+  const presets = ALL_PRESETS.filter(
+    (p) => variant.animationPresets.includes(p.id) && !isSlidePreset(p.id),
+  );
+  const hasSlide = variant.animationPresets.some(isSlidePreset);
   const presetName = (id: AnimPresetId) => ALL_PRESETS.find((p) => p.id === id)?.name ?? id;
 
   // The entrance preset; the exit matches it unless the user mixed a different one in.
@@ -121,6 +134,48 @@ export default function AnimationStep({ variant, draft, onDraft, onReplay }: Pro
           </span>
         </h3>
         <div className="wz-anim-grid">
+          {hasSlide && (() => {
+            const isInSlide = isSlidePreset(inActive);
+            const isOutSlide = isSlidePreset(outActive);
+            const activeForPhase = direction === 'out' ? outActive : inActive;
+            const slideActive = isSlidePreset(activeForPhase) ? activeForPhase : null;
+            const selected =
+              direction === 'in' ? isInSlide
+              : direction === 'out' ? isOutSlide
+              : isInSlide && isOutSlide && inActive === outActive;
+            return (
+              <div className="wz-anim-cell">
+                <button
+                  className={`wz-anim ${selected ? 'selected' : ''}`}
+                  onClick={() => pickPreset(slideActive ?? SLIDE_FAMILY[0])}
+                >
+                  <strong>
+                    Slide
+                    {mixed && (isInSlide || isOutSlide) && (
+                      <span className="muted" style={{ fontWeight: 400 }}>
+                        {' '}· {isInSlide && isOutSlide ? 'in + out' : isInSlide ? 'in' : 'out'}
+                      </span>
+                    )}
+                  </strong>
+                  <span className="hint">
+                    Glides in from one side and slips back out the same way — pick the direction of travel below.
+                  </span>
+                </button>
+                <div className="wz-anim-dirs" role="group" aria-label="Slide direction">
+                  {SLIDE_DIRS.map((d) => (
+                    <button
+                      key={d.id}
+                      className={slideActive === d.id ? 'active' : ''}
+                      onClick={() => pickPreset(d.id)}
+                      title={d.hint}
+                    >
+                      {d.arrow}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           {presets.map((p) => {
             const isIn = inActive === p.id;
             const isOut = outActive === p.id;
