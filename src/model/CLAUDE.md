@@ -10,7 +10,11 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   shared element-identity contract. DOM-derived `{selector, kind, label, channel}`, single-token
   selectors only. Timeline labels, canvas selection, and step assignment must all name elements
   through it.
-- **wizard.ts** - categories, variants, WizardOptions, palettes.
+- **wizard.ts** - categories, variants, WizardOptions, palettes. A variant declares its
+  CAPABILITIES - `maxLines` (1-5 line capacity), `logo: 'none' | 'optional' | 'built-in'`,
+  `animationPresets` - which drive the wizard's Fields/Animation options AND the Template
+  step's filter chips, so a new family inherits both automatically. Sizing is two knobs:
+  `sizeScale` (--scale, whole graphic) and `typeScale` (--type-scale, text only).
 - **fonts.ts** - bundled OFL fonts registry + CustomFont import helpers.
 - **brand.ts** - ProjectBrand save/load (localStorage 'spx-gfx-brand'), captured on every wizard
   Create.

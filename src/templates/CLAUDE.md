@@ -56,10 +56,14 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
 ## Categories
 
 - **lowerThirds/** - lt01…lt13 on shared.ts (prefix 'lower-third', `dataRegion: true` - the
-  first category to create as NOACG_ANIM data blocks) + animPresets.ts (9 marked-region GSAP
-  presets, prefix-parameterized - they animate any category's `.{prefix}-box` structure; on a
-  data category the preset's emit is converted at create, and blocks/presetApply.ts derives
-  keyframes from the same emitters after).
+  first category to create as NOACG_ANIM data blocks) + animPresets.ts (the shared marked-region
+  GSAP preset bank, prefix-parameterized - it animates any category's `.{prefix}-box` structure;
+  on a data category the preset's emit is converted at create, and blocks/presetApply.ts derives
+  keyframes from the same emitters after). The bank leads with the **Slide family**
+  (`makeSlidePreset`: slide-up/-down/-left/-right - one choreography, four directions of travel,
+  ids adjacent + `SLIDE_FAMILY`/`isSlidePreset` so pickers group them: the wizard renders ONE
+  Slide card with a direction picker, the Inspector one optgroup), then line-reveal, mask-wipe,
+  pop-spring, snap-stinger, blur-in, fade, flip-3d.
 - **infoCards/** - card01…card05 (prefix 'info-card', `dataRegion: true`). The standard contract's
   other line-based family: they use the same 9-preset bank as lower thirds and convert exactly like
   them, steps and all (a » press per body line becomes a middle step with its `reveals`).
@@ -158,8 +162,15 @@ the credits/tickers/infographics runtimes).
   `setFieldValueJs`): text -> textContent, `<img id="fN">` -> src (an empty value hides the img
   and toggles `.has-image` on its parent so CSS can show a placeholder). Data-driven categories
   may instead keep the path in a hidden source div (credits' #f2 logo).
-- Logo slots are real SPX fields: credits f2, corner bug + card03 design-owned `extraFields`
-  (`StandardDesign.extraFields`, id computed after all user fields).
+- Logo slots are real SPX fields, declared as a VARIANT CAPABILITY
+  (`TemplateVariant.logo: 'none' | 'optional' | 'built-in'`): built-in designs (corner bugs,
+  credits' f2) always carry their slot; 'optional' designs get the wizard's Fields-step logo
+  toggle + custom upload and only emit the field when it's on (`ResolvedOptions.logoEnabled`).
+  A design either hand-authors its slot (lt07's badge, lt08's docked square, card03) as
+  design-owned `extraFields` (id computed after all user fields), or opts in with zero code:
+  `shared/logoSlot.ts` `applyLogoSlot` injects the standard slot (filelist field +
+  `<img id="fN" class="{prefix}-logo">` leading the box + placeholder CSS) from
+  `assembleStandard` when `logoEnabled` and `designHasLogoSlot` says the design has none.
 - The preview iframe can't resolve `images/...` paths set at runtime - preview/composeDocument.ts
   injects a MutationObserver shim that swaps known relative paths for their in-memory data URLs.
   Exported packages never include the shim.

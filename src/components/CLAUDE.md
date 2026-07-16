@@ -276,7 +276,17 @@ undo/redo keys as AppShell with the same Monaco/form-field guard. AI chat gates 
 
 CreationWizard (Entry -> Category -> Template -> Fields -> Style -> Animation, persistent live
 preview), draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.create(options)`
-which generates the complete, commented template.
+which generates the complete, commented template. The steps are driven by each variant's
+declared CAPABILITIES (model/wizard.ts): the Template step filters the card grid with
+style/logo/line-capacity chips; the Fields step offers up to `maxLines` text lines plus the
+logo toggle + custom upload on a `logo: 'optional'` design (built-in slots show it checked and
+locked); the Style step has TWO size knobs (Graphic size -> --scale, Text size ->
+--type-scale); the Animation step renders the slide family as ONE card with a
+direction-of-travel picker. WizardPreview cancels pending lifecycle-demo timers when a
+debounced srcdoc commits (a stale stop() must never blank the fresh document), pushes field
+values from a latest-template ref, and gates the auto-entrance on `document.fonts.ready`
+(capped) so a font choice shows on the entrance itself. Pinned by e2e/wizard-preview.spec.ts,
+wizard-logo.spec.ts, and wizard-filters.spec.ts.
 
 **Video mode** (Entry card "Video or animation with AI" -> steps/VideoStep): prompt + duration/
 aspect/fps/transparency + asset upload -> an INSTANT create (`createDefaultVideoProject`, the
