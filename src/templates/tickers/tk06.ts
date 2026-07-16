@@ -29,7 +29,7 @@ export const tk06: TemplateVariant = defineTickerVariant(
       },
       { title: 'Label', sample: 'Markets' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['ticker-marquee'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',

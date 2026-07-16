@@ -27,7 +27,7 @@ export const tk05: TemplateVariant = defineTickerVariant(
       },
       { title: 'Label', sample: 'News' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['ticker-marquee'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',

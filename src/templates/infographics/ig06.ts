@@ -22,7 +22,7 @@ export const ig06: TemplateVariant = defineInfographicVariant(
       { title: 'Schedule', sample: ROWS_SAMPLE },
       { title: 'Heading', sample: 'COMING UP TONIGHT' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['rows-cascade'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',

@@ -20,7 +20,7 @@ export const qz01: TemplateVariant = defineQuizVariant(
     description: 'A leaning dark quiz card with an accent edge and four letter-chip answer rows - game-show arena energy.',
     maxLines: 1,
     suggestedLines: [{ title: 'Question', sample: 'Which planet is known as the Red Planet?' }],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['quiz-reveal'],
     defaultPalette: paletteById('royal'),
     defaultFontId: 'archivo',

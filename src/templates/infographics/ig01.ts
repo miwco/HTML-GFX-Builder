@@ -18,7 +18,7 @@ export const ig01: TemplateVariant = defineInfographicVariant(
       { title: 'Value', sample: '87%' },
       { title: 'Label', sample: 'Audience share' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['count-up'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',

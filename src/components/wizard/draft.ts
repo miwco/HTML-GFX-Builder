@@ -63,6 +63,9 @@ export interface WizardDraft {
   importedImages: AssetFile[];
   /** Which imported image goes into the variant's logo slot (relative assets/ path). */
   logoAssetPath: string | null;
+  /** The Fields step's logo toggle on an 'optional'-logo variant; null = undecided
+   *  (falls back to "a logo image was provided"). */
+  logoEnabled: boolean | null;
 }
 
 /** A draft update: top-level fields replace; `animation` and `nudge` deep-merge. */
@@ -101,6 +104,7 @@ export function initialDraft(): WizardDraft {
     animation: { presetId: null, outPresetId: null, direction: 'both', speed: 1, easing: 'auto', steps: false },
     importedImages: [],
     logoAssetPath: null,
+    logoEnabled: null,
   };
 }
 
@@ -140,7 +144,9 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
       steps: draft.animation.steps,
     },
     importedImages: draft.importedImages.length > 0 ? draft.importedImages : undefined,
-    logoAssetPath: variant.hasLogoSlot ? draft.logoAssetPath ?? undefined : undefined,
+    logoAssetPath: variant.logo !== 'none' ? draft.logoAssetPath ?? undefined : undefined,
+    // null = the user hasn't decided; resolveOptions then falls back to "an image exists".
+    logoEnabled: draft.logoEnabled ?? undefined,
   };
 }
 

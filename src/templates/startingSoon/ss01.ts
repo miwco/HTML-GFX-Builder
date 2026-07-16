@@ -18,7 +18,7 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
       { title: 'Title', sample: 'STARTING SOON' },
       { title: 'Show name', sample: 'The Late Line' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['hold-loop'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',

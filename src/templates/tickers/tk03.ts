@@ -26,7 +26,7 @@ export const tk03: TemplateVariant = defineTickerVariant(
       },
       { title: 'Label', sample: 'NOW' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['ticker-flip'],
     defaultPalette: paletteById('orchid'),
     defaultFontId: 'manrope',

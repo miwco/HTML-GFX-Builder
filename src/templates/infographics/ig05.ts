@@ -20,7 +20,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
       { title: 'Total', sample: '124213' },
       { title: 'Goal', sample: '250000' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['count-up'],
     defaultPalette: paletteById('mint'),
     defaultFontId: 'inter',

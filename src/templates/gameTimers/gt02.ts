@@ -20,7 +20,7 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
     description: 'A corner slab clock with a leaning accent edge — flips to the accent and flashes at zero.',
     maxLines: 1,
     suggestedLines: [{ title: 'Label', sample: 'SHOT CLOCK' }],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['timer-run'],
     defaultPalette: paletteById('inferno'),
     defaultFontId: 'archivo',

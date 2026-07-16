@@ -24,6 +24,7 @@ import {
   runtimeJs,
   zoneCssText,
 } from './base';
+import { applyLogoSlot, designHasLogoSlot } from './logoSlot';
 import { presetById, type PresetConfig } from '../lowerThirds/animPresets';
 import { importAnimData } from '../../blocks/animImport';
 import type { AnimData } from '../../blocks/animData';
@@ -126,6 +127,9 @@ export function assembleStandard(
   o: ResolvedOptions,
 ): SpxTemplate {
   const p = cat.prefix;
+  // The declarative logo slot: an 'optional'-logo design that doesn't hand-author its own
+  // slot gets the shared one (field + <img> + placeholder CSS) when the logo is enabled.
+  if (o.logoEnabled && !designHasLogoSlot(design, p)) design = applyLogoSlot(design, p, o);
   const font = resolveHeadingFont(o); // imported font wins over the bundled set
   const fields = [...fieldsFromOptions(o), ...(design.extraFields ?? [])];
   // A design may opt out of steps mode (see StandardDesign.disableSteps); SPX then

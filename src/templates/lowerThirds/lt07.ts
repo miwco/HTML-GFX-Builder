@@ -16,7 +16,7 @@ export const lt07: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'THE TITANS' },
       { title: 'Subtitle', sample: 'HOME · GAME 4' },
     ],
-    hasLogoSlot: true,
+    logo: 'optional',
     animationPresets: ['snap-stinger', 'pop-spring', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('royal'),
     defaultFontId: 'bebas-neue',
@@ -30,11 +30,14 @@ export const lt07: TemplateVariant = defineVariant(
     uicolor: '7',
   },
   (o) => {
-    // The badge shows the imported logo when one exists; otherwise it stays a clean
-    // accent square (drop a logo here via the import flow).
-    const badge = o.logoAssetPath
-      ? `\n        <img class="lower-third-logo" src="${o.logoAssetPath}" alt="" />\n      `
-      : '<!-- Empty accent square — drop a logo here via the import flow. -->';
+    // The badge holds a real SPX image field ("filelist") when the logo slot is on: SPX
+    // writes the file path straight into the <img>, and an empty value keeps the badge a
+    // clean accent square (setFieldValue hides an <img> without a value).
+    const logoField = `f${o.lines.length + o.extraFields.length}`;
+    const logoPath = o.logoAssetPath ?? '';
+    const badge = o.logoEnabled
+      ? `\n        <!-- Logo (image field ${logoField}) — empty keeps the badge a clean accent square. -->\n        <img id="${logoField}" class="lower-third-logo"${logoPath ? ` src="${logoPath}"` : ' style="display: none"'} alt="" />\n      `
+      : '<!-- Empty accent square — turn on the logo slot in the wizard to fill it. -->';
 
     return {
       html: `    <!-- One flex slab: the accent badge (logo slot) on the left, the text stack on the right. -->
@@ -44,6 +47,19 @@ export const lt07: TemplateVariant = defineVariant(
 ${lineMasks(o, '        ')}
       </div>
     </div>`,
+
+      extraFields: o.logoEnabled
+        ? [
+            {
+              field: logoField,
+              ftype: 'filelist',
+              title: 'Logo',
+              value: logoPath,
+              assetfolder: './images/',
+              extension: 'png',
+            },
+          ]
+        : [],
       css: `/* The slab: badge and text panel fused into one hard-edged unit (zero radius on purpose). */
 .lower-third-box {
   display: flex;                   /* badge and text sit side by side */
@@ -62,7 +78,7 @@ ${lineMasks(o, '        ')}
   background: var(--accent);       /* the accent used boldly, sport-style */
 }
 
-/* The imported logo (rendered only when a graphic was imported). */
+/* The logo inside the badge (the ${logoField} image field — hidden while empty). */
 .lower-third-logo {
   width: 100%;                     /* fill the badge width… */
   height: 100%;                    /* …and its height… */

@@ -165,7 +165,7 @@ export default function CreationWizard() {
   // style family first (so the package's siblings lead).
   const orderedVariants = [...variantsFor(draft.category)].sort((a, b) => {
     if (draft.importedImages.length > 0) {
-      const logo = Number(b.hasLogoSlot) - Number(a.hasLogoSlot);
+      const logo = Number(b.logo !== 'none') - Number(a.logo !== 'none');
       if (logo !== 0) return logo;
     }
     if (matchBrand && brand) {
@@ -277,6 +277,7 @@ export default function CreationWizard() {
                     variantId: v.id,
                     lines: v.suggestedLines.map((l) => ({ ...l })),
                     zone: null,
+                    logoEnabled: null, // the logo decision belongs to the picked design
                     animation: { presetId: null, outPresetId: null },
                     // Matched brand carries the package look into every new graphic.
                     ...(matchBrand && brand

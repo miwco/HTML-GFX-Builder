@@ -35,7 +35,7 @@ export const cr04: TemplateVariant = defineCreditsVariant(
       { title: 'Credits', sample: CRAWL_SAMPLE },
       { title: 'Year / copyright', sample: '© 2026 Your Production' },
     ],
-    hasLogoSlot: true,
+    logo: 'built-in',
     animationPresets: ['credits-crawl'],
     defaultPalette: paletteById('signal'),
     defaultFontId: 'space-grotesk',

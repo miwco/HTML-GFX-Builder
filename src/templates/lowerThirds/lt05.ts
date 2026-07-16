@@ -21,7 +21,7 @@ export const lt05: TemplateVariant = defineVariant(
       { title: 'Player', sample: 'JAKE MORRISON' },
       { title: 'Stat line', sample: '24 PTS · 11 AST' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',

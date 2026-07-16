@@ -17,7 +17,7 @@ export const lt03: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'Dr. Amara Okafor' },
       { title: 'Title', sample: 'Climate Researcher' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['slide-up', 'line-reveal', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('mint'),
     defaultFontId: 'inter',

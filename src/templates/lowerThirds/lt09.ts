@@ -17,7 +17,7 @@ export const lt09: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'Luna Park' },
       { title: 'Handle', sample: '@lunamakes' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['pop-spring', 'blur-in', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('orchid'),
     defaultFontId: 'manrope',

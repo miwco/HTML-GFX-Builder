@@ -41,7 +41,7 @@ export const bug02: TemplateVariant = defineBugVariant(
     description: 'The house bug: logo (or the three-bar mark), a tiny caption, and a live ticking clock.',
     maxLines: 1,
     suggestedLines: [{ title: 'Caption', sample: 'On Air' }],
-    hasLogoSlot: true,
+    logo: 'built-in',
     animationPresets: ['slide-up', 'blur-in', 'pop-spring', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',

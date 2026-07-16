@@ -19,7 +19,7 @@ export const lt11: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'Noa Haline' },
       { title: 'Title', sample: 'Anchor · Evening News' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',

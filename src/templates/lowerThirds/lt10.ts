@@ -24,7 +24,7 @@ export const lt10: TemplateVariant = defineVariant(
       { title: 'Title', sample: 'Product Designer' },
       { title: 'Company', sample: 'Studio Nord' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     // 'line-reveal' is intentionally omitted: its scaleX 0→1 accent draw reads oddly on
     // this variant's circular dot (see the structure-deviation note in the header comment).
     animationPresets: ['blur-in', 'slide-up', 'pop-spring', 'fade', 'slide-down', 'flip-3d'],

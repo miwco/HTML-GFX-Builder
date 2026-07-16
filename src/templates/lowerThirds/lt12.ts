@@ -19,7 +19,7 @@ export const lt12: TemplateVariant = defineVariant(
       { title: 'Headline', sample: 'Coalition talks reach midnight deadline' },
       { title: 'Label', sample: 'Breaking' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',

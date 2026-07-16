@@ -25,7 +25,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
       { title: 'Standings', sample: TOWER_SAMPLE },
       { title: 'Title', sample: 'LIVE TIMING' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['rows-cascade'],
     defaultPalette: paletteById('signal'),
     defaultFontId: 'oswald',

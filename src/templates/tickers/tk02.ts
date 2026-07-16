@@ -28,7 +28,7 @@ export const tk02: TemplateVariant = defineTickerVariant(
       { title: 'Ticker items', sample: ITEMS_SAMPLE },
       { title: 'Label', sample: 'LIVE' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['ticker-marquee'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',

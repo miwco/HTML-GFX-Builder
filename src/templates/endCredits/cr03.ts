@@ -35,7 +35,7 @@ export const cr03: TemplateVariant = defineCreditsVariant(
       },
       { title: 'Year / copyright', sample: '© 2026 Your Production' },
     ],
-    hasLogoSlot: true,
+    logo: 'built-in',
     animationPresets: ['credits-pages'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',

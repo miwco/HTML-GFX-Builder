@@ -138,7 +138,8 @@ export interface AnimationChoice {
 export interface WizardOptions {
   resolution?: Resolution;
   fps?: number;
-  /** 1–3 visible text lines (design adapts). Defaults to the variant's suggested lines. */
+  /** Visible text lines, up to the variant's maxLines (the design adapts). Defaults to
+   *  the variant's suggested lines. */
   lines?: LineSpec[];
   /** Extra non-visual fields appended to the SPX definition. */
   extraFields?: ExtraFieldSpec[];
@@ -158,6 +159,9 @@ export interface WizardOptions {
   importedImages?: AssetFile[];
   /** Relative path of the imported image to place in the variant's logo slot. */
   logoAssetPath?: string;
+  /** Whether an 'optional'-logo design should include its logo slot (field + <img>).
+   *  Unset falls back to "an image was provided"; 'built-in' designs always have one. */
+  logoEnabled?: boolean;
 }
 
 /** WizardOptions with every default resolved — what variant builders actually receive. */
@@ -176,9 +180,15 @@ export interface ResolvedOptions {
   animation: AnimationChoice;
   importedImages: AssetFile[];
   logoAssetPath: string | null;
+  logoEnabled: boolean;
 }
 
 // ── Template variants ────────────────────────────────────────────────────────
+
+/** A variant's logo capability: 'built-in' = the design always carries a logo slot
+ *  (corner bugs, credits), 'optional' = the wizard offers a logo toggle (+ upload),
+ *  'none' = the design has no sensible place for one. */
+export type LogoSupport = 'none' | 'optional' | 'built-in';
 
 export interface TemplateVariant {
   /** e.g. "lt01". */
@@ -187,12 +197,12 @@ export interface TemplateVariant {
   name: string;
   styleTag: StyleTag;
   description: string;
-  /** How many visible text lines the design supports. */
-  maxLines: 1 | 2 | 3;
+  /** How many visible text lines the design supports (1–5). */
+  maxLines: number;
   /** Suggested lines used as the wizard's starting point (and preview defaults). */
   suggestedLines: LineSpec[];
-  /** Whether the design has an image/logo slot (used by the import-graphics flow). */
-  hasLogoSlot: boolean;
+  /** Logo capability — drives the wizard's logo toggle, the import flow, and filtering. */
+  logo: LogoSupport;
   /** Animation presets that suit this design (first = default). */
   animationPresets: AnimPresetId[];
   defaultPalette: Palette;
@@ -251,6 +261,9 @@ export function resolveOptions(variant: TemplateVariant, options: WizardOptions 
     },
     importedImages: options.importedImages ?? [],
     logoAssetPath: options.logoAssetPath ?? null,
+    logoEnabled:
+      variant.logo === 'built-in' ||
+      (variant.logo === 'optional' && (options.logoEnabled ?? !!options.logoAssetPath)),
   };
 }
 

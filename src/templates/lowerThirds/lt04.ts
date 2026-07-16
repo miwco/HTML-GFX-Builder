@@ -18,7 +18,7 @@ export const lt04: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'Isabella Fontaine' },
       { title: 'Kicker', sample: 'EXCLUSIVE' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['mask-wipe', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('porcelain'),
     defaultFontId: 'archivo',

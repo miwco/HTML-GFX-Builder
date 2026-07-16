@@ -18,7 +18,7 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
       { title: 'Title', sample: 'STARTING SOON' },
       { title: 'Show name', sample: 'Midnight Sessions' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['hold-loop'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',

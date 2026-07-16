@@ -17,7 +17,7 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
     description: 'Small-caps label over a large clock, split by a 2px accent hairline that draws in first.',
     maxLines: 1,
     suggestedLines: [{ title: 'Label', sample: 'ROUND 1' }],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['timer-line-reveal', 'timer-run'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',

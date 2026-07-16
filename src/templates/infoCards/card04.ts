@@ -19,7 +19,7 @@ export const card04: TemplateVariant = defineCardVariant(
       { title: 'Name', sample: 'Albert Einstein' },
       { title: 'Role', sample: 'Theoretical physicist' },
     ],
-    hasLogoSlot: false,
+    logo: 'optional',
     animationPresets: ['blur-in', 'slide-up', 'line-reveal', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'manrope',

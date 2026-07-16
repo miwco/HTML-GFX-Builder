@@ -12,13 +12,13 @@ export const card03: TemplateVariant = defineCardVariant(
     name: 'Frosted Panel',
     styleTag: 'glass',
     description: 'A translucent blurred glass panel for schedules and lineups, with an optional logo slot.',
-    maxLines: 3,
+    maxLines: 5,
     suggestedLines: [
       { title: 'Heading', sample: "Tonight's Lineup" },
       { title: 'Line 1', sample: '20:00 — Opening keynote' },
       { title: 'Line 2', sample: '21:15 — Live Q&A with the hosts' },
     ],
-    hasLogoSlot: true,
+    logo: 'optional',
     animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',
@@ -35,14 +35,18 @@ export const card03: TemplateVariant = defineCardVariant(
   (o) => {
     // The logo is a real SPX image field ("filelist"): pick a file from the project's
     // images/ folder in SPX, or leave it empty — an empty value keeps the row collapsed.
+    // The slot only exists when the wizard's logo toggle is on (o.logoEnabled).
     const logoField = `f${o.lines.length + o.extraFields.length}`;
     const logoPath = o.logoAssetPath ?? '';
 
-    const logo = `      <!-- Logo (image field ${logoField}) — a rounded square above the heading. Empty = hidden. -->
+    const logo = o.logoEnabled
+      ? `      <!-- Logo (image field ${logoField}) — a rounded square above the heading. Empty = hidden. -->
       <img id="${logoField}" class="info-card-logo"${logoPath ? ` src="${logoPath}"` : ' style="display: none"'} alt="" />
-`;
+`
+      : '';
 
-    const logoCss = `
+    const logoCss = o.logoEnabled
+      ? `
 
 /* The logo: a rounded square leading the card, above the heading (hidden while empty). */
 .info-card-logo {
@@ -52,24 +56,27 @@ export const card03: TemplateVariant = defineCardVariant(
   margin-bottom: calc(16px * var(--scale));  /* air between logo and heading */
   border-radius: calc(12px * var(--scale));  /* rounded corners echo the panel shape */
   object-fit: contain;             /* show the whole logo, never crop a wide wordmark */
-}`;
+}`
+      : '';
 
     return {
-      html: `    <!-- One frosted glass panel: logo + masked heading and body lines inside a single translucent card. -->
+      html: `    <!-- One frosted glass panel: ${o.logoEnabled ? 'logo + ' : ''}masked heading and body lines inside a single translucent card. -->
     <div class="info-card-box">
 ${logo}${cardLineMasks(o)}
     </div>`,
 
-      extraFields: [
-        {
-          field: logoField,
-          ftype: 'filelist',
-          title: 'Logo',
-          value: logoPath,
-          assetfolder: './images/',
-          extension: 'png',
-        },
-      ],
+      extraFields: o.logoEnabled
+        ? [
+            {
+              field: logoField,
+              ftype: 'filelist',
+              title: 'Logo',
+              value: logoPath,
+              assetfolder: './images/',
+              extension: 'png',
+            },
+          ]
+        : [],
 
       css: `/* The frosted panel — translucent card, heavy backdrop blur, one soft lifting shadow. */
 .info-card-box {

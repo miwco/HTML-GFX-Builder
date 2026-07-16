@@ -21,7 +21,7 @@ export const ig04: TemplateVariant = defineInfographicVariant(
       { title: 'Percentage', sample: '68' },
       { title: 'Answer label', sample: 'YES' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['ring-fill'],
     defaultPalette: paletteById('mint'),
     defaultFontId: 'manrope',

@@ -18,7 +18,7 @@ export const lt06: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'RIVERA' },
       { title: 'Team', sample: 'FC VOLTA' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['mask-wipe', 'snap-stinger', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('inferno'),
     defaultFontId: 'archivo',

@@ -21,7 +21,7 @@ export const ig02: TemplateVariant = defineInfographicVariant(
       { title: 'Bars', sample: BARS_SAMPLE },
       { title: 'Heading', sample: 'HOW WE WATCH' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['bars-grow'],
     defaultPalette: paletteById('orchid'),
     defaultFontId: 'manrope',

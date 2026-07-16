@@ -21,7 +21,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
       { title: 'Title', sample: 'STARTING SOON' },
       { title: 'Show name', sample: 'FRIDAY FIGHT NIGHT' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['hold-loop'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'archivo',

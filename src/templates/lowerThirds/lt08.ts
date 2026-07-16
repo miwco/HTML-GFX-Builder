@@ -17,7 +17,7 @@ export const lt08: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'Sofia Lindqvist' },
       { title: 'Title', sample: 'Creative Director' },
     ],
-    hasLogoSlot: true,
+    logo: 'optional',
     animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',
@@ -32,24 +32,27 @@ export const lt08: TemplateVariant = defineVariant(
     uicolor: '2',
   },
   (o) => {
-    // The logo is rendered only when an image was actually imported — never an empty src.
-    const logo = o.logoAssetPath
-      ? `      <!-- Imported logo — docked to the card's left edge (see .lower-third-logo). -->
-      <img class="lower-third-logo" src="${o.logoAssetPath}" alt="" />
+    // The logo slot is a real SPX image field ("filelist") when the wizard turns it on:
+    // the card reserves the docked square's space, and an empty value hides the <img>.
+    const logoField = `f${o.lines.length + o.extraFields.length}`;
+    const logoPath = o.logoAssetPath ?? '';
+    const logo = o.logoEnabled
+      ? `      <!-- Logo (image field ${logoField}) — docked to the card's left edge (see .lower-third-logo). -->
+      <img id="${logoField}" class="lower-third-logo"${logoPath ? ` src="${logoPath}"` : ' style="display: none"'} alt="" />
 `
       : '';
 
-    // Extra declarations the card needs only when the logo is present.
-    const boxLogoDecls = o.logoAssetPath
+    // Extra declarations the card needs only when the logo slot exists.
+    const boxLogoDecls = o.logoEnabled
       ? `
   position: relative;              /* anchor for the absolutely-placed logo */
   padding-left: calc(112px * var(--scale));  /* 30 padding + 64 logo + 18 gap */`
       : '';
 
-    const logoCss = o.logoAssetPath
+    const logoCss = o.logoEnabled
       ? `
 
-/* The imported logo: a rounded square, vertically centered against the text block. */
+/* The logo: a rounded square, vertically centered against the text block. */
 .lower-third-logo {
   position: absolute;              /* out of flow — the card's left padding reserves its space */
   left: calc(30px * var(--scale)); /* aligned with the card's horizontal padding */
@@ -63,10 +66,23 @@ export const lt08: TemplateVariant = defineVariant(
       : '';
 
     return {
-      html: `    <!-- One frosted glass card: ${o.logoAssetPath ? 'logo + ' : ''}masked text lines inside a single translucent panel. -->
+      html: `    <!-- One frosted glass card: ${o.logoEnabled ? 'logo + ' : ''}masked text lines inside a single translucent panel. -->
     <div class="lower-third-box">
 ${logo}${lineMasks(o)}
     </div>`,
+
+      extraFields: o.logoEnabled
+        ? [
+            {
+              field: logoField,
+              ftype: 'filelist',
+              title: 'Logo',
+              value: logoPath,
+              assetfolder: './images/',
+              extension: 'png',
+            },
+          ]
+        : [],
 
       css: `/* The frosted card — translucent panel, heavy backdrop blur, one soft lifting shadow. */
 .lower-third-box {

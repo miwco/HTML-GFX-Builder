@@ -17,7 +17,7 @@ export const lt02: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'Marcus Chen' },
       { title: 'Title', sample: 'Senior Analyst' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['line-reveal', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('signal'),
     defaultFontId: 'space-grotesk',

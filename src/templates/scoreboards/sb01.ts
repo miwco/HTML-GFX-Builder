@@ -19,7 +19,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
     description: 'A leaning dark strip - team names flank two accent score chips. Match-night fast.',
     maxLines: 1,
     suggestedLines: [{ title: 'Team A', sample: 'HOME' }],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['snap-stinger', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('volt'),
     defaultFontId: 'oswald',

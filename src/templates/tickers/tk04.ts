@@ -27,7 +27,7 @@ export const tk04: TemplateVariant = defineTickerVariant(
       { title: 'Indices', sample: ITEMS_SAMPLE },
       { title: 'Label', sample: 'MARKETS' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['ticker-marquee', 'ticker-flip'],
     defaultPalette: paletteById('porcelain'),
     defaultFontId: 'inter',

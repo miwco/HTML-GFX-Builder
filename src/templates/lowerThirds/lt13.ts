@@ -20,7 +20,7 @@ export const lt13: TemplateVariant = defineVariant(
       { title: 'Organisation', sample: 'Climate Policy Institute' },
       { title: 'Location', sample: 'Live · Helsinki' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['line-reveal', 'mask-wipe', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('noacg'),
     defaultFontId: 'space-grotesk',

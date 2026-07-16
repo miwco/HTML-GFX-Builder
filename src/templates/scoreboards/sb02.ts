@@ -16,7 +16,7 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
     description: 'Panel-free corner stack - two quiet rows split by a hairline, accent rule on the edge.',
     maxLines: 1,
     suggestedLines: [{ title: 'Team A', sample: 'HOME' }],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',

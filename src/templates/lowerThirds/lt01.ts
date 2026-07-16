@@ -16,7 +16,7 @@ export const lt01: TemplateVariant = defineVariant(
       { title: 'Name', sample: 'Alexandra Riva' },
       { title: 'Title', sample: 'Chief Correspondent' },
     ],
-    hasLogoSlot: false,
+    logo: 'none',
     animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('ivory'),
     defaultFontId: 'inter',

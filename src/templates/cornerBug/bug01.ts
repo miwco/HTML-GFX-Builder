@@ -16,7 +16,7 @@ export const bug01: TemplateVariant = defineBugVariant(
     description: 'A small frosted tile with a logo slot and a tiny caption — the persistent on-air mark.',
     maxLines: 1,
     suggestedLines: [{ title: 'Caption', sample: 'LIVE' }],
-    hasLogoSlot: true,
+    logo: 'built-in',
     animationPresets: ['blur-in', 'pop-spring', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
     defaultPalette: paletteById('frost'),
     defaultFontId: 'manrope',
