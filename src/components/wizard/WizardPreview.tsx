@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { composeDocument } from '../../preview/composeDocument';
 import type { SpxTemplate } from '../../model/types';
 
@@ -24,11 +24,15 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
   const [srcdoc, setSrcdoc] = useState('');
   // Pending lifecycle-demo timers (out + back in) — cleared on any new play/stop.
   const demoTimers = useRef<number[]>([]);
-  const clearDemo = () => {
+  const clearDemo = useCallback(() => {
     demoTimers.current.forEach((t) => clearTimeout(t));
     demoTimers.current = [];
-  };
-  useEffect(() => clearDemo, []);
+  }, []);
+  useEffect(() => clearDemo, [clearDemo]);
+  // The latest template, for pushing field values: the srcdoc lags the prop by the
+  // debounce, and onLoad/demo timers fire from older closures — the ref never lies.
+  const templateRef = useRef(template);
+  templateRef.current = template;
 
   const { width, height } = template.resolution;
 
@@ -47,11 +51,17 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
   }, [width, height]);
 
   // Rebuild (debounced) when the template changes; auto-play the entrance on load.
+  // Committing a new srcdoc also cancels any pending demo timers — a stop()/play()
+  // scheduled against the previous document must never hit the reloading one (it
+  // would blank the preview right after the user's change).
   const doc = useMemo(() => composeDocument(template), [template]);
   useEffect(() => {
-    const t = setTimeout(() => setSrcdoc(doc), 220);
+    const t = setTimeout(() => {
+      clearDemo();
+      setSrcdoc(doc);
+    }, 220);
     return () => clearTimeout(t);
-  }, [doc]);
+  }, [doc, clearDemo]);
 
   const win = (): SpxWindow | null => (frameRef.current?.contentWindow as SpxWindow) ?? null;
 
@@ -59,7 +69,8 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
     const w = win();
     if (!w || typeof w.play !== 'function') return;
     clearDemo();
-    w.update?.(JSON.stringify(Object.fromEntries(template.fields.map((f) => [f.field, f.value]))));
+    const tpl = templateRef.current;
+    w.update?.(JSON.stringify(Object.fromEntries(tpl.fields.map((f) => [f.field, f.value]))));
     w.play();
     if (demoOut) {
       // Show the exit too, then come back on air so the preview isn't left empty.
@@ -68,6 +79,21 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
         window.setTimeout(() => win()?.play?.(), 2800),
       );
     }
+  };
+
+  // Play once the document's fonts are usable (a data-URL @font-face decodes in a few
+  // frames) so a font choice is seen on the entrance itself — capped so a slow decode
+  // never stalls the preview. No-ops if the iframe has reloaded meanwhile.
+  const playWhenReady = () => {
+    const loadedDoc = frameRef.current?.contentDocument ?? null;
+    let done = false;
+    const go = () => {
+      if (done || frameRef.current?.contentDocument !== loadedDoc) return;
+      done = true;
+      playIn();
+    };
+    void loadedDoc?.fonts?.ready.then(go);
+    window.setTimeout(go, 400);
   };
 
   // Replay when the parent asks (e.g. animation preset changed but srcdoc identical).
@@ -84,7 +110,7 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
           title="Wizard live preview"
           sandbox="allow-scripts allow-same-origin"
           srcDoc={srcdoc}
-          onLoad={() => setTimeout(playIn, 60)}
+          onLoad={() => setTimeout(playWhenReady, 60)}
           style={{ width, height, transform: `translate(-50%, -50%) scale(${scale})` }}
         />
       </div>
