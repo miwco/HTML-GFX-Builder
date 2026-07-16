@@ -867,6 +867,13 @@ kbd {
 .wz-nudge input { width: 80px; }
 
 /* Step 5: animation */
+/* The Template step's discovery filters: small chips above the variant grid. */
+.wz-filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.wz-filter { padding: 4px 12px; border-radius: 999px; font-size: 12px; }
+.wz-filter.active { border-color: var(--accent); color: var(--accent); }
+.wz-filter-clear { opacity: 0.8; }
+.wz-filter-empty { margin-top: 8px; }
+
 .wz-anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .wz-anim { text-align: left; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
 .wz-anim.selected { border-color: var(--accent); }
