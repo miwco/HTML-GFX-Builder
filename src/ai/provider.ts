@@ -5,6 +5,7 @@
 import type { AssetFile, Resolution, SpxTemplate, TemplateChange } from '../model/types';
 import type { Palette } from '../model/wizard';
 import type { ValidationResult } from '../validation/validateTemplate';
+import type { DesignSpec } from './designSpec';
 
 /** Extra inputs for generation: uploaded images (logo / still), brand colors, canvas. */
 export interface GenerateContext {
@@ -29,6 +30,13 @@ export interface GenerateOptions {
   validate?: SpxValidator;
   /** Stage announcements for the UI's busy line ("Designing…", "Testing it live…"). */
   onProgress?: (stage: string) => void;
+  /**
+   * For modify: the design spec that PRODUCED the template being modified (returned on a
+   * grounded AiTemplateChange). When present and the template is still house-shaped, the
+   * refinement happens at spec level — "warmer colours, calmer entrance" re-assembles
+   * deterministically instead of round-tripping code.
+   */
+  spec?: DesignSpec;
 }
 
 /** Which pipeline produced a result — surfaced honestly in the UI and in telemetry. */
@@ -39,6 +47,9 @@ export interface AiTemplateChange extends TemplateChange {
   path?: AiPath;
   /** The final validation the harness ran (static + bench when injected). */
   validation?: ValidationResult;
+  /** On grounded results: the design spec that produced the template (pass it back via
+   *  GenerateOptions.spec so refinements can stay at spec level). */
+  spec?: DesignSpec;
 }
 
 export interface AIProvider {

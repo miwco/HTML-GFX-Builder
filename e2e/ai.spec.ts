@@ -139,6 +139,63 @@ test('describe-it: a catalog spec is assembled by the platform with no coder cal
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Grounded Strap');
 });
 
+test('describe-it: a flourish runs the polish pass and lands as a marked override block', async ({ page }) => {
+  await page.route('https://api.anthropic.com/v1/messages', (route: Route) => {
+    const tool = requestedTool(route);
+    if (tool === 'emit_design_spec')
+      return route.fulfill(toolUse('emit_design_spec', { ...GROUNDED_SPEC, flourish: 'a hairline accent edge on the panel' }));
+    if (tool === 'emit_polish')
+      return route.fulfill(
+        toolUse('emit_polish', {
+          summary: 'Added a hairline accent edge.',
+          css: '.lower-third-box { box-shadow: 0 0 0 calc(1px * var(--scale)) var(--accent); }',
+        }),
+      );
+    return route.fulfill(toolUse('emit_template', VALID_TEMPLATE));
+  });
+  await openAiStep(page);
+  await page.locator('.wz-step textarea').fill('A lower third with a hairline edge');
+  await page.getByRole('button', { name: '✦ Generate' }).click();
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.topbar .tpl-name')).toHaveText('Grounded Strap');
+  const css = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().template.css;
+  });
+  expect(css).toContain('Polish (AI flourish');
+  expect(css).toContain('box-shadow: 0 0 0 calc(1px * var(--scale)) var(--accent)');
+});
+
+test('describe-it: a contract-breaking polish patch reverts to the assembled template', async ({ page }) => {
+  await page.route('https://api.anthropic.com/v1/messages', (route: Route) => {
+    const tool = requestedTool(route);
+    if (tool === 'emit_design_spec')
+      return route.fulfill(toolUse('emit_design_spec', { ...GROUNDED_SPEC, flourish: 'repaint everything purple' }));
+    if (tool === 'emit_polish')
+      return route.fulfill(
+        toolUse('emit_polish', {
+          summary: 'Repainted the theme.',
+          css: ':root { --accent: #a855f7; } @font-face { font-family: Hack; src: url(x); }',
+        }),
+      );
+    return route.fulfill(toolUse('emit_template', VALID_TEMPLATE));
+  });
+  await openAiStep(page);
+  await page.locator('.wz-step textarea').fill('A purple lower third');
+  await page.getByRole('button', { name: '✦ Generate' }).click();
+  // The bad patch is rejected and the assembled template stands — still fully valid.
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.topbar .tpl-name')).toHaveText('Grounded Strap');
+  const css = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().template.css;
+  });
+  expect(css).not.toContain('Polish (AI flourish');
+  expect(css).not.toContain('#a855f7');
+});
+
 test('describe-it: an invalid first answer triggers the automatic repair round', async ({ page }) => {
   let templateCalls = 0;
   await page.route('https://api.anthropic.com/v1/messages', (route: Route) => {

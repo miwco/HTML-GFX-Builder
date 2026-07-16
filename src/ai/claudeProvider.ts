@@ -8,7 +8,7 @@
 // surfaced to the user with its findings attached, never auto-applied.
 
 import { callClaude, callClaudeDetailed, type ClaudeTool, type ContentBlock } from './anthropic';
-import type { AIProvider, AiTemplateChange, GenerateContext, GenerateOptions } from './provider';
+import type { AiPath, AIProvider, AiTemplateChange, GenerateContext, GenerateOptions } from './provider';
 import { startAiRun, type AiRunKind, type AiRunRecorder } from './telemetry';
 import { parseDefinition } from '../model/spxDefinition';
 import { RESOLUTIONS, type SpxTemplate, type TemplateType, DEFAULT_SETTINGS } from '../model/types';
@@ -17,8 +17,11 @@ import { validateTemplate, type ValidationResult } from '../validation/validateT
 import { lt01 } from '../templates/lowerThirds/lt01';
 import { catalogDigest, DESIGN_SPEC_TOOL, specToTemplate, type DesignSpec } from './designSpec';
 import { applyDesignAdjustments } from './designAdjust';
+import { applyPolish, POLISH_TOOL, type PolishPatch } from './polish';
 import { variantsFor } from '../templates/catalog';
 import type { TemplateVariant } from '../model/wizard';
+import { detectPrefix } from '../model/structure';
+import { parseAnimData } from '../blocks/animData';
 
 // ── Structured output: the model must return the template via this tool ─────
 
@@ -357,19 +360,12 @@ function imageBlocks(ctx?: GenerateContext): ContentBlock[] {
 
 // ── The provider ──────────────────────────────────────────────────────────────
 
-/** The modify flow shared by modify/fix/makeSpxReady/convertImport (each records its own kind). */
-function modifyAs(
-  kind: AiRunKind,
-  prompt: string,
-  template: SpxTemplate,
-  options?: GenerateOptions,
-): Promise<AiTemplateChange> {
-  return recorded(kind, (run) =>
-    generateValidated(
-      [
-        {
-          type: 'text',
-          text: `Modify the template below. Change ONLY what the request needs — keep everything else
+/** The code-level modify content (shared by modifyAs and the spec-refine fallback). */
+function modifyContent(prompt: string, template: SpxTemplate): ContentBlock[] {
+  return [
+    {
+      type: 'text',
+      text: `Modify the template below. Change ONLY what the request needs — keep everything else
 (byte-identical where possible), including the user's own edits and comments.
 
 Request: ${prompt}
@@ -380,14 +376,172 @@ ${template.html}
 ${template.css}
 === template.js ===
 ${template.js}`,
+    },
+  ];
+}
+
+/** The modify flow shared by modify/fix/makeSpxReady/convertImport (each records its own kind). */
+function modifyAs(
+  kind: AiRunKind,
+  prompt: string,
+  template: SpxTemplate,
+  options?: GenerateOptions,
+): Promise<AiTemplateChange> {
+  return recorded(kind, (run) =>
+    generateValidated(modifyContent(prompt, template), undefined, template, options, run),
+  );
+}
+
+/**
+ * Spec-level refinement: when the template being modified came from a grounded spec (the
+ * caller passed it back) and is still house-shaped, the refinement re-emits the SPEC and
+ * re-assembles deterministically — "warmer colours, calmer entrance" never round-trips
+ * code. Falls back to the code-level modify when the design stage fails or routes custom.
+ */
+async function specRefine(
+  prompt: string,
+  template: SpxTemplate,
+  priorSpec: DesignSpec,
+  options: GenerateOptions | undefined,
+  run: AiRunRecorder,
+): Promise<AiTemplateChange> {
+  options?.onProgress?.('Designing…');
+  try {
+    const t0 = Date.now();
+    const result = await callClaudeDetailed({
+      system: specSystemPrompt(),
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `The user is refining an existing design. Its current design spec:
+${JSON.stringify(priorSpec, null, 2)}
+
+Refinement request: ${prompt}
+
+Return the FULL updated spec — carry forward everything the request does not change
+(including the flourish). Route to custom ONLY if the request now needs a structure the
+catalog cannot express.`,
+            },
+          ],
         },
       ],
-      undefined,
-      template,
-      options,
-      run,
-    ),
-  );
+      tool: DESIGN_SPEC_TOOL,
+      maxTokens: 4000,
+    });
+    run.stage('design-spec', t0, result.model, result.usage);
+    const spec = result.output as DesignSpec;
+    if (!Array.isArray(spec.lines)) spec.lines = [];
+    if (spec.fit === 'catalog') {
+      return groundedResult(spec, contextFrom(template), options, run);
+    }
+  } catch {
+    // The design stage failed — the code-level modify below still serves the request.
+  }
+  return generateValidated(modifyContent(prompt, template), undefined, template, options, run);
+}
+
+// ── The grounded pipeline: assemble → adjust → optional polish (revert on any failure) ──
+
+/** Try the bounded polish pass; null = reverted (the caller keeps the assembled template). */
+async function polishStage(
+  template: SpxTemplate,
+  spec: DesignSpec,
+  options: GenerateOptions | undefined,
+  run: AiRunRecorder,
+): Promise<{ template: SpxTemplate; validation: ValidationResult } | null> {
+  options?.onProgress?.('Polishing…');
+  try {
+    const t0 = Date.now();
+    const result = await callClaudeDetailed({
+      system:
+        `You add ONE bounded visual flourish to an assembled broadcast graphics template in NoaCG Studio.\n\n` +
+        `Hard rules: every colour flows through the :root vars (--accent, --text-color, --text-dim, ` +
+        `--panel-bg); every size via calc(N * var(--scale)); never redeclare :root or @font-face; ` +
+        `never touch JavaScript or the animation; keep the auto-fit behaviour (width: fit-content + ` +
+        `max-width caps) intact; keep every field id exactly once and the mask structure when you ` +
+        `return html. Touch ONLY what the flourish needs — the design is already sound.\n\n` +
+        `Return the patch ONLY via the emit_polish tool.`,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Add this flourish to the template below.
+
+Flourish: ${spec.flourish}
+${spec.referenceSystem ? `Reference system (from the user's uploads): ${spec.referenceSystem}` : ''}
+
+=== index.html ===
+${template.html}
+=== template.css ===
+${template.css}`,
+            },
+          ],
+        },
+      ],
+      tool: POLISH_TOOL,
+      maxTokens: 8000,
+    });
+    run.stage('polish', t0, result.model, result.usage);
+    const polished = applyPolish(template, result.output as PolishPatch);
+    if (!polished) return null;
+    options?.onProgress?.('Testing it…');
+    const validation = await validateWith(polished, options, run);
+    return validation.ok ? { template: polished, validation } : null;
+  } catch {
+    return null; // a polish failure never costs the user the assembled result
+  }
+}
+
+/** Spec → assembled, adjusted, validated (and polished when the spec asks) result. */
+async function groundedResult(
+  spec: DesignSpec,
+  ctx: GenerateContext | undefined,
+  options: GenerateOptions | undefined,
+  run: AiRunRecorder,
+): Promise<AiTemplateChange> {
+  options?.onProgress?.('Assembling…');
+  const t0 = Date.now();
+  const assembled = specToTemplate(spec, ctx);
+  // The spec's compositional parameters (typography scale, density, shape, panel) apply
+  // as deterministic overrides — the brief shapes the composition, not just the colours.
+  let template = applyDesignAdjustments(assembled.template, spec);
+  run.stage('assemble', t0);
+  run.diversity(assembled.diversity);
+  options?.onProgress?.('Testing it…');
+  // No repair loop here: a grounded assembly failing its own bench is a platform bug
+  // worth surfacing, not something a model round-trip should paper over.
+  let validation = await validateWith(template, options, run);
+  let path: AiPath = 'grounded';
+  if (spec.flourish && validation.ok) {
+    const polished = await polishStage(template, spec, options, run);
+    if (polished) {
+      template = polished.template;
+      validation = polished.validation;
+      path = 'grounded+polish';
+    }
+  }
+  return {
+    summary: spec.summary || 'Built from the catalog design system.',
+    template,
+    path,
+    validation,
+    spec,
+  };
+}
+
+/** Rebuild a GenerateContext from a template being refined (its images ride its assets). */
+function contextFrom(template: SpxTemplate): GenerateContext {
+  return {
+    images: template.assets.filter((a) => a.path.startsWith('images/')),
+    palette: null,
+    resolution: template.resolution,
+    fps: template.fps,
+  };
 }
 
 /** The design stage's decisions, carried into the free-form coder as plain direction. */
@@ -433,25 +587,7 @@ export const claudeProvider: AIProvider = {
       if (spec && spec.fit === 'catalog') {
         // Stage 2 — deterministic assembly through the real catalog assemblers: correct
         // by construction, panel- and timeline-editable like any wizard output.
-        options?.onProgress?.('Assembling…');
-        const t0 = Date.now();
-        const assembled = specToTemplate(spec, context);
-        // The spec's compositional parameters (typography scale, density, shape, panel)
-        // apply as deterministic overrides — the brief shapes the composition, not just
-        // the colours.
-        const template = applyDesignAdjustments(assembled.template, spec);
-        run.stage('assemble', t0);
-        run.diversity(assembled.diversity);
-        options?.onProgress?.('Testing it…');
-        const validation = await validateWith(template, options, run);
-        // No repair loop here: a grounded assembly failing its own bench is a platform
-        // bug worth surfacing, not something a model round-trip should paper over.
-        return {
-          summary: spec.summary || 'Built from the catalog design system.',
-          template,
-          path: 'grounded',
-          validation,
-        };
+        return groundedResult(spec, context, options, run);
       }
 
       // Custom route — the free-form coder, studying the NEAREST catalog design as its
@@ -465,6 +601,12 @@ export const claudeProvider: AIProvider = {
   },
 
   async modify(prompt, template, options) {
+    // A grounded result refines at SPEC level while it is still house-shaped; anything
+    // else (foreign imports, hand-edited code, custom builds) refines at code level.
+    if (options?.spec && detectPrefix(template.html) && parseAnimData(template.js)) {
+      const spec = options.spec;
+      return recorded('modify', (run) => specRefine(prompt, template, spec, options, run));
+    }
     return modifyAs('modify', prompt, template, options);
   },
 
