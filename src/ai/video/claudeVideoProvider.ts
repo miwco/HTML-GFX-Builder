@@ -117,6 +117,8 @@ Make the plan CONCRETE and BUILDABLE, not generic:
   or exits and when - no vague "elements animate in".
 - State how the frame is filled at the hero moment - what the viewer sees edge to edge.
   Reject any plan that would leave a small element floating in empty space.
+- State the stacking order at the hero moment in \`layering\`: back-to-front, with the hero
+  text/logo on top of every shape, and which layers exit first (text before its panels).
 - If the brief expects an asset that isn't in the provided list (e.g. a logo with none
   uploaded), plan the designed substitute explicitly (a typographic wordmark), never a
   placeholder. Put that decision in assetUsage.
@@ -168,6 +170,7 @@ The example above is emitted with these inputs (note how each read has a matchin
 and how the image input's value is an asset name resolved against the assets prop):
 inputs: [
   { "key": "title", "type": "text", "label": "Title", "default": "Prime Time" },
+  { "key": "kicker", "type": "text", "label": "Kicker", "default": "Saturday · Live" },
   { "key": "logo", "type": "image", "label": "Logo", "default": "" },
   { "key": "accent", "type": "color", "label": "Accent colour", "default": "#f6a623" }
 ]
@@ -252,6 +255,7 @@ Typography: ${plan.typography}
 Background: ${plan.background}
 Easing: ${plan.easingApproach}
 Assets: ${plan.assetUsage}
+Layering: ${plan.layering}
 Phases:\n${phases}`;
 }
 

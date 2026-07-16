@@ -11,6 +11,9 @@ export const MOTION_PRINCIPLES = `## NoaCG motion-design principles (the permane
 - Excellent typography: deliberate size CONTRAST (hero type 3-6x support type), tight
   letter-spacing on large text, generous on small caps labels. System font stacks are fine
   when chosen well (e.g. 'Arial Black', Helvetica for impact; Georgia for editorial).
+  Size EVERY piece of type from the frame (fractions of height/width), never a fixed px
+  value - a support/kicker line is around height*0.025-0.035; a hardcoded 22px kicker on a
+  1080p canvas is unreadably small.
 - Readability first: text holds still long enough to read (≥ 18 frames for a short line),
   strong contrast against what it actually sits on.
 - Professional easing: springs and clamped interpolate curves with intent - decisive
@@ -22,7 +25,17 @@ export const MOTION_PRINCIPLES = `## NoaCG motion-design principles (the permane
 - Restraint: 1-2 typefaces, one accent color doing sharp small work, black/white/greys
   doing the heavy lifting. Fewer, better-choreographed elements over busy scenes.
 - Broadcast polish: subtle depth (soft shadows, layered darks), no default-blue, no pure
-  #FF0000, no rainbow gradients.
+  #FF0000. Subtle SAME-HUE gradients are the tool for depth - what is banned is the
+  rainbow/multi-hue gradient, never tonal shading.
+- No flat colour walls: any shape covering a large share of the frame is a LIT surface -
+  give it a soft same-hue gradient, an edge highlight or hairline keyline where it meets
+  another layer, and a shadow separating it from what is behind. Overlapping panels stay
+  individually readable (distinct tones, visible edges); if the layers collapse into one
+  flat fill, the depth is gone and the piece reads cheap.
+- Deliberate stacking, text on top: paint back-to-front - background, then shape layers,
+  then text/logo LAST in the JSX (explicit zIndex when in doubt). Once a text element has
+  landed and is readable, nothing sweeps over or covers it: a covering wipe happens BEFORE
+  the text lands, and text exits BEFORE (or with) the panels under it, never after.
 - Compose for the WHOLE frame: the hero occupies a confident share of it (a title spans
   roughly half the width; a full-frame piece like a stinger covers the frame at its peak).
   Never a small element adrift in empty space - if it reads as under-scale, it is. Use the
@@ -88,6 +101,8 @@ export const REMOTION_CONTRACT = `## The composition contract (hard requirements
 export const EXAMPLE_COMPOSITION = `// "Prime Sting" - a 3s broadcast stinger: angled panels sweep through, the title snaps
 // in at center with a light sweep, everything clears sharply. The shape of a good module:
 // timing constants up top, phases as clearly named sections, everything frame-derived.
+// Layering: panels are LIT surfaces (same-hue shading + edge keyline), and all text paints
+// LAST, above every panel (zIndex) - text exits first, panels after.
 
 import { AbsoluteFill, Img, interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion';
 
@@ -103,11 +118,13 @@ export default function Composition({
 
   // Editable content (declared as inputs; every read falls back to the default) ─
   const title = String(fields.title ?? 'Prime Time');
+  const kicker = String(fields.kicker ?? 'Saturday · Live');
   const accent = String(fields.accent ?? '#f6a623');
 
   // ── Timing (in frames, derived from fps so any frame rate works) ───────────
   const sweepStart = 0;                                  // panels enter immediately
   const titleStart = Math.round(fps * 0.35);             // title lands as panels settle
+  const kickerStart = titleStart + Math.round(fps * 0.15); // support line trails the hero
   const exitStart = durationInFrames - Math.round(fps * 0.55); // sharp clear-out at the end
 
   // ── Phase 1: three angled panels sweep across with a tight stagger ─────────
@@ -135,6 +152,10 @@ export default function Composition({
   });
   // Ambient hold: the settled title breathes ~1.5% so the hold never feels frozen.
   const breathe = 1 + Math.sin((frame / fps) * Math.PI * 0.8) * 0.015;
+  const kickerIn = interpolate(frame, [kickerStart, kickerStart + fps * 0.25], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
   const titleExit = interpolate(frame, [exitStart, exitStart + fps * 0.35], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -145,7 +166,9 @@ export default function Composition({
 
   return (
     <AbsoluteFill style={{ background: 'linear-gradient(160deg, #0c0f14 30%, #141a24 100%)' }}>
-      {/* Sweeping panels (behind the title) */}
+      {/* Sweeping panels (behind the title). Each is a LIT surface, never a flat fill:
+          a same-hue shading gradient over the base colour plus a hairline top edge, so
+          overlapping layers stay individually readable. */}
       {panels.map(({ x, i }) => (
         <div
           key={i}
@@ -155,49 +178,71 @@ export default function Composition({
             left: '50%',
             width: width * 0.9,
             height: height * (0.16 - i * 0.03),
-            background: i === 1 ? accent : i === 0 ? '#1d2634' : '#2c3a52',
+            backgroundColor: i === 1 ? accent : i === 0 ? '#1d2634' : '#2c3a52',
+            backgroundImage:
+              'linear-gradient(165deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.28) 100%)',
             transform: \`translate(-50%, -50%) translate(\${x}px, \${(i - 1) * height * 0.17}px) rotate(-8deg)\`,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.16), 0 20px 60px rgba(0,0,0,0.35)',
           }}
         />
       ))}
 
-      {/* Title block: masked rise + light sweep + breathing hold */}
-      <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center' }}>
+      {/* Text block: paints LAST, above every panel (zIndex) - masked title rise + light
+          sweep + breathing hold, with the kicker trailing in under it. */}
+      <AbsoluteFill style={{ alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
         <div
           style={{
-            overflow: 'hidden',
-            padding: '0.1em 0.3em',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
             transform: \`translateX(\${titleExit * -width * 0.4}px) scale(\${breathe})\`,
             opacity: 1 - titleExit,
           }}
         >
-          <div
-            style={{
-              position: 'relative',
-              transform: \`translateY(\${(1 - titleIn) * 110}%)\`,
-              color: '#f4f5f7',
-              fontFamily: '"Arial Black", "Arial Bold", Arial, sans-serif',
-              fontSize: Math.round(height * 0.13),
-              fontWeight: 900,
-              letterSpacing: '0.01em',
-              textTransform: 'uppercase',
-              display: 'flex',
-              alignItems: 'center',
-              gap: Math.round(height * 0.03),
-            }}
-          >
-            {logo && <Img src={logo} style={{ height: '1.1em', objectFit: 'contain' }} />}
-            {title}
-            {/* The light sweep: a moving specular band clipped to the title box */}
+          <div style={{ overflow: 'hidden', padding: '0.1em 0.3em' }}>
             <div
               style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.28) 50%, transparent 58%)',
-                transform: \`translateX(\${sweep}%)\`,
+                position: 'relative',
+                transform: \`translateY(\${(1 - titleIn) * 110}%)\`,
+                color: '#f4f5f7',
+                fontFamily: '"Arial Black", "Arial Bold", Arial, sans-serif',
+                fontSize: Math.round(height * 0.13),
+                fontWeight: 900,
+                letterSpacing: '0.01em',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: Math.round(height * 0.03),
               }}
-            />
+            >
+              {logo && <Img src={logo} style={{ height: '1.1em', objectFit: 'contain' }} />}
+              {title}
+              {/* The light sweep: a moving specular band clipped to the title box */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(105deg, transparent 42%, rgba(255,255,255,0.28) 50%, transparent 58%)',
+                  transform: \`translateX(\${sweep}%)\`,
+                }}
+              />
+            </div>
+          </div>
+          {/* Support line: sized from the frame (never a fixed px), tracked-out small caps */}
+          <div
+            style={{
+              marginTop: Math.round(height * 0.018),
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              fontSize: Math.round(height * 0.028),
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: 'rgba(244,245,247,0.78)',
+              opacity: kickerIn,
+              transform: \`translateY(\${(1 - kickerIn) * height * 0.02}px)\`,
+            }}
+          >
+            {kicker}
           </div>
         </div>
       </AbsoluteFill>

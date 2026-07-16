@@ -28,10 +28,14 @@ export const SKILLS: VideoSkill[] = [
     keywords: /sting|bumper|transition to|swish|wipe/i,
     prompt: `### Stingers
 - A stinger is 1.5-4s and must FILL the frame at its midpoint (it hides an edit underneath).
-- Build it as: fast directional sweep of large shapes -> logo/title snap at center ->
-  equally fast clear-out. The midpoint frame should be ~100% covered.
+- Build it as: fast directional sweep of large shapes -> logo/title snap at center ON TOP of
+  the settled panels -> equally fast clear-out (text leaves first, panels after). The
+  midpoint frame should be ~100% covered.
 - Use 2-4 large geometric panels sweeping with 2-4 frame stagger, slight angles (8-15deg),
-  layered z-order. Sharp spring configs (damping 12-16, stiffness 150-220).`,
+  layered z-order with all text above every panel. Keep each panel visibly distinct - vary
+  tone, angle, and offset, with an edge highlight or shadow where layers meet - so the cover
+  moment reads as layered depth, never one flat colour wall.
+- Sharp spring configs (damping 12-16, stiffness 150-220).`,
   },
   {
     id: 'logo-reveals',
@@ -48,8 +52,11 @@ export const SKILLS: VideoSkill[] = [
     keywords: /sport|match|fighter|team|score|derby|versus|vs\b|game\b|league|goal/i,
     prompt: `### Sports graphics
 - Energy comes from speed and angles: italic/oblique type, 8-15deg slashes, hard cuts.
-- Strong condensed uppercase typography, big weight contrast (900 vs 400).
-- Team/brand colors as bold panels, not tints. Metallic/dark backgrounds read premium.
+- Strong condensed uppercase typography, big weight contrast (900 vs 400); support lines
+  sized from the frame (about height*0.028), high-contrast against what they sit on.
+- Team/brand colors as bold panels, not tints - but every bold panel is a LIT surface:
+  same-hue shading, an edge keyline where slabs meet, layered shadows between them.
+  Metallic/dark backgrounds read premium; one flat colour wall never does.
 - Punchy springs (stiffness 180-260) and short travels - impact over float.`,
   },
   {

@@ -11,11 +11,16 @@ export const MOTION_PLAN_TOOL: ClaudeTool = {
   description: 'Return the structured motion-design plan for the video.',
   input_schema: {
     type: 'object',
-    required: ['concept', 'visualDirection', 'typography', 'background', 'easingApproach', 'assetUsage', 'phases'],
+    required: ['concept', 'visualDirection', 'typography', 'background', 'easingApproach', 'assetUsage', 'layering', 'phases'],
     additionalProperties: false,
     properties: {
       concept: { type: 'string', description: 'The one-sentence creative idea.' },
       visualDirection: { type: 'string', description: 'Composition, color, depth, texture direction.' },
+      layering: {
+        type: 'string',
+        description:
+          'The stacking order back-to-front at the hero moment (background -> shape layers -> text/logo on top), and which layers exit first. Text is never covered once it is readable.',
+      },
       typography: { type: 'string', description: 'Type hierarchy: faces, weights, casing, sizes relative to the frame.' },
       background: { type: 'string', description: "Background treatment; 'transparent' when the project renders with alpha." },
       easingApproach: { type: 'string', description: 'Spring vs interpolate character, overshoot policy, exit speed.' },
@@ -115,6 +120,7 @@ export interface EmittedMotionPlan {
   background: string;
   easingApproach: string;
   assetUsage: string;
+  layering: string;
   phases: { name: string; startSec: number; endSec: number; description: string }[];
 }
 

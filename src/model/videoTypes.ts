@@ -117,6 +117,8 @@ export interface MotionPlan {
   background: string;
   easingApproach: string;
   assetUsage: string;
+  /** Stacking order back-to-front at the hero moment (optional: plans saved before it existed). */
+  layering?: string;
   phases: MotionPlanPhase[];
 }
 
