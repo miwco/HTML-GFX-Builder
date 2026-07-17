@@ -53,8 +53,12 @@ The "make it exist publicly" phase. Everything here is a buildable task (§9).
 
 - [ ] **Domain**: founder buys `noacg.studio` (+ `.com` redirect); wire to the Vercel project,
       set canonical URL, redirect the raw `.vercel.app` URL.
-- [ ] **Open signup**: disable allowlist enforcement (keep the table + hook as a kill switch).
-      Keep hosted-AI free allowance small; BYOK unlimited.
+- [x] **Open signup** (2026-07-08): allowlist enforcement is off - migration `0006` opens the
+      Before-User-Created hook to everyone, applied and live-verified with a throwaway signup.
+      NoaCG is open for beta testers. The allowlist table + hook stay as the kill switch (re-close
+      = restore the `0002` function body). Hosted-AI free allowance stays small; BYOK unlimited.
+      *Remaining, dashboard-only and manual: require email confirmation + enable captcha - the
+      live project currently auto-confirms.*
 - [ ] **Public, crawlable marketing surface.** The app is a Vite SPA - crawlers get one shell.
       Fix: a **static prerender step in CI** that generates real HTML pages into the deploy:
       landing page, `/templates/<slug>` (one page per gallery template: screenshot, description,
@@ -176,7 +180,9 @@ on them.
 
 Foundations first, flywheel second, factories third. Nothing below promotes until 1-6 are done.
 
-1. **Open signup** - disable allowlist enforcement, keep the kill switch; live-verify signup flow.
+1. ~~**Open signup**~~ - **DONE 2026-07-08** (migration `0006`, live-verified; kill switch kept).
+   Open for beta testers. Left over, and manual in the Supabase dashboard: require email
+   confirmation + enable captcha.
 2. **Funnel events + UTM capture** - Supabase `events` table + client hooks (signup, activation,
    export, return); privacy-respecting, documented.
 3. **Anon gallery read + login-less share page** - RLS/RPC change (adversarial review like 0004/0005)
