@@ -63,6 +63,18 @@ a consistently better VISUAL result, and raw one-shot output already looks stron
    coder: house contracts + the NEAREST catalog variant's real create() output as the
    canonical example + the design stage's direction, then the validated repair loop
    (`MAX_REPAIR_ROUNDS = 2`, RE-VALIDATED every round, exact findings fed back).
+   **The region contract is authored, not emitted:** the example's ANIMATION region is shown
+   in its AUTHORING shape (the legacy GSAP builders, via `emitPresetRegion`) and the prompt
+   teaches that grammar - natural GSAP the model is reliably good at, instead of the bespoke
+   strict-JSON data block it reliably got wrong. Every emit (first and repairs) runs
+   `convertEmittedRegion`: canonicalize a drifted open marker, then `convertToDataRegion` -
+   the SAME parity-proven importer every wizard category uses at create - so a convertible
+   emit ships as a timeline-editable data block. An unconvertible region keeps the model's
+   own code (honest hand-crafted output, read-only timeline) and its `bench-editability`
+   findings DEMOTE TO WARNINGS at the end - they never burn a repair round alone, though
+   they ride along in any round a functional error triggers. Exception: when the template
+   being MODIFIED already carried a readable data block, losing it is a regression, so
+   editability stays a hard error there and the repair loop fights it.
 
 `modify` refines a grounded result at SPEC level while it is still house-shaped (the caller
 passes the result's `spec` back via `GenerateOptions.spec`); anything else refines at code
@@ -77,7 +89,10 @@ live-iframe lifecycle, field binding, overlap/overflow, doubled-text stress, and
 editability contract). Bench findings are teaching messages that drive repair rounds. A
 result that still fails is returned WITH its validation attached - surfaced, never
 auto-applied. Grounded assemblies get NO repair loop: one failing its own bench is a
-platform bug worth surfacing.
+platform bug worth surfacing. On the free-form path the editability contract is enforced
+deterministically first (`convertEmittedRegion`, pipeline item 5): repair rounds only fire
+on FUNCTIONAL findings, and residual `bench-editability` findings surface as warnings -
+except when a modify started from a data-shaped template, where they stay errors.
 
 ## Telemetry & the value proof
 

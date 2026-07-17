@@ -486,6 +486,15 @@ export default function AiStep({
                   ))}
                 </ul>
               )}
+              {validation?.ok && validation.warnings.length > 0 && (
+                // Honest fine print on a passing result — e.g. a custom build whose motion
+                // stays hand-crafted code (read-only timeline), or a title-safe note.
+                <ul className="hint" style={{ margin: '4px 0 0 16px' }}>
+                  {validation.warnings.map((e, i) => (
+                    <li key={i}>⚠ {e.message}</li>
+                  ))}
+                </ul>
+              )}
               <div className="row" style={{ marginTop: 10 }}>
                 <input
                   className="grow"

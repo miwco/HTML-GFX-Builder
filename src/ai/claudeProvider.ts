@@ -1,11 +1,13 @@
 // The Claude-backed AI provider: prompt → complete SPX template, validated before it can
 // apply. The system prompt teaches the model this project's contracts (SPX runtime, :root
-// style vars, marked ANIMATION region, auto-fit, teachable ES5) and shows lt01's real
-// generated code as the canonical example — so AI output stays editable by the Style and
-// Motion panels exactly like wizard output. Results run through the injected validation
-// pipeline (static validateTemplate + the runtime bench when the caller provides one) with
-// a bounded errors-back repair loop, RE-VALIDATED every round; anything still broken is
-// surfaced to the user with its findings attached, never auto-applied.
+// style vars, marked ANIMATION region, auto-fit, teachable ES5) and shows a real catalog
+// design's generated code as the canonical example — with the ANIMATION region in its
+// AUTHORING shape (legacy GSAP builders), which every emit converts deterministically into
+// the timeline-editable NOACG_ANIM data block through the same importer the wizard uses
+// (convertEmittedRegion). Results run through the injected validation pipeline (static
+// validateTemplate + the runtime bench when the caller provides one) with a bounded
+// errors-back repair loop, RE-VALIDATED every round; anything still broken is surfaced to
+// the user with its findings attached, never auto-applied.
 
 import { callClaude, callClaudeDetailed, type ClaudeTool, type ContentBlock } from './anthropic';
 import type { AiPath, AIProvider, AiTemplateChange, GenerateContext, GenerateOptions } from './provider';
@@ -23,6 +25,9 @@ import { variantsFor } from '../templates/catalog';
 import type { TemplateVariant } from '../model/wizard';
 import { detectPrefix } from '../model/structure';
 import { parseAnimData } from '../blocks/animData';
+import { emitPresetRegion } from '../blocks/presetRegistry';
+import { ANIMATION_MARK_OPEN } from '../templates/lowerThirds/animPresets';
+import { convertToDataRegion } from '../templates/shared/standard';
 
 // ── Structured output: the model must return the template via this tool ─────
 
@@ -72,11 +77,27 @@ financial ticker, an entertainment graphic, and a children's programme each earn
 DIFFERENT answers — density, weight, colour energy, motion speed. Never default to one
 look; make every choice follow the programme.`;
 
+/**
+ * The canonical example with its ANIMATION region shown in the AUTHORING shape: the legacy
+ * GSAP builders the category presets emit, not the NOACG_ANIM data block they convert into
+ * at create. The coder writes this natural GSAP grammar — what models are actually good at —
+ * and the platform converts the emit deterministically (convertEmittedRegion below), exactly
+ * how every wizard category is built: the preset authors legacy choreography and
+ * convertToDataRegion flips it. Falls back to the converted form when the variant's preset
+ * can't emit for it (still a complete teacher, just data-shaped).
+ */
+function exampleWithAuthoringRegion(variant: TemplateVariant): SpxTemplate {
+  const tpl = variant.create();
+  const region = emitPresetRegion(tpl, variant.animationPresets[0]);
+  if (!region) return tpl;
+  return { ...tpl, js: tpl.js.replace(/\/\* == ANIMATION[\s\S]*?== END ANIMATION == \*\//, () => region) };
+}
+
 function systemPrompt(exampleVariant: TemplateVariant = lt01): string {
   // The canonical example is REAL generated code — the same contracts the wizard writes.
   // The caller picks the nearest catalog design so a scoreboard brief studies a real
   // scoreboard's contracts, not always a lower third.
-  const example = exampleVariant.create();
+  const example = exampleWithAuthoringRegion(exampleVariant);
   return `You are the template generator inside NoaCG Studio — a tool that creates
 broadcast graphics templates for SPX Graphics / CasparCG playout. You write COMPLETE, working,
 marketplace-quality templates. The user is learning to code from what you write.
@@ -104,17 +125,26 @@ marketplace-quality templates. The user is learning to code from what you write.
   at opacity: 0 — play() reveals it.
 - Text boxes hug their content (width: fit-content) with a max-width cap so long text wraps
   instead of overflowing. Lines sit in overflow-hidden mask divs so they can animate in.
-- ALL animation lives between the exact markers
-  /* == ANIMATION (generated — the timeline edits the data block below) == */ and
-  /* == END ANIMATION == */ as a DECLARATIVE DATA BLOCK plus the standard interpreter,
-  exactly as in the example below: var NOACG_ANIM = { "version": 1, "root", "speed",
-  "steps": [...] }; (strict JSON inside the braces — steps have name/duration/ease/
-  reveals/layers; layers map selectors to per-property keyframe lists of
-  { "time", "value", "ease" }; the FIRST step plays on play(), the LAST on stop(), middle
-  steps on next() presses). Copy the interpreter functions (buildStepTimeline,
-  buildInTimeline, revealNextStep, buildOutTimeline) from the example VERBATIM — never
-  hand-roll GSAP choreography in the region; author motion as keyframes in the data.
-  Replay-safe by construction: play() after stop() must render correctly.
+- ALL animation lives between the EXACT markers (copy them character for character)
+  ${ANIMATION_MARK_OPEN}
+  and /* == END ANIMATION == */, in the AUTHORING shape the example shows: the three knob
+  vars (var animSpeed / easeIn / easeOut) followed by buildInTimeline() and
+  buildOutTimeline(), each building and returning one gsap.timeline(). After generation the
+  platform CONVERTS this region into its timeline-editable keyframe-data form — the same
+  converter every built-in design goes through — so stay inside the emitted grammar:
+  - Only tl.set / tl.to / tl.fromTo with literal number/string values. Durations, staggers,
+    and absolute positions are written as N / animSpeed; overlaps as '-=N'. The ease comes
+    from the knob vars (the timeline defaults) or ONE quoted GSAP ease per tween.
+  - NO DOM-measured values (scrollWidth, getBoundingClientRect), no nested gsap.timeline()
+    inside a tween, no conditionals or helper functions inside the region. A region the
+    converter cannot read still plays and exports, but its motion shows read-only on the
+    visual timeline — keep it convertible.
+  - buildInTimeline starts by revealing the CSS-hidden root (tl.set root { opacity: 1 });
+    buildOutTimeline ends by hiding it again — exactly like the example. Entrances are
+    fromTo tweens so replay is safe: play() after stop() must render correctly.
+  When the template you are MODIFYING already carries the converted form (var NOACG_ANIM +
+  its interpreter), keep that form: edit the keyframe DATA and leave the interpreter
+  functions verbatim.
 - Never put skew/rotation on an element a timeline tweens — paint it on a ::before layer.
 
 ## Layout safety (hard requirements — the #1 rejection reason)
@@ -245,6 +275,43 @@ function toTemplate(emitted: EmittedTemplate, ctx?: GenerateContext, base?: SpxT
 /** How many errors-back repair rounds the free-form path gets (video-harness parity). */
 const MAX_REPAIR_ROUNDS = 2;
 
+/** The runtime bench's house-editability rule (src/validation/runtimeBench.ts). */
+const EDITABILITY_RULE = 'bench-editability';
+
+/**
+ * Deterministic grounding of a free-form emit: the coder authors the ANIMATION region as
+ * legacy GSAP builders (the shape the system prompt teaches — natural GSAP the model is
+ * good at), and this converts a parseable region into the NOACG_ANIM data block through
+ * the SAME importer every wizard category uses at create. An emit that already carries a
+ * readable data block passes through untouched; a region the importer cannot read keeps
+ * the model's own code — honest hand-crafted output the timeline renders read-only.
+ * Exported for verification scripts (like plainGenerate below).
+ */
+export function convertEmittedRegion(template: SpxTemplate): SpxTemplate {
+  if (parseAnimData(template.js)) return template;
+  const originalJs = template.js;
+  // The converter's writer splices on the exact house marker; a drifted parenthetical in
+  // the model's open marker would silently block the swap, so canonicalize it first.
+  template.js = template.js.replace(/\/\* == ANIMATION[^\n]*?== \*\//, () => ANIMATION_MARK_OPEN);
+  convertToDataRegion(template);
+  // Nothing gained (unparseable region): keep the model's code byte-identical.
+  if (!parseAnimData(template.js)) template.js = originalJs;
+  return template;
+}
+
+/**
+ * Demote residual editability findings to warnings. After the deterministic conversion has
+ * had its chance, an unconvertible region is honest hand-crafted code — the template still
+ * plays and exports, the timeline just shows its motion read-only — so a working
+ * off-catalog design must not be surfaced as a FAILURE over panel editability.
+ */
+function demoteEditability(v: ValidationResult): ValidationResult {
+  const demoted = v.errors.filter((e) => e.rule === EDITABILITY_RULE);
+  if (demoted.length === 0) return v;
+  const errors = v.errors.filter((e) => e.rule !== EDITABILITY_RULE);
+  return { ok: errors.length === 0, errors, warnings: [...v.warnings, ...demoted] };
+}
+
 /** Run the injected validation pipeline (static + runtime bench) or plain static validation. */
 async function validateWith(
   template: SpxTemplate,
@@ -284,12 +351,22 @@ async function generateValidated(
   run?.stage('coder', t0, first.model, first.usage);
 
   let emitted = first.output as EmittedTemplate;
-  let template = toTemplate(emitted, ctx, base);
+  let template = convertEmittedRegion(toTemplate(emitted, ctx, base));
   let summary = emitted.summary;
   options?.onProgress?.('Testing it…');
   let validation = await validateWith(template, options, run);
 
-  for (let round = 1; round <= MAX_REPAIR_ROUNDS && !validation.ok; round++) {
+  // Editability stays a hard error only when the template being MODIFIED already carried a
+  // readable data block — silently losing it would be a real regression the repair loop
+  // must fight. Everywhere else (fresh custom builds, foreign imports, hand-written code)
+  // a region the converter above couldn't read demotes to a warning at the end instead of
+  // burning repair rounds on the one finding the model reliably fails; the findings still
+  // ride along in a round a FUNCTIONAL error triggers.
+  const editabilityBlocks = !!base && !!parseAnimData(base.js);
+  const blocking = (v: ValidationResult) =>
+    editabilityBlocks ? v.errors : v.errors.filter((e) => e.rule !== EDITABILITY_RULE);
+
+  for (let round = 1; round <= MAX_REPAIR_ROUNDS && blocking(validation).length > 0; round++) {
     // Errors-back repair: the exact findings (validator rules + bench measurements) with
     // the full current code, forced back through the same tool.
     options?.onProgress?.(`Repairing (round ${round})…`);
@@ -323,11 +400,13 @@ ${template.js}`,
     });
     run?.stage(`repair-${round}`, t0, repair.model, repair.usage);
     emitted = repair.output as EmittedTemplate;
-    template = toTemplate(emitted, ctx, base);
+    template = convertEmittedRegion(toTemplate(emitted, ctx, base));
     summary = emitted.summary;
     options?.onProgress?.('Testing it…');
     validation = await validateWith(template, options, run);
   }
+
+  if (!editabilityBlocks) validation = demoteEditability(validation);
 
   return { summary, template, path: 'custom', validation };
 }
