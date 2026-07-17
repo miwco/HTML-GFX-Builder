@@ -49,8 +49,13 @@ mkdirSync(OUT, { recursive: true });
 // Two groups. CATALOG-SHAPED briefs with a deliberate genre spread (the harness should
 // route these grounded, and their density/weight/motion answers should DIFFER — repeated
 // variants/compositions across them is the named "sameness" failure). STRUCTURE briefs are
-// off-catalog (growing bars, dense data rows, timed wipes, dual-slides): the harness should
-// route these custom, so they measure the validated free-form path against the baselines.
+// genuinely off-catalog shapes (a labeled comparison grid, a connector-linked sequence, a
+// line/area chart, a knockout tree, mirrored diverging bars): the catalog carries none of
+// them, so the harness should route them custom, measuring the validated free-form path (and
+// its deterministic region conversion) against the baselines. REFRESHED 2026-07-17 — the
+// previous structure briefs (growing bars, data rows, dual-slides) were silently ABSORBED
+// once the catalog gained ig07/the versus category, so they had stopped exercising the custom
+// route at all; keep this group ahead of the catalog or it stops testing what it claims to.
 const BRIEFS = [
   // Catalog-shaped, genre spread:
   ['news-lt', 'A serious evening-news lower third for a national broadcaster: presenter name and role. Restrained, credible, quick unobtrusive entrance.'],
@@ -59,12 +64,12 @@ const BRIEFS = [
   ['finance-ticker', 'A financial index ticker for a business channel: continuously scrolling index names with values from one textarea. Quiet, precise, endless linear travel.'],
   ['glam-card', 'An entertainment show info card announcing a special guest: name and one teaser line. Glamorous but tasteful, airy spacing, elegant thin typography.'],
   ['brutal-lt', 'A brutalist lower third: massive black heading, tight tracking, sharp corners, no panel decoration at all. Name and title.'],
-  // Structure briefs (off-catalog):
-  ['election-bars', 'Election results panel: three candidates as horizontal bars that grow to their percentage on play. Fields: three candidate names, three party names, three percentages. Counted-up numbers at the bar ends. Serious, newsroom-clean, bottom-center.'],
-  ['weather-now', 'A "weather now" side panel: big temperature, a condition line, wind and humidity as small rows, city name as a caps kicker. Fields for all values. Calm and airy, mid-right, gentle slide-in.'],
-  ['timing-tower', 'A motorsport timing tower, top-left: positions 1-5 as compact rows (position number on an accent chip, driver three-letter code, gap time). One textarea field, one line per driver "VER +0.000". Rows cascade in fast. Condensed, high-contrast.'],
-  ['karaoke-line', 'A karaoke lyric line, bottom-center: current line + next line smaller and dimmed. The current line wipes to the accent color left-to-right over 4 seconds after play. Playful, rounded.'],
-  ['versus-card', 'A fullscreen match-up card: two team names and logo image fields around a big VS, event/date line underneath. Both sides slide in from their edges and meet in the middle. Dark arena mood.'],
+  // Structure briefs (off-catalog — see the note above; keep these ahead of the catalog):
+  ['spec-compare', 'A product comparison card for a tech review segment: two products side by side as columns, four spec rows (Price, Battery, Weight, Screen) with each product\'s value in its own cell, under a header row naming the two products. Fields: the two product names and a textarea "Spec | Product A | Product B", one row per line. Clean, precise, neutral. Mid-center.'],
+  ['process-flow', 'A four-step "how it works" explainer across the lower third: four numbered nodes in a horizontal row joined by thin arrows, each node a short title over a one-line description. Steps reveal left to right, arrows drawing between them. One textarea field, one "Title | description" per line. Friendly, modern, confident. Bottom-center band.'],
+  ['trend-line', 'A single-metric trend graphic for a business channel: a rising line with a soft area fill that draws across a small plotted grid on play, a big current value and metric label to the left, and a small change chip. Fields: metric label, current value, change, and a textarea of plotted points (one number per line). Calm, precise, data-desk. Mid-right.'],
+  ['bracket', 'A knockout bracket for a tournament: four teams in two semi-final pairings on the left feeding a single final on the right, thin connector lines joining each round. Fields: four team names and the two finalists advancing. Pairings fade in, then connectors draw and the finalists slide into the final. Sporty, high-contrast, dark. Full-frame.'],
+  ['head-to-head', 'A player head-to-head stat panel: two athletes named at the top, then four stat rows, each stat labelled in the centre with a bar growing outward left for player one and right for player two (mirrored/diverging). Fields: two player names and a textarea "Stat | left | right". Bold sports-analysis look. Mid-center.'],
 ];
 
 // ── Key: .env first, then the environment ──
