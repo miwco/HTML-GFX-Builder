@@ -23,6 +23,8 @@ example_projects/
 bench-out/
 video-bench-out*/
 compare-out/
+bench-baseline*/
+bench-armB*/
 
 # Catalog sweep taste screenshots (scripts/l3-sweep.mjs <shots-dir> <category>; multi-MB
 # PNGs, regenerated on demand - review them on disk, never commit them)

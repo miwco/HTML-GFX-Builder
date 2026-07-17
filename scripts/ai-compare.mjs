@@ -86,7 +86,9 @@ if (!KEY) {
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 0.5 });
 await page.addInitScript((key) => {
-  localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: key, model: 'claude-sonnet-5' }));
+  // proxyUrl:'' pins DIRECT mode - an empty string beats loadAiSettings' ?? fallback to
+  // the dev server's VITE_AI_PROXY_URL, so a full .env no longer reroutes bench calls.
+  localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: key, model: 'claude-sonnet-5', proxyUrl: '' }));
 }, KEY);
 await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(800);

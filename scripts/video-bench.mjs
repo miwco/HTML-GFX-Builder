@@ -3,14 +3,19 @@
 // the live player, run automated readability checks, and build a review gallery. This is
 // the raw material for iterating the video prompt harness in src/ai/video/.
 //
-//   node scripts/video-bench.mjs [out-dir] [label,label,… | count] [runs-per-example]
+//   node scripts/video-bench.mjs [out-dir] [label,label,… | count | briefs.json] [runs-per-example]
 //
 // Requirements: the dev server (this checkout's port — scripts/dev-port.mjs) and
-// VITE_ANTHROPIC_API_KEY in .env (or the environment). ⚠ SPENDS REAL TOKENS — a video
-// generation is two Sonnet calls (director + coder) plus up to two repair rounds; expect
-// tens of cents per run. The second arg filters to specific example labels (comma list,
-// e.g. "Sports stinger,Countdown") or the first N; the third repeats each example
-// (generation is stochastic — reliability needs more than one sample).
+// VITE_ANTHROPIC_API_KEY in .env (or the environment). The bench seeds the app's AI
+// settings itself (key + model + proxyUrl:'' + harness off), so a dev server started with
+// a fuller .env (hosted-mode VITE_AI_PROXY_URL, Supabase) still benches in direct
+// bring-your-own-key mode. ⚠ SPENDS REAL TOKENS — a video generation is two Sonnet calls
+// (director + coder) plus up to two repair rounds; expect tens of cents per run. The
+// second arg filters to specific example labels (comma list, e.g. "Sports
+// stinger,Countdown"), the first N, or a path to a .json file of custom briefs
+// ([{label, prompt, durationSec?}] — typed into the wizard instead of a chip); the third
+// repeats each example (generation is stochastic — reliability needs more than one
+// sample).
 //
 // Beyond validation, every run gets RUNTIME READABILITY CHECKS at hold-phase frames:
 // hit-testing each text element against the actual paint order catches "the title is
@@ -51,15 +56,46 @@ if (!KEY) {
   process.exit(1);
 }
 
-const selected = FILTER.includes(',') || EXAMPLE_LABELS.includes(FILTER)
-  ? EXAMPLE_LABELS.filter((l) => FILTER.split(',').map((s) => s.trim()).includes(l))
-  : EXAMPLE_LABELS.slice(0, Number(FILTER) || Infinity);
+// Selection: chip labels, a count, or a custom-briefs JSON file. A custom brief is
+// {label, prompt, durationSec?, transparent?} and is typed into the wizard's prompt box.
+let selected;
+if (FILTER.endsWith('.json') && existsSync(FILTER)) {
+  selected = JSON.parse(readFileSync(FILTER, 'utf8'));
+} else {
+  selected = (FILTER.includes(',') || EXAMPLE_LABELS.includes(FILTER)
+    ? EXAMPLE_LABELS.filter((l) => FILTER.split(',').map((s) => s.trim()).includes(l))
+    : EXAMPLE_LABELS.slice(0, Number(FILTER) || Infinity)
+  ).map((label) => ({ label }));
+}
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1720, height: 980 } });
 await page.addInitScript((key) => {
-  localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: key, model: 'claude-sonnet-5' }));
+  // proxyUrl:'' pins DIRECT mode (an empty string beats the ?? fallback to the dev
+  // server's VITE_AI_PROXY_URL); useHarness:false keeps the run on the measured path.
+  localStorage.setItem(
+    'spx-gfx-ai',
+    JSON.stringify({ apiKey: key, model: 'claude-sonnet-5', proxyUrl: '', useHarness: false }),
+  );
 }, KEY);
+
+// Preflight: confirm the app actually resolves to direct mode with the seeded key before
+// spending anything (a settings-resolution change would otherwise fail mid-bench, or
+// silently bench the wrong transport).
+{
+  await page.goto(`${BASE}/app`, { waitUntil: 'domcontentloaded' });
+  const resolved = await page.evaluate(async () => {
+    const { loadAiSettings } = await import('/src/ai/settings.ts');
+    const s = loadAiSettings();
+    return { direct: !s.proxyUrl && Boolean(s.apiKey), model: s.model, harness: s.useHarness };
+  });
+  if (!resolved.direct || resolved.harness) {
+    console.error(`Preflight failed: expected direct BYO-key mode with the harness off, got ${JSON.stringify(resolved)}.`);
+    await browser.close();
+    process.exit(1);
+  }
+  console.log(`Preflight OK: direct mode, model ${resolved.model}.`);
+}
 
 const slug = (label) => label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
@@ -150,7 +186,8 @@ async function checkReadability(frame) {
 }
 
 const results = [];
-for (const label of selected) {
+for (const example of selected) {
+  const { label } = example;
   for (let run = 1; run <= RUNS; run++) {
     const id = RUNS > 1 ? `${slug(label)}-r${run}` : slug(label);
     process.stdout.write(`▸ ${id} … `);
@@ -159,7 +196,15 @@ for (const label of selected) {
       await page.goto(`${BASE}/app`, { waitUntil: 'domcontentloaded' });
       await page.getByRole('button', { name: 'Video or animation with AI' }).click();
       await page.getByTestId('video-step').waitFor();
-      await page.getByRole('button', { name: label, exact: true }).click();
+      if (example.prompt) {
+        // A custom brief: type it in instead of clicking a chip.
+        await page.getByTestId('video-prompt').fill(example.prompt);
+        if (example.durationSec != null) {
+          await page.getByTestId('video-step-duration').fill(String(example.durationSec));
+        }
+      } else {
+        await page.getByRole('button', { name: label, exact: true }).click();
+      }
       await page.getByTestId('video-create').click();
       await page.getByTestId('video-shell').waitFor();
 
