@@ -22,19 +22,21 @@ EARN that claim in scripts/ai-compare.mjs, never assume it. Its principles, in p
 4. **The smallest harness that wins.** A catalog-fit generation costs ONE small model call
    (the design spec); everything after it is deterministic. Stages that only add cost get cut.
 
-## The harness is OPT-IN (user decision after the first real benchmark)
+## The harness is ON BY DEFAULT (with a still-live off switch)
 
-The 2026-07-17 benchmark proved the harness on reliability, cost, and editability — but not
-a consistently better VISUAL result, and raw one-shot output already looks strong. So:
+The 2026-07-17 benchmark proved the harness a clean win on reliability, editability,
+overlaps, and cost (5/5 clean vs the baselines' 3/5, 0 overlaps, ~3x fewer output tokens,
+fastest); the earlier hesitation was about VISUAL taste, which the deterministic-conversion
+work (below) and the refreshed structure briefs closed enough to make it the default. So:
 
-- **Default (checkbox off): `generateRaw`** — ONE model call with `RAW_SYSTEM` (format
-  basics only, no taste teaching, no worked example), statically validated for display,
-  NO bench and NO repair loop. Keep this path pure: it is the baseline the harness is
-  measured against, and diluting it makes the comparison dishonest.
-- **"Use NoaCG harness" (checkbox on, `AiSettings.useHarness`): `generateAlternatives`** —
+- **Default (checkbox on, `AiSettings.useHarness` defaults true): `generateAlternatives`** —
   one design-stage call (forced `emit_design_alternatives`) returns THREE genuinely
   different directions; each assembles like a single harness generation. The AI step
   offers the pick.
+- **Off switch (checkbox cleared): `generateRaw`** — ONE model call with `RAW_SYSTEM` (format
+  basics only, no taste teaching, no worked example), statically validated for display,
+  NO bench and NO repair loop. Keep this path pure: it is the baseline the harness is
+  measured against, and diluting it makes the comparison dishonest.
 - **Preference learning (`preferences.ts`)**: the pick is staged on selection and COMMITTED
   when the project is created — aggregated shown/chosen facet counters (chassis, category,
   density, palette, zone, preset, route), localStorage-only. `preferenceHint()` feeds the

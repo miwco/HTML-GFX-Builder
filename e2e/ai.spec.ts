@@ -117,15 +117,16 @@ async function openAiStep(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   // A fake key so aiConfigured() is true (requests never leave: the route below answers).
-  // The harness is opt-in; these specs turn it ON — the default-raw spec seeds its own.
+  // The harness is ON by default; specs that want it set it explicitly anyway so intent is
+  // legible and a default flip can't silently change what a test exercises.
   await page.addInitScript(() =>
     localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: 'sk-ant-test', model: 'claude-sonnet-5', useHarness: true })),
   );
 });
 
-test('harness off (the default): one raw model call, no design stage', async ({ page }) => {
+test('harness off (the toggle): one raw model call, no design stage', async ({ page }) => {
   await page.addInitScript(() =>
-    localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: 'sk-ant-test', model: 'claude-sonnet-5' })),
+    localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: 'sk-ant-test', model: 'claude-sonnet-5', useHarness: false })),
   );
   const tools: string[] = [];
   await page.route('https://api.anthropic.com/v1/messages', (route: Route) => {
@@ -140,6 +141,15 @@ test('harness off (the default): one raw model call, no design stage', async ({ 
   expect(tools).toEqual(['emit_template']); // one call, straight to the coder tool
   await page.getByRole('button', { name: 'Create project' }).click();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Test Slate');
+});
+
+test('the harness checkbox is on by default', async ({ page }) => {
+  // Saved settings WITHOUT a useHarness key — the default must resolve to on.
+  await page.addInitScript(() =>
+    localStorage.setItem('spx-gfx-ai', JSON.stringify({ apiKey: 'sk-ant-test', model: 'claude-sonnet-5' })),
+  );
+  await openAiStep(page);
+  await expect(page.getByLabel(/Use NoaCG harness/)).toBeChecked();
 });
 
 test('describe-it: prompt → validated template → create project', async ({ page }) => {

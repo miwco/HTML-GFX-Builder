@@ -323,13 +323,15 @@ every provider call, streams `onProgress` stages into the busy line, shows the r
 result's `spec` back on refine so spec-level refinement re-assembles deterministically
 (src/ai/CLAUDE.md).
 
-The harness is OPT-IN: the **"Use NoaCG harness (3 options)"** checkbox
-(`AiSettings.useHarness`, default off). Off → `generateRaw` (one-shot, static validation
-only, no bench). On → `generateAlternatives`: three directions, rendered as `[data-alt]`
+The harness is ON BY DEFAULT, with the **"Use NoaCG harness (3 options)"** checkbox
+(`AiSettings.useHarness`, default true — the benchmark showed it a clean win) still able to
+turn it off. On → `generateAlternatives`: three directions, rendered as `[data-alt]`
 option buttons; selecting one swaps the preview and STAGES the pick
 (src/ai/preferences.ts); CreationWizard's `createFromAi` COMMITS it — the aggregated
-counters become the design stage's subtle preference hint. Conversion of an imported
-template always runs the validated conversion flow regardless of the checkbox.
+counters become the design stage's subtle preference hint. Off → `generateRaw` (one-shot,
+static validation only, no bench). Conversion of an imported template always runs the
+validated conversion flow regardless of the checkbox. The default is pinned by
+e2e/ai.spec.ts ("the harness checkbox is on by default").
 
 **Video mode** (Entry card "Video or animation with AI" -> steps/VideoStep): prompt + duration/
 aspect/fps/transparency + asset upload -> an INSTANT create (`createDefaultVideoProject`, the

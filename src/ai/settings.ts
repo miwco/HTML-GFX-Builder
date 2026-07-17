@@ -16,8 +16,9 @@ export interface AiSettings {
   proxyUrl: string;
   /**
    * Generate through the NoaCG harness (design-spec routing, grounded assembly, the live
-   * bench, three alternatives) instead of the default one-shot generation. Off by default:
-   * the harness is opt-in until the benchmark shows it consistently better.
+   * bench, three alternatives) instead of the plain one-shot generation. ON by default:
+   * the benchmark (scripts/ai-compare.mjs) showed the harness a clean win on reliability,
+   * editability, overlaps, and cost. The checkbox still turns it off for the raw one-shot.
    */
   useHarness: boolean;
 }
@@ -47,7 +48,7 @@ export function loadAiSettings(): AiSettings {
     apiKey: saved.apiKey ?? env('VITE_ANTHROPIC_API_KEY'),
     model: saved.model || env('VITE_AI_MODEL') || DEFAULT_MODEL,
     proxyUrl: saved.proxyUrl ?? env('VITE_AI_PROXY_URL'),
-    useHarness: saved.useHarness ?? false,
+    useHarness: saved.useHarness ?? true,
   };
 }
 
