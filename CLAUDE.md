@@ -75,8 +75,11 @@ Verifying, below). Never mark work done on a green build alone if behaviour is o
    clever code - a professional should be able to read and extend it. Rich-but-commented CSS is the
    house style.
 3. **Offline-first, no unnecessary dependencies.** GSAP is bundled locally
-   (`src/assets/gsap.min.js`). Don't add runtime deps or external/CDN references in generated
-   templates. The exported package must be plug-and-play (relative paths, bundled GSAP).
+   (`src/assets/gsap.min.js`); so is the Lottie player (`src/assets/lottie.min.js`,
+   lottie_light/MIT — injected into previews and exports ONLY when the template uses a
+   Lottie asset; detector in `src/assets/lottieSupport.ts`). Don't add runtime deps or
+   external/CDN references in generated templates. The exported package must be
+   plug-and-play (relative paths, bundled libraries).
 4. **Validate before export.** `validation/validateTemplate.ts` is the gate; export is blocked on
    errors. Keep it authoritative - the platform owns SPX compatibility, not the AI.
 5. **Building blocks and AI are deterministic transforms** `(template) => template` that insert

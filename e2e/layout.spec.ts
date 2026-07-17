@@ -22,7 +22,7 @@ test('the default framing: code on the left, Inspector + tools on the right, tim
   await expect(page.getByTestId('dock-slot-left')).toBeVisible();
   await expect(page.getByTestId('dock-tab-code')).toBeVisible();
   await expect(page.locator('[data-testid="dock-right"] .dock-tab.active .dock-tab-label')).toHaveText('Inspector');
-  for (const id of ['data', 'control', 'style', 'ai', 'export']) {
+  for (const id of ['data', 'control', 'style', 'assets', 'ai', 'export']) {
     await expect(page.getByTestId(`dock-tab-${id}`)).toBeVisible();
   }
   // The timeline lives in the centre below the canvas — it spans the whole centre width.

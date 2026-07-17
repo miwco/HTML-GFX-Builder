@@ -32,4 +32,13 @@ validation gates every export (root non-negotiables 3 and 4).
   `[TemplatesFolder]/<project>/index.html` + `<project>/images/<file>` - the layout SPX and
   CasparCG expect. Both of those exporters use `zip.folder(slug(name))`.
 - Uploads are base64 data URLs in `template.assets[]`; the preview inlines them, the exporter
-  decodes them to real files.
+  decodes them to real files. The Assets panel may nest ONE user folder inside a bucket
+  (`images/logos/<file>`) - every writer zips `asset.path` verbatim, so nesting flows through.
+- Lottie: a template that uses a Lottie animation (detector `assets/lottieSupport.ts`) ships
+  the bundled player - `js/lottie.min.js` in folder packages (addSharedAssets), inlined in
+  single-file targets, `lib/lottie.min.js` + an `ensureLottie()` loader in OGraf packages,
+  where the embedded TEMPLATE_HTML also gets its `.json` assets inlined as data: URLs (an
+  embedded string has no base URL to resolve a relative path against). The generated
+  bootstrap decodes data: URLs inline (atob, no fetch), so single-file exports play from
+  file:// too; the folder starter keeps the real `lottie/<file>.json` and plays over http
+  (SPX's normal serving mode).

@@ -9,6 +9,11 @@ import { parseAnimData, spliceAnimData } from '../blocks/animData';
 import { setKeyframe } from '../blocks/animEdit';
 import { activationStep } from '../blocks/animEval';
 import { changePartPress } from '../blocks/stepAssign';
+import { insertImageElement } from '../blocks/assetOps';
+import { insertLottieElement } from '../blocks/lottieInsert';
+import { probeAsset } from '../assets/assetInfo';
+import { fileToDataUrl, isImageAsset, isLottieAsset, uniqueAssetPath } from '../assets/assetUtils';
+import { ASSET_DRAG_TYPE } from './AssetsPanel';
 import CanvasSelection, { type CanvasRect } from './CanvasSelection';
 import { phaseIdOf } from './StepTimeline';
 import type { SpxWindow } from './PlayoutSimulator';
@@ -891,11 +896,76 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       }
     : null;
 
+  // ── Asset drop: drag a row from the Assets panel (or an image file straight from the
+  //    OS) onto the canvas → ONE undoable apply inserts a commented, positioned <img>
+  //    (blocks/assetOps.ts insertImageElement). The overlay rect is live, so zoom/pan need
+  //    no extra math — the same conversion every gesture uses. ──
+  const onAssetDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes(ASSET_DRAG_TYPE) || e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+  const onAssetDrop = (e: React.DragEvent) => {
+    const assetPath = e.dataTransfer.getData(ASSET_DRAG_TYPE);
+    const osFiles = Array.from(e.dataTransfer.files ?? []).filter((f) => isImageAsset(f.name));
+    if (!assetPath && osFiles.length === 0) return;
+    e.preventDefault();
+    // Capture everything synchronously — the probe below is async.
+    const overlay = e.currentTarget.getBoundingClientRect();
+    const point = docToCanvas({ x: (e.clientX - overlay.left) / scale, y: (e.clientY - overlay.top) / scale });
+
+    const place = async () => {
+      if (assetPath) {
+        const asset = template.assets.find((a) => a.path === assetPath);
+        if (!asset) return;
+        const insert = isImageAsset(assetPath) ? insertImageElement : isLottieAsset(assetPath) ? insertLottieElement : null;
+        if (!insert) return; // fonts/other: no canvas placement
+        const info = await probeAsset(asset);
+        const { template: next, selector } = insert(template, {
+          assetPath,
+          x: point.x,
+          y: point.y,
+          naturalW: info.width ?? 300,
+          naturalH: info.height ?? 300,
+        });
+        applyTemplate(next);
+        setSelected(selector);
+        setActiveTab('html');
+        return;
+      }
+      // OS files: import + place composed into ONE apply, so one undo removes both.
+      let next = template;
+      let lastSelector: string | null = null;
+      for (const [i, file] of osFiles.entries()) {
+        const data = await fileToDataUrl(file);
+        const asset = { path: uniqueAssetPath(file.name, next.assets), data };
+        next = { ...next, assets: [...next.assets, asset] };
+        const info = await probeAsset(asset);
+        const placed = insertImageElement(next, {
+          assetPath: asset.path,
+          x: point.x + i * 24, // stagger a multi-file drop so the images don't pile up
+          y: point.y + i * 24,
+          naturalW: info.width ?? 300,
+          naturalH: info.height ?? 300,
+        });
+        next = placed.template;
+        lastSelector = placed.selector;
+      }
+      applyTemplate(next);
+      if (lastSelector) setSelected(lastSelector);
+      setActiveTab('html');
+    };
+    void place();
+  };
+
   return (
     <div
       className={`canvas-layer${ghost ? ' dragging' : ''} cursor-${cursor}`}
       style={{ width, height }}
       data-testid="canvas-layer"
+      onDragOver={onAssetDragOver}
+      onDrop={onAssetDrop}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

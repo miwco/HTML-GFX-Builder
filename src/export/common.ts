@@ -3,7 +3,9 @@
 
 import type JSZip from 'jszip';
 import gsapSource from '../assets/gsap.min.js?raw';
+import lottieSource from '../assets/lottie.min.js?raw';
 import { parseDataUrl } from '../assets/assetUtils';
+import { templateUsesLottie } from '../assets/lottieSupport';
 import { FONT_LICENSE_NOTE } from '../model/fonts';
 import type { SpxTemplate } from '../model/types';
 import { controlChannelName } from '../control/controlModel';
@@ -42,6 +44,9 @@ export async function addReferencedFonts(zip: JSZip, template: SpxTemplate): Pro
 /** Write the bundled GSAP, fonts, and any template assets into the zip (relative paths). */
 export async function addSharedAssets(zip: JSZip, template: SpxTemplate): Promise<void> {
   zip.file('js/gsap.min.js', gsapSource);
+  // The Lottie player ships only when the template uses it (its <head> tag references
+  // js/lottie.min.js, mirroring the GSAP tag).
+  if (templateUsesLottie(template)) zip.file('js/lottie.min.js', lottieSource);
   await addReferencedFonts(zip, template);
   for (const asset of template.assets) {
     if (typeof asset.data === 'string') {
@@ -114,7 +119,7 @@ Then select the template in an SPX rundown.
 - css/template.css  Styles.
 - js/template.js    Runtime: play(), stop(), update(data).
 - js/gsap.min.js    Bundled GSAP animation library (no internet required).
-${template.assets.length ? '- images/...        Images used by the template (image fields list this folder).\n' : ''}- controlpanel.html An operator page auto-built from the fields (see below).
+${templateUsesLottie(template) ? '- js/lottie.min.js  Bundled Lottie player (MIT) — included because this graphic uses a Lottie animation.\n' : ''}${template.assets.length ? '- images/...        Images used by the template (image fields list this folder).\n' : ''}- controlpanel.html An operator page auto-built from the fields (see below).
 
 ## Data fields
 ${template.fields.map((f) => `- ${f.field} (${f.ftype}): ${f.title}`).join('\n') || '- (none)'}

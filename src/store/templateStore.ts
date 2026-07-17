@@ -11,7 +11,7 @@ import { loadProject, saveProject } from '../model/project';
 
 export type EditorTab = 'html' | 'css' | 'js';
 export type PreviewBg = 'checkerboard' | 'black' | 'video';
-export type SidePanel = 'data' | 'control' | 'style' | 'ai' | 'export';
+export type SidePanel = 'data' | 'control' | 'style' | 'assets' | 'ai' | 'export';
 
 /** A live playout action the Control panel asks the simulator to run on the preview. */
 export type PlayoutAction = 'update' | 'play' | 'stop' | 'next';
@@ -154,9 +154,12 @@ interface TemplateState {
   setSampleValue: (field: string, value: string) => void;
   resetSampleData: () => void;
 
-  /** Add an uploaded asset (image/font) to the template. */
+  /** Add an uploaded asset (image/font/Lottie) to the template. One undo step. */
   addAsset: (asset: AssetFile) => void;
-  /** Remove an asset by its relative path. */
+  /** Add several uploaded assets as ONE undo step (a multi-file import must not eat
+   *  one history slot per file — the history cap is 30). */
+  addAssets: (assets: AssetFile[]) => void;
+  /** Remove an asset by its relative path. One undo step. */
   removeAsset: (path: string) => void;
 
   setValidation: (result: ValidationResult | null) => void;
@@ -335,16 +338,28 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   setSampleValue: (field, value) => set((s) => ({ sampleData: { ...s.sampleData, [field]: value } })),
   resetSampleData: () => set((s) => ({ sampleData: syncSampleData(s.template, {}) })),
 
-  addAsset: (asset) =>
-    set((s) => ({
-      template: {
-        ...s.template,
-        assets: [...s.template.assets.filter((a) => a.path !== asset.path), asset],
-      },
-    })),
+  // Asset edits snapshot history in place rather than routing through applyTemplate —
+  // an asset add must not re-parse the definition, close the gallery, or repaint the
+  // change highlight. Undo/redo restore whole-template snapshots, so assets travel free.
+  addAsset: (asset) => get().addAssets([asset]),
+  addAssets: (assets) =>
+    set((s) => {
+      if (assets.length === 0) return {};
+      let next = s.template.assets;
+      for (const asset of assets) next = [...next.filter((a) => a.path !== asset.path), asset];
+      return {
+        template: { ...s.template, assets: next },
+        validation: null,
+        history: [...s.history, s.template].slice(-30),
+        future: [],
+      };
+    }),
   removeAsset: (path) =>
     set((s) => ({
       template: { ...s.template, assets: s.template.assets.filter((a) => a.path !== path) },
+      validation: null,
+      history: [...s.history, s.template].slice(-30),
+      future: [],
     })),
 
   setValidation: (validation) => set({ validation }),

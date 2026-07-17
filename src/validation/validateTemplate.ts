@@ -56,10 +56,10 @@ function htmlIds(html: string): Set<string> {
   return ids;
 }
 
-/** Collect every URL reference in the HTML (src/href) and CSS (url(...)). */
+/** Collect every URL reference in the HTML (src/href/data-lottie) and CSS (url(...)). */
 function collectRefs(html: string, css: string): string[] {
   const refs: string[] = [];
-  const htmlRe = /\b(?:src|href)=["']([^"']+)["']/gi;
+  const htmlRe = /\b(?:src|href|data-lottie)=["']([^"']+)["']/gi;
   let m: RegExpExecArray | null;
   while ((m = htmlRe.exec(html))) refs.push(m[1]);
   const cssRe = /url\(\s*['"]?([^'")]+)['"]?\s*\)/gi;
@@ -159,15 +159,15 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
       message: `External dependency "${url}". Bundle it locally for reliable offline playout.`,
     });
   }
-  // Relative assets/ references must correspond to an uploaded asset (the exporter only
-  // writes template.assets[] into assets/). js/ and css/ are provided by the exporter itself.
+  // Relative assets/ and lottie/ references must correspond to an uploaded asset (the
+  // exporter only writes template.assets[]). js/ and css/ are provided by the exporter itself.
   const assetPaths = new Set(template.assets.map((a) => a.path));
   for (const url of relative) {
     const normalized = url.replace(/^\.\//, '');
-    if (/^assets\//i.test(normalized) && !assetPaths.has(normalized)) {
+    if (/^(assets|lottie)\//i.test(normalized) && !assetPaths.has(normalized)) {
       warnings.push({
         rule: 'missing-asset',
-        message: `"${url}" is referenced but not in the package. Upload it in the Brand panel or fix the path.`,
+        message: `"${url}" is referenced but not in the package. Upload it in the Assets panel or fix the path.`,
       });
     }
   }

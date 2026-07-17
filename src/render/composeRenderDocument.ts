@@ -16,7 +16,9 @@
 // Browser-only (fetches /fonts/*); the output travels to the renderer inside the manifest.
 
 import gsapSource from '../assets/gsap.min.js?raw';
+import lottieSource from '../assets/lottie.min.js?raw';
 import { inlineAssetRefs, isDataUrl } from '../assets/assetUtils';
+import { templateUsesLottie } from '../assets/lottieSupport';
 import { stripLocalAssetTags } from '../preview/composeDocument';
 import { stripLiveData } from '../control/liveData';
 import { stripChatGraphic } from '../showchat/chatGraphicBlock';
@@ -116,6 +118,10 @@ export async function composeRenderDocument(
     assetShimTag(template),
     `<script id="noacg-gsap">\n${gsapSource}\n</script>`,
     `<script id="noacg-gsap-detach">\n${GSAP_DETACH_JS}\n</script>`,
+    // The bundled Lottie player, only when used. Loaded AFTER the runtime, so it captures
+    // the virtualized rAF — its playback advances at frame boundaries like everything else;
+    // the template's bootstrap decodes the inlined data: URL, never touching the fetch stub.
+    ...(templateUsesLottie(template) ? [`<script id="noacg-lottie">\n${lottieSource}\n</script>`] : []),
     `<style id="noacg-base-style">\n${baseStyle}\n</style>`,
     `<style id="noacg-inline-css">\n${css}\n</style>`,
   ].join('\n') + '\n';

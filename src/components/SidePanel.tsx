@@ -2,6 +2,7 @@ import { useTemplateStore, type SidePanel as PanelId } from '../store/templateSt
 import SampleDataPanel from './SampleDataPanel';
 import ControlPanel from './ControlPanel';
 import StylePanel from './StylePanel';
+import AssetsPanel from './AssetsPanel';
 import AIPromptPanel from './AIPromptPanel';
 import ExportPanel from './ExportPanel';
 
@@ -12,6 +13,7 @@ const PANELS: { id: PanelId; label: string }[] = [
   { id: 'data', label: 'Data' },
   { id: 'control', label: 'Control' },
   { id: 'style', label: 'Style' },
+  { id: 'assets', label: 'Assets' },
   { id: 'ai', label: 'AI' },
   { id: 'export', label: 'Export' },
 ];
@@ -40,6 +42,7 @@ export default function SidePanel() {
         {activePanel === 'data' && <SampleDataPanel />}
         {activePanel === 'control' && <ControlPanel />}
         {activePanel === 'style' && <StylePanel />}
+        {activePanel === 'assets' && <AssetsPanel />}
         {activePanel === 'ai' && <AIPromptPanel />}
         {activePanel === 'export' && <ExportPanel />}
       </div>

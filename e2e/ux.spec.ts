@@ -32,7 +32,7 @@ test('layout: code dock left, canvas + timeline in the centre, tool tabs in the 
   // The right dock holds the Inspector plus the focused tool panels — Blocks/Learn/Validate
   // are gone; Control is the operator view; Motion lives on the timeline, not in a tab.
   await expect(page.locator('[data-testid="dock-right"] .dock-tab-label')).toHaveText([
-    'Inspector', 'Data', 'Control', 'Style', 'AI', 'Export',
+    'Inspector', 'Data', 'Control', 'Style', 'Assets', 'AI', 'Export',
   ]);
 });
 

@@ -68,6 +68,10 @@ templateStore.ts (zustand) holds the template plus editor UI state.
 - **playhead / setPlayhead** - the step timeline's parked playhead `{ step, t }` (step index +
   local time in effective seconds). UI state only - no history; the Inspector stamps
   keyframes at it.
+- **addAsset / addAssets / removeAsset** - undoable in-place snapshots (NOT applyTemplate:
+  an asset add must not re-parse the definition, close the gallery, or repaint the change
+  highlight). `addAssets` batches a multi-file import into ONE history slot; `addAsset`
+  delegates to it. Undo/redo restore whole-template snapshots, so assets travel with them.
 - **canvasGestureActive / setCanvasGestureActive** - true while a canvas gesture is in flight
   (inline edit, root/layer/scale drag; published by CanvasInteraction). AppShell's deferred
   Inspector auto-open checks it at fire time so the workspace never resizes under a gesture.

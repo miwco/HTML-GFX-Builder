@@ -8,6 +8,7 @@ import Inspector from './Inspector';
 import SampleDataPanel from './SampleDataPanel';
 import ControlPanel from './ControlPanel';
 import StylePanel from './StylePanel';
+import AssetsPanel from './AssetsPanel';
 import AIPromptPanel from './AIPromptPanel';
 import ExportPanel from './ExportPanel';
 import WorkspaceDock from './WorkspaceDock';
@@ -279,6 +280,7 @@ export default function AppShell() {
       case 'data': return <div className="panel-body"><SampleDataPanel /></div>;
       case 'control': return <div className="panel-body"><ControlPanel /></div>;
       case 'style': return <div className="panel-body"><StylePanel /></div>;
+      case 'assets': return <div className="panel-body"><AssetsPanel /></div>;
       case 'ai': return <div className="panel-body"><AIPromptPanel /></div>;
       case 'export': return <div className="panel-body"><ExportPanel /></div>;
     }

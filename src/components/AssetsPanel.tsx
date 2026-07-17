@@ -1,0 +1,436 @@
+// The Assets panel: every file bundled with the template (images, Lottie animations,
+// imported fonts) as folder-grouped rows, with drag-and-drop import, drag-to-canvas
+// placement (see CanvasInteraction), reference-safe move/rename, and an info section
+// that derives metadata on demand (src/assets/assetInfo.ts) — the model stays { path, data }.
+
+import { useEffect, useRef, useState } from 'react';
+import { useTemplateStore } from '../store/templateStore';
+import { moveAsset } from '../blocks/assetOps';
+import { probeAsset, referenceCount, assetBytes, type AssetInfo } from '../assets/assetInfo';
+import {
+  fileToDataUrl,
+  isImageAsset,
+  isLottieAsset,
+  isFontAsset,
+  looksLikeLottie,
+  sanitizeFolderName,
+  splitAssetPath,
+  uniqueAssetPath,
+} from '../assets/assetUtils';
+import type { AssetFile } from '../model/types';
+
+/** Soft per-asset size warning — big data-URL assets weigh on share/render budgets. */
+const WARN_ASSET_BYTES = 1_500_000;
+/** The community-publish gate's totals (validation/templateBench.ts) — shown as context. */
+const PUBLISH_MAX_ASSETS = 24;
+const PUBLISH_MAX_TOTAL = 12 * 1024 * 1024 * 0.75; // the bench caps data-URL chars; ~real bytes
+
+const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.svg,.avif,.json';
+
+/** The drag payload type the canvas drop target (CanvasInteraction) listens for. */
+export const ASSET_DRAG_TYPE = 'application/x-noacg-asset';
+
+function fmtBytes(n: number): string {
+  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1000))} kB`;
+}
+
+function badgeFor(path: string): string {
+  if (isImageAsset(path)) return 'IMG';
+  if (isLottieAsset(path)) return 'LOTTIE';
+  if (isFontAsset(path)) return 'FONT';
+  return 'FILE';
+}
+
+/** Group key = the directory part of the path ("images", "images/logos", "fonts"…). */
+function dirOf(path: string): string {
+  return path.slice(0, path.lastIndexOf('/'));
+}
+
+function AssetRow({ asset, selected, onSelect }: { asset: AssetFile; selected: boolean; onSelect: () => void }) {
+  const { file } = splitAssetPath(asset.path);
+  const bytes = assetBytes(asset);
+  const isImage = isImageAsset(asset.path) && typeof asset.data === 'string';
+  return (
+    <div
+      className={`asset-row${selected ? ' selected' : ''}`}
+      data-testid="asset-row"
+      data-path={asset.path}
+      onClick={onSelect}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(ASSET_DRAG_TYPE, asset.path);
+        e.dataTransfer.setData('text/plain', asset.path);
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      title={`${asset.path} — drag onto the canvas to place it, or onto a folder to move it`}
+    >
+      <span className="asset-row-thumb">
+        {isImage ? (
+          <img src={asset.data as string} alt="" />
+        ) : (
+          <span className="asset-row-icon">{isLottieAsset(asset.path) ? '✦' : isFontAsset(asset.path) ? 'Aa' : '▤'}</span>
+        )}
+      </span>
+      <span className="asset-row-name" title={file}>{file}</span>
+      <span className={`asset-badge asset-badge-${badgeFor(asset.path).toLowerCase()}`}>{badgeFor(asset.path)}</span>
+      <span className="asset-row-size" style={bytes > WARN_ASSET_BYTES ? { color: 'var(--warn)' } : undefined}>
+        {fmtBytes(bytes)}
+      </span>
+    </div>
+  );
+}
+
+/** The info section for the selected asset: derived facts + rename/move/remove. */
+function AssetInfoSection({
+  asset,
+  bucketFolders,
+  onMove,
+}: {
+  asset: AssetFile;
+  /** Existing + pending folder names offered by the Move select. */
+  bucketFolders: string[];
+  /** Move/rename the asset to a target path (reference-safe, one undo step). */
+  onMove: (fromPath: string, toPath: string) => void;
+}) {
+  const template = useTemplateStore((s) => s.template);
+  const removeAsset = useTemplateStore((s) => s.removeAsset);
+  const [info, setInfo] = useState<AssetInfo | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+
+  const { bucket, folder, file } = splitAssetPath(asset.path);
+  const dot = file.lastIndexOf('.');
+  const stem = dot >= 0 ? file.slice(0, dot) : file;
+  const ext = dot >= 0 ? file.slice(dot) : '';
+
+  useEffect(() => {
+    let live = true;
+    setInfo(null);
+    void probeAsset(asset).then((i) => { if (live) setInfo(i); });
+    return () => { live = false; };
+  }, [asset]);
+
+  const refs = referenceCount(template, asset.path);
+
+  const commitRename = () => {
+    if (renaming === null) return;
+    const cleanStem = renaming.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+    setRenaming(null);
+    if (!cleanStem || cleanStem === stem) return;
+    onMove(asset.path, `${dirOf(asset.path)}/${cleanStem}${ext}`);
+  };
+
+  const moveToFolder = (target: string) => {
+    if (target === '__new__') {
+      const name = sanitizeFolderName(window.prompt('New folder name:') ?? '');
+      if (name) onMove(asset.path, `${bucket}/${name}/${file}`);
+      return;
+    }
+    onMove(asset.path, target === '' ? `${bucket}/${file}` : `${bucket}/${target}/${file}`);
+  };
+
+  const isImage = isImageAsset(asset.path) && typeof asset.data === 'string';
+
+  return (
+    <div className="asset-info" data-testid="asset-info">
+      <h3>Information</h3>
+      <div className="asset-info-body">
+        {isImage && (
+          <div className="asset-info-preview asset-thumb">
+            <img src={asset.data as string} alt={file} />
+          </div>
+        )}
+        <div className="asset-info-facts">
+          <div className="asset-fact">
+            <span className="asset-fact-key">Name</span>
+            {renaming !== null ? (
+              <input
+                className="asset-rename"
+                value={renaming}
+                autoFocus
+                onChange={(e) => setRenaming(e.target.value)}
+                onBlur={commitRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitRename();
+                  if (e.key === 'Escape') setRenaming(null);
+                }}
+              />
+            ) : (
+              <button
+                className="asset-fact-value asset-name-btn"
+                title="Rename (references in the code update automatically)"
+                onClick={() => setRenaming(stem)}
+              >
+                {file} ✎
+              </button>
+            )}
+          </div>
+          <div className="asset-fact">
+            <span className="asset-fact-key">Format</span>
+            <span className="asset-fact-value">{info ? (info.mime || ext.replace('.', '').toUpperCase() || '—') : '…'}</span>
+          </div>
+          <div className="asset-fact">
+            <span className="asset-fact-key">Dimensions</span>
+            <span className="asset-fact-value">{info ? (info.width != null ? `${info.width} × ${info.height} px` : '—') : '…'}</span>
+          </div>
+          <div className="asset-fact">
+            <span className="asset-fact-key">Aspect</span>
+            <span className="asset-fact-value">{info ? (info.aspect ?? '—') : '…'}</span>
+          </div>
+          <div className="asset-fact">
+            <span className="asset-fact-key">Size</span>
+            <span className="asset-fact-value">{fmtBytes(assetBytes(asset))}</span>
+          </div>
+          <div className="asset-fact">
+            <span className="asset-fact-key">Transparency</span>
+            <span className="asset-fact-value">
+              {info
+                ? info.hasAlpha === 'vector'
+                  ? 'vector (alpha)'
+                  : info.hasAlpha === true
+                    ? 'yes (alpha)'
+                    : info.hasAlpha === false
+                      ? 'no'
+                      : '—'
+                : '…'}
+            </span>
+          </div>
+          {info?.kind === 'lottie' && info.durationS != null && (
+            <div className="asset-fact">
+              <span className="asset-fact-key">Animation</span>
+              <span className="asset-fact-value">{info.durationS}s · {info.fps ?? '?'} fps · {info.frames ?? '?'} frames</span>
+            </div>
+          )}
+          <div className="asset-fact">
+            <span className="asset-fact-key">Used</span>
+            <span className="asset-fact-value">{refs > 0 ? `${refs}× in the template` : 'not referenced (bloats the export)'}</span>
+          </div>
+          <div className="asset-fact">
+            <span className="asset-fact-key">Folder</span>
+            <select
+              className="asset-fact-value"
+              value={folder ?? ''}
+              onChange={(e) => moveToFolder(e.target.value)}
+              title="Move to a folder (references in the code update automatically)"
+            >
+              <option value="">{bucket}/ (root)</option>
+              {bucketFolders.map((f) => (
+                <option key={f} value={f}>{bucket}/{f}/</option>
+              ))}
+              <option value="__new__">New folder…</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div className="row" style={{ marginTop: 8 }}>
+        <button onClick={() => removeAsset(asset.path)} title="Remove from the template (undoable)">✕ Remove</button>
+      </div>
+    </div>
+  );
+}
+
+export default function AssetsPanel() {
+  const template = useTemplateStore((s) => s.template);
+  const addAssets = useTemplateStore((s) => s.addAssets);
+  const applyTemplate = useTemplateStore((s) => s.applyTemplate);
+  const sampleData = useTemplateStore((s) => s.sampleData);
+  const setSampleValue = useTemplateStore((s) => s.setSampleValue);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [dropDir, setDropDir] = useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  // Folders the user created that hold nothing yet. Deliberately ephemeral component
+  // state: assets sync/share as template JSON, and a folder only becomes real (part of
+  // an asset's path) once something lands in it — persisting a cosmetic empty-folder
+  // list would need a new template field.
+  const [pendingFolders, setPendingFolders] = useState<string[]>([]);
+
+  const assets = template.assets;
+  const selected = assets.find((a) => a.path === selectedPath) ?? null;
+  const totalBytes = assets.reduce((sum, a) => sum + assetBytes(a), 0);
+
+  /** Move/rename via the reference-rewriting transform — ONE undoable apply, then patch
+   *  any sample value that still holds the old path (a filelist field's live value). */
+  const handleMove = (fromPath: string, toPath: string) => {
+    const { template: next, newPath } = moveAsset(template, fromPath, toPath);
+    if (newPath === fromPath) return;
+    applyTemplate(next);
+    for (const [field, value] of Object.entries(sampleData)) {
+      if (value === fromPath) setSampleValue(field, newPath);
+    }
+    if (selectedPath === fromPath) setSelectedPath(newPath);
+    const dir = dirOf(newPath);
+    setPendingFolders((p) => p.filter((f) => `images/${f}` !== dir && !dir.endsWith(`/${f}`)));
+  };
+
+  /** Import files: images as-is; .json only when it carries the Lottie signature.
+   *  All accepted files land in ONE addAssets call = one undo step. */
+  const importFiles = async (files: FileList | File[] | null) => {
+    if (!files) return;
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    const accepted: AssetFile[] = [];
+    const rejected: string[] = [];
+    // Collect against a growing list so two same-named files in one import de-dupe.
+    const existing = [...assets];
+    for (const file of list) {
+      if (/\.json$/i.test(file.name)) {
+        const text = await file.text();
+        if (!looksLikeLottie(text)) {
+          rejected.push(`"${file.name}" is not a Lottie animation`);
+          continue;
+        }
+      } else if (!isImageAsset(file.name)) {
+        rejected.push(`"${file.name}" — only images and Lottie .json files import here (fonts: Style panel)`);
+        continue;
+      }
+      const data = await fileToDataUrl(file);
+      const asset = { path: uniqueAssetPath(file.name, existing), data };
+      accepted.push(asset);
+      existing.push(asset);
+    }
+    if (accepted.length > 0) {
+      addAssets(accepted);
+      setSelectedPath(accepted[accepted.length - 1].path);
+    }
+    setNote(
+      rejected.length > 0
+        ? `✗ ${rejected.join('; ')}`
+        : accepted.length > 0
+          ? `Added ${accepted.length} asset${accepted.length > 1 ? 's' : ''}. Drag one onto the canvas to place it.`
+          : null,
+    );
+  };
+
+  const newFolder = () => {
+    const name = sanitizeFolderName(window.prompt('New folder name (inside images/):') ?? '');
+    if (!name) return;
+    if (!pendingFolders.includes(name)) setPendingFolders((p) => [...p, name]);
+  };
+
+  // Group rows by directory; the buckets keep a stable, meaningful order. Pending
+  // (still-empty) folders appear as empty groups under images/ until something lands.
+  const order = ['images', 'lottie', 'fonts', 'assets'];
+  const groups = new Map<string, AssetFile[]>();
+  for (const a of assets) {
+    const dir = dirOf(a.path);
+    if (!groups.has(dir)) groups.set(dir, []);
+    (groups.get(dir) as AssetFile[]).push(a);
+  }
+  for (const f of pendingFolders) {
+    if (!groups.has(`images/${f}`)) groups.set(`images/${f}`, []);
+  }
+  const sortedDirs = Array.from(groups.keys()).sort((a, b) => {
+    const [ba, bb] = [a.split('/')[0], b.split('/')[0]];
+    const oa = order.indexOf(ba);
+    const ob = order.indexOf(bb);
+    if (oa !== ob) return (oa < 0 ? 99 : oa) - (ob < 0 ? 99 : ob);
+    return a.localeCompare(b);
+  });
+
+  // Folder names available to the Move select (per selected asset's bucket) — existing
+  // folders in that bucket plus the pending ones (offered for images).
+  const foldersFor = (asset: AssetFile): string[] => {
+    const { bucket } = splitAssetPath(asset.path);
+    const existing = assets
+      .map((a) => splitAssetPath(a.path))
+      .filter((p) => p.bucket === bucket && p.folder)
+      .map((p) => p.folder as string);
+    const pending = bucket === 'images' ? pendingFolders : [];
+    return Array.from(new Set([...existing, ...pending])).sort();
+  };
+
+  /** A folder header accepts asset-row drops: moving the file into that directory. */
+  const folderDropProps = (dir: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (e.dataTransfer.types.includes(ASSET_DRAG_TYPE)) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'move';
+        setDropDir(dir);
+      }
+    },
+    onDragLeave: () => setDropDir((d) => (d === dir ? null : d)),
+    onDrop: (e: React.DragEvent) => {
+      const path = e.dataTransfer.getData(ASSET_DRAG_TYPE);
+      setDropDir(null);
+      if (!path) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const { file } = splitAssetPath(path);
+      if (dirOf(path) !== dir) handleMove(path, `${dir}/${file}`);
+    },
+  });
+
+  return (
+    <div
+      className={`assets-panel${dragging ? ' dragging' : ''}`}
+      data-testid="assets-panel"
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          setDragging(true);
+        }
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          setDragging(false);
+          void importFiles(e.dataTransfer.files);
+        }
+      }}
+    >
+      <div className="panel-section">
+        <h3>Assets</h3>
+        <p className="hint">
+          Images and Lottie animations bundled with this graphic. Drop files anywhere here to
+          import them, then drag an asset onto the canvas to place it.
+        </p>
+        <input
+          ref={fileInput}
+          type="file"
+          multiple
+          accept={ACCEPT}
+          style={{ display: 'none' }}
+          data-testid="assets-import-input"
+          onChange={(e) => {
+            void importFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
+        <div className="row" style={{ gap: 6 }}>
+          <button className="primary" onClick={() => fileInput.current?.click()} data-testid="assets-import">
+            + Import assets…
+          </button>
+          <button onClick={newFolder} data-testid="assets-new-folder">🗀 New folder…</button>
+        </div>
+        {note && <p className={note.startsWith('✗') ? 'status-bad' : 'hint'} style={{ marginTop: 8 }}>{note}</p>}
+      </div>
+
+      {sortedDirs.length > 0 && (
+        <div className="panel-section">
+          {sortedDirs.map((dir) => (
+            <div key={dir} className={`asset-folder${dropDir === dir ? ' drop-target' : ''}`} {...folderDropProps(dir)}>
+              <div className="asset-folder-head">{dir}/</div>
+              {(groups.get(dir) as AssetFile[]).length === 0 ? (
+                <p className="hint asset-folder-empty">empty — drag an asset here (kept until reload)</p>
+              ) : (
+                (groups.get(dir) as AssetFile[]).map((a) => (
+                  <AssetRow key={a.path} asset={a} selected={a.path === selectedPath} onSelect={() => setSelectedPath(a.path)} />
+                ))
+              )}
+            </div>
+          ))}
+          {assets.length > 0 && (
+            <p className="hint asset-totals">
+              {assets.length} / {PUBLISH_MAX_ASSETS} assets · {fmtBytes(totalBytes)} of {fmtBytes(PUBLISH_MAX_TOTAL)} (community-publish limits)
+            </p>
+          )}
+        </div>
+      )}
+
+      {selected && <AssetInfoSection asset={selected} bucketFolders={foldersFor(selected)} onMove={handleMove} />}
+    </div>
+  );
+}

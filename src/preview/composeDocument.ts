@@ -6,7 +6,9 @@
 // package keeps the external references (the files are written to disk by the exporter).
 
 import gsapSource from '../assets/gsap.min.js?raw';
+import lottieSource from '../assets/lottie.min.js?raw';
 import { inlineAssetRefs, isDataUrl } from '../assets/assetUtils';
+import { templateUsesLottie } from '../assets/lottieSupport';
 import type { SpxTemplate } from '../model/types';
 
 /** Remove <link>/<script> tags that point at local template files we will inline instead.
@@ -63,6 +65,9 @@ body { position: relative; overflow: visible !important; margin: ${options.autho
 </style>`
     : '';
   const gsapTag = `<script id="spx-gsap">\n${gsapSource}\n</script>`;
+  // The bundled Lottie player rides along ONLY when the template uses it (unlike GSAP,
+  // which every template animates with) — see src/assets/lottieSupport.ts.
+  const lottieTag = templateUsesLottie(template) ? `\n<script id="spx-lottie">\n${lottieSource}\n</script>` : '';
   const jsTag = `<script id="spx-template-js">\n${template.js}\n</script>`;
 
   // Preview-only: uploaded assets exist as in-memory data URLs, so an image path the
@@ -116,7 +121,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
   // GSAP must load before the template JS. Put both at the end of <head> if possible. The
   // authoring style comes LAST so it overrides the template's own resetCanvasCss.
-  const headInjection = `${colorSchemeTag}\n${assetShimTag}${gsapTag}\n${styleTag}\n${authoringStyleTag ? `${authoringStyleTag}\n` : ''}`;
+  const headInjection = `${colorSchemeTag}\n${assetShimTag}${gsapTag}${lottieTag}\n${styleTag}\n${authoringStyleTag ? `${authoringStyleTag}\n` : ''}`;
   if (/<\/head>/i.test(html)) {
     html = html.replace(/<\/head>/i, `${headInjection}</head>`);
   } else {

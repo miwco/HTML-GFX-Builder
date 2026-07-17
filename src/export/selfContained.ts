@@ -3,7 +3,9 @@
 // with no sibling files at playout.
 
 import gsapSource from '../assets/gsap.min.js?raw';
+import lottieSource from '../assets/lottie.min.js?raw';
 import { inlineAssetRefs } from '../assets/assetUtils';
+import { templateUsesLottie } from '../assets/lottieSupport';
 import type { SpxTemplate } from '../model/types';
 
 /**
@@ -21,6 +23,11 @@ export function composeSelfContainedHtml(template: SpxTemplate, extraBodyScripts
 
   const headInjection =
     `<script>/* GSAP (bundled) — no internet needed at playout. */\n${gsapSource}</script>\n` +
+    // The Lottie player inlines only when the graphic uses it; its animation JSON is
+    // already a data: URL here (inlineAssetRefs above), so file:// playout works.
+    (templateUsesLottie(template)
+      ? `<script>/* Lottie player (bundled, MIT) — this graphic uses a Lottie animation. */\n${lottieSource}</script>\n`
+      : '') +
     `<style>\n${css}\n</style>\n`;
   html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, `${headInjection}</head>`) : headInjection + html;
 

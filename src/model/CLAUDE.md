@@ -30,12 +30,14 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   into the editor's three panes; foreign templates rarely follow the house contracts, so the
   Style/Motion panels degrade gracefully, validation shows what's missing, and the AI panel's
   "Make SPX-ready" is the guided fix path.
-- **layout.ts** - the desktop DOCKABLE-PANEL layout (localStorage 'spx-gfx-layout', version 2):
+- **layout.ts** - the desktop DOCKABLE-PANEL layout (localStorage 'spx-gfx-layout', version 3):
   three docks (left/right/bottom), each a `DockState` {panels, active, size}, plus `timelineSize`
   (the centre's canvas/timeline split). `PanelId` = code | inspector | data | control | style |
-  ai | export. A panel not in any dock is intentionally CLOSED (not re-added on load - AppShell
-  offers it from a dock's "+"). loadLayout migrates any non-v2 layout to the default; the mobile
-  layout ignores all of this. See src/components/CLAUDE.md (AppShell / WorkspaceDock).
+  assets | ai | export. A panel not in any dock is intentionally CLOSED (not re-added on load -
+  AppShell offers it from a dock's "+"). loadLayout migrates: v2 gets 'assets' inserted once
+  right after 'style' (v2 semantics say absent = closed, so without the version bump no existing
+  user would ever see the new tab); anything older resets to the default; the mobile layout
+  ignores all of this. See src/components/CLAUDE.md (AppShell / WorkspaceDock).
 - **prefs.ts** - small device-level workflow defaults (localStorage 'spx-gfx-prefs'):
   defaultExportTarget, timelineCollapsed. Not synced; keep it tiny.
 - **id.ts** - uuid() that ALWAYS returns a valid RFC-4122 v4, even where crypto.randomUUID is

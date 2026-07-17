@@ -201,10 +201,10 @@ and rendered once here. The exported standalone controlpanel.html (control/contr
 renders the SAME descriptors in dependency-free vanilla JS because it ships without React - it is
 the one deliberate second renderer; keep it in step.
 
-## Panels (the five tool panels - Data / Control / Style / AI / Export)
+## Panels (the six tool panels - Data / Control / Style / Assets / AI / Export)
 
 On DESKTOP each is a dockable panel (AppShell renders them into the docks; see WorkspaceDock).
-**SidePanel** (the five-tab strip) is now the MOBILE surface only. There is no Motion tab: motion
+**SidePanel** (the six-tab strip) is now the MOBILE surface only. There is no Motion tab: motion
 editing lives on the timeline (StepTimeline via TimelineDock) plus the Inspector.
 
 - **SampleDataPanel** - sample values (shared field rows, `includeHidden`: a hidden field carries
@@ -213,7 +213,18 @@ editing lives on the timeline (StepTimeline via TimelineDock) plus the Inspector
   on, hidden fields skipped as SPX skips them); live-drives the preview via store.sendControl ->
   simulator; downloads controlpanel.html; adds the Google-Sheets live-data block.
 - **StylePanel** - reads/writes the :root style contract (src/templates/CLAUDE.md): colors,
-  font swap, zone re-anchoring, post-creation font import.
+  font swap, zone re-anchoring, post-creation font import (an imported font still lands in
+  template.assets and shows in the Assets panel's list).
+- **AssetsPanel** - the template's bundled files as folder-grouped ROWS (images, Lottie .json
+  gated by looksLikeLottie, fonts): DnD file import (one addAssets = one undo step), rows are
+  drag SOURCES (`application/x-noacg-asset`, exported as ASSET_DRAG_TYPE) for the canvas drop
+  (CanvasInteraction) and for folder-header drops; folders are path segments (one level inside
+  the bucket) - moving/renaming goes through blocks/assetOps.ts moveAsset, which rewrites every
+  code reference in the SAME undoable apply, then patches stale sampleData values. Empty
+  user-created folders are ephemeral component state on purpose (assets sync as template JSON).
+  The Information section derives name/format/dimensions/aspect/size/alpha/Lottie timing +
+  reference count per selection via src/assets/assetInfo.ts (async probe, cached) - the model
+  stays { path, data }. Pinned by e2e/assets.spec.ts.
 - **AIPromptPanel**; **ExportPanel** (validation inline; remembers the last-picked target via
   model/prefs.ts). Below the zip targets it mounts **render/RenderPanel** — the Video & image
   section (MP4/WebM/PNG/sequence/ProRes via the render API) — ONLY when `isRenderConfigured()`

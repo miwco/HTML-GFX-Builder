@@ -7,6 +7,7 @@ const PANEL_LABEL: Record<PanelId, string> = {
   data: 'Data',
   control: 'Control',
   style: 'Style',
+  assets: 'Assets',
   ai: 'AI',
   export: 'Export',
 };
