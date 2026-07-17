@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import { canvasBox, elementPoint } from './_canvas';
 
 // The interaction model's selection foundations (docs/TIMELINE_INTERACTION_MODEL.md):
@@ -12,9 +13,10 @@ async function createHairline(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
   await expect
     .poll(async () =>
       page.frameLocator('iframe.preview-frame').locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity),
@@ -173,6 +175,9 @@ test('canvas: a selected layer shows scale + rotate handles that key at the play
   await page.mouse.down();
   await page.mouse.move(sh.x + 70, sh.y + 70, { steps: 10 });
   await page.mouse.up();
+  // The keyed apply rebuilds the preview; let it land before grabbing the next handle, or the
+  // overlay re-render can swallow the rotate drag mid-gesture.
+  await awaitPreviewRebuild(page);
   await expect.poll(() => hasProp('scale')).toBe(true);
 
   // Drag the top handle sideways → a rotation keyframe lands too.

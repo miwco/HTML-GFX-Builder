@@ -1,3 +1,5 @@
+import { awaitPreviewRebuild } from './_preview';
+
 // The Export tab's Video & image render section (src/components/render/RenderPanel.tsx).
 // The offline suite runs with VITE_RENDER_API=1 (playwright.config.ts webServer env), so
 // the section is present; every /api/render call here is stubbed with page.route — no
@@ -11,9 +13,10 @@ async function createHairline(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 async function openRenderPanel(page: Page) {

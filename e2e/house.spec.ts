@@ -1,4 +1,5 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // The NoaCG house family (styleTag 'noacg') — the brand-kit overlays rebuilt as first-class
 // catalog templates: one create + play + behavior spec per house mechanism (the standard
@@ -11,10 +12,10 @@ async function createFrom(page: Page, categoryName: string, variantName: string)
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: categoryName }).click();
   await page.locator('.wz-variant', { hasText: variantName }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  // Wait out the ~350 ms debounced preview rebuild (see CLAUDE.md gotchas).
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 function frame(page: Page): FrameLocator {

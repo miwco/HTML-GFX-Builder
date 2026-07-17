@@ -1,4 +1,5 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // Core UI flows for the choose-first creation wizard + live panels.
 
@@ -13,8 +14,12 @@ async function toVariantStep(page: Page, variantName: string) {
 
 /** Click through the remaining steps and create the project. */
 async function createFromCurrentStep(page: Page) {
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
+  // Wait out the rebuild here: the default document behind the wizard also binds #f0, so an
+  // assertion (or Play) racing the debounced rebuild would run against the old document.
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 function previewFrame(page: Page): FrameLocator {

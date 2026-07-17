@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import { lowerThirdPng } from './_png';
 import { elementPoint } from './_canvas';
 
@@ -130,9 +131,10 @@ test('import graphic: a 2× export is shown frame-sized, not pushed off the fram
 async function createImported(page: Page) {
   await dropDesign(page);
   await page.getByRole('button', { name: 'Add text fields ›' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 /** The current template's #fw0 rule position + #f0 keyframe tracks + history length. */

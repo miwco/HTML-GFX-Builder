@@ -1,4 +1,5 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // The broadcast-package flows: custom colors, imported fonts, the project brand,
 // and the first-wave categories (info cards, end credits, tickers).
@@ -12,11 +13,10 @@ async function toVariantStep(page: Page, categoryName: string, variantName: stri
 }
 
 async function create(page: Page) {
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  // The preview rebuilds ~350 ms (debounced) after a template applies; interacting with
-  // the iframe before that hits the previous document.
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 function frame(page: Page): FrameLocator {

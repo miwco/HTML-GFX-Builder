@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // The flexible dockable-panel workspace (model/layout.ts): the canvas over the timeline in the
 // centre, flanked by left/right docks (plus an optional bottom dock), each hosting any panels as
@@ -11,9 +12,10 @@ async function createHairline(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650); // debounced preview rebuild
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 test('the default framing: code on the left, Inspector + tools on the right, timeline in the centre', async ({ page }) => {

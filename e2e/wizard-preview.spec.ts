@@ -24,8 +24,26 @@ function root(page: Page) {
   return preview(page).locator('.lower-third');
 }
 
-async function rootOpacity(page: Page): Promise<string> {
-  return root(page).evaluate((el) => getComputedStyle(el).opacity);
+// These readers run inside the wizard's live iframe, which the debounced rebuild replaces
+// wholesale (srcdoc). A read caught mid-swap throws "execution context destroyed" — return
+// null instead so an expect.poll retries against the fresh document rather than aborting.
+
+async function rootOpacity(page: Page): Promise<string | null> {
+  try {
+    return await root(page).evaluate((el) => getComputedStyle(el).opacity);
+  } catch {
+    return null;
+  }
+}
+
+async function previewVar(page: Page, prop: string): Promise<string | null> {
+  try {
+    return await preview(page)
+      .locator(':root')
+      .evaluate((el, p) => getComputedStyle(el).getPropertyValue(p).trim(), prop);
+  } catch {
+    return null;
+  }
 }
 
 test('style step: rapid palette clicks settle on the LAST palette, entrance replayed', async ({ page }) => {
@@ -40,56 +58,26 @@ test('style step: rapid palette clicks settle on the LAST palette, entrance repl
     const { paletteById } = await import('/src/model/wizard.ts');
     return paletteById('inferno').accent;
   });
-  await expect
-    .poll(async () =>
-      preview(page)
-        .locator(':root')
-        .evaluate((el) => getComputedStyle(el).getPropertyValue('--accent').trim()),
-    )
-    .toBe(inferno);
+  await expect.poll(() => previewVar(page, '--accent')).toBe(inferno);
   await expect.poll(() => rootOpacity(page)).toBe('1');
 });
 
 test('style step: font and size choices land in the rebuilt preview', async ({ page }) => {
   await openWizardTo(page, 'style');
   await page.locator('.wz-font', { hasText: 'Space Grotesk' }).click();
-  await expect
-    .poll(async () =>
-      preview(page)
-        .locator(':root')
-        .evaluate((el) => getComputedStyle(el).getPropertyValue('--font-heading')),
-    )
-    .toContain('Space Grotesk');
+  await expect.poll(() => previewVar(page, '--font-heading')).toContain('Space Grotesk');
   // Graphic size L scales the WHOLE graphic (the --scale contract), not just the text.
   await page.locator('.panel-section', { hasText: 'Graphic size' }).getByRole('button', { name: 'L', exact: true }).click();
-  await expect
-    .poll(async () =>
-      preview(page)
-        .locator(':root')
-        .evaluate((el) => getComputedStyle(el).getPropertyValue('--scale').trim()),
-    )
-    .toBe('1.2');
+  await expect.poll(() => previewVar(page, '--scale')).toBe('1.2');
   // Text size L scales ONLY the type (the --type-scale contract): the name line's
   // font grows while the graphic's --scale stays where the size knob put it.
   const fontPx = () =>
     preview(page).locator('#f0').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
   const before = await fontPx();
   await page.locator('.panel-section', { hasText: 'Text size' }).getByRole('button', { name: 'L', exact: true }).click();
-  await expect
-    .poll(async () =>
-      preview(page)
-        .locator(':root')
-        .evaluate((el) => getComputedStyle(el).getPropertyValue('--type-scale').trim()),
-    )
-    .toBe('1.15');
+  await expect.poll(() => previewVar(page, '--type-scale')).toBe('1.15');
   expect(await fontPx()).toBeCloseTo(before * 1.15, 0);
-  await expect
-    .poll(async () =>
-      preview(page)
-        .locator(':root')
-        .evaluate((el) => getComputedStyle(el).getPropertyValue('--scale').trim()),
-    )
-    .toBe('1.2');
+  await expect.poll(() => previewVar(page, '--scale')).toBe('1.2');
   await expect.poll(() => rootOpacity(page)).toBe('1');
 });
 

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import { elementPoint } from './_canvas';
 
 // Timeline v2 Phase 2 — the Inspector column (the shared selection's third consumer) and
@@ -12,9 +13,10 @@ async function createHairline(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 /** The Inspector is a tab in the right dock (active by default). Ensure it is docked and the

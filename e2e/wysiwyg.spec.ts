@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import { canvasBox } from './_canvas';
 
 // Era 6 — direct manipulation (docs/WYSIWYG_PLAN.md, revised: NO move mode). The canvas
@@ -12,9 +13,10 @@ async function createHairline(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 /** The root rule's anchoring sides from the PREVIEW's stylesheet (behavior-true: what renders).
@@ -56,7 +58,7 @@ test('dragging the graphic re-anchors it via a zone+nudge code patch (no mode)',
   await page.mouse.up();
 
   // The patch lands in the code, the preview rebuilds, and the root rule now anchors top-right.
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const anchor = await rootAnchor(page);
   expect(anchor.right).not.toBe('auto');
   expect(anchor.top).not.toBe('auto');
@@ -72,7 +74,7 @@ test('dragging the graphic re-anchors it via a zone+nudge code patch (no mode)',
 
   // Undo restores the exact previous anchoring — the drag itself is one undoable apply.
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   expect(await rootAnchor(page)).toEqual(before);
 });
 
@@ -96,7 +98,7 @@ test('W2: dragging the corner handle writes the --scale variable', async ({ page
   await page.mouse.up();
 
   // One --scale patch (the Style panel's size mechanism), visible in the rebuilt preview.
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const scaleVar = await page
     .frameLocator('iframe.preview-frame')
     .locator('body')
@@ -117,7 +119,7 @@ test('W2: dragging the corner handle writes the --scale variable', async ({ page
 
   // The resize is one undoable apply: Ctrl+Z returns the graphic to its original size.
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const undone = await page
     .frameLocator('iframe.preview-frame')
     .locator('body')
@@ -137,7 +139,7 @@ test('a drag starting on empty canvas does nothing', async ({ page }) => {
   await page.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.6, { steps: 4 });
   await page.mouse.up();
 
-  await page.waitForTimeout(650);
+  await page.waitForTimeout(650); // KEEP as a sleep: this asserts nothing changes, so no rebuild ever comes
   expect(await rootAnchor(page)).toEqual(before);
 });
 
@@ -153,6 +155,6 @@ test('Escape cancels a drag without touching the code', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page.mouse.up();
 
-  await page.waitForTimeout(650);
+  await page.waitForTimeout(650); // KEEP as a sleep: this asserts nothing changes, so no rebuild ever comes
   expect(await rootAnchor(page)).toEqual(before);
 });

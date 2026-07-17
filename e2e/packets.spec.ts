@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -10,9 +11,10 @@ async function create(page: Page, categoryName: string, variantName: string) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: categoryName }).click();
   await page.locator('.wz-variant', { hasText: variantName }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 test('packets: save two graphics, reopen one, export the whole packet as one zip', async ({ page }) => {
@@ -69,9 +71,12 @@ test('looks: capture the current look, apply it to another graphic, survive relo
   await expect(page.locator('.pk-graphic', { hasText: 'Mint look' })).toBeVisible();
   await page.locator('.gallery-close').click();
 
-  // The look survives a full reload (localStorage) and applies to a fresh graphic.
+  // The look survives a full reload (localStorage) and applies to a FRESH graphic. A fresh
+  // graphic matters for determinism too: whether the autosave (800 ms debounce) caught the
+  // accent tweak before the reload decides if the restored project already carries it — and
+  // applying a look that is already active changes nothing, so nothing would highlight.
   await page.reload();
-  await page.locator('.gallery-close').click(); // wizard opens on load — keep the current graphic
+  await create(page, 'Lower thirds', 'Hairline'); // the wizard opens on load — make the fresh graphic
   await page.getByRole('button', { name: '📦 Packets' }).click();
   await page.locator('.pk-graphic', { hasText: 'Mint look' }).getByRole('button', { name: 'Apply', exact: true }).click();
   const css = await page.evaluate(async () => {

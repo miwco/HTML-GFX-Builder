@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -36,9 +37,10 @@ async function dropTemplate(page: Page, name: string, buffer: Buffer) {
   // Import lives inside "Create with AI": drop the file, then the no-AI byte-faithful open.
   await page.locator('[data-entry="ai"]').click();
   await page.locator('.wz-drop input[type="file"]').setInputFiles({ name, mimeType: 'text/html', buffer });
-  await page.getByRole('button', { name: /Open as code \(no AI\)/ }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: /Open as code \(no AI\)/ }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 test('import .html: splits into panes, keeps the definition, validates, exports', async ({ page }) => {
@@ -77,8 +79,9 @@ test('import round-trip: an exported Starter zip re-imports as the same code', a
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+  });
   const before = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     const t = useTemplateStore.getState().template;

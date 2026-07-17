@@ -13,8 +13,15 @@ export default defineConfig({
   testIgnore: '**/configured/**',
   timeout: 30_000,
   expect: { timeout: 7_000 },
-  fullyParallel: false,
-  workers: 1,
+  // The suite is parallel-safe: every test gets a fresh browser context (isolated storage),
+  // the dev server is stateless in the pinned offline mode, and the render specs stub their
+  // API per-page. fullyParallel spreads the big spec files (timeline-v2 is ~40 tests) across
+  // workers instead of leaving the largest file as the serial critical path.
+  // 4 workers is the measured sweet spot on a 16-core dev box: the full suite passes clean,
+  // and 8 workers only shaved ~30 s while making the tightest UI timings (Monaco decorations,
+  // the stub AI's generate) flake under CPU contention.
+  fullyParallel: true,
+  workers: 4,
   retries: 0,
   reporter: [['list']],
   use: {

@@ -1,4 +1,5 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // The UX overhaul: preview-over-tabs layout, validation inside Export, motion phase
 // control + auto-replay (on the timeline strip — the Motion tab is retired), add-field
@@ -10,9 +11,10 @@ async function createHairline(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650); // debounced preview rebuild
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 function frame(page: Page): FrameLocator {
@@ -83,8 +85,10 @@ test('wizard: direction control mixes a different exit preset at create', async 
   await page.getByRole('button', { name: 'Out only' }).click();
   await page.locator('.wz-anim-dirs button', { hasText: '↓' }).click();
   await expect(page.locator('.wz-step .hint').first()).toContainText('Out Slide down');
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
   // Lower thirds create as data blocks: the mix is real keyframe data — the entrance
   // keeps Line reveal's choreography (the accent draws in) while the Out step carries
   // Slide down's exit (the box lifts away: y + opacity keyframes).
@@ -97,8 +101,7 @@ test('wizard: direction control mixes a different exit preset at create', async 
   expect(Object.keys(data!.steps[0].layers['.lower-third-accent'] ?? {})).toContain('scaleX');
   const outBox = data!.steps[data!.steps.length - 1].layers['.lower-third-box'] ?? {};
   expect(Object.keys(outBox)).toEqual(expect.arrayContaining(['y', 'opacity']));
-  // …and the mixed runtime still plays.
-  await page.waitForTimeout(650); // debounced preview rebuild
+  // …and the mixed runtime already rebuilt above — play it.
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
     .poll(async () => frame(page).locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))

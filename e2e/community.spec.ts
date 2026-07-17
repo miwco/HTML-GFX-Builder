@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // Era 5.5 community sharing. The E2E dev server is pinned OFFLINE (playwright.config webServer.env),
 // so this suite proves two things without a backend:
@@ -14,9 +15,10 @@ async function create(page: Page, categoryName: string, variantName: string) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: categoryName }).click();
   await page.locator('.wz-variant', { hasText: variantName }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 test('offline: no community affordances anywhere', async ({ page }) => {

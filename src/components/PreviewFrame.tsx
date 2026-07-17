@@ -146,12 +146,26 @@ export default function PreviewFrame({ iframeRef }: Props) {
     return () => window.removeEventListener('message', onMessage);
   }, [setPreviewError]);
 
+  // Monotonic document revision, stamped onto the iframe as data-doc-rev once each rebuilt
+  // document has LOADED. Anything that must wait out the debounced rebuild (the e2e suite's
+  // awaitPreviewRebuild helper) watches this attribute instead of sleeping.
+  const docRevRef = useRef(0);
+
   // Rebuild the iframe document when code or resolution changes (debounced).
   useEffect(() => {
     const handle = setTimeout(() => {
       const iframe = iframeRef.current;
       if (!iframe) return;
       setPreviewError(null);
+      const rev = ++docRevRef.current;
+      iframe.addEventListener(
+        'load',
+        () => {
+          // Only the newest commit may stamp — a slow older document must not look current.
+          if (rev === docRevRef.current) iframe.dataset.docRev = String(rev);
+        },
+        { once: true },
+      );
       // Authoring mode: render the canvas inset inside the padded document so off-canvas
       // content is painted. Never used by exports/renders (pad is editor-only).
       iframe.srcdoc = composeDocument(template, { authoring: { padX, padY } });

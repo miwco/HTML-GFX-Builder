@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // The wizard's logo option: a variant that declares `logo: 'optional'` offers a toggle +
 // custom upload on the Fields step; enabling it makes the created template carry a REAL
@@ -45,8 +46,10 @@ test('logo toggle + custom upload: the created template carries the field, asset
   });
   await expect(logoSection.locator('img[alt="Logo preview"]')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 
   const t = await createdTemplate(page);
   // The logo is a real SPX image field after the three text lines…
@@ -57,8 +60,7 @@ test('logo toggle + custom upload: the created template carries the field, asset
   // …and the design carries the bound <img> with the shared slot's class.
   expect(t.html).toContain('<img id="f3" class="info-card-logo"');
 
-  // The preview resolves the images/ path through the asset shim and shows the logo.
-  await page.waitForTimeout(650); // debounced preview rebuild
+  // The preview (already rebuilt above) resolves images/ through the asset shim.
   const src = await page
     .frameLocator('iframe.preview-frame')
     .locator('#f3')

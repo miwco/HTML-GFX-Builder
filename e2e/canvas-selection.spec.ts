@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import { canvasBox, elementPoint } from './_canvas';
 
 // Era 6 — the canvas SELECTION model. Clicking a structural element selects it: an amber
@@ -13,9 +14,10 @@ async function createHairline(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 /** Wait until the preview shows the settled graphic (the design view after every rebuild). */
@@ -62,7 +64,7 @@ test('clicking a text line selects it: outline + a chip naming the field — no 
   await expect(chip).toContainText('Double-click edits · drag moves'); // both actions that exist here
 
   // Selection is editor UI state only: no tab jump, no change highlight, no history entry.
-  await page.waitForTimeout(650);
+  await page.waitForTimeout(650); // KEEP as a sleep: this asserts nothing changes, so no rebuild ever comes
   await expect(page.locator('.tabs .tab.active')).toHaveText('HTML');
   await expect(page.locator('.change-dot')).toHaveCount(0);
   await expect(page.locator('.editor-host .changed-line')).toHaveCount(0);
@@ -157,7 +159,7 @@ test('selection layers cleanly under inline editing and never blocks drag-to-mov
   await page.mouse.down();
   await page.mouse.move(canvas.x + canvas.width * 0.85, canvas.y + canvas.height * 0.15, { steps: 8 });
   await page.mouse.up();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const anchor = await rootAnchor(page);
   expect(anchor.right).not.toBe('auto');
   expect(anchor.top).not.toBe('auto');
@@ -195,7 +197,7 @@ test('the chip assigns the selected part to a press — the data chain, from the
 
   // Enter the steps world from the step timeline (»+ adds the first press).
   await page.getByTestId('tlv2-add-step').click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
 
   // Select the accent via its timeline row label (shared selection — and a click target
   // far kinder than the 3px hairline itself).
@@ -209,7 +211,7 @@ test('the chip assigns the selected part to a press — the data chain, from the
 
   // Assign it to press 1 — the data twin of the gutter's patch (a reveals move).
   await appears.selectOption('0');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   await expect(page.getByTestId('canvas-appears')).toHaveValue('0'); // re-parsed from the code
   // The write landed in the code (the JS tab shows its change dot; HTML is the active tab).
   await expect(page.locator('.tabs .tab', { hasText: 'JS' }).locator('.change-dot')).toBeVisible();
@@ -223,7 +225,7 @@ test('the chip assigns the selected part to a press — the data chain, from the
   // And back to the entrance, from the canvas too. The emptied press disappears —
   // with no presses left, the graphic exits the steps world and the control retires.
   await page.getByTestId('canvas-appears').selectOption('-1');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   await expect(page.getByTestId('canvas-appears')).toHaveCount(0);
   const data = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
@@ -249,21 +251,21 @@ test('a block element outside the root joins the press chain: hidden until its p
     const logo = BUILDING_BLOCKS.find((b: { id: string }) => b.id === 'logo')!;
     s.applyTemplate(logo.apply(s.template));
   });
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
 
   // Enter the steps world (»+ on the step timeline), then put the Title on press 1 so
   // the chain matches the classic flow this test pinned before the data flip.
   await page.getByTestId('tlv2-add-step').click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   await page.locator('[data-part="#f1"]').click();
   await page.getByTestId('canvas-appears').selectOption('0');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
 
   // The block's row exists now; select it and give it its OWN press from the canvas chip.
   await page.locator('[data-part="#logo"]').click();
   await expect(page.getByTestId('selection-chip')).toContainText('logo');
   await page.getByTestId('canvas-appears').selectOption('1'); // "appears on a new press"
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   await expect(page.getByTestId('canvas-appears')).toHaveValue('1');
 
   // The data chain carries the reveal; the outside gate is the INTERPRETER's job now
@@ -293,7 +295,7 @@ test('a block element outside the root joins the press chain: hidden until its p
 
   // Unassigning removes the reveal: the block is an always-on decoration again.
   await page.getByTestId('canvas-appears').selectOption('-1');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const revealsAfter = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     const { parseAnimData } = await import('/src/blocks/animData.ts');

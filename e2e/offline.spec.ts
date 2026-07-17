@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // Era 1: self-hosted Monaco — the editor must work with every CDN unreachable.
 
@@ -15,8 +16,9 @@ test('the editor loads and works with all CDNs blocked', async ({ page }) => {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+  });
 
   // Monaco rendered from the bundle and is interactive.
   await expect(page.locator('.editor-host .monaco-editor')).toBeVisible();

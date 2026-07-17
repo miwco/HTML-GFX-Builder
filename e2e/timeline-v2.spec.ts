@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // Timeline v2 Phase 3 — the read-first step timeline behind the dock toggle: step clips
 // with cue markers on a time ruler, a click/drag playhead that scrubs the real preview
@@ -16,9 +17,10 @@ async function createHairline(page: Page, steps = false) {
     await page.getByRole('button', { name: 'Next ›' }).click();
     await page.locator('.wz-step input[type="checkbox"]').check();
   }
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
   // Lower thirds create AS data blocks — the step timeline is their native surface.
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
 }
@@ -204,7 +206,7 @@ test('v2 presets: In and Out apply independently; applying a preset cleanly swap
   await page.getByTestId('inspector-preset-select').selectOption('pop-spring');
   await page.getByTestId('inspector-preset-in').click();
   await page.getByTestId('inspector-preset-apply').click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   let data = await animData(page);
   // Pop spring's entrance landed (the box scales in)…
   expect(Object.keys(data!.steps[0].layers['.lower-third-box'])).toContain('scale');
@@ -218,7 +220,7 @@ test('v2 presets: In and Out apply independently; applying a preset cleanly swap
   await page.getByTestId('inspector-preset-select').selectOption('blur-in');
   await page.getByTestId('inspector-preset-out').click();
   await page.getByTestId('inspector-preset-apply').click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   data = await animData(page);
   expect(Object.keys(data!.steps[1].layers['.lower-third-box'])).toContain('filter'); // blur exit
   expect(Object.keys(data!.steps[0].layers['.lower-third-box'])).toContain('scale'); // pop entrance kept
@@ -234,7 +236,7 @@ test('v2 presets: a single layer takes a preset into ITS activation step (In is 
   await page.getByTestId('inspector-preset-select').selectOption('blur-in');
   await page.getByTestId('inspector-preset-in').click();
   await page.getByTestId('inspector-preset-apply').click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const data = await animData(page);
   // Blur-in's LINE choreography (a y + opacity rise — the blur filter is the box's move)
   // landed in STEP 2, the layer's reveal step — not the entrance. The layer still reveals
@@ -260,7 +262,7 @@ test('v2: the canvas chip moves a layer between presses on a data template', asy
   const appears = page.getByTestId('canvas-appears');
   await expect(appears).toBeVisible();
   await appears.selectOption('-1');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const data = await animData(page);
   // Back with ▶ Play: the press is gone, the entrance animates the line again, and the
   // SPX definition follows the shorter chain.
@@ -712,9 +714,10 @@ test('v2: corner bugs create as data blocks — the step timeline is their nativ
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Corner bug' }).click();
   await page.locator('.wz-variant', { hasText: 'Glass Mark' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
   // The step timeline outright — no classic strip, no convert chips.
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
   await expect(page.getByTestId('timeline-v2-convert')).toHaveCount(0);
@@ -725,7 +728,7 @@ test('v2: corner bugs create as data blocks — the step timeline is their nativ
   // nothing until the user assigns something is the user's call); the SPX steps setting
   // stays derived from the data.
   await page.getByTestId('tlv2-add-step').click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   data = await animData(page);
   expect(data!.steps).toHaveLength(3);
   const steps = await page.evaluate(async () => {
@@ -741,9 +744,10 @@ test('v2: scoreboards create as data blocks — the score pop keeps working arou
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Scoreboards' }).click();
   await page.locator('.wz-variant', { hasText: 'Match Strip' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
   // The step timeline outright; scoreboards never step (Enter + Out only).
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
   await expect(page.getByTestId('timeline-v2-convert')).toHaveCount(0);
@@ -786,9 +790,10 @@ test('v2 read-only glyphs: a looping track shows a repeat tail, and lifecycle ca
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Starting soon' }).click();
   await page.locator('.wz-variant').first().click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
 
   // The ambient breath is an endless yoyo — the tail says so, and carries no diamonds.
@@ -860,9 +865,10 @@ test('v2: the quiz Continue is a real step — its reveal is a lifecycle call, a
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Quiz' }).click();
   await page.locator('.wz-variant').first().click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 
   // Quiz creates as a data block: the step timeline, not the classic strip.
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
@@ -896,7 +902,7 @@ test('v2: the quiz Continue is a real step — its reveal is a lifecycle call, a
   expect(await stepsSetting()).toBe('2');
   await page.getByTestId('tlv2-clip-0').click({ button: 'right' });
   await page.getByTestId('tlv2-menu-ease').selectOption('power2.out');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   expect(await stepsSetting()).toBe('2');
 
   // And it still plays: Continue runs the step, the step fires the call, the answer lands.

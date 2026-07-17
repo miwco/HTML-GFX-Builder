@@ -1,4 +1,5 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -19,9 +20,10 @@ async function createFrom(page: Page, categoryName: string, variantName: string)
 }
 
 async function create(page: Page) {
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650); // debounced preview rebuild (see CLAUDE.md gotchas)
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 function frame(page: Page): FrameLocator {
@@ -39,7 +41,7 @@ async function uploadImage(page: Page, fieldLabel: string, fileName: string) {
   });
   // Adding the asset recomposes the preview (debounced) — let the frame settle before
   // sending an update, or the update lands in the document that is about to be replaced.
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
 }
 
 test('data panel: the add-field types are the broadcast set, and Image becomes a filelist field', async ({ page }) => {

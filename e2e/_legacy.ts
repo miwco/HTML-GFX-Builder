@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // LEGACY TEMPLATES, for the specs that cover what Phase 8 deliberately KEPT.
 //
@@ -23,7 +24,7 @@ async function spliceRegion(page: Page, region: string) {
       js: tpl.js.slice(0, start) + body + tpl.js.slice(end + '/* == END ANIMATION == */'.length),
     });
   }, region);
-  await page.waitForTimeout(650); // the debounced preview rebuild
+  await awaitPreviewRebuild(page);
 }
 
 /**

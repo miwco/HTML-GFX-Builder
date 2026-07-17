@@ -1,4 +1,5 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 import { applyLegacyRegion, applyUnconvertibleRegion, applyUnreadableRegion } from './_legacy';
 
 // PHASE 8 — what happens to a LEGACY TEMPLATE now that the classic strip's editing patchers are
@@ -27,9 +28,10 @@ async function createCard(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Info cards' }).click();
   await page.locator('.wz-variant', { hasText: 'Hairline Card' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 function frame(page: Page): FrameLocator {
@@ -56,14 +58,14 @@ test('the dock picks the surface from the CODE: data edits, readable legacy conv
 
   // "Use keyframes" rewrites the region as data — one undoable apply, and the code is shown.
   await page.getByTestId('timeline-v2-convert').click();
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   expect(await templateJs(page)).toContain('var NOACG_ANIM');
   await expect(page.locator('.tabs .tab.active')).toHaveText('JS');
   await expect(page.getByTestId('timeline-v2-convert')).toHaveCount(0); // nothing left to convert
 
   // Undo restores the legacy code, and with it the read-only surface.
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   expect(await templateJs(page)).not.toContain('var NOACG_ANIM');
   await expect(page.getByTestId('timeline-v2-convert')).toBeVisible();
 });
@@ -128,7 +130,7 @@ test('start over: the escape hatch out of unconvertible code writes DATA, and un
   // The one write this surface offers. It does not edit the hand-written motion — it replaces
   // the region with a preset, as modern data, so the way out of legacy code leads FORWARD.
   await page.getByTestId('timeline-preset-reset').selectOption('slide-up');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   const js = await templateJs(page);
   expect(js).toContain('var NOACG_ANIM'); // data, never a fresh legacy region
   expect(js).not.toContain('var animSpeed =');
@@ -137,7 +139,7 @@ test('start over: the escape hatch out of unconvertible code writes DATA, and un
 
   // Undo brings the hand-written version straight back, exactly as it was.
   await page.keyboard.press('Control+z');
-  await page.waitForTimeout(650);
+  await awaitPreviewRebuild(page);
   expect(await templateJs(page)).toBe(handWritten);
   await expect(page.getByTestId('timeline-unreadable')).toBeVisible();
 });

@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // AI mode (Create with AI): the Anthropic API is mocked at the network level, so these
 // specs verify the full app flow — settings gate, generation, the harness's validation +
@@ -150,10 +151,11 @@ test('describe-it: prompt → validated template → create project', async ({ p
   await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
   // The result renders live in the wizard preview.
   await expect(page.locator('.wz-side iframe')).toBeVisible();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await expect(page.locator('.topbar .tpl-name')).toHaveText('Test Slate');
-  await page.waitForTimeout(650); // preview rebuild
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+    await expect(page.locator('.topbar .tpl-name')).toHaveText('Test Slate');
+  });
   await expect(page.frameLocator('iframe.preview-frame').locator('#f0')).toHaveText('Hello AI');
 });
 

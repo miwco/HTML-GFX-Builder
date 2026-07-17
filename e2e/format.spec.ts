@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { awaitPreviewRebuild } from './_preview';
 
 // The Prettier formatting layer (src/format/formatCode.ts) and its Monaco wiring. The service is
 // house-aware on purpose: it formats HTML freely, but it must NEVER silently rewrite the two
@@ -88,9 +89,10 @@ async function createLowerThird(page: Page) {
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant').first().click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-  await page.waitForTimeout(650); // debounced preview build
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
 }
 
 test('the Format button reformats the active tab through Monaco and the store', async ({ page }) => {
