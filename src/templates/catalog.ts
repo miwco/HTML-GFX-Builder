@@ -12,6 +12,7 @@ import { SCOREBOARDS } from './scoreboards';
 import { CORNER_BUGS } from './cornerBug';
 import { INFOGRAPHICS } from './infographics';
 import { QUIZ } from './quiz';
+import { IMPORTED_DESIGNS } from './importedDesign/shared';
 
 export const CATALOG: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
   'lower-third': LOWER_THIRDS,
@@ -24,6 +25,8 @@ export const CATALOG: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
   'corner-bug': CORNER_BUGS,
   'infographic': INFOGRAPHICS,
   'quiz': QUIZ,
+  // Not browsable in the category grid — the Import Graphic entry is its only way in.
+  'imported-design': IMPORTED_DESIGNS,
 };
 
 export function variantsFor(category: TemplateCategory | null): TemplateVariant[] {

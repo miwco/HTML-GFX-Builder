@@ -89,7 +89,9 @@ export default function ImportStep({ images, onImages, onContinue, onTemplateFil
       <div className="panel-section" style={{ marginTop: 18 }}>
         <h3>What are you making with these?</h3>
         <select value={category} onChange={(e) => setCategory(e.target.value as TemplateCategory)}>
-          {CATEGORIES.map((c) => (
+          {/* 'imported' is not something you make WITH an image — it IS the image (the
+              Import graphic entry). See CategoryInfo.group. */}
+          {CATEGORIES.filter((c) => c.group !== 'imported').map((c) => (
             <option key={c.id} value={c.id} disabled={!c.available}>
               {c.name}{c.available ? '' : ' — coming soon'}
             </option>

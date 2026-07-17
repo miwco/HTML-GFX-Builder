@@ -11,6 +11,7 @@ import WizardPreview from './WizardPreview';
 import BrandLogo from '../BrandLogo';
 import EntryStep from './steps/EntryStep';
 import ImportStep from './steps/ImportStep';
+import ImportDesignStep from './steps/ImportDesignStep';
 import CategoryStep from './steps/CategoryStep';
 import TemplateStep from './steps/TemplateStep';
 import FieldsStep from './steps/FieldsStep';
@@ -27,6 +28,15 @@ const STEP_TITLES = ['Start', 'Category', 'Template', 'Fields', 'Style', 'Animat
 const STEP_TITLES_IMPORT = ['Start', 'Import', 'Template', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_AI = ['Start', 'Describe'];
 const STEP_TITLES_VIDEO = ['Start', 'Video'];
+const STEP_TITLES_DESIGN = ['Start', 'Design', 'Text', 'Style', 'Animation'];
+
+/**
+ * Import-graphic mode reuses the ordinary step indices and SKIPS the Template step (2):
+ * the design is the artwork the user brought, so there is nothing to pick. Keeping the
+ * indices means Fields/Style/Animation stay 3/4/5 for every mode — no step is renumbered
+ * and no existing flow shifts. This maps rail position → step index.
+ */
+const DESIGN_STEPS = [0, 1, 3, 4, 5];
 
 /**
  * The choose-first creation wizard (replaces the old template gallery). Six steps —
@@ -41,7 +51,7 @@ export default function CreationWizard() {
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
 
   const [step, setStep] = useState(0);
-  const [mode, setMode] = useState<'template' | 'import' | 'ai' | 'video'>('template');
+  const [mode, setMode] = useState<'template' | 'import' | 'design' | 'ai' | 'video'>('template');
   const [draft, setDraft] = useState<WizardDraft>(initialDraft);
   const [replayKey, setReplayKey] = useState(0);
   // Describe-it mode: the AI's current (validated) result, previewed live like any draft.
@@ -94,7 +104,7 @@ export default function CreationWizard() {
   const demoOut =
     step === 5 &&
     !!variant &&
-    ['lower-third', 'info-card', 'scoreboard', 'corner-bug'].includes(variant.category) &&
+    ['lower-third', 'info-card', 'scoreboard', 'corner-bug', 'imported-design'].includes(variant.category) &&
     draft.animation.direction !== 'in';
 
   if (!open) return null;
@@ -148,7 +158,12 @@ export default function CreationWizard() {
   };
 
   const nextDisabled =
-    (step === 1 && (mode === 'import' ? draft.importedImages.length === 0 || !draft.category : !draft.category)) ||
+    (step === 1 &&
+      (mode === 'design'
+        ? !draft.designArt
+        : mode === 'import'
+          ? draft.importedImages.length === 0 || !draft.category
+          : !draft.category)) ||
     (step === 2 && !draft.variantId);
 
   const showPreview =
@@ -158,8 +173,13 @@ export default function CreationWizard() {
   const stepTitles =
     mode === 'ai' ? STEP_TITLES_AI
     : mode === 'video' ? STEP_TITLES_VIDEO
+    : mode === 'design' ? STEP_TITLES_DESIGN
     : mode === 'import' ? STEP_TITLES_IMPORT
     : STEP_TITLES;
+  // Rail position → step index. Only design mode skips one (see DESIGN_STEPS).
+  const stepIndexes = mode === 'design' ? DESIGN_STEPS : stepTitles.map((_, i) => i);
+  const railPos = stepIndexes.indexOf(step);
+  const goToStep = (delta: number) => setStep(stepIndexes[railPos + delta] ?? step);
 
   // Ordering: imported images put logo-slot designs first; a matched brand puts its
   // style family first (so the package's siblings lead).
@@ -190,21 +210,28 @@ export default function CreationWizard() {
             <BrandLogo size={20} />
             <span className="wz-title-sep">·</span>
             <span className="wz-title-step">
-              {mode === 'ai' ? 'Describe it' : mode === 'video' ? 'Video with AI' : mode === 'import' ? 'Import' : 'New project'}
+              {mode === 'ai' ? 'Describe it'
+                : mode === 'video' ? 'Video with AI'
+                : mode === 'design' ? 'Import graphic'
+                : mode === 'import' ? 'Import'
+                : 'New project'}
             </span>
           </div>
           <div className="wz-dots">
-            {stepTitles.map((t, i) => (
-              <button
-                key={t}
-                className={`wz-dot ${i === step ? 'active' : ''} ${i < step ? 'done' : ''}`}
-                disabled={i > step || (i > 2 && !draft.variantId)}
-                onClick={() => setStep(i)}
-                title={t}
-              >
-                <span>{i + 1}</span> {t}
-              </button>
-            ))}
+            {stepTitles.map((t, i) => {
+              const s = stepIndexes[i];
+              return (
+                <button
+                  key={t}
+                  className={`wz-dot ${s === step ? 'active' : ''} ${s < step ? 'done' : ''}`}
+                  disabled={s > step || (s > 2 && !draft.variantId)}
+                  onClick={() => setStep(s)}
+                  title={t}
+                >
+                  <span>{i + 1}</span> {t}
+                </button>
+              );
+            })}
           </div>
           <button className="gallery-close" onClick={closeGallery} title="Cancel (keep current project)">✕</button>
         </div>
@@ -215,6 +242,7 @@ export default function CreationWizard() {
             {step === 0 && (
               <EntryStep
                 onTemplates={() => { setMode('template'); setStep(1); }}
+                onImportGraphic={() => { setMode('design'); setStep(1); }}
                 onImport={() => { setMode('import'); setStep(1); }}
                 onAi={() => { setMode('ai'); setStep(1); }}
                 onVideo={() => { setMode('video'); setStep(1); }}
@@ -231,6 +259,32 @@ export default function CreationWizard() {
                 brandPalette={matchBrand && brand ? brand.palette : null}
                 result={aiResult?.template ?? null}
                 onResult={(template, valid) => setAiResult(template ? { template, valid } : null)}
+              />
+            )}
+            {step === 1 && mode === 'design' && (
+              <ImportDesignStep
+                art={draft.designArt}
+                images={draft.importedImages}
+                resolution={draftResolution(draft)}
+                onArt={(designArt, importedImages) => {
+                  const v = variantById('imp01');
+                  patch({
+                    designArt,
+                    importedImages,
+                    category: 'imported-design',
+                    variantId: 'imp01',
+                    // There is no design to choose — the artwork is it — so the variant is
+                    // settled here and the Template step is skipped (see DESIGN_STEPS).
+                    lines: v ? v.suggestedLines.map((l) => ({ ...l })) : [],
+                    zone: null,
+                    animation: { presetId: null, outPresetId: null },
+                    ...(matchBrand && brand
+                      ? brandPatch(brand)
+                      : { paletteId: null, customPalette: null, fontId: null }),
+                  });
+                }}
+                onClear={() => patch({ designArt: null, importedImages: [], variantId: null })}
+                onContinue={() => setStep(3)}
               />
             )}
             {step === 1 && mode === 'import' && (
@@ -312,7 +366,7 @@ export default function CreationWizard() {
         {/* Footer */}
         <div className="wz-footer">
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>
-            {step > 0 && <button onClick={() => setStep(step - 1)}>‹ Back</button>}
+            {step > 0 && <button onClick={() => goToStep(-1)}>‹ Back</button>}
             {brand && (mode === 'ai' ? step >= 1 : step >= 2) && (
               <label className="wz-match" title="Reuse this project's palette and font so the new graphic belongs to the same package">
                 <input
@@ -356,7 +410,7 @@ export default function CreationWizard() {
               </button>
             )}
             {mode !== 'ai' && mode !== 'video' && step > 0 && step < 5 && (
-              <button className="primary wz-next" disabled={nextDisabled} onClick={() => setStep(step + 1)}>
+              <button className="primary wz-next" disabled={nextDisabled} onClick={() => goToStep(1)}>
                 Next ›
               </button>
             )}

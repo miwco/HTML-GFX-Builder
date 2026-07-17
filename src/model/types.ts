@@ -21,6 +21,8 @@ export type TemplateType =
   | 'starting-soon'
   | 'infographic'
   | 'quiz'
+  /** A design the user made elsewhere (a flat image) with text fields placed on top. */
+  | 'imported-design'
   | 'blank';
 
 /** Canvas resolution (1920×1080, 4K, 720p…). Drives the preview scale and base CSS. */

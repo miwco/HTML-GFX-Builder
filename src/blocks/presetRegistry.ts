@@ -19,6 +19,7 @@ import { SS_PRESETS } from '../templates/startingSoon/ssPresets';
 import { GT_PRESETS } from '../templates/gameTimers/gtPresets';
 import { IG_PRESETS } from '../templates/infographics/igPresets';
 import { QUIZ_PRESETS } from '../templates/quiz/quizPresets';
+import { DESIGN_PRESETS } from '../templates/importedDesign/designPresets';
 import type { AnimPresetId } from '../model/wizard';
 import type { SpxTemplate } from '../model/types';
 import { countLines, detectPrefix } from '../model/structure';
@@ -31,12 +32,18 @@ export function presetsForType(type: SpxTemplate['type']): AnimPreset[] {
   if (type === 'countdown') return GT_PRESETS;
   if (type === 'infographic') return IG_PRESETS;
   if (type === 'quiz') return QUIZ_PRESETS;
+  // An imported design is one picture: only the whole-unit presets suit it. The line presets
+  // would stagger #fN out of masks the artwork was drawn around (templates/importedDesign).
+  if (type === 'imported-design') return DESIGN_PRESETS;
   return ANIM_PRESETS;
 }
 
-const ALL_PRESETS = [
+/** Every preset in the product, one list. The wizard's Animation step reads it too (a variant
+ *  lists which ones suit it) — kept HERE so a new preset family is registered in exactly one
+ *  place; a second copy silently renders an empty picker for whatever it forgot. */
+export const ALL_PRESETS = [
   ...ANIM_PRESETS, ...CREDITS_PRESETS, ...TICKER_PRESETS,
-  ...SS_PRESETS, ...GT_PRESETS, ...IG_PRESETS, ...QUIZ_PRESETS,
+  ...SS_PRESETS, ...GT_PRESETS, ...IG_PRESETS, ...QUIZ_PRESETS, ...DESIGN_PRESETS,
 ];
 
 /** Look up a preset across every category's library. */

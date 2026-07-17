@@ -2,6 +2,7 @@ import BrandLogo from '../../BrandLogo';
 
 interface Props {
   onTemplates: () => void;
+  onImportGraphic: () => void;
   onImport: () => void;
   onAi: () => void;
   onVideo: () => void;
@@ -10,10 +11,14 @@ interface Props {
 
 /**
  * Step 0 — the app's home moment. A branded hero states what NoaCG Studio is and who it's
- * for, then five ways to start. Template-first (the north star: create, no code required),
+ * for, then the ways to start. Template-first (the north star: create, no code required),
  * with the AI, video, and import paths beside it and a pure code-first blank for pros.
+ *
+ * "Import graphic" is deliberately its own card and a MANUAL path — no AI anywhere in it.
+ * A user who designed their graphic in Photoshop wants NoaCG to make it broadcast-ready
+ * (fields, animation, export), not to regenerate it.
  */
-export default function EntryStep({ onTemplates, onImport, onAi, onVideo, onBlank }: Props) {
+export default function EntryStep({ onTemplates, onImportGraphic, onImport, onAi, onVideo, onBlank }: Props) {
   return (
     <div className="wz-entry-wrap">
       <div className="wz-hero">
@@ -47,6 +52,11 @@ export default function EntryStep({ onTemplates, onImport, onAi, onVideo, onBlan
           <span className="wz-entry-icon">▶</span>
           <strong>Video or animation with AI</strong>
           <span className="hint">Describe a stinger, intro, logo reveal, or countdown — get a real video you can preview, refine by chat, edit as code, and render.</span>
+        </button>
+        <button className="wz-entry-card" onClick={onImportGraphic} data-entry="import-graphic">
+          <span className="wz-entry-icon">▦</span>
+          <strong>Import graphic</strong>
+          <span className="hint">Already designed it? Bring the finished image in, place your editable text on it, and pick how it animates. No AI — you place every piece.</span>
         </button>
         <button className="wz-entry-card" onClick={onImport} data-entry="import">
           <span className="wz-entry-icon">⬇</span>

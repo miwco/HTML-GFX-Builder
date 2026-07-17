@@ -10,6 +10,7 @@ import { resolveEasing } from '../../model/easings';
 import type {
   AnimPresetId,
   AnimSpeed,
+  DesignArt,
   ExtraFieldSpec,
   LineSpec,
   Palette,
@@ -61,6 +62,8 @@ export interface WizardDraft {
   importedImages: AssetFile[];
   /** Which imported image goes into the variant's logo slot (relative assets/ path). */
   logoAssetPath: string | null;
+  /** The artwork the graphic IS, in the Import Graphic flow (measured at import). */
+  designArt: DesignArt | null;
 }
 
 /** A draft update: top-level fields replace; `animation` and `nudge` deep-merge. */
@@ -98,6 +101,7 @@ export function initialDraft(): WizardDraft {
     animation: { presetId: null, outPresetId: null, direction: 'both', speed: 1, easing: 'auto', steps: false },
     importedImages: [],
     logoAssetPath: null,
+    designArt: null,
   };
 }
 
@@ -137,6 +141,7 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
     },
     importedImages: draft.importedImages.length > 0 ? draft.importedImages : undefined,
     logoAssetPath: variant.hasLogoSlot ? draft.logoAssetPath ?? undefined : undefined,
+    designArt: draft.designArt ?? undefined,
   };
 }
 

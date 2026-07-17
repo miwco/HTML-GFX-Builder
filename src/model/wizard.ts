@@ -18,8 +18,13 @@ export interface CategoryInfo {
   /** False until the category's variants exist — shown as "coming soon" in the wizard. */
   available: boolean;
   description: string;
-  /** Wizard grouping: the live-show must-haves vs the more specialised graphics. */
-  group: 'essentials' | 'specials';
+  /**
+   * Wizard grouping: the live-show must-haves vs the more specialised graphics — plus
+   * 'imported', which the category grid deliberately never renders (CategoryStep lists the
+   * two browsable groups). An imported design has nothing to browse: it does not exist until
+   * the user brings their own artwork, so the Import Graphic entry is its only way in.
+   */
+  group: 'essentials' | 'specials' | 'imported';
 }
 
 export type TemplateCategory =
@@ -32,7 +37,8 @@ export type TemplateCategory =
   | 'ticker'
   | 'infographic'
   | 'corner-bug'
-  | 'quiz';
+  | 'quiz'
+  | 'imported-design';
 
 export const CATEGORIES: CategoryInfo[] = [
   // Essentials — the graphics almost every live show needs.
@@ -47,6 +53,8 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'infographic',   name: 'Infographics',            plannedCount: 6,  available: true , description: 'Stats, polls, leaderboards, schedules, counters.', group: 'specials' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 2,  available: true , description: 'Countdowns and clocks for game formats.', group: 'specials' },
   { id: 'quiz',          name: 'Quiz graphics',           plannedCount: 1,  available: true , description: 'Game-show questions with answer options.', group: 'specials' },
+  // Not browsable — reached only by importing artwork (see CategoryInfo.group).
+  { id: 'imported-design', name: 'Imported design',       plannedCount: 1,  available: true , description: 'Your own artwork with text fields on top.', group: 'imported' },
 ];
 
 // ── Wizard options (every choice the flow collects) ─────────────────────────
@@ -57,6 +65,31 @@ export interface LineSpec {
   title: string;
   /** Sample/default text shown in the design. */
   sample: string;
+  /**
+   * Per-line placement and type. ONLY the imported-design category uses this: artwork made
+   * elsewhere carries its own look, so its text has to be placed and styled to match what is
+   * baked into the image. Every catalog design lays its own lines out and ignores this —
+   * their typography is the design's decision, not the operator's.
+   * Absent = the imported-design assembler's defaults for that line index.
+   */
+  style?: LineStyle;
+}
+
+/** Placement + type for one manually positioned text line (see LineSpec.style). */
+export interface LineStyle {
+  /** Position within the artwork, in design px from its top-left (before --scale). */
+  x: number;
+  y: number;
+  /** Which edge of the text sits at `x` — a free-placed line has no column to align inside. */
+  align: 'left' | 'center' | 'right';
+  /** Type size in design px (before --scale). */
+  fontSize: number;
+  /** CSS font-weight (400 regular · 700 bold). */
+  weight: number;
+  /** Any CSS color. */
+  color: string;
+  /** A bundled font id, or null to inherit the graphic's --font-heading. */
+  fontId: string | null;
 }
 
 /**
@@ -117,7 +150,13 @@ export type AnimPresetId =
   | 'rows-cascade'
   // Quiz format (templates/quiz/quizPresets.ts) — Continue plays the Reveal step, which
   // calls revealAnswer() to light up the correct row:
-  | 'quiz-reveal';
+  | 'quiz-reveal'
+  // Imported-design motion (templates/importedDesign/designPresets.ts): the artwork and its
+  // text move as ONE unit, so these animate the box and never the individual lines.
+  | 'design-fade'
+  | 'design-slide'
+  | 'design-pop'
+  | 'design-blur';
 
 export type AnimSpeed = 0.75 | 1 | 1.5;
 
@@ -152,6 +191,17 @@ export interface WizardOptions {
   importedImages?: AssetFile[];
   /** Relative path of the imported image to place in the variant's logo slot. */
   logoAssetPath?: string;
+  /** The artwork that IS the graphic (the Import Graphic flow's imported-design category).
+   *  Its natural size decides the design's size, so it is measured at import, not guessed. */
+  designArt?: DesignArt;
+}
+
+/** The imported artwork a design is built on, with the natural size measured at import. */
+export interface DesignArt {
+  /** Relative asset path, e.g. "images/lower-third.png". */
+  path: string;
+  width: number;
+  height: number;
 }
 
 /** WizardOptions with every default resolved — what variant builders actually receive. */
@@ -169,6 +219,7 @@ export interface ResolvedOptions {
   animation: AnimationChoice;
   importedImages: AssetFile[];
   logoAssetPath: string | null;
+  designArt: DesignArt | null;
 }
 
 // ── Template variants ────────────────────────────────────────────────────────
@@ -243,6 +294,7 @@ export function resolveOptions(variant: TemplateVariant, options: WizardOptions 
     },
     importedImages: options.importedImages ?? [],
     logoAssetPath: options.logoAssetPath ?? null,
+    designArt: options.designArt ?? null,
   };
 }
 
