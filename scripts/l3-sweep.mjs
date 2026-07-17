@@ -55,10 +55,12 @@ const results = await page.evaluate(async (CATEGORY) => {
     const isScoreboard = CATEGORY === 'scoreboard';
     const isInfographic = CATEGORY === 'infographic';
     const isQuiz = CATEGORY === 'quiz';
+    const isVersus = CATEGORY === 'versus';
     row.checks.masks = isCredits ? tpl.html.includes('credits-track')
       : isTicker ? tpl.html.includes('ticker-track')
       : clockPrefix ? tpl.html.includes(`${clockPrefix}-clock`)
       : isInfographic ? tpl.html.includes('infographic-box') // designs own their fields — no mask contract
+      : isVersus ? (tpl.html.includes('versus-box') && tpl.html.includes('versus-mask') && tpl.html.includes('id="f0"'))
       : (/-mask/.test(tpl.html) && tpl.html.includes('id="f0"'));
 
     const rt = await runInFrame(tpl, async (w, d) => {
@@ -208,6 +210,59 @@ const results = await page.evaluate(async (CATEGORY) => {
       out.push(row);
       continue;
     }
+    if (isVersus) {
+      // Versus: after the entrance settles, the two team columns must sit exactly on their
+      // 40% side of the frame — never crossing into the reserved center VS corridor (the
+      // middle 20%) and never hanging off the frame edge — with the design's own samples
+      // AND with 60-character team names. The masks clip the names at the column edge, so
+      // the visible text extent is the mask rect, not the span.
+      const r11 = await runInFrame(tpl, async (w, d) => {
+        const W = d.documentElement.clientWidth; // 1920 — the corridor is W*0.4 .. W*0.6
+        w.play();
+        // The longest entrance (vs-glide) settles at ~1.6 s.
+        await new Promise((r) => setTimeout(r, 2200));
+        const T = 2; // sub-pixel rounding tolerance
+        const measure = () => {
+          const a = d.querySelector('.versus-side-a').getBoundingClientRect();
+          const b = d.querySelector('.versus-side-b').getBoundingClientRect();
+          const maskA = d.querySelector('.versus-side-a .versus-mask').getBoundingClientRect();
+          const maskB = d.querySelector('.versus-side-b .versus-mask').getBoundingClientRect();
+          const ev = d.querySelector('.versus-bottom .versus-mask').getBoundingClientRect();
+          return {
+            // settled exactly on its edge (a mid-flight column would be far off these marks)…
+            aSettled: Math.abs(a.left) <= T,
+            bSettled: Math.abs(b.right - W) <= T,
+            // …and out of the corridor: column AND visible name end at the 40%/60% lines
+            aOutOfCorridor: a.right <= W * 0.4 + T && maskA.right <= W * 0.4 + T,
+            bOutOfCorridor: b.left >= W * 0.6 - T && maskB.left >= W * 0.6 - T,
+            eventInFrame: ev.left >= -T && ev.right <= W + T,
+            rects: { a: [a.left, a.right], b: [b.left, b.right], maskA: [maskA.left, maskA.right], maskB: [maskB.left, maskB.right] },
+          };
+        };
+        const vs = d.querySelector('.versus-vs').getBoundingClientRect();
+        const settled = getComputedStyle(d.querySelector('.versus')).opacity === '1' &&
+          getComputedStyle(d.querySelector('.versus-center')).opacity === '1' &&
+          Math.abs((vs.left + vs.right) / 2 - W / 2) <= T; // the VS holds the corridor center
+        const withSamples = measure();
+        // 60-char names (spaces included): they must wrap inside the column, never widen it.
+        const LONG = 'INTERNATIONAL ATHLETICS FEDERATION WORLD CHAMPIONSHIP SQUADS';
+        w.update(JSON.stringify({ f0: LONG, f1: LONG, f2: 'GRAND FINAL · SATURDAY 20:00 · MAIN ARENA · LIVE COVERAGE' }));
+        await new Promise((r) => setTimeout(r, 120)); // reflow after the rebind
+        const withLongNames = measure();
+        return {
+          settled,
+          bound: d.getElementById('f0')?.textContent === LONG && d.getElementById('f1')?.textContent === LONG,
+          withSamples,
+          withLongNames,
+        };
+      });
+      const inFrame = (m) => m && m.aSettled && m.bSettled && m.aOutOfCorridor && m.bOutOfCorridor && m.eventInFrame;
+      row.checks.autoFit = !r11.fatal && r11.errs.length === 0 && !!r11.settled && !!r11.bound
+        && inFrame(r11.withSamples) && inFrame(r11.withLongNames);
+      if (!row.checks.autoFit) row.issues.push('versus: ' + JSON.stringify(r11));
+      out.push(row);
+      continue;
+    }
     if (isQuiz) {
       // Quiz: options bind, and next() reveals the correct answer highlight.
       const r10 = await runInFrame(tpl, async (w, d) => {
@@ -307,7 +362,8 @@ for (const id of ids) {
     w.update(JSON.stringify(data));
     w.play();
   }, [id, CATEGORY]);
-  await page.waitForTimeout(['end-credits', 'ticker'].includes(CATEGORY) ? 4500 : 1600); // continuous motion needs longer
+  // Continuous motion needs longer; the versus glide entrance only settles at ~1.6 s.
+  await page.waitForTimeout(['end-credits', 'ticker'].includes(CATEGORY) ? 4500 : CATEGORY === 'versus' ? 2600 : 1600);
   if (CATEGORY === 'quiz') {
     // Show the answer reveal in the taste shot.
     await page.evaluate(() => document.getElementById('shot').contentWindow.next());
