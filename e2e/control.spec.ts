@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Route } from '@playwright/test';
-import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -9,15 +9,7 @@ import { readFileSync } from 'node:fs';
 // "0 - 0"; a genuine number field, added below, gets the stepper.)
 
 async function createScoreboard(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Scoreboards' }).click();
-  await page.locator('.wz-variant', { hasText: 'Match Strip' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Scoreboards', name: 'Match Strip' });
 }
 
 test('control tab live-drives the preview from a field control', async ({ page }) => {
@@ -73,15 +65,7 @@ test('export bundles controlpanel.html + injects the receiver into index.html', 
 });
 
 async function createHairline(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
 }
 
 test('live data: adding a Google Sheet appends an editable polling block, remove strips it', async ({ page }) => {

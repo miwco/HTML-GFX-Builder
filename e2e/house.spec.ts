@@ -1,5 +1,5 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
-import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 
 // The NoaCG house family (styleTag 'noacg') — the brand-kit overlays rebuilt as first-class
 // catalog templates: one create + play + behavior spec per house mechanism (the standard
@@ -7,15 +7,7 @@ import { awaitPreviewRebuild } from './_preview';
 // the live clock, the sign-colored market deltas, and the label chip structure).
 
 async function createFrom(page: Page, categoryName: string, variantName: string) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: categoryName }).click();
-  await page.locator('.wz-variant', { hasText: variantName }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: categoryName, name: variantName });
 }
 
 function frame(page: Page): FrameLocator {

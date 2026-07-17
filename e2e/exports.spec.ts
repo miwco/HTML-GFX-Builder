@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -8,15 +8,7 @@ import { readFileSync } from 'node:fs';
 // taken through its load/updateAction/playAction contract.
 
 async function createHairline(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
 }
 
 async function downloadTarget(page: Page, label: string): Promise<JSZip> {

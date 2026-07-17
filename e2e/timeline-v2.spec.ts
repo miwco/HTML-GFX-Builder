@@ -1,26 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 
 // Timeline v2 Phase 3 — the read-first step timeline behind the dock toggle: step clips
 // with cue markers on a time ruler, a click/drag playhead that scrubs the real preview
 // without creating history, layer rows with aggregate keyframe diamonds, zoom.
 
 async function createHairline(page: Page, steps = false) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  if (steps) {
-    await page.getByRole('button', { name: 'Next ›' }).click();
-    await page.getByRole('button', { name: 'Next ›' }).click();
-    await page.getByRole('button', { name: 'Next ›' }).click();
-    await page.locator('.wz-step input[type="checkbox"]').check();
-  }
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline', steps });
   // Lower thirds create AS data blocks — the step timeline is their native surface.
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
 }
@@ -709,15 +696,7 @@ test('v2 property rows: a layer expands into per-property sub-rows with their ow
 });
 
 test('v2: corner bugs create as data blocks — the step timeline is their native surface', async ({ page }) => {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Corner bug' }).click();
-  await page.locator('.wz-variant', { hasText: 'Glass Mark' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Corner bug', name: 'Glass Mark' });
   // The step timeline outright — no classic strip, no convert chips.
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
   await expect(page.getByTestId('timeline-v2-convert')).toHaveCount(0);
@@ -739,15 +718,7 @@ test('v2: corner bugs create as data blocks — the step timeline is their nativ
 });
 
 test('v2: scoreboards create as data blocks — the score pop keeps working around the region', async ({ page }) => {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Scoreboards' }).click();
-  await page.locator('.wz-variant', { hasText: 'Match Strip' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Scoreboards', name: 'Match Strip' });
   // The step timeline outright; scoreboards never step (Enter + Out only).
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
   await expect(page.getByTestId('timeline-v2-convert')).toHaveCount(0);
@@ -785,15 +756,7 @@ test('v2: scoreboards create as data blocks — the score pop keeps working arou
 // both a loop and lifecycle calls.
 
 test('v2 read-only glyphs: a looping track shows a repeat tail, and lifecycle calls get their own row', async ({ page }) => {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Starting soon' }).click();
-  await page.locator('.wz-variant').first().click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Starting soon' });
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
 
   // The ambient breath is an endless yoyo — the tail says so, and carries no diamonds.
@@ -860,15 +823,7 @@ test('v2 read-only glyphs: a finite repeat ends where it really ends, and is cap
 });
 
 test('v2: the quiz Continue is a real step — its reveal is a lifecycle call, and the SPX steps setting is derived', async ({ page }) => {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Quiz' }).click();
-  await page.locator('.wz-variant').first().click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'quiz' });
 
   // Quiz creates as a data block: the step timeline, not the classic strip.
   await expect(page.getByTestId('timeline-v2')).toBeVisible();

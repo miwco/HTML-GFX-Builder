@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import { canvasBox, elementPoint } from './_canvas';
 
 // Era 6 — the canvas SELECTION model. Clicking a structural element selects it: an amber
@@ -9,15 +10,7 @@ import { canvasBox, elementPoint } from './_canvas';
 // deselects. Selection is editor UI state ONLY — it never writes into the template.
 
 async function createHairline(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
 }
 
 /** Wait until the preview shows the settled graphic (the design view after every rebuild). */

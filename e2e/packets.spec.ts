@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -7,14 +7,7 @@ import { readFileSync } from 'node:fs';
 // brand looks (capture / apply / share).
 
 async function create(page: Page, categoryName: string, variantName: string) {
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: categoryName }).click();
-  await page.locator('.wz-variant', { hasText: variantName }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: categoryName, name: variantName });
 }
 
 test('packets: save two graphics, reopen one, export the whole packet as one zip', async ({ page }) => {

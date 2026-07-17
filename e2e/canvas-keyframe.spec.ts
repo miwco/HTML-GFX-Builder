@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import { elementPoint } from './_canvas';
 
 // Canvas position keyframing (the interaction model, amendment 3): with a parked
@@ -10,15 +11,7 @@ import { elementPoint } from './_canvas';
 // the graphic re-anchors the ROOT via the zone patch, and Escape cancels cleanly.
 
 async function createHairline(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
 }
 

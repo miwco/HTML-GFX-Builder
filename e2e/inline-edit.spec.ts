@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import { elementPoint } from './_canvas';
 
 // Era 6 — inline text editing (docs/WYSIWYG_PLAN.md W3): double-click a text line in the
@@ -8,15 +9,7 @@ import { elementPoint } from './_canvas';
 // CODE (definition + static text); the live sample value is operator state and stays.
 
 async function createHairline(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
 }
 
 /** Screen position of the center of a preview element (pad-agnostic — see e2e/_canvas.ts). */

@@ -1,5 +1,6 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import { applyLegacyRegion, applyUnconvertibleRegion, applyUnreadableRegion } from './_legacy';
 
 // PHASE 8 — what happens to a LEGACY TEMPLATE now that the classic strip's editing patchers are
@@ -23,15 +24,7 @@ import { applyLegacyRegion, applyUnconvertibleRegion, applyUnreadableRegion } fr
 // now, then rewritten to legacy code, which is exactly what an old saved project holds.
 
 async function createCard(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Info cards' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline Card' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Info cards', name: 'Hairline Card' });
 }
 
 function frame(page: Page): FrameLocator {

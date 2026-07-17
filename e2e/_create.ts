@@ -18,6 +18,8 @@ export interface CreateSpec {
   category?: string;
   /** Variant index within the category (the wizard's default order). Defaults to 0. */
   index?: number;
+  /** The Animation step's "Reveal in steps" checkbox. */
+  steps?: boolean;
 }
 
 /**
@@ -39,13 +41,15 @@ export async function createProject(page: Page, spec: string | CreateSpec = 'Hai
       const { useTemplateStore } = await import('/src/store/templateStore.ts');
       const { useDocKindStore } = await import('/src/store/docKindStore.ts');
 
-      let variant = s.name
-        ? Object.values(CATALOG).flat().find((v) => v.name === s.name)
+      const cat = s.category
+        ? CATEGORIES.find((c) => c.id === s.category || c.name === s.category)
         : undefined;
-      if (!variant && s.category) {
-        const cat = CATEGORIES.find((c) => c.id === s.category || c.name === s.category);
-        if (cat) variant = variantsFor(cat.id)[s.index ?? 0];
-      }
+      const pool = cat ? variantsFor(cat.id) : Object.values(CATALOG).flat();
+      // Exact name first; substring second (the specs historically matched card text with
+      // hasText); no name = the category's first card, the wizard's default order.
+      const variant = s.name
+        ? pool.find((v) => v.name === s.name) ?? pool.find((v) => v.name.includes(s.name!))
+        : pool[s.index ?? 0];
       if (!variant) throw new Error(`createProject: no catalog variant for ${JSON.stringify(s)}`);
 
       // The same draft the wizard holds after picking this variant card (CreationWizard's
@@ -55,7 +59,7 @@ export async function createProject(page: Page, spec: string | CreateSpec = 'Hai
         lines: variant.suggestedLines.map((l) => ({ ...l })),
         zone: null,
         logoEnabled: null,
-        animation: { presetId: null, outPresetId: null },
+        animation: s.steps ? { presetId: null, outPresetId: null, steps: true } : { presetId: null, outPresetId: null },
         paletteId: null,
         customPalette: null,
         fontId: null,

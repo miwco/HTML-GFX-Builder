@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 
 // Era 5.5 community sharing. The E2E dev server is pinned OFFLINE (playwright.config webServer.env),
 // so this suite proves two things without a backend:
@@ -11,14 +11,7 @@ import { awaitPreviewRebuild } from './_preview';
 // against a real Supabase (supabase/README.md checklist), never from a green build.
 
 async function create(page: Page, categoryName: string, variantName: string) {
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: categoryName }).click();
-  await page.locator('.wz-variant', { hasText: variantName }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: categoryName, name: variantName });
 }
 
 test('offline: no community affordances anywhere', async ({ page }) => {

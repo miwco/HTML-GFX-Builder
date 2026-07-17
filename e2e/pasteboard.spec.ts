@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { createProject } from './_create';
 import { canvasBox, elementPoint } from './_canvas';
 
 // The off-canvas pasteboard (plans/happy-marinating-pebble.md): the editor shows a working
@@ -9,15 +10,7 @@ import { canvasBox, elementPoint } from './_canvas';
 // editor-view concept and never enters persisted, canvas-local coordinates.
 
 async function createHairline(page: Page) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
-  await page.locator('.wz-variant', { hasText: 'Hairline' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
 }
 
