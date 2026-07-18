@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { zoneDecls } from '../templates/shared/base';
 import { setCssDeclaration, setFieldDefault } from '../blocks/edit';
@@ -9,7 +9,7 @@ import { parseAnimData, spliceAnimData } from '../blocks/animData';
 import { setKeyframe } from '../blocks/animEdit';
 import { activationStep } from '../blocks/animEval';
 import { changePartPress } from '../blocks/stepAssign';
-import { placedLines, placeLine, placementCss, type LinePlacement } from '../blocks/designLayout';
+import { lineFontSize, placedLines, placeLine, placementCss, setLineFontSize, setSlotSize, slotSize, type LinePlacement } from '../blocks/designLayout';
 import { insertImageElement } from '../blocks/assetOps';
 import { insertLottieElement } from '../blocks/lottieInsert';
 import { probeAsset } from '../assets/assetInfo';
@@ -87,6 +87,42 @@ interface PlaceDrag {
   dx: number;
   dy: number;
   active: boolean;
+}
+
+/** A placed field's corner SIZE drag — a DESIGN decision written in its own rules, so the
+ *  handle previews it live and commits ONE CSS patch, never a scale keyframe (that would be
+ *  motion). Two kinds: 'font' resizes a text line's `#fN` font-size; 'slot' resizes an image
+ *  slot's wrapper box (width/height, aspect preserved). */
+interface LineSizeDrag {
+  kind: 'font' | 'slot';
+  /** The field element id ('f0') and its positioned wrapper ('fw0'). */
+  fieldId: string;
+  wrapperId: string;
+  /** At drag start, in design px: the font size, or the slot's width (+ baseH height). */
+  base: number;
+  baseH: number;
+  scaled: boolean;
+  startX: number; // pointer start, screen px
+  startY: number;
+  /** The element's on-screen size at drag start — the diagonal-drag reference. */
+  refSize: number;
+  value: number;
+  valueH: number;
+  active: boolean;
+}
+
+/** A keyboard-nudge burst on the selected layers: each arrow press moves them 1 px (Shift =
+ *  10). Placed fields preview through the placement drag's inline left/top channel and commit
+ *  placeLine CSS; keyframed layers preview through GSAP x/y and commit position keyframes at
+ *  the playhead (the drag's semantics, key by key). The whole burst lands as ONE undoable
+ *  apply once the keys go quiet. */
+interface NudgeBurst {
+  lines: { wrapperId: string; baseX: number; baseY: number; scaled: boolean }[];
+  /** Selected non-placed layers, moved on the keyframe channel (GSAP x/y at burst start). */
+  keyed: { selector: string; baseX: number; baseY: number }[];
+  dx: number;
+  dy: number;
+  timer: ReturnType<typeof setTimeout> | null;
 }
 
 /** W2 — a corner scale-handle drag: live --scale preview, one patch on release. */
@@ -178,6 +214,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   const [layerTf, setLayerTf] = useState<LayerTransformDrag | null>(null);
   const layerTfRef = useRef<LayerTransformDrag | null>(null);
   layerTfRef.current = layerTf;
+  const [lineSize, setLineSize] = useState<LineSizeDrag | null>(null);
+  const lineSizeRef = useRef<LineSizeDrag | null>(null);
+  lineSizeRef.current = lineSize;
+  /** A keyboard-nudge burst in flight (refs only — the live preview is inline CSS). */
+  const nudgeRef = useRef<NudgeBurst | null>(null);
   const dragRef = useRef<DragState | null>(null);
   dragRef.current = drag;
   // Mirror of `editing` so blur-after-Escape can't commit a cancelled edit (the blur handler
@@ -190,8 +231,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   // must never resize the workspace while the pointer is mid-gesture or the inline editor is
   // open — the canvas (and the edit overlay anchored to it) would shift under the user.
   useEffect(() => {
-    setCanvasGestureActive(Boolean(drag || layerDrag || placeDrag || scaleDrag || layerTf || editing || lasso));
-  }, [drag, layerDrag, placeDrag, scaleDrag, layerTf, editing, lasso, setCanvasGestureActive]);
+    setCanvasGestureActive(Boolean(drag || layerDrag || placeDrag || scaleDrag || layerTf || lineSize || editing || lasso));
+  }, [drag, layerDrag, placeDrag, scaleDrag, layerTf, lineSize, editing, lasso, setCanvasGestureActive]);
 
   // ── Selection model (editor UI state only — never written into the template).
   // The selectors live in the STORE so the timeline highlights the same elements
@@ -361,10 +402,50 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   // A single selected NON-ROOT layer on a data-block template gets scale + rotate handles on
   // its selection box; dragging them keys scale/rotation at the playhead (pivoting around the
   // layer's transform-origin — the Inspector pivot). The root keeps its own --scale handle.
+  // A PLACED line is the exception: its corner handle resizes the TEXT (a design decision in
+  // its `#fN` rule), so the keyframe handles step aside for it — same doctrine as its drag.
   const layerTfSel =
-    dataModel && selectedParts.length === 1 && selectedPart && selectedPart.kind !== 'root'
+    dataModel && selectedParts.length === 1 && selectedPart && selectedPart.kind !== 'root' && !placed[selectedPart.selector]
       ? selectedPart.selector
       : null;
+
+  // The single selected PLACED field the corner size handle can edit (code-derived, like the
+  // placement drag's gate): a text line resizes its font-size; an image slot (no font-size
+  // rule) resizes its wrapper box.
+  const lineSizeSel = useMemo(() => {
+    if (selectedParts.length !== 1 || !selectedPart) return null;
+    const pl = placed[selectedPart.selector];
+    if (!pl) return null;
+    const fieldId = selectedPart.selector.slice(1);
+    const font = lineFontSize(template.css, fieldId);
+    if (font) {
+      return { kind: 'font' as const, fieldId, wrapperId: pl.wrapperId, base: font.value, baseH: 0, scaled: font.scaled };
+    }
+    const slot = slotSize(template.css, pl.wrapperId);
+    if (slot) {
+      return { kind: 'slot' as const, fieldId, wrapperId: pl.wrapperId, base: slot.width, baseH: slot.height, scaled: slot.scaled };
+    }
+    return null;
+  }, [selectedParts, selectedPart, placed, template.css]);
+
+  /** Clear a size drag's inline previews — the stylesheet values return. */
+  const clearLineSizePreview = useCallback(
+    (d: LineSizeDrag) => {
+      const dd = iframeRef.current?.contentDocument;
+      if (!dd) return;
+      if (d.kind === 'font') {
+        const el = dd.getElementById(d.fieldId);
+        if (el) el.style.fontSize = '';
+      } else {
+        const w = dd.getElementById(d.wrapperId);
+        if (w) {
+          w.style.width = '';
+          w.style.height = '';
+        }
+      }
+    },
+    [iframeRef],
+  );
 
   const doc = () => iframeRef.current?.contentDocument ?? null;
   const rootEl = () => doc()?.querySelector<HTMLElement>(rootSelector) ?? null;
@@ -395,14 +476,29 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     return null;
   };
 
+  /** The on-screen element that STANDS FOR a part: the element itself when rendered, or —
+   *  for a placed field whose element is hidden (an EMPTY image slot: setFieldValue
+   *  display:none's the img until a value arrives) — its rendered wrapper, so the slot stays
+   *  selectable, outlined, and draggable while it shows only its dashed placeholder. */
+  const partScreenEl = (d: Document, selector: string): HTMLElement | null => {
+    const el = d.querySelector<HTMLElement>(selector);
+    if (el && el.getClientRects().length > 0) return el;
+    const pl = placed[selector];
+    if (pl) {
+      const w = d.getElementById(pl.wrapperId);
+      if (w && w.getClientRects().length > 0) return w;
+    }
+    return null;
+  };
+
   /** Registered parts under a canvas point, innermost first (closest-ancestor order). */
   const partChainAt = (p: { x: number; y: number }): { part: TemplatePart; el: HTMLElement }[] => {
     const d = doc();
     if (!d) return [];
     const resolved: { part: TemplatePart; el: HTMLElement }[] = [];
     for (const part of parts) {
-      const el = d.querySelector<HTMLElement>(part.selector);
-      if (el && el.getClientRects().length > 0) resolved.push({ part, el }); // rendered only
+      const el = partScreenEl(d, part.selector);
+      if (el) resolved.push({ part, el }); // rendered only
     }
     // Walk up from the element the point actually hits, collecting its ancestor parts.
     const chain: { part: TemplatePart; el: HTMLElement }[] = [];
@@ -503,8 +599,9 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     let raf = requestAnimationFrame(function track() {
       const d = doc();
       const rects = selectedParts.map((sel) => {
-        const el = d?.querySelector<HTMLElement>(sel);
-        const r = el && el.getClientRects().length > 0 ? el.getBoundingClientRect() : null;
+        // partScreenEl: a hidden placed field (an empty image slot) outlines via its wrapper.
+        const el = d ? partScreenEl(d, sel) : null;
+        const r = el ? el.getBoundingClientRect() : null;
         return r ? { left: r.left, top: r.top, width: r.width, height: r.height } : null;
       });
       setSelRect((prev) => (near(prev, rects[0]) ? prev : rects[0]));
@@ -515,7 +612,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       raf = requestAnimationFrame(track);
     });
     return () => cancelAnimationFrame(raf);
-  }, [selectedParts]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedParts, placed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Escape deselects — but never steals the key from a drag, the inline editor (both own
   // their Escape), or a focused form field / Monaco.
@@ -533,6 +630,32 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
         setLayerTf(null);
         return;
       }
+      if (lineSizeRef.current) {
+        // Spring the field back to its stylesheet size, keep it selected.
+        clearLineSizePreview(lineSizeRef.current);
+        setLineSize(null);
+        return;
+      }
+      if (nudgeRef.current) {
+        // Cancel a pending keyboard-nudge burst: clear the previews, commit nothing.
+        const b = nudgeRef.current;
+        if (b.timer) clearTimeout(b.timer);
+        nudgeRef.current = null;
+        const dd = iframeRef.current?.contentDocument;
+        for (const line of b.lines) {
+          const el = dd?.getElementById(line.wrapperId);
+          if (el) {
+            el.style.left = '';
+            el.style.top = '';
+          }
+        }
+        const w = iframeRef.current?.contentWindow as SpxWindow | null;
+        for (const k of b.keyed) {
+          const el = dd?.querySelector<HTMLElement>(k.selector);
+          if (el) w?.gsap?.set(el, { x: k.baseX, y: k.baseY });
+        }
+        return;
+      }
       if (dragRef.current || editingRef.current || scaleDragRef.current || layerDragRef.current || placeDragRef.current || lassoRef.current) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest?.('input, textarea, select, .monaco-editor')) return;
@@ -540,7 +663,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [selected, setSelected, iframeRef]);
+  }, [selected, setSelected, iframeRef, clearLineSizePreview]);
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (editing) return; // the editor overlay handles its own events
@@ -639,8 +762,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     const hits: string[] = [];
     for (const part of parts) {
       if (part.kind === 'root') continue;
-      const pel = d.querySelector<HTMLElement>(part.selector);
-      if (!pel || pel.getClientRects().length === 0) continue;
+      const pel = partScreenEl(d, part.selector);
+      if (!pel) continue;
       const pr = pel.getBoundingClientRect();
       if (pr.left < right && pr.right > left && pr.top < bottom && pr.bottom > top) {
         hits.push(part.selector);
@@ -889,6 +1012,189 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     if (place) setTimeout(() => sendScrub(phaseIdOf(dataModel, place.step), place.t), 650);
   };
 
+  // ── The selected placed field's SIZE handle: live preview through the same CSS channel
+  //    the commit writes, then ONE patch on release — setLineFontSize for a text line,
+  //    setSlotSize for an image slot. A placed field's size is a design decision in its own
+  //    rules — same doctrine as the placement drag, never a scale keyframe. ──
+  const startLineSize = (e: React.PointerEvent) => {
+    if (!lineSizeSel || !selRect) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setLineSize({
+      kind: lineSizeSel.kind,
+      fieldId: lineSizeSel.fieldId,
+      wrapperId: lineSizeSel.wrapperId,
+      base: lineSizeSel.base,
+      baseH: lineSizeSel.baseH,
+      scaled: lineSizeSel.scaled,
+      startX: e.clientX,
+      startY: e.clientY,
+      refSize: (selRect.width + selRect.height) * scale,
+      value: lineSizeSel.base,
+      valueH: lineSizeSel.baseH,
+      active: false,
+    });
+  };
+  const moveLineSize = (e: React.PointerEvent) => {
+    const d = lineSizeRef.current;
+    if (!d) return;
+    e.stopPropagation();
+    // Diagonal corner drag, proportional to the element's on-screen size at start.
+    const gesture = e.clientX - d.startX + (e.clientY - d.startY);
+    const factor = 1 + gesture / Math.max(60, d.refSize);
+    let value: number;
+    let valueH = 0;
+    if (d.kind === 'font') {
+      value = Math.min(400, Math.max(6, Math.round(d.base * factor)));
+      const el = doc()?.getElementById(d.fieldId);
+      if (el) el.style.fontSize = placementCss(value, d.scaled);
+    } else {
+      // The slot keeps its aspect: width drives, height follows the same factor.
+      value = Math.min(2000, Math.max(12, Math.round(d.base * factor)));
+      valueH = Math.max(12, Math.round(d.baseH * (value / d.base)));
+      const w = doc()?.getElementById(d.wrapperId);
+      if (w) {
+        w.style.width = placementCss(value, d.scaled);
+        w.style.height = placementCss(valueH, d.scaled);
+      }
+    }
+    const active = d.active || Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > DRAG_THRESHOLD;
+    setLineSize({ ...d, value, valueH, active });
+  };
+  const endLineSize = (e: React.PointerEvent) => {
+    const d = lineSizeRef.current;
+    setLineSize(null);
+    if (!d) return;
+    e.stopPropagation();
+    if (!d.active || (d.value === d.base && (d.kind === 'font' || d.valueH === d.baseH))) {
+      clearLineSizePreview(d);
+      return;
+    }
+    // The inline preview already shows the committed size; the rebuild replaces it shortly.
+    applyTemplate(
+      d.kind === 'font'
+        ? setLineFontSize(template, d.fieldId, d.value, d.scaled)
+        : setSlotSize(template, d.wrapperId, d.value, d.valueH, d.scaled),
+    );
+    setActiveTab('css');
+  };
+
+  // ── Keyboard nudging: arrows move every selected layer by 1 px (Shift = 10). A placed
+  //    field moves as PLACEMENT (design px, inline left/top preview, placeLine CSS); every
+  //    other selected non-root layer moves on the KEYFRAME channel (canvas px, GSAP x/y
+  //    preview, x+y keyframes at the playhead — the drag's semantics, key by key). The whole
+  //    burst commits as ONE undoable apply once the keys go quiet, so holding an arrow never
+  //    floods the history. Esc cancels the pending burst. ──
+  const commitNudge = () => {
+    const burst = nudgeRef.current;
+    nudgeRef.current = null;
+    if (!burst) return;
+    if (burst.timer) clearTimeout(burst.timer);
+    if (burst.dx === 0 && burst.dy === 0) return;
+    // Read the store at commit time — the burst outlives this render.
+    const s = useTemplateStore.getState();
+    let next = s.template;
+    for (const line of burst.lines) {
+      next = placeLine(next, line.wrapperId, Math.round(line.baseX + burst.dx), Math.round(line.baseY + burst.dy), line.scaled);
+    }
+    let keyed = false;
+    if (burst.keyed.length > 0) {
+      const model = parseAnimData(next.js);
+      if (model) {
+        const speed = model.speed || 1;
+        let nd = model;
+        for (const k of burst.keyed) {
+          const at = s.playhead
+            ? { step: s.playhead.step, tRel: Math.round(s.playhead.t * speed * 1000) / 1000 }
+            : { step: activationStep(model, k.selector), tRel: model.steps[activationStep(model, k.selector)].duration };
+          const x = Math.round((k.baseX + burst.dx) * 100) / 100;
+          const y = Math.round((k.baseY + burst.dy) * 100) / 100;
+          nd = setKeyframe(setKeyframe(nd, at.step, k.selector, 'x', at.tRel, x), at.step, k.selector, 'y', at.tRel, y);
+        }
+        const js = spliceAnimData(next.js, nd);
+        if (js && js !== next.js) {
+          next = { ...next, js };
+          keyed = true;
+        }
+      }
+    }
+    if (next.css === s.template.css && next.js === s.template.js) return;
+    s.applyTemplate(next);
+    s.setActiveTab(keyed && next.css === s.template.css ? 'js' : 'css');
+    if (keyed && s.playhead) {
+      const model = parseAnimData(s.template.js);
+      const place = s.playhead;
+      if (model) setTimeout(() => useTemplateStore.getState().sendScrub(phaseIdOf(model, place.step), place.t), 650);
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.key.startsWith('Arrow')) return;
+      if (e.defaultPrevented) return; // the timeline's keyframe-set nudge already claimed it
+      if (
+        editingRef.current || dragRef.current || placeDragRef.current || layerDragRef.current ||
+        lassoRef.current || scaleDragRef.current || layerTfRef.current || lineSizeRef.current
+      ) {
+        return;
+      }
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('input, textarea, select, .monaco-editor')) return;
+      const placedTargets = selectedParts
+        .map((sel) => placed[sel])
+        .filter((p): p is LinePlacement => !!p);
+      // The keyframe-channel targets mirror the drag: selected, not placed, not the root —
+      // and layers contained in another nudged layer ride along on the parent's transform.
+      const d = doc();
+      const keyedEls = kfSelectors
+        .map((sel) => ({ sel, el: d?.querySelector<HTMLElement>(sel) ?? null }))
+        .filter((x): x is { sel: string; el: HTMLElement } => !!x.el && x.el.getClientRects().length > 0);
+      const keyedTop = keyedEls.filter((x) => !keyedEls.some((o) => o !== x && o.el.contains(x.el)));
+      if (placedTargets.length === 0 && keyedTop.length === 0) return;
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+      const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+      let burst = nudgeRef.current;
+      if (!burst) {
+        // Bases are captured once per burst; every later press just grows the delta.
+        const g = gsapOf();
+        burst = {
+          lines: placedTargets.map((p) => ({ wrapperId: p.wrapperId, baseX: p.x, baseY: p.y, scaled: p.scaled })),
+          keyed: keyedTop.map((x) => ({
+            selector: x.sel,
+            baseX: Number(g?.getProperty?.(x.el, 'x') ?? 0),
+            baseY: Number(g?.getProperty?.(x.el, 'y') ?? 0),
+          })),
+          dx: 0,
+          dy: 0,
+          timer: null,
+        };
+        nudgeRef.current = burst;
+      }
+      burst.dx += dx;
+      burst.dy += dy;
+      for (const line of burst.lines) {
+        const el = doc()?.getElementById(line.wrapperId);
+        if (el) {
+          el.style.left = placementCss(line.baseX + burst.dx, line.scaled);
+          el.style.top = placementCss(line.baseY + burst.dy, line.scaled);
+        }
+      }
+      const g = gsapOf();
+      for (const k of burst.keyed) {
+        const el = doc()?.querySelector<HTMLElement>(k.selector);
+        if (el) g?.set(el, { x: k.baseX + burst.dx, y: k.baseY + burst.dy });
+      }
+      if (burst.timer) clearTimeout(burst.timer);
+      burst.timer = setTimeout(commitNudge, 450);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedParts, placed, kfSelectors]);
+
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const ls = lassoRef.current;
     if (ls) {
@@ -1134,11 +1440,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                   hint: pressEligible
                     ? undefined
                     : placed[selectedPart.selector]
-                      ? 'Double-click edits · drag places it'
+                      ? 'Double-click edits · drag places · arrows nudge'
                       : kfDraggable && selectedPart.kind === 'line'
-                        ? 'Double-click edits · drag moves'
+                        ? 'Double-click edits · drag or arrows move'
                         : kfDraggable && selectedPart.kind !== 'root'
-                          ? 'Drag to key its position'
+                          ? 'Drag or arrows key its position'
                           : selectedPart.kind === 'line'
                             ? 'Double-click to edit'
                             : selectedPart.kind === 'root'
@@ -1254,6 +1560,35 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
         <div className="move-hint">
           {layerTf.kind === 'scale' ? `×${layerTf.value.toFixed(2)}` : `${Math.round(layerTf.value)}°`}
           {' '}— release to key at the playhead · Esc cancels
+        </div>
+      )}
+
+      {/* A single selected PLACED field's corner handle resizes its DESIGN — a text line's
+          font-size, or an image slot's box — in its own CSS rules, never a scale keyframe. */}
+      {lineSizeSel && selRect && !ghost && !editing && !placeDrag?.active && (
+        <div
+          className={`layer-scale-handle${lineSize ? ' dragging' : ''}`}
+          data-testid="line-size-handle"
+          style={{ left: (selRect.left + selRect.width) * scale - 6, top: (selRect.top + selRect.height) * scale - 6 }}
+          title={
+            lineSizeSel.kind === 'font'
+              ? "Drag to resize the text — writes this line's font-size in the CSS"
+              : "Drag to resize the slot — writes its box size in the CSS"
+          }
+          onPointerDown={startLineSize}
+          onPointerMove={moveLineSize}
+          onPointerUp={endLineSize}
+          onPointerCancel={() => {
+            const d = lineSizeRef.current;
+            if (d) clearLineSizePreview(d);
+            setLineSize(null);
+          }}
+        />
+      )}
+      {lineSize?.active && (
+        <div className="move-hint">
+          {lineSize.kind === 'font' ? `${lineSize.value}px` : `${lineSize.value} × ${lineSize.valueH}px`}
+          {' '}— release to resize · Esc cancels
         </div>
       )}
 

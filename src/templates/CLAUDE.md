@@ -146,8 +146,11 @@ Adding a measured motion to another category = add a builder to its runtime + ha
   frame-sized art anchors at 0,0, cropped art gets a zone). designPresets.ts (design-fade/
   slide/pop/blur) animates ONLY the box - artwork and text as one unit; the line presets would
   tear text out of artwork drawn around it. Steps forced off. The `#fwN` rules are the canvas
-  placement drag's contract (blocks/designLayout.ts). Contract + diagnosis: docs/IMPORT_MVP.md;
-  E2E: e2e/import-graphic.spec.ts.
+  placement drag's contract (blocks/designLayout.ts, which also owns addPlacedLine - the Data
+  panel's add-field emitting a new line in this exact shape); `.imported-design-art` is its own
+  registry part ("Artwork"), so the PNG and each line animate independently after creation
+  (per-layer presets retarget the box motion - blocks/presetApply.ts). Contract + diagnosis:
+  docs/IMPORT_MVP.md; E2E: e2e/import-graphic.spec.ts.
 - **quiz/** - qz01 (prefix 'quiz'; f0 question, f1-f4 options, hidden f5 correct-answer dropdown).
   DATA BLOCKS via convertToDataRegion + a refinement (§3c above): the Continue reveal is a real
   middle step that CALLS revealAnswer() (adds .quiz-correct/.quiz-dim + pops the winner;

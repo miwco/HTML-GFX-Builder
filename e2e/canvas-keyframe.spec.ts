@@ -124,6 +124,44 @@ test('a multi-selection drags together — every layer keys its own pair, one ap
   expect(await historyLen(page)).toBe(before + 1); // the whole group is one undo step
 });
 
+test('arrow keys nudge a selected layer — x/y keyframes at the playhead, one apply per burst', async ({ page }) => {
+  await createHairline(page);
+  await selectAndPark(page);
+  const playhead = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().playhead;
+  });
+  const before = await historyLen(page);
+
+  // The same channel the drag writes, key by key: 1 canvas px per press, Shift = 10.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Shift+ArrowDown');
+
+  // The burst commits once the keys go quiet — one undoable apply for all three presses.
+  await expect
+    .poll(async () => {
+      const d = await animData(page);
+      return d!.steps[0].layers['#f0']?.x?.length ?? 0;
+    })
+    .toBe(1);
+  const data = await animData(page);
+  const tracks = data!.steps[0].layers['#f0'];
+  expect(Number(tracks.x[0].value)).toBeCloseTo(2, 0);
+  expect(Number(tracks.y[0].value)).toBeCloseTo(10, 0);
+  expect(Math.abs(tracks.x[0].time - playhead!.t)).toBeLessThan(0.02);
+  expect(await historyLen(page)).toBe(before + 1);
+
+  await page.keyboard.press('Control+z');
+  await expect
+    .poll(async () => {
+      const d = await animData(page);
+      const t = d!.steps[0].layers['#f0'];
+      return (t?.x?.length ?? 0) + (t?.y?.length ?? 0);
+    })
+    .toBe(0);
+});
+
 test('with nothing selected, the drag still re-anchors the root (zone patch)', async ({ page }) => {
   await createHairline(page);
   const jsBefore = await page.evaluate(async () => {

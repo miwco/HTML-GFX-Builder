@@ -118,10 +118,15 @@ test('inspector: the pivot sets the transform-origin, and the runtime honours it
   await expect
     .poll(async () => {
       const f = page.frames().find((fr) => fr.url().startsWith('about:srcdoc'));
-      return f ? f.evaluate(() => {
-        const w = window as unknown as { NOACG_ANIM?: { steps: { layers: Record<string, Record<string, unknown[]>> }[] } };
-        return (w.NOACG_ANIM?.steps ?? []).some((s) => (s.layers['#f0']?.transformOrigin?.length ?? 0) > 0);
-      }) : false;
+      // The debounced rebuild REPLACES the srcdoc frame mid-poll; a destroyed evaluation
+      // context must count as "not yet", not throw (a thrown callback fails expect.poll
+      // instead of retrying — the awaitPreviewRebuild rule, in its poll form).
+      return f
+        ? f.evaluate(() => {
+            const w = window as unknown as { NOACG_ANIM?: { steps: { layers: Record<string, Record<string, unknown[]>> }[] } };
+            return (w.NOACG_ANIM?.steps ?? []).some((s) => (s.layers['#f0']?.transformOrigin?.length ?? 0) > 0);
+          }).catch(() => false)
+        : false;
     })
     .toBe(true);
   const frame = page.frames().find((f) => f.url().startsWith('about:srcdoc'))!;

@@ -155,11 +155,18 @@ export function applyPresetData(
       }
     } else {
       // One layer: its own donor tracks when the donor animates it; otherwise the donor's
-      // first line's motion, retargeted (so an image/block can take a line-style preset).
+      // first line's motion, retargeted (so an image/block can take a line-style preset);
+      // otherwise the donor's box motion — the whole-unit presets (an imported design's
+      // Fade/Slide/Pop/Blur) animate ONLY `.{prefix}-box`, and this retarget is what lets
+      // them apply to a single layer (the artwork, one placed line) from the Inspector.
       let tracks: import('./animData').AnimLayerTracks | undefined = donorStep.layers[scope];
       if (!tracks) {
         const lineSel = Object.keys(donorStep.layers).find((s) => /^#f\d+$/.test(s));
         tracks = lineSel ? donorStep.layers[lineSel] : undefined;
+      }
+      if (!tracks) {
+        const boxSel = Object.keys(donorStep.layers).find((s) => s.endsWith('-box'));
+        tracks = boxSel ? donorStep.layers[boxSel] : undefined;
       }
       if (!tracks) continue;
       const targetIdx = ph === 'out' ? next.steps.length - 1 : activationStep(next, scope);

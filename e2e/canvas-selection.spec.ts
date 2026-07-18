@@ -54,7 +54,7 @@ test('clicking a text line selects it: outline + a chip naming the field — no 
   await expect(page.getByTestId('canvas-selection')).toBeVisible();
   const chip = page.getByTestId('selection-chip');
   await expect(chip).toContainText('Name'); // part.label = the field's SPX title
-  await expect(chip).toContainText('Double-click edits · drag moves'); // both actions that exist here
+  await expect(chip).toContainText('Double-click edits · drag or arrows move'); // the actions that exist here
 
   // Selection is editor UI state only: no tab jump, no change highlight, no history entry.
   await page.waitForTimeout(650); // KEEP as a sleep: this asserts nothing changes, so no rebuild ever comes

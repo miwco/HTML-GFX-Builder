@@ -755,6 +755,41 @@ read-only scheduled cloud agent. Not yet built — see the plan doc for the veri
       presets) — the full-frame match-up that misfitted info-cards (dropped card05) now owns
       its contract. Catalog: **11 categories, 49 designs**.
 
+### Import Graphic - your own artwork becomes the design (2026-07-18)
+The flat-PNG import workflow; **docs/IMPORT_MVP.md is the binding contract.** NoaCG is not
+replacing Photoshop/Figma/After Effects - graphics may be designed elsewhere; NoaCG's job is
+the dynamic fields, broadcast behaviour, preview, and export around them. Distinct from the
+Phase 5 "Import graphics" entry above, which routes a dropped image into a catalog design's
+logo slot: here the image IS the design.
+- [x] **MVP wizard flow** - the wizard's Import graphic entry: drop a flat PNG, measured at
+      import (never assumed) - frame-sized art anchors at 0,0; larger art is scaled to fit the
+      frame, so a 2x/retina export lands exactly frame-sized; smaller art floats with the
+      ordinary 9-zone anchor - then the Text step places lines in the artwork's own px, and
+      whole-unit in/out presets (Fade / Slide up / Pop / Blur) animate artwork + text as one
+      picture. The output is a standard-contract template (`.imported-design-box`) the part
+      registry, timeline, canvas selection, and all six export targets accept with no changes.
+      A canvas drag re-places a line through its wrapper's CSS rule
+      (blocks/designLayout.ts) - a design decision, never a motion keyframe.
+- [x] **Wizard taste pass (founder-ratified)** - one CTA on the Design step (the footer Next
+      reads "Add text fields >"); the Style step slims to what still applies (Palette + Font
+      always; Graphic size + Position only for smaller-than-frame art; the global Text size
+      knob never shows - each line sizes itself on the Text step); the box part is labelled
+      "Design", not "Panel".
+- [x] **Canvas + data fields phase** - the Data tab's add-field creates a real placed line on
+      the artwork (visible element + placement CSS rule + SPX DataField + selectable layer,
+      one undoable apply, wired into update() and every export with no manual code); placed
+      lines nudge with the keyboard and resize their text with a canvas handle; the artwork is
+      its own registry layer so the PNG and every field animate independently (Inspector
+      presets apply per layer; Animations is the Inspector's default view on an imported
+      design); E2E covers the full import -> canvas -> field -> animate -> preview -> SPX
+      export roundtrip.
+- [x] **Image slots + editor-wide nudge (follow-up)** - the Data tab's Image add creates a
+      placed image slot on the artwork (SPX filelist field, dashed empty-slot mark, corner
+      box resize; the slot stays selectable and draggable while empty), and arrow-key
+      nudging extends beyond placed fields to EVERY selected layer - placed fields move as
+      placement CSS, other layers key x/y at the playhead like the drag, one undoable apply
+      per burst either way.
+
 ### Quality bar (always-on)
 - [x] `npm run build` green as the CI gate
 - [x] Playwright E2E for core UI flows

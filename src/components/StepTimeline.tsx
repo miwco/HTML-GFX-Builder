@@ -1008,8 +1008,15 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
         }
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // CAPTURE phase, deliberately: the canvas layer-nudge (CanvasInteraction) also listens
+    // for arrows on window, and selecting a keyframe diamond usually leaves its layer in the
+    // shared selection too — so both handlers are armed at once. An explicit keyframe-set
+    // selection is the more specific intent and must win deterministically: this handler runs
+    // first (capture precedes bubble), claims the key with preventDefault when a set is
+    // selected, and the canvas handler stands down on e.defaultPrevented. With no set
+    // selected the arrow branch returns without claiming, and the layer nudge proceeds.
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editable, kfSels, data, template, head]);
 

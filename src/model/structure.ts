@@ -86,6 +86,13 @@ export function getTemplateParts(html: string, fields: SpxField[] = []): Templat
     if (unique(`.${prefix}-accent`)) {
       parts.push({ selector: `.${prefix}-accent`, kind: 'accent', label: 'Accent line', channel: 'rise' });
     }
+    // An imported design's artwork (`.imported-design-art` — the PNG the user brought). Its
+    // own identity on purpose: the design presets move the whole box, but the artwork and the
+    // text placed on it are separate layers, so each can be styled and animated independently
+    // (docs/IMPORT_MVP.md). Catalog templates emit no `-art` element, so nothing else changes.
+    if (unique(`.${prefix}-art`)) {
+      parts.push({ selector: `.${prefix}-art`, kind: 'image', label: 'Artwork', channel: 'rise' });
+    }
   }
 
   // Field elements, in document order: masked text lines and image slots.

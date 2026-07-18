@@ -126,8 +126,61 @@ Three calls made after the visual taste pass, all founder-ratified:
   `imported-design` prefix, so the timeline row, canvas chip, and Inspector all say "Design" —
   the box is the user's artwork, not a generated background panel.
 
-## Deliberately out of scope (MVP)
+## The canvas + data-field phase (post-MVP, 2026-07-18)
 
-Per-element animation, layered imports, multi-step logic, image fields, Google Sheets,
-state-machine workflows, advanced timelines. Remotion is a separate module and did not
-influence any of this.
+The wizard hands off to the REAL canvas (it always did — the output is a contract-shaped
+template), and this phase makes the editor's data-field workflow first-class there:
+
+- **The Data tab's add-field is real on an imported design.** `blocks/designLayout.ts
+  addPlacedLine` is one pure transform emitting everything a field needs to exist end to end:
+  the mask wrapper + `#fN` span inside the design unit (which makes it a registry `line`
+  part — selectable, animatable, a timeline row), the wrapper's placement rule + the span's
+  type rule in the assembler's exact idiom (so the drag/nudge/resize read it back), and the
+  SPX DataField (the shared runtime's `update()` binds by id — zero JS changes, works in
+  every export). The new line stacks under the LOWEST existing line and inherits its
+  size/weight/color; the first line of a bare design starts in the artwork's lower-left. The
+  gate is `designBoxInfo` — code-derived (a box whose unit carries `<prefix>-art`), never the
+  category. Long text and image fields keep the definition-only add.
+- **Image slots are placed fields too.** The Data tab's Image add runs `addPlacedImageSlot`:
+  an `<img id="fN">` in a mask wrapper (a registry `image` part) with a sized slot box, a
+  dashed outline while empty (the house rule — image placeholders are visible), and an SPX
+  `filelist` DataField listing `images/` — the shared runtime's `setFieldValue` already
+  handles the img show/hide and `.has-image`. A hidden empty slot stays selectable and
+  draggable: the canvas lets the rendered WRAPPER stand in for a placed field's hidden
+  element (`partScreenEl` in CanvasInteraction), and the corner handle resizes the slot's
+  box (`slotSize`/`setSlotSize`, aspect preserved).
+- **Keyboard nudging.** Arrows move every selected layer 1 px (Shift = 10). A placed field
+  moves as placement (design px, the placement drag's inline preview, ONE `placeLine` apply
+  per burst); every other selected non-root layer moves on the keyframe channel — GSAP x/y
+  preview, x+y keyframes at the playhead, the drag's semantics key by key — so nudging works
+  the same across the whole editor, not just on imports. One undoable apply per burst; Esc
+  cancels. Precedence: the timeline's keyframe-set arrows listen in the CAPTURE phase and
+  claim the key with preventDefault, so an explicitly selected keyframe set always wins over
+  the layer nudge — selecting a diamond usually leaves its layer selected too, and only one
+  of the two may act.
+- **The corner handle resizes the DESIGN.** On a single selected placed field the corner
+  handle edits a text line's `font-size` (`lineFontSize`/`setLineFontSize`) or an image
+  slot's box (`slotSize`/`setSlotSize`), in the rules' own idiom — the keyframe scale/rotate
+  handles step aside for placed fields, for the same reason the drag places instead of
+  keying: a placed field's size is design, not motion.
+- **The artwork is its own layer.** `.{prefix}-art` is a registry part (kind `image`, label
+  "Artwork"), so the PNG and every text field are independent layers throughout — style and
+  animate each on its own. The whole-unit presets stay the wizard's (and the Design row's)
+  business; per-layer motion comes from the Inspector.
+- **Per-layer presets work here.** `blocks/presetApply.ts`'s single-layer retarget chain now
+  falls back to the donor's `-box` tracks — the whole-unit presets animate only the box, and
+  that fallback is what lets Fade/Slide/Pop/Blur apply to ONE layer (the artwork, a line)
+  from the Inspector's Animations tab.
+- **Animations is the Inspector's default view on an imported design** (the artwork brought
+  its look with it — what a user comes here for is motion). The switch fires when a
+  placed-design template arrives; a manual tab choice afterwards sticks. No Inspector
+  restructuring.
+
+E2E: the whole roundtrip (add → place → nudge → resize → per-layer animate → live sample
+data → validated export) is pinned in e2e/import-graphic.spec.ts.
+
+## Deliberately out of scope
+
+Layered/PSD imports, OCR/text detection, Google Sheets, multi-step logic, state-machine
+workflows, advanced custom keyframes. Remotion is a separate module and did not influence
+any of this.
