@@ -150,8 +150,10 @@ test('style panel: accent retints the live preview', async ({ page }) => {
 
   await page.getByTestId('dock-tab-style').click();
   const accentRow = page.locator('.field-row', { hasText: '--accent' });
-  await accentRow.locator('input.grow').fill('#ff2d78');
-  // The preview rebuilds (debounced) with the new accent on the hairline.
+  // Wait out the debounced rebuild BEFORE reading inside the iframe: evaluating against a
+  // document that is being replaced throws "execution context was destroyed", and a thrown
+  // callback fails expect.poll outright instead of retrying.
+  await awaitPreviewRebuild(page, () => accentRow.locator('input.grow').fill('#ff2d78'));
   await expect
     .poll(async () =>
       previewFrame(page).locator('.lower-third-accent').evaluate((el) => getComputedStyle(el).backgroundColor),
