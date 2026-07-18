@@ -19,6 +19,9 @@ const MAP = [
   [/^src\/video\//, ['video-project.spec.ts', 'video-inputs.spec.ts', 'video-settings.spec.ts', 'video-player-host.spec.ts']],
   [/^src\/components\/video\//, ['video-project.spec.ts', 'video-inputs.spec.ts', 'video-settings.spec.ts', 'video-player-host.spec.ts']],
   [/^player-host\//, ['video-player-host.spec.ts', 'video-project.spec.ts']],
+  // The host BUILD is load-bearing for the preview: it inlines the player JS and the bundled
+  // video fonts into public/player-host/index.html, which the video specs load.
+  [/^scripts\/build-player-host/, ['video-player-host.spec.ts', 'video-project.spec.ts']],
   [/^src\/render\//, ['render.spec.ts', 'render-schedule.spec.ts']],
   [/^api\//, ['render.spec.ts', 'render-schedule.spec.ts']],
   [/^src\/export\//, ['exports.spec.ts', 'package.spec.ts', 'offline.spec.ts', 'control.spec.ts']],
@@ -58,7 +61,7 @@ const CORE = [
 ];
 
 // Files that never affect the offline e2e surface.
-const IGNORE = [/^docs\//, /\.md$/, /^scripts\/(?!.*renderDevPlugin)/, /^e2e\/configured\//, /^render-worker\//, /^supabase\//, /^NoaCG-Brand-Kit\//, /^example_projects\//];
+const IGNORE = [/^docs\//, /\.md$/, /^scripts\/(?!.*(renderDevPlugin|build-player-host))/, /^e2e\/configured\//, /^render-worker\//, /^supabase\//, /^NoaCG-Brand-Kit\//, /^example_projects\//];
 
 const args = process.argv.slice(2);
 const listOnly = args.includes('--list');
