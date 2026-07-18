@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { getTemplateParts } from '../model/structure';
+import { designBoxInfo } from '../blocks/designLayout';
 import { parseAnimData, spliceAnimData, type AnimData } from '../blocks/animData';
 import { importAnimData } from '../blocks/animImport';
 import { deleteKeyframe, setFilterComponent, setKeyframe } from '../blocks/animEdit';
@@ -112,7 +113,10 @@ export default function Inspector() {
   const playhead = useTemplateStore((s) => s.playhead);
   // A label drag-scrub in progress (the familiar drag-the-label-to-change-the-value).
   const scrubDrag = useRef<{ prop: string; startX: number; startValue: number; value: number } | null>(null);
-  const [tab, setTab] = useState<'properties' | 'animations'>('properties');
+  // Animations first on an imported design (see the placedDesign switch below).
+  const [tab, setTab] = useState<'properties' | 'animations'>(() =>
+    designBoxInfo(template.html, template.css) ? 'animations' : 'properties',
+  );
   const [presetId, setPresetId] = useState<AnimPresetId | ''>('');
   const [presetPhase, setPresetPhase] = useState<'in' | 'out' | 'both'>('in');
   const [presetEasing, setPresetEasing] = useState<EasingId>('auto');
@@ -127,6 +131,20 @@ export default function Inspector() {
     () => getTemplateParts(template.html, template.fields),
     [template.html, template.fields],
   );
+
+  // On an imported design (the placed-design shape, code-derived) the Animations tab is the
+  // natural first stop: the artwork brought its look with it, so what a user comes here for
+  // is per-layer in/out motion. The switch fires once when such a template arrives — a manual
+  // tab choice afterwards sticks.
+  const placedDesign = useMemo(
+    () => designBoxInfo(template.html, template.css) !== null,
+    [template.html, template.css],
+  );
+  const wasPlacedDesign = useRef(placedDesign);
+  useEffect(() => {
+    if (placedDesign && !wasPlacedDesign.current) setTab('animations');
+    wasPlacedDesign.current = placedDesign;
+  }, [placedDesign]);
   // A native data block is editable; legacy regions convert through the importer for a
   // read view only. Null = blank/imported/hand-crafted — identity still shows.
   const native = useMemo(() => parseAnimData(template.js), [template.js]);

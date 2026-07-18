@@ -126,8 +126,47 @@ Three calls made after the visual taste pass, all founder-ratified:
   `imported-design` prefix, so the timeline row, canvas chip, and Inspector all say "Design" —
   the box is the user's artwork, not a generated background panel.
 
-## Deliberately out of scope (MVP)
+## The canvas + data-field phase (post-MVP, 2026-07-18)
 
-Per-element animation, layered imports, multi-step logic, image fields, Google Sheets,
-state-machine workflows, advanced timelines. Remotion is a separate module and did not
-influence any of this.
+The wizard hands off to the REAL canvas (it always did — the output is a contract-shaped
+template), and this phase makes the editor's data-field workflow first-class there:
+
+- **The Data tab's add-field is real on an imported design.** `blocks/designLayout.ts
+  addPlacedLine` is one pure transform emitting everything a field needs to exist end to end:
+  the mask wrapper + `#fN` span inside the design unit (which makes it a registry `line`
+  part — selectable, animatable, a timeline row), the wrapper's placement rule + the span's
+  type rule in the assembler's exact idiom (so the drag/nudge/resize read it back), and the
+  SPX DataField (the shared runtime's `update()` binds by id — zero JS changes, works in
+  every export). The new line stacks under the LOWEST existing line and inherits its
+  size/weight/color; the first line of a bare design starts in the artwork's lower-left. The
+  gate is `designBoxInfo` — code-derived (a box whose unit carries `<prefix>-art`), never the
+  category. Long text and image fields keep the definition-only add.
+- **Keyboard nudging.** Arrows move every selected placed line 1 design px (Shift = 10),
+  previewed live through the same inline left/top channel the placement drag uses; the burst
+  commits as ONE undoable `placeLine` apply once the keys go quiet, so holding an arrow never
+  floods the history. Esc cancels the pending burst.
+- **The corner handle resizes the TEXT.** On a single selected placed line the corner handle
+  edits the line's `font-size` in its own `#fN` rule (`lineFontSize`/`setLineFontSize`, the
+  rule's own idiom) — the keyframe scale/rotate handles step aside for placed lines, for the
+  same reason the drag places instead of keying: a placed line's size is design, not motion.
+- **The artwork is its own layer.** `.{prefix}-art` is a registry part (kind `image`, label
+  "Artwork"), so the PNG and every text field are independent layers throughout — style and
+  animate each on its own. The whole-unit presets stay the wizard's (and the Design row's)
+  business; per-layer motion comes from the Inspector.
+- **Per-layer presets work here.** `blocks/presetApply.ts`'s single-layer retarget chain now
+  falls back to the donor's `-box` tracks — the whole-unit presets animate only the box, and
+  that fallback is what lets Fade/Slide/Pop/Blur apply to ONE layer (the artwork, a line)
+  from the Inspector's Animations tab.
+- **Animations is the Inspector's default view on an imported design** (the artwork brought
+  its look with it — what a user comes here for is motion). The switch fires when a
+  placed-design template arrives; a manual tab choice afterwards sticks. No Inspector
+  restructuring.
+
+E2E: the whole roundtrip (add → place → nudge → resize → per-layer animate → live sample
+data → validated export) is pinned in e2e/import-graphic.spec.ts.
+
+## Deliberately out of scope
+
+Layered/PSD imports, OCR/text detection, image data fields, Google Sheets, multi-step
+logic, state-machine workflows, advanced custom keyframes. Remotion is a separate module and
+did not influence any of this.

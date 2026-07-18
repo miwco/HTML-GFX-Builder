@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { type Ftype, type SpxField } from '../model/types';
 import { fieldDescriptors } from '../control/controlModel';
 import SpxFieldRow from './fields/SpxFieldRow';
 import { addFieldToDefinition, nextFieldId } from '../blocks/edit';
+import { addPlacedLine, designBoxInfo } from '../blocks/designLayout';
 import { useTemplateStore } from '../store/templateStore';
 
 // The broadcast field set (same as the wizard's extras).
@@ -26,6 +27,7 @@ export default function SampleDataPanel() {
   const sendControl = useTemplateStore((s) => s.sendControl);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
+  const setSelectedPart = useTemplateStore((s) => s.setSelectedPart);
 
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState<Ftype>('textfield');
@@ -33,13 +35,34 @@ export default function SampleDataPanel() {
   const dataFields = fieldDescriptors(fields, { includeHidden: true });
   const noteFields = fields.filter((f) => ['instruction', 'caption'].includes(f.ftype));
 
-  // Append a field to the SPX definition (the editor highlights the new entry). The field
-  // is definition-only until it's wired to an element — AI modify does that in one prompt.
+  // The placed-design shape (an imported design's artwork box) — code-derived, so any
+  // template carrying the contract gets the real add, whatever category it came from.
+  const placedDesign = useMemo(
+    () => designBoxInfo(template.html, template.css) !== null,
+    [template.html, template.css],
+  );
+
+  // Add a field. On a placed-design template a single-line field becomes a REAL placed line —
+  // element + placement rule + DataField in one undoable apply (blocks/designLayout.ts), then
+  // the new layer is selected so the canvas and Inspector pick it up straight away. Everything
+  // else appends to the SPX definition only (the editor highlights the new entry) — the field
+  // is definition-only until it's wired to an element; AI modify does that in one prompt.
   const addField = () => {
+    const title = newTitle.trim() || 'New field';
+    if (newType === 'textfield' || newType === 'number') {
+      const added = addPlacedLine(template, { title, ftype: newType });
+      if (added) {
+        applyTemplate(added.template);
+        setSelectedPart(`#${added.fieldId}`); // the new layer — selectable, draggable, animatable
+        setActiveTab('html');
+        setNewTitle('');
+        return;
+      }
+    }
     const field: SpxField = {
       field: nextFieldId(fields),
       ftype: newType,
-      title: newTitle.trim() || 'New field',
+      title,
       value: newType === 'number' ? '0' : '',
       ...(newType === 'filelist' ? { assetfolder: './images/', extension: 'png' } : {}),
     };
@@ -112,8 +135,9 @@ export default function SampleDataPanel() {
           <button onClick={addField} title="Append the field to the SPX definition">+ Add</button>
         </div>
         <p className="hint" style={{ marginTop: 6 }}>
-          Lands in the SPX definition (highlighted in the HTML). To show it in the design, ask the
-          AI — e.g. “display the new Sponsor field under the title”.
+          {placedDesign
+            ? 'A text or number field appears on your design, ready to drag into place on the canvas. Long text and image fields land in the SPX definition only.'
+            : 'Lands in the SPX definition (highlighted in the HTML). To show it in the design, ask the AI — e.g. “display the new Sponsor field under the title”.'}
         </p>
       </div>
     </div>

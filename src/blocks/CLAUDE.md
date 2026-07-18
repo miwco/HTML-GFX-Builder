@@ -41,18 +41,27 @@ timeline animates the container like any block part.
 
 :root variable read/write helpers (the Style panel's patch layer).
 
-## designLayout.ts - placed-line positions (the imported-design drag)
+## designLayout.ts - placed-line design decisions (the imported-design surface)
 
-The read/write pair for text lines whose position is a DESIGN decision written in the CSS: the
+The read/write pairs for text lines whose look is a DESIGN decision written in the CSS: the
 imported-design assembler puts each line's `left`/`top` on its wrapper's rule
-(`#fwN { left: calc(Npx * var(--scale)) }`). `placedLines(html, css)` derives the map on every
-call (never stored, like getTemplateParts); `placeLine` patches one wrapper's rule via
-setCssDeclaration. The gate is code-derived, never category-derived: a line is "placed" when its
-parent carries an id whose rule holds readable left+top px values - so a hand-written template
-with that shape opts in, and catalog templates (mask divs without ids) never match. The canvas
-drag for a placed line goes through THIS (placement), and the line is excluded from the
-position-KEYFRAME drag - moving a field independently of artwork drawn around it is what
-whole-unit motion exists to prevent (docs/IMPORT_MVP.md).
+(`#fwN { left: calc(Npx * var(--scale)) }`) and its type on the span's `#fN` rule.
+`placedLines(html, css)` derives the map on every call (never stored, like getTemplateParts);
+`placeLine` patches one wrapper's rule via setCssDeclaration; `lineFontSize`/`setLineFontSize`
+are the same pair for the span's font-size (the canvas corner handle on a placed line). The
+gate is code-derived, never category-derived: a line is "placed" when its parent carries an id
+whose rule holds readable left+top px values - so a hand-written template with that shape opts
+in, and catalog templates (mask divs without ids) never match. The canvas drag for a placed
+line goes through THIS (placement), and the line is excluded from the position-KEYFRAME drag
+and the keyframe scale/rotate handles - moving a field independently of artwork drawn around
+it is what whole-unit motion exists to prevent (docs/IMPORT_MVP.md).
+
+`addPlacedLine(template, {title, ftype})` is the Data panel's add-field on an imported design:
+ONE pure transform emitting the mask wrapper + span (a registry `line` part), the placement +
+type rules in the assembler's exact idiom, and the SPX DataField (update() binds by id - no JS
+change). New lines stack under the lowest existing line and inherit its look. Gated by
+`designBoxInfo` (a box whose unit carries `<prefix>-art`); returns null off-shape so the
+caller falls back to the definition-only add.
 
 ## The Timeline v2 animation-data engine
 

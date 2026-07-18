@@ -160,20 +160,30 @@ async function createImported(page: Page) {
   });
 }
 
-/** The current template's #fw0 rule position + #f0 keyframe tracks + history length. */
+/** The current template's #fw0 rule position + #f0 font/tracks + history length. */
 async function placementState(page: Page) {
   return page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
-    const { placedLines } = await import('/src/blocks/designLayout.ts');
+    const { placedLines, lineFontSize } = await import('/src/blocks/designLayout.ts');
     const { parseAnimData } = await import('/src/blocks/animData.ts');
     const s = useTemplateStore.getState();
     const data = parseAnimData(s.template.js);
     return {
       place: placedLines(s.template.html, s.template.css)['#f0'] ?? null,
+      font: lineFontSize(s.template.css, 'f0'),
       f0Tracks: Object.keys(data?.steps[0].layers['#f0'] ?? {}),
       history: s.history.length,
     };
   });
+}
+
+/** Add a field through the Data panel's add row (the real UI path). */
+async function addFieldViaDataTab(page: Page, title: string) {
+  await page.getByTestId('dock-tab-data').click();
+  await page.locator('.field-add-row input').fill(title);
+  await awaitPreviewRebuild(page, () =>
+    page.getByRole('button', { name: '+ Add' }).click(),
+  );
 }
 
 test('import graphic: dragging a field places it in the CSS — never a keyframe', async ({ page }) => {
@@ -232,6 +242,139 @@ test('import graphic: Escape cancels a placement drag without touching the code'
     .locator('#fw0')
     .evaluate((el) => (el as HTMLElement).style.left);
   expect(inline).toBe('');
+});
+
+// ── The canvas + data-field phase: the Data tab's add-field is REAL on an imported design —
+//    it creates the element, the placement rule, the DataField, and the selectable layer in
+//    one undoable apply, and the new line behaves like any placed line from then on. ──
+
+test('import graphic: adding a field from the Data tab creates a real placed layer', async ({ page }) => {
+  await createImported(page);
+  await addFieldViaDataTab(page, 'Sponsor');
+
+  // A visible element in the preview, showing its sample text…
+  const frame = page.frameLocator('iframe.preview-frame');
+  await expect(frame.locator('#f2')).toHaveText('Sponsor');
+
+  // …a placed line + a real SPX DataField + a synced sample value, selected on arrival.
+  const state = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { placedLines } = await import('/src/blocks/designLayout.ts');
+    const s = useTemplateStore.getState();
+    return {
+      place: placedLines(s.template.html, s.template.css)['#f2'] ?? null,
+      field: s.template.fields.find((f) => f.field === 'f2') ?? null,
+      sample: s.sampleData['f2'],
+      selected: s.selectedPart,
+    };
+  });
+  expect(state.place).not.toBeNull();
+  expect(state.place!.scaled).toBe(true); // the assembler's calc(--scale) idiom
+  expect(state.field?.title).toBe('Sponsor');
+  expect(state.sample).toBe('Sponsor');
+  expect(state.selected).toBe('#f2');
+
+  // …and a timeline row like any layer (the registry named it from the field title).
+  await expect(page.locator('.tlv2-labels .timeline-label[data-part="#f2"]')).toContainText('Sponsor');
+});
+
+test('import graphic: an added field is live — sample data drives it with no manual wiring', async ({ page }) => {
+  await createImported(page);
+  await addFieldViaDataTab(page, 'Sponsor');
+  const frame = page.frameLocator('iframe.preview-frame');
+  await expect(frame.locator('#f2')).toHaveText('Sponsor');
+
+  // Type a new sample value in the Data panel and push it through update() — the shared
+  // runtime binds fields by id, so the added field needs zero manual JS wiring. (The add
+  // selected the new layer, which auto-revealed the Inspector in this dock — reopen Data.)
+  await page.getByTestId('dock-tab-data').click();
+  await page.locator('.panel-body .field-row', { hasText: 'Sponsor' }).locator('input').fill('ACME Broadcast');
+  await page.getByTestId('dock-body-right').getByRole('button', { name: '⟳ Update' }).click();
+  await expect(frame.locator('#f2')).toHaveText('ACME Broadcast');
+
+  // The definition carries the field, so SPX gets the same control: the export validates.
+  await page.getByTestId('dock-tab-export').click();
+  await expect(page.locator('.panel-body')).not.toContainText('✗');
+});
+
+test('import graphic: arrow keys nudge a selected field — one placement apply per burst', async ({ page }) => {
+  await createImported(page);
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  await expect(page.getByTestId('inspector')).toBeVisible({ timeout: 3000 });
+  const before = await placementState(page);
+
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Shift+ArrowUp');
+
+  // The burst commits once the keys go quiet — one undoable apply for all four presses.
+  await expect.poll(async () => (await placementState(page)).place?.x).toBe(before.place!.x + 3);
+  const after = await placementState(page);
+  expect(after.place!.y).toBe(before.place!.y - 10); // Shift = 10 design px
+  expect(after.place!.scaled).toBe(true);
+  expect(after.f0Tracks).toEqual(before.f0Tracks); // placement, never motion
+  expect(after.history).toBe(before.history + 1);
+
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await placementState(page)).place!.x).toBe(before.place!.x);
+});
+
+test('import graphic: the corner handle resizes a field\'s text in the CSS', async ({ page }) => {
+  await createImported(page);
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  const handle = page.getByTestId('line-size-handle');
+  await expect(handle).toBeVisible();
+  // The keyframe transform handles step aside for a placed line: its corner is a DESIGN
+  // decision (font-size in its own rule), exactly like its drag.
+  await expect(page.getByTestId('layer-scale-handle')).toHaveCount(0);
+  await expect(page.getByTestId('layer-rotate-handle')).toHaveCount(0);
+
+  const before = await placementState(page);
+  expect(before.font).not.toBeNull();
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 90, box.y + 60, { steps: 6 });
+  await page.mouse.up();
+
+  await expect.poll(async () => (await placementState(page)).font!.value).toBeGreaterThan(before.font!.value);
+  const after = await placementState(page);
+  expect(after.font!.scaled).toBe(true); // the rule keeps its calc(--scale) idiom
+  expect(after.history).toBe(before.history + 1);
+  expect(after.f0Tracks).toEqual(before.f0Tracks); // design, never a scale keyframe
+});
+
+test('import graphic: the artwork and a field animate as separate layers from the Inspector', async ({ page }) => {
+  await createImported(page);
+
+  // The PNG is its own registry layer, and Animations is the Inspector's DEFAULT view here.
+  await page.locator('.tlv2-labels .timeline-label[data-part=".imported-design-art"]').click();
+  await expect(page.getByTestId('inspector')).toBeVisible({ timeout: 3000 });
+  await expect(page.getByTestId('inspector-part-label')).toHaveText('Artwork');
+  await expect(page.getByTestId('inspector-animations')).toBeVisible();
+
+  // Give the artwork its own entrance…
+  await page.getByTestId('inspector-preset-select').selectOption('design-slide');
+  await awaitPreviewRebuild(page, () => page.getByTestId('inspector-preset-apply').click());
+
+  // …and a field a different one, independently.
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f1"]').click();
+  await page.getByTestId('inspector-preset-select').selectOption('design-pop');
+  await awaitPreviewRebuild(page, () => page.getByTestId('inspector-preset-apply').click());
+
+  const tracks = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { parseAnimData } = await import('/src/blocks/animData.ts');
+    const data = parseAnimData(useTemplateStore.getState().template.js);
+    const layers = data?.steps[0].layers ?? {};
+    return {
+      art: Object.keys(layers['.imported-design-art'] ?? {}).sort(),
+      f1: Object.keys(layers['#f1'] ?? {}).sort(),
+    };
+  });
+  expect(tracks.art).toEqual(expect.arrayContaining(['opacity', 'y'])); // Slide up
+  expect(tracks.f1).toEqual(expect.arrayContaining(['opacity', 'scale'])); // Pop
 });
 
 test('import graphic: the exported SPX package validates', async ({ page }) => {

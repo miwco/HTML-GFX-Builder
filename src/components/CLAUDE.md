@@ -66,8 +66,12 @@ in src/blocks/CLAUDE.md.
   code-derived, never category) - drags as PLACEMENT, not motion: live inline left/top preview
   in the rule's own idiom, ONE undoable placeLine CSS patch on release, Escape clears the
   previews. Placed lines are excluded from the keyframe drag entirely, so a multi-select drag
-  never keys motion for them; catalog templates (mask divs without ids) never match. Pinned by
-  e2e/import-graphic.spec.ts.
+  never keys motion for them; catalog templates (mask divs without ids) never match. Placed
+  lines also NUDGE with the arrow keys (1 design px, Shift = 10; live inline preview, the
+  whole burst commits as ONE placeLine apply once the keys go quiet, Esc cancels) and a
+  single selected placed line swaps the keyframe scale/rotate handles for a TEXT-SIZE corner
+  handle - live font-size preview on the span, one setLineFontSize CSS patch on release
+  (design, never a scale keyframe). Pinned by e2e/import-graphic.spec.ts.
   The SELECTION model (multi, docs/TIMELINE_INTERACTION_MODEL.md): a click selects the
   innermost TemplatePart under the point (registry-driven closest-ancestor hit test,
   rect-containment fallback); clicking the sole selected part again climbs to its container;
@@ -168,7 +172,10 @@ in src/blocks/CLAUDE.md.
   The Animations tab names which steps move the layer and holds the preset
   picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
   blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
-  blends with the previous preset), and re-parks the preview at the playhead. Legacy templates get a
+  blends with the previous preset), and re-parks the preview at the playhead. On an imported
+  design (the placed-design shape, code-derived) Animations is the DEFAULT tab - the artwork
+  brought its look, so per-layer motion is what the Inspector is for there; a manual tab
+  choice afterwards sticks. Legacy templates get a
   read-only shell (the timeline's convert chip arms editing). It is a dockable panel (default:
   the active tab of the RIGHT dock) - shown/hidden/resized/moved like any panel; any NEW
   selection reveals it (activates its tab, or re-docks it if closed - an explicit close holds
@@ -215,7 +222,10 @@ On DESKTOP each is a dockable panel (AppShell renders them into the docks; see W
 editing lives on the timeline (StepTimeline via TimelineDock) plus the Inspector.
 
 - **SampleDataPanel** - sample values (shared field rows, `includeHidden`: a hidden field carries
-  a real input value like a countdown's duration, so it must be testable here) + add-field.
+  a real input value like a countdown's duration, so it must be testable here) + add-field. On a
+  placed-design template (designBoxInfo, code-derived) a text/number add goes through
+  blocks/designLayout.ts addPlacedLine - a REAL placed line on the artwork, selected on arrival
+  so the Inspector reveals; other kinds (and off-shape templates) keep the definition-only add.
 - **ControlPanel** - operator view from the control/ engine (the same shared field rows, `live`
   on, hidden fields skipped as SPX skips them); live-drives the preview via store.sendControl ->
   simulator; downloads controlpanel.html; adds the Google-Sheets live-data block.
