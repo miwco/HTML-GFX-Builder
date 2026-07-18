@@ -229,6 +229,38 @@ test('the chip assigns the selected part to a press — the data chain, from the
   expect(Object.keys(data!.steps[0].layers)).toContain('.lower-third-accent');
 });
 
+// ── The chip on a PHONE (≤768px): the affordance hints describe pointer/keyboard gestures —
+//    double-click, arrow keys, the corner handle — that a touch screen doesn't have, so the
+//    chip speaks only the registry label there. And whatever the label length, it must stay
+//    fully inside the stage: at 390px the old fixed clamp let a hinted chip clip off the
+//    right edge. ──
+
+test('mobile: the chip drops the desktop-gesture hints and stays inside the canvas', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await createHairline(page);
+  await waitSettled(page);
+
+  // Select through the shared selection (the timeline row label — the same real UI path
+  // the mobile layout spec uses; canvas tap mechanics are pinned by the desktop specs).
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  const chip = page.getByTestId('selection-chip');
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText('Name'); // part.label — the registry's word, unchanged
+  await expect(chip.locator('.canvas-chip-hint')).toHaveCount(0); // no desktop-only guidance
+
+  // Contained: the chip never leaves the stage overlay, and never clips at the viewport.
+  const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
+  const box = (await chip.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(layer.x - 1);
+  expect(box.x + box.width).toBeLessThanOrEqual(layer.x + layer.width + 1);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+
+  // The panel selected too ("Panel" hint on desktop is the corner handle — also desktop-only).
+  await page.locator('.tlv2-labels .timeline-label[data-part=".lower-third-box"]').click();
+  await expect(chip).toContainText('Panel');
+  await expect(chip.locator('.canvas-chip-hint')).toHaveCount(0);
+});
+
 test('a block element outside the root joins the press chain: hidden until its press, gone with the exit', async ({ page }) => {
   await createHairline(page);
   await waitSettled(page);

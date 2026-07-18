@@ -418,6 +418,13 @@ export interface NewPlacedLineSpec {
   title: string;
   /** The single-line field kinds a placed text element can carry. */
   ftype: 'textfield' | 'number';
+  /** Where the line's wrapper lands, in design px from the artwork's top-left. Absent =
+   *  the stacking default (under the lowest line, or the lower-left of a bare design).
+   *  The canvas text tools pass the clicked / dragged point here. */
+  at?: { x: number; y: number };
+  /** The initial shown text (markup + DataField value). Absent = the title (the Data
+   *  panel's add); '' = born empty (the T tool — the user types the first value). */
+  text?: string;
 }
 
 /**
@@ -455,12 +462,18 @@ export function addPlacedLine(
   const refFont = ref ? lineFontSize(template.css, ref.fieldId) : null;
   const fontSize = refFont?.value ?? Math.max(14, Math.round(boxWidth * 0.016));
   const scaled = ref ? ref.place.scaled : true;
-  const x = ref ? Math.min(...Object.values(placed).map((p) => p.x)) : Math.round(boxWidth * 0.06);
-  const y = ref ? Math.round(ref.place.y + fontSize * 1.6) : Math.round(boxWidth * (9 / 16) * 0.74);
+  // An explicit position (the canvas text tools' click / drag point) wins; otherwise the
+  // stacking default keeps the Data panel's add reading top-down like the design does.
+  const x = spec.at
+    ? Math.round(spec.at.x)
+    : ref ? Math.min(...Object.values(placed).map((p) => p.x)) : Math.round(boxWidth * 0.06);
+  const y = spec.at
+    ? Math.round(spec.at.y)
+    : ref ? Math.round(ref.place.y + fontSize * 1.6) : Math.round(boxWidth * (9 / 16) * 0.74);
   const weight = (ref && readDecl(template.css, `#${ref.fieldId}`, 'font-weight')) ?? '400';
   const color = (ref && readDecl(template.css, `#${ref.fieldId}`, 'color')) ?? 'var(--text-color)';
 
-  const sample = spec.ftype === 'number' ? '0' : spec.title;
+  const sample = spec.text ?? (spec.ftype === 'number' ? '0' : spec.title);
 
   // The markup, in the assembler's exact shape: the wrapper carries the POSITION (and the
   // mask an entrance can slide the text inside); the span carries the TYPE. Inserted after

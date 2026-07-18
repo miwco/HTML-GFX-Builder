@@ -195,6 +195,16 @@ template), and this phase makes the editor's data-field workflow first-class the
   draggable: the canvas lets the rendered WRAPPER stand in for a placed field's hidden
   element (`partScreenEl` in CanvasInteraction), and the corner handle resizes the slot's
   box (`slotSize`/`setSlotSize`, aspect preserved).
+- **Canvas text tools (2026-07-19).** The stage toolbar grows a ↖ / T / boxed-T switch on
+  placed-design templates: the **T tool** clicks point text onto the artwork (the field is
+  created empty at the click - the insertion point - and the inline editor opens on it, so
+  the user types directly on the canvas; an empty commit removes it again), and the **area
+  tool** drags a rectangle that becomes a wrapping text box (fit 'wrap' at the dragged
+  width, lorem ipsum starter content; its corner handle resizes the box width and the text
+  rewraps). Both run the SAME addPlacedLine transform as the Data tab's add - next fN id,
+  real DataField, registry layer, timeline row, Inspector Style tab - so a tool-created
+  text is indistinguishable from a panel-created one. `NewPlacedLineSpec` carries the
+  optional `at` (design px) and `text` for this. E2E: e2e/text-tools.spec.ts.
 - **Keyboard nudging.** Arrows move every selected layer 1 px (Shift = 10). A placed field
   moves as placement (design px, the placement drag's inline preview, ONE `placeLine` apply
   per burst); every other selected non-root layer moves on the keyframe channel — GSAP x/y

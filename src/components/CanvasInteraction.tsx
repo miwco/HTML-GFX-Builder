@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { zoneDecls } from '../templates/shared/base';
-import { setCssDeclaration, setFieldDefault } from '../blocks/edit';
+import { nextFieldId, setCssDeclaration, setFieldDefault } from '../blocks/edit';
 import { getCssVariable, setCssVariable } from '../blocks/cssVars';
 import type { Zone9 } from '../model/wizard';
 import { detectPrefix, getTemplateParts, type TemplatePart } from '../model/structure';
@@ -9,7 +9,7 @@ import { parseAnimData, spliceAnimData } from '../blocks/animData';
 import { setKeyframe } from '../blocks/animEdit';
 import { activationStep } from '../blocks/animEval';
 import { changePartPress } from '../blocks/stepAssign';
-import { lineFontSize, placedLines, placeLine, placementCss, setLineFontSize, setSlotSize, slotSize, type LinePlacement } from '../blocks/designLayout';
+import { addPlacedLine, designBoxInfo, lineFit, lineFontSize, placedLines, placeLine, placementCss, setLineFit, setLineFontSize, setSlotSize, slotSize, type LinePlacement } from '../blocks/designLayout';
 import { insertImageElement } from '../blocks/assetOps';
 import { insertLottieElement } from '../blocks/lottieInsert';
 import { probeAsset } from '../assets/assetInfo';
@@ -18,6 +18,7 @@ import { ASSET_DRAG_TYPE } from './AssetsPanel';
 import CanvasSelection, { type CanvasRect } from './CanvasSelection';
 import { phaseIdOf } from './StepTimeline';
 import type { SpxWindow } from './PlayoutSimulator';
+import { useIsMobile } from './useIsMobile';
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement | null>;
@@ -52,6 +53,12 @@ interface EditState {
   value: string;
   /** The text element's rect in CANVAS px (scaled to screen px at render time). */
   rect: { left: number; top: number; width: number; height: number };
+  /** True for a field the TEXT TOOL just created: committing empty (or Escape) removes the
+   *  field again — an empty text object is noise, exactly as in any design application. */
+  fresh?: boolean;
+  /** The element's text when the edit opened — restored on cancel, because typing mirrors
+   *  live into the preview element (the type-on-canvas behaviour). */
+  origText?: string;
 }
 
 /** A position-keyframe drag on the SELECTED layer(s) — data-block templates. The drag
@@ -94,7 +101,7 @@ interface PlaceDrag {
  *  motion). Two kinds: 'font' resizes a text line's `#fN` font-size; 'slot' resizes an image
  *  slot's wrapper box (width/height, aspect preserved). */
 interface LineSizeDrag {
-  kind: 'font' | 'slot';
+  kind: 'font' | 'slot' | 'area';
   /** The field element id ('f0') and its positioned wrapper ('fw0'). */
   fieldId: string;
   wrapperId: string;
@@ -158,6 +165,10 @@ interface LayerTransformDrag {
 
 // A real drag, not a shaky click (screen px).
 const DRAG_THRESHOLD = 4;
+// The area-text tool's starter content: enough lorem ipsum to show typography, wrapping,
+// and the box's bounds the moment the drag releases (the operator's value replaces it).
+const AREA_TEXT_PLACEHOLDER =
+  'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
 // Sanity bounds for the drag, not a design limit — the Style panel accepts any typed
 // value. Generous on purpose: the graphic's own max-width keeps huge scales inside the
 // safe area, and 0.25 stops a wild drag from collapsing the graphic to nothing.
@@ -190,6 +201,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   const playhead = useTemplateStore((s) => s.playhead);
   const sendScrub = useTemplateStore((s) => s.sendScrub);
   const setCanvasGestureActive = useTemplateStore((s) => s.setCanvasGestureActive);
+  const canvasTool = useTemplateStore((s) => s.canvasTool);
+  const setCanvasTool = useTemplateStore((s) => s.setCanvasTool);
+  const undo = useTemplateStore((s) => s.undo);
+
+  // Phones and narrow windows: the chip drops its affordance hints there (they describe
+  // pointer/keyboard gestures a touch screen doesn't have) — same breakpoint as the layout.
+  const isMobile = useIsMobile();
 
   const [drag, setDrag] = useState<DragState | null>(null);
   const [layerDrag, setLayerDrag] = useState<LayerDrag | null>(null);
@@ -203,6 +221,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   const [lasso, setLasso] = useState<{ x0: number; y0: number; x1: number; y1: number; active: boolean; additive: boolean } | null>(null);
   const lassoRef = useRef<typeof lasso>(null);
   lassoRef.current = lasso;
+  /** The AREA TEXT tool's rectangle in flight (doc px) — released, it becomes a wrapping
+   *  placed text box of that width. */
+  const [areaDraft, setAreaDraft] = useState<{ x0: number; y0: number; x1: number; y1: number; active: boolean } | null>(null);
+  const areaDraftRef = useRef<typeof areaDraft>(null);
+  areaDraftRef.current = areaDraft;
+  /** The TEXT tool's pressed-down point (doc px) — the click that places point text. */
+  const textPressRef = useRef<{ x: number; y: number } | null>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
   const [cursor, setCursor] = useState<'default' | 'grab' | 'text'>('default');
   // The root's rect (doc px) while the pointer is over it — anchors the scale handle. Rendered
@@ -231,8 +256,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   // must never resize the workspace while the pointer is mid-gesture or the inline editor is
   // open — the canvas (and the edit overlay anchored to it) would shift under the user.
   useEffect(() => {
-    setCanvasGestureActive(Boolean(drag || layerDrag || placeDrag || scaleDrag || layerTf || lineSize || editing || lasso));
-  }, [drag, layerDrag, placeDrag, scaleDrag, layerTf, lineSize, editing, lasso, setCanvasGestureActive]);
+    setCanvasGestureActive(Boolean(drag || layerDrag || placeDrag || scaleDrag || layerTf || lineSize || editing || lasso || areaDraft));
+  }, [drag, layerDrag, placeDrag, scaleDrag, layerTf, lineSize, editing, lasso, areaDraft, setCanvasGestureActive]);
 
   // ── Selection model (editor UI state only — never written into the template).
   // The selectors live in the STORE so the timeline highlights the same elements
@@ -306,6 +331,18 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   //    re-places it (patches the rule) instead of keying motion; the gate is the code
   //    carrying that rule, never the template's category. ──
   const placed = useMemo(() => placedLines(template.html, template.css), [template.html, template.css]);
+
+  // ── The TEXT TOOLS (the stage toolbar's T / area-text switch): click places point text,
+  //    a drag draws a wrapping text box. Both create a REAL placed field — the exact
+  //    transform the Data tab's add runs (blocks/designLayout.ts addPlacedLine), so the new
+  //    text is an SPX DataField, a registry layer, a timeline row, and an Inspector subject
+  //    from its first moment. The gate is the placed-design shape, code-derived as always. ──
+  const designInfo = useMemo(() => designBoxInfo(template.html, template.css), [template.html, template.css]);
+  const toolArmed = designInfo ? canvasTool : 'select';
+  // A code edit can take the design shape away mid-session — disarm rather than dangle.
+  useEffect(() => {
+    if (!designInfo && canvasTool !== 'select') setCanvasTool('select');
+  }, [designInfo, canvasTool, setCanvasTool]);
 
   // ── Canvas position keyframing (the interaction model, amendment 3): with a parked
   //    playhead, dragging any SELECTED non-root layer moves the whole selection and
@@ -388,6 +425,80 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     setActiveTab('css');
   };
 
+  /** The design box's on-screen origin and the computed --scale (doc px per design px) —
+   *  the space the placement rules are written in. Null until the preview holds the box. */
+  const designSpace = () => {
+    const d = doc();
+    if (!d || !designInfo) return null;
+    const box = d.querySelector<HTMLElement>(`.${designInfo.prefix}-box`);
+    if (!box) return null;
+    const r = box.getBoundingClientRect();
+    const scaleVar = parseFloat(getComputedStyle(d.documentElement).getPropertyValue('--scale')) || 1;
+    return { left: r.left, top: r.top, scaleVar };
+  };
+
+  /** The tool-created field's operator label ("Text 3" for f2) — renamed any time in the
+   *  Inspector's Style tab; the number just keeps siblings apart in the Data panel. */
+  const toolFieldTitle = () => `Text ${parseInt(nextFieldId(template.fields).slice(1), 10) + 1}`;
+
+  /** The T tool's click: a new placed line born EMPTY at the point, with the inline editor
+   *  open on it immediately — type, and the text grows from the insertion point. The field
+   *  is the Data tab's add (addPlacedLine), so it is a real DataField + layer from birth. */
+  const createPointText = (p: { x: number; y: number }) => {
+    const space = designSpace();
+    if (!space) return;
+    const at = { x: (p.x - space.left) / space.scaleVar, y: (p.y - space.top) / space.scaleVar };
+    const added = addPlacedLine(template, { title: toolFieldTitle(), ftype: 'textfield', at, text: '' });
+    if (!added) return;
+    let next = added.template;
+    // The click is the text's insertion point (the Illustrator feel): the line's box shifts
+    // up by its own height so the glyphs land where the cursor clicked, not hang below it.
+    const pl = placedLines(next.html, next.css)[`#${added.fieldId}`];
+    const font = lineFontSize(next.css, added.fieldId);
+    if (pl && font) next = placeLine(next, pl.wrapperId, pl.x, Math.round(pl.y - font.value), pl.scaled);
+    applyTemplate(next);
+    setSelected(`#${added.fieldId}`);
+    setActiveTab('html');
+    setCanvasTool('select');
+    // Open the editor at the spot the text will render. The rect comes from the placement
+    // (not a measurement) because the element itself only arrives with the debounced rebuild.
+    const h = (font?.value ?? 24) * space.scaleVar * 1.2;
+    setEditing({
+      field: added.fieldId,
+      multiline: false,
+      value: '',
+      rect: { left: p.x, top: p.y - h, width: 40, height: h },
+      fresh: true,
+      origText: '',
+    });
+  };
+
+  /** The area tool's release: the dragged rectangle becomes a WRAPPING text box — a placed
+   *  line whose fit is 'wrap' with the rectangle's width as its slot — pre-filled with
+   *  lorem ipsum so typography, wrapping, and the bounds show immediately. */
+  const commitAreaText = (a: { x0: number; y0: number; x1: number; y1: number }) => {
+    const space = designSpace();
+    if (!space) return;
+    const at = {
+      x: (Math.min(a.x0, a.x1) - space.left) / space.scaleVar,
+      y: (Math.min(a.y0, a.y1) - space.top) / space.scaleVar,
+    };
+    const w = Math.abs(a.x1 - a.x0) / space.scaleVar;
+    if (w < 24) return; // too small to hold text — an abandoned drag, create nothing
+    const added = addPlacedLine(template, {
+      title: toolFieldTitle(),
+      ftype: 'textfield',
+      at,
+      text: AREA_TEXT_PLACEHOLDER,
+    });
+    if (!added) return;
+    const next = setLineFit(added.template, added.fieldId, { mode: 'wrap', maxWidth: Math.round(w) });
+    applyTemplate(next ?? added.template);
+    setSelected(`#${added.fieldId}`);
+    setActiveTab('html');
+    setCanvasTool('select');
+  };
+
   const changePress = (toPress: number) => {
     if (!selectedPart || !dataModel) return;
     const change = changePartPress(template, parts, selectedPart.selector, selectedPress, toPress);
@@ -419,6 +530,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     const fieldId = selectedPart.selector.slice(1);
     const font = lineFontSize(template.css, fieldId);
     if (font) {
+      // An AREA text line (fit mode 'wrap') resizes its BOX from the corner — the text
+      // rewraps to the new width, the Illustrator area-text gesture; its font-size stays
+      // an Inspector control. Point/shrink lines keep the font-size handle.
+      const fit = lineFit(template.html, template.css, fieldId);
+      if (fit?.mode === 'wrap' && fit.maxWidth != null) {
+        return { kind: 'area' as const, fieldId, wrapperId: pl.wrapperId, base: fit.maxWidth, baseH: 0, scaled: fit.scaled };
+      }
       return { kind: 'font' as const, fieldId, wrapperId: pl.wrapperId, base: font.value, baseH: 0, scaled: font.scaled };
     }
     const slot = slotSize(template.css, pl.wrapperId);
@@ -426,7 +544,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       return { kind: 'slot' as const, fieldId, wrapperId: pl.wrapperId, base: slot.width, baseH: slot.height, scaled: slot.scaled };
     }
     return null;
-  }, [selectedParts, selectedPart, placed, template.css]);
+  }, [selectedParts, selectedPart, placed, template.html, template.css]);
 
   /** Clear a size drag's inline previews — the stylesheet values return. */
   const clearLineSizePreview = useCallback(
@@ -436,6 +554,9 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       if (d.kind === 'font') {
         const el = dd.getElementById(d.fieldId);
         if (el) el.style.fontSize = '';
+      } else if (d.kind === 'area') {
+        const w = dd.getElementById(d.wrapperId);
+        if (w) w.style.maxWidth = '';
       } else {
         const w = dd.getElementById(d.wrapperId);
         if (w) {
@@ -550,6 +671,38 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     }
   }, [editing?.field]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Type-on-canvas: every keystroke mirrors into the preview element live, so the canvas
+  // shows the text exactly as it is written (wrapping included, for an area box). Commit
+  // makes it real code; cancelEdit restores the template's own text.
+  useEffect(() => {
+    if (!editing) return;
+    const el = doc()?.getElementById(editing.field);
+    if (el && el.tagName !== 'IMG') el.textContent = editing.value;
+  }, [editing?.value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tool lifecycle keys: Escape disarms back to Select; T arms the type tool (the classic
+  // key), guarded so typing anywhere never trips it. Placed-design templates only — the
+  // same gate as the toolbar buttons.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (editingRef.current) return; // the inline editor owns its keys
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.('input, textarea, select, .monaco-editor')) return;
+      if (e.key === 'Escape' && canvasTool !== 'select') {
+        setCanvasTool('select');
+        setAreaDraft(null);
+        textPressRef.current = null;
+        return;
+      }
+      if ((e.key === 't' || e.key === 'T') && !e.ctrlKey && !e.metaKey && !e.altKey && designInfo) {
+        e.preventDefault();
+        setCanvasTool('text');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canvasTool, designInfo, setCanvasTool]);
+
   // Escape cancels an active drag (standard direct-manipulation behavior). A layer drag
   // also puts the layer back where the drag found it (the live GSAP preview moved it);
   // a placement drag clears its inline previews so the stylesheet position returns.
@@ -659,6 +812,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       if (dragRef.current || editingRef.current || scaleDragRef.current || layerDragRef.current || placeDragRef.current || lassoRef.current) return;
       const t = e.target as HTMLElement | null;
       if (t?.closest?.('input, textarea, select, .monaco-editor')) return;
+      // An armed text tool claims Escape for its own disarm — the selection survives it.
+      if (useTemplateStore.getState().canvasTool !== 'select') return;
       setSelected(null);
     };
     window.addEventListener('keydown', onKey);
@@ -668,6 +823,18 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (editing) return; // the editor overlay handles its own events
     const p = clientToDoc(e);
+    // An armed TEXT TOOL claims the pointer outright — selection, drags, and the lasso all
+    // wait until the tool disarms (Escape, the toolbar, or the creation itself).
+    if (toolArmed === 'text') {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      textPressRef.current = p;
+      return;
+    }
+    if (toolArmed === 'area-text') {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setAreaDraft({ x0: p.x, y0: p.y, x1: p.x, y1: p.y, active: false });
+      return;
+    }
     // The placement drag claims a pointer down ON a selected PLACED line (its wrapper —
     // the positioned element). Selected placed lines move together; the delta converts
     // to design px through the computed --scale, since that is what the rule holds.
@@ -773,6 +940,19 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   };
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const ad = areaDraftRef.current;
+    if (ad) {
+      const p = clientToDoc(e);
+      const active = ad.active || Math.hypot((p.x - ad.x0) * scale, (p.y - ad.y0) * scale) > DRAG_THRESHOLD;
+      setAreaDraft({ ...ad, x1: p.x, y1: p.y, active });
+      return;
+    }
+    if (toolArmed !== 'select') {
+      // The T tool needs no move feedback (the cursor says what a press will do), and the
+      // hover naming would only distract from placing text.
+      if (hoverPart) setHoverPart(null);
+      return;
+    }
     const ls = lassoRef.current;
     if (ls) {
       const p = clientToDoc(e);
@@ -1049,6 +1229,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       value = Math.min(400, Math.max(6, Math.round(d.base * factor)));
       const el = doc()?.getElementById(d.fieldId);
       if (el) el.style.fontSize = placementCss(value, d.scaled);
+    } else if (d.kind === 'area') {
+      // The area box's WIDTH follows the drag; the text rewraps against it live.
+      value = Math.min(4000, Math.max(24, Math.round(d.base * factor)));
+      const w = doc()?.getElementById(d.wrapperId);
+      if (w) w.style.maxWidth = placementCss(value, d.scaled);
     } else {
       // The slot keeps its aspect: width drives, height follows the same factor.
       value = Math.min(2000, Math.max(12, Math.round(d.base * factor)));
@@ -1075,7 +1260,9 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     applyTemplate(
       d.kind === 'font'
         ? setLineFontSize(template, d.fieldId, d.value, d.scaled)
-        : setSlotSize(template, d.wrapperId, d.value, d.valueH, d.scaled),
+        : d.kind === 'area'
+          ? setLineFit(template, d.fieldId, { maxWidth: d.value }) ?? template
+          : setSlotSize(template, d.wrapperId, d.value, d.valueH, d.scaled),
     );
     setActiveTab('css');
   };
@@ -1196,6 +1383,20 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   }, [selectedParts, placed, kfSelectors]);
 
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    // The text tools resolve on release: the T tool's click places point text where the
+    // press landed; the area tool's drag becomes a wrapping text box.
+    const tp = textPressRef.current;
+    if (tp) {
+      textPressRef.current = null;
+      createPointText(tp);
+      return;
+    }
+    const ad = areaDraftRef.current;
+    if (ad) {
+      setAreaDraft(null);
+      if (ad.active) commitAreaText(ad);
+      return;
+    }
     const ls = lassoRef.current;
     if (ls) {
       setLasso(null);
@@ -1282,7 +1483,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   };
 
   const onDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (editing) return;
+    if (editing || toolArmed !== 'select') return;
     const p = clientToDoc(e);
     const hit = textFieldAt(p);
     if (!hit) return;
@@ -1292,6 +1493,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       multiline: hit.ftype === 'textarea',
       value: sampleData[hit.field] ?? hit.el.textContent ?? '',
       rect: { left: r.left, top: r.top, width: r.width, height: r.height },
+      origText: hit.el.textContent ?? '',
     });
     // Selection follows the edited field when it's a registered part (the second click
     // that got us here may have climbed to the panel meanwhile).
@@ -1299,21 +1501,43 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     if (part) setSelected(part.selector);
   };
 
-  /** Commit the inline edit: live sample value + the field's definition default (undoable). */
-  const commitEdit = () => {
-    const ed = editingRef.current;
-    editingRef.current = null;
-    setEditing(null);
-    if (!ed) return;
-    if ((sampleData[ed.field] ?? '') === ed.value) return; // nothing changed
+  /** Make the edited value real code: definition default + static text + live sample. */
+  const commitValue = (ed: EditState) => {
     applyTemplate(setFieldDefault(template, ed.field, ed.value)); // definition + static text
     setSampleValue(ed.field, ed.value); // the live operator value follows the edit
     setActiveTab('html'); // the edit lives in the markup — show it highlighted
   };
 
-  const cancelEdit = () => {
+  /** Commit the inline edit (undoable). A tool-created field committed EMPTY is removed
+   *  again — an empty text object is noise, as in any design application. */
+  const commitEdit = () => {
+    const ed = editingRef.current;
     editingRef.current = null;
     setEditing(null);
+    if (!ed) return;
+    if (ed.fresh && ed.value.trim() === '') {
+      undo(); // one undo of the creation apply — the field never existed
+      return;
+    }
+    if (!ed.fresh && (sampleData[ed.field] ?? '') === ed.value) return; // nothing changed
+    commitValue(ed);
+  };
+
+  const cancelEdit = () => {
+    const ed = editingRef.current;
+    editingRef.current = null;
+    setEditing(null);
+    if (!ed) return;
+    if (ed.fresh) {
+      // Escape on just-typed point text COMMITS (the Illustrator behaviour) — only an
+      // empty object is discarded with its creation.
+      if (ed.value.trim() === '') undo();
+      else commitValue(ed);
+      return;
+    }
+    // Typing mirrored live into the preview element; put the template's own text back.
+    const el = doc()?.getElementById(ed.field);
+    if (el && el.tagName !== 'IMG' && ed.origText !== undefined) el.textContent = ed.origText;
   };
 
   // Ghost rect (screen px) while an ACTIVE drag is under way.
@@ -1398,7 +1622,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
   return (
     <div
-      className={`canvas-layer${ghost ? ' dragging' : ''} cursor-${cursor}`}
+      className={`canvas-layer${ghost ? ' dragging' : ''} cursor-${cursor}${toolArmed !== 'select' ? ` tool-${toolArmed}` : ''}`}
       style={{ width, height }}
       data-testid="canvas-layer"
       onDragOver={onAssetDragOver}
@@ -1409,6 +1633,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       onPointerCancel={() => {
         setDrag(null);
         setLasso(null);
+        setAreaDraft(null);
+        textPressRef.current = null;
         const ld = layerDragRef.current;
         if (ld) {
           resetLayerDrag(ld);
@@ -1425,8 +1651,9 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     >
       {/* Selection outline + naming chip, and the hover preview — editor UI state only
           (the chip's press control is the one action that writes code, via the same
-          patch the timeline gutter writes). */}
-      {!ghost && !editing && (
+          patch the timeline gutter writes). An armed text tool hides them: the canvas
+          belongs to placing text until the tool disarms. */}
+      {!ghost && !editing && toolArmed === 'select' && (
         <CanvasSelection
           scale={scale}
           width={width}
@@ -1437,7 +1664,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                   label: selectedPart.label,
                   // The chip surfaces only actions that ALREADY exist where they apply
                   // (the press control replaces the passive hint when both would show).
-                  hint: pressEligible
+                  // On a phone every one of these lines would advertise a desktop gesture —
+                  // double-click, arrow keys, the corner handle — so the chip shows just the
+                  // name there: less guidance beats an instruction the device can't follow.
+                  hint: pressEligible || isMobile
                     ? undefined
                     : placed[selectedPart.selector]
                       ? 'Double-click edits · drag places · arrows nudge'
@@ -1486,6 +1716,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
           the primary (first selected) carries the chip above. */}
       {!ghost &&
         !editing &&
+        toolArmed === 'select' &&
         extraRects.map((r, i) => (
           <div
             key={i}
@@ -1494,6 +1725,23 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
             style={{ left: r.left * scale, top: r.top * scale, width: r.width * scale, height: r.height * scale }}
           />
         ))}
+
+      {/* The area-text tool's rectangle — released, it becomes a wrapping text box. */}
+      {areaDraft?.active && (
+        <>
+          <div
+            className="canvas-area-draft"
+            data-testid="canvas-area-draft"
+            style={{
+              left: Math.min(areaDraft.x0, areaDraft.x1) * scale,
+              top: Math.min(areaDraft.y0, areaDraft.y1) * scale,
+              width: Math.abs(areaDraft.x1 - areaDraft.x0) * scale,
+              height: Math.abs(areaDraft.y1 - areaDraft.y0) * scale,
+            }}
+          />
+          <div className="move-hint">Release for a text box · Esc cancels</div>
+        </>
+      )}
 
       {/* The lasso marquee — a drag on empty canvas selecting what it touches. */}
       {lasso?.active && (
@@ -1511,7 +1759,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
       {/* W2 — the corner scale handle: shows while hovering the graphic (and stays while
           the whole graphic is selected); drag = --scale. */}
-      {handleRect && !ghost && !editing && (
+      {handleRect && !ghost && !editing && toolArmed === 'select' && (
         <div
           className={`scale-handle${scaleDrag ? ' dragging' : ''}`}
           data-testid="scale-handle"
@@ -1532,7 +1780,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
       {/* The selected layer's scale (corner) + rotate (top) handles — key scale/rotation at
           the playhead, pivoting around the Inspector pivot. Data-block, single-layer only. */}
-      {layerTfSel && selRect && !ghost && !editing && !layerDrag?.active && !placeDrag?.active && (
+      {layerTfSel && selRect && !ghost && !editing && !layerDrag?.active && !placeDrag?.active && toolArmed === 'select' && (
         <>
           <div
             className={`layer-scale-handle${layerTf?.kind === 'scale' ? ' dragging' : ''}`}
@@ -1565,7 +1813,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
       {/* A single selected PLACED field's corner handle resizes its DESIGN — a text line's
           font-size, or an image slot's box — in its own CSS rules, never a scale keyframe. */}
-      {lineSizeSel && selRect && !ghost && !editing && !placeDrag?.active && (
+      {lineSizeSel && selRect && !ghost && !editing && !placeDrag?.active && toolArmed === 'select' && (
         <div
           className={`layer-scale-handle${lineSize ? ' dragging' : ''}`}
           data-testid="line-size-handle"
@@ -1573,7 +1821,9 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
           title={
             lineSizeSel.kind === 'font'
               ? "Drag to resize the text — writes this line's font-size in the CSS"
-              : "Drag to resize the slot — writes its box size in the CSS"
+              : lineSizeSel.kind === 'area'
+                ? 'Drag to resize the text box — the text rewraps to the new width'
+                : "Drag to resize the slot — writes its box size in the CSS"
           }
           onPointerDown={startLineSize}
           onPointerMove={moveLineSize}
@@ -1587,7 +1837,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       )}
       {lineSize?.active && (
         <div className="move-hint">
-          {lineSize.kind === 'font' ? `${lineSize.value}px` : `${lineSize.value} × ${lineSize.valueH}px`}
+          {lineSize.kind === 'font'
+            ? `${lineSize.value}px`
+            : lineSize.kind === 'area'
+              ? `${lineSize.value}px wide`
+              : `${lineSize.value} × ${lineSize.valueH}px`}
           {' '}— release to resize · Esc cancels
         </div>
       )}

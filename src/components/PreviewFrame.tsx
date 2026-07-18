@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { composeDocument } from '../preview/composeDocument';
 import { useTemplateStore } from '../store/templateStore';
+import { designBoxInfo } from '../blocks/designLayout';
 import { computePad } from './pasteboard';
 import CanvasGuides from './CanvasGuides';
 import CanvasInteraction from './CanvasInteraction';
@@ -31,6 +32,15 @@ export default function PreviewFrame({ iframeRef }: Props) {
   const setPreviewError = useTemplateStore((s) => s.setPreviewError);
   const guides = useTemplateStore((s) => s.guides);
   const setGuide = useTemplateStore((s) => s.setGuide);
+  const canvasTool = useTemplateStore((s) => s.canvasTool);
+  const setCanvasTool = useTemplateStore((s) => s.setCanvasTool);
+
+  // The TEXT TOOLS exist where placed fields do: the placed-design shape (an artwork box),
+  // code-derived like every gate. Catalog templates keep their Data-tab add untouched.
+  const placedDesign = useMemo(
+    () => designBoxInfo(template.html, template.css) !== null,
+    [template.html, template.css],
+  );
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState(0.3);
@@ -225,6 +235,34 @@ export default function PreviewFrame({ iframeRef }: Props) {
       </div>
 
       <div className="preview-toolbar">
+        {placedDesign && (
+          <div className="tool-switch" data-testid="tool-switch">
+            <button
+              className={canvasTool === 'select' ? 'active' : ''}
+              onClick={() => setCanvasTool('select')}
+              title="Select — click and drag elements (Esc)"
+              data-testid="tool-select"
+            >
+              ↖
+            </button>
+            <button
+              className={canvasTool === 'text' ? 'active' : ''}
+              onClick={() => setCanvasTool('text')}
+              title="Type tool (T) — click the artwork, then type. Creates a real data field."
+              data-testid="tool-text"
+            >
+              T
+            </button>
+            <button
+              className={canvasTool === 'area-text' ? 'active' : ''}
+              onClick={() => setCanvasTool('area-text')}
+              title="Area type tool — drag to draw a wrapping text box. Creates a real data field."
+              data-testid="tool-area-text"
+            >
+              <span className="tool-area-glyph">T</span>
+            </button>
+          </div>
+        )}
         <div className="guide-switch">
           <button
             className={guides.safeAreas ? 'active' : ''}

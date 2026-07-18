@@ -91,10 +91,28 @@ in src/blocks/CLAUDE.md.
   e2e/multi-select.spec.ts.
 - **CanvasSelection** - the presentational selection/hover overlay: amber outline + a chip
   speaking part.label - the registry's words, same as the timeline strip. Chips hint only
-  actions that already exist: dblclick-to-edit on text lines, corner resize on the root. An
+  actions that already exist: dblclick-to-edit on text lines, corner resize on the root. On
+  MOBILE (useIsMobile) the chip shows the label ONLY - every hint describes a pointer/keyboard
+  gesture a touch screen doesn't have, and less guidance beats a wrong instruction. The chip
+  is width-capped to the stage (maxWidth + a left clamp; label/hint ellipsize in CSS), so it
+  can never overflow a narrow canvas. An
   eligible selected part's chip carries the "appears on press" select - the timeline gutter's
   control from the canvas, same conditions, same blocks/stepAssign.ts patch - and swallows its
   own pointer events so the gesture layer under it never fires.
+- **TEXT TOOLS** (the stage toolbar's ↖ / T / boxed-T switch, PreviewFrame; placed-design
+  templates only - the designBoxInfo gate, code-derived): store `canvasTool` arms them
+  ('select' | 'text' | 'area-text'; T is the keyboard shortcut, Escape disarms). The T tool
+  clicks POINT TEXT onto the artwork: one addPlacedLine at the click (born empty, shifted a
+  line-height up so the click is the insertion point) + the inline editor opened on it
+  immediately - committing empty (or Escape untyped) undoes the creation; Escape after typing
+  commits (the Illustrator rule). The area tool DRAGS a rectangle that becomes a wrapping
+  text box: addPlacedLine at the rect origin + setLineFit 'wrap' with the dragged width,
+  pre-filled with lorem ipsum; its corner handle then resizes the BOX width (kind 'area' -
+  text rewraps), not the font-size. Both create real fields through the Data tab's exact
+  transform - next fN id, DataField, registry layer, timeline row, Inspector Style tab - and
+  disarm back to Select after creating. While the inline editor is open, typing MIRRORS live
+  into the preview element (type-on-canvas); cancel restores the template's text. Pinned by
+  e2e/text-tools.spec.ts.
 
 ## Playout & timeline
 

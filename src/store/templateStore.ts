@@ -19,6 +19,11 @@ export type SidePanel = 'inspector' | 'data' | 'control' | 'style' | 'assets' | 
 /** A live playout action the Control panel asks the simulator to run on the preview. */
 export type PlayoutAction = 'update' | 'play' | 'stop' | 'next';
 
+/** The armed canvas tool (the stage toolbar's tool switch): 'select' is the always-on
+ *  gesture layer; 'text' places point text on click; 'area-text' drags out a bounded,
+ *  wrapping text box. Both text tools create REAL SPX data fields (placed lines). */
+export type CanvasTool = 'select' | 'text' | 'area-text';
+
 /** What the cursor is currently on in the code editor (drives the hover explanations). */
 export interface EditorContext {
   tab: EditorTab;
@@ -118,6 +123,9 @@ interface TemplateState {
    *  Inspector's deferred auto-open skips while this is set — a workspace resize would move
    *  the canvas under the pointer mid-gesture. UI state only — no history. */
   canvasGestureActive: boolean;
+  /** The armed canvas tool (see CanvasTool). UI state only — no history; creating a text
+   *  field with a tool commits through applyTemplate like every other edit. */
+  canvasTool: CanvasTool;
 
   setActiveTab: (tab: EditorTab) => void;
   setPreviewBg: (bg: PreviewBg) => void;
@@ -153,6 +161,8 @@ interface TemplateState {
   setPlayhead: (playhead: { step: number; t: number } | null) => void;
   /** Mark a canvas gesture as started/ended (see canvasGestureActive). */
   setCanvasGestureActive: (active: boolean) => void;
+  /** Arm a canvas tool (see canvasTool). */
+  setCanvasTool: (tool: CanvasTool) => void;
   resetToDefault: () => void;
   /** Restore this project to its pristine baseline (see baseline) as ONE undoable apply,
    *  and reset sample data to the baseline's field defaults. */
@@ -227,6 +237,7 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   selectedParts: [],
   playhead: null,
   canvasGestureActive: false,
+  canvasTool: 'select',
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
@@ -331,6 +342,8 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   setPlayhead: (playhead) => set({ playhead }),
 
   setCanvasGestureActive: (canvasGestureActive) => set({ canvasGestureActive }),
+
+  setCanvasTool: (canvasTool) => set({ canvasTool }),
 
   resetToDefault: () =>
     set(() => {

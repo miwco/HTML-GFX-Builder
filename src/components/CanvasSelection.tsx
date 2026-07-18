@@ -58,13 +58,19 @@ export default function CanvasSelection({ scale, width, selection, hover }: Prop
     // The chip prefers the spot just above the outline's top-left corner; when the
     // selection touches the top edge it flips below, and it never leaves the stage sideways.
     const chipTop = s.top > 34 ? s.top - 28 : s.top + s.height + 8;
+    // Containment on narrow stages: the chip gets at most the room between its spot and the
+    // stage's right edge (its CSS caps it at 340px anyway), and slides left when that room
+    // falls under a readable minimum — so it can never overflow the canvas, whatever the
+    // label/hint length. The label/hint ellipsize inside this cap (styles.css).
+    const chipMax = Math.min(340, Math.max(96, width - 4));
+    const chipLeft = Math.max(2, Math.min(s.left, width - chipMax - 2));
     selectionEls = (
       <>
         <div className="canvas-selection-outline" data-testid="canvas-selection" style={s} />
         <div
           className={`canvas-chip${selection.action ? ' interactive' : ''}`}
           data-testid="selection-chip"
-          style={{ left: Math.max(2, Math.min(s.left, width - 220)), top: chipTop }}
+          style={{ left: chipLeft, top: chipTop, maxWidth: chipMax }}
           // An interactive chip must never leak its pointer input into the gesture layer
           // below (that would deselect or start a drag mid-interaction with the control).
           onPointerDown={selection.action ? (e) => e.stopPropagation() : undefined}
