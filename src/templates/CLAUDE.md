@@ -138,7 +138,10 @@ Adding a measured motion to another category = add a builder to its runtime + ha
   convertToDataRegion). Born from the AI benchmark's versus-card winners - the full-frame
   match-up that once misfitted the info-card contract (dropped card05) now owns its contract.
 - **importedDesign/** - imp01 (prefix 'imported-design', NOT browsable - the wizard's "Import
-  graphic" entry is its only way in; CategoryInfo.group 'imported'). The user's own flat artwork
+  graphic" entry is its only way in; CategoryInfo.group 'imported'). The wizard creates it
+  BARE (an explicitly empty `lines` array, honoured by resolveOptions; the HTML/CSS carry
+  teaching comments where fields will land) and hands off to the editor's Data tab - the
+  assembler still renders explicit lines for a caller that passes them. The user's own flat artwork
   IS the design: `.imported-design-box` holds the `<img>` art + per-line `#fwN` mask wrappers
   (position, in the artwork's own px) around `#fN` spans (per-line type: font/size/weight/color -
   LineSpec.style). Self-assembled from shared/base.ts, NOT assembleStandard: the auto-fit

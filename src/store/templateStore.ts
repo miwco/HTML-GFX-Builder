@@ -67,6 +67,10 @@ interface TemplateState {
   activeTab: EditorTab;
   previewBg: PreviewBg;
   activePanel: SidePanel;
+  /** Bumped on EVERY setActivePanel call, so a reveal request fires even when the requested
+   *  panel is already the stored value (e.g. revealing the default 'data' tab). The docks
+   *  key their reveal effect on this, not on the panel id changing. */
+  panelRevealNonce: number;
   /** Runtime test values keyed by field id (f0, f1...). Fed to update(). */
   sampleData: Record<string, string>;
   validation: ValidationResult | null;
@@ -203,6 +207,7 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   activeTab: 'html',
   previewBg: 'checkerboard',
   activePanel: 'data',
+  panelRevealNonce: 0,
   sampleData: syncSampleData(initialTemplate, {}),
   validation: null,
   previewError: null,
@@ -222,7 +227,8 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
-  setActivePanel: (panel) => set({ activePanel: panel }),
+  setActivePanel: (panel) =>
+    set((s) => ({ activePanel: panel, panelRevealNonce: s.panelRevealNonce + 1 })),
 
   // A deterministic CSS patch from the Style panel: highlight what changed (no history
   // snapshot — color drags fire dozens of these per second).

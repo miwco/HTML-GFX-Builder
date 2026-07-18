@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { getTemplateParts } from '../model/structure';
-import { designBoxInfo } from '../blocks/designLayout';
+import {
+  designBoxInfo,
+  lineTextStyle,
+  placeLine,
+  placedLines,
+  setLineTextStyle,
+  setSlotSize,
+  slotSize,
+  type LinePlacement,
+  type LineTextPatch,
+  type LineTextStyle,
+} from '../blocks/designLayout';
+import { FONTS } from '../model/fonts';
+import type { SpxTemplate } from '../model/types';
 import { parseAnimData, spliceAnimData, type AnimData } from '../blocks/animData';
 import { importAnimData } from '../blocks/animImport';
 import { deleteKeyframe, setFilterComponent, setKeyframe } from '../blocks/animEdit';
@@ -105,6 +118,8 @@ const rowValue = (row: { filter?: string }, raw: number | string | null): number
 export default function Inspector() {
   const template = useTemplateStore((s) => s.template);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
+  const patchCss = useTemplateStore((s) => s.patchCss);
+  const setActiveTab = useTemplateStore((s) => s.setActiveTab);
   const requestReplay = useTemplateStore((s) => s.requestReplay);
   const sendScrub = useTemplateStore((s) => s.sendScrub);
   const setPlayhead = useTemplateStore((s) => s.setPlayhead);
@@ -113,8 +128,9 @@ export default function Inspector() {
   const playhead = useTemplateStore((s) => s.playhead);
   // A label drag-scrub in progress (the familiar drag-the-label-to-change-the-value).
   const scrubDrag = useRef<{ prop: string; startX: number; startValue: number; value: number } | null>(null);
-  // Animations first on an imported design (see the placedDesign switch below).
-  const [tab, setTab] = useState<'properties' | 'animations'>(() =>
+  // Animations first on an imported design (see the placedDesign switch below). 'style' is
+  // the placed-field Style section — offered only while such a field is selected.
+  const [tab, setTab] = useState<'properties' | 'style' | 'animations'>(() =>
     designBoxInfo(template.html, template.css) ? 'animations' : 'properties',
   );
   const [presetId, setPresetId] = useState<AnimPresetId | ''>('');
@@ -149,6 +165,12 @@ export default function Inspector() {
   // read view only. Null = blank/imported/hand-crafted — identity still shows.
   const native = useMemo(() => parseAnimData(template.js), [template.js]);
   const data = useMemo(() => native ?? importAnimData(template), [native, template]);
+  // Placed fields (an imported design's lines and slots): their look is DESIGN CSS, not
+  // motion, so a selected one gets the Style tab below (blocks/designLayout.ts).
+  const placed = useMemo(
+    () => placedLines(template.html, template.css),
+    [template.html, template.css],
+  );
   const part = parts.find((p) => p.selector === selectedPart) ?? null;
 
   if (!part) {
@@ -161,6 +183,23 @@ export default function Inspector() {
       </div>
     );
   }
+
+  // The selected part as a PLACED FIELD (or nulls when it isn't one): a text line offers
+  // typography + position, an image slot its box + position. The Style tab renders from
+  // these; when the selection moves to a non-placed part the tab itself disappears, so the
+  // rendered tab falls back to Properties without touching the user's stored choice.
+  const place = placed[part.selector] ?? null;
+  const fieldId = place ? part.selector.slice(1) : null;
+  const textStyle = fieldId ? lineTextStyle(template.html, template.css, fieldId) : null;
+  const slot = place && !textStyle ? slotSize(template.css, place.wrapperId) : null;
+  const activeInspectorTab = tab === 'style' && !place ? 'properties' : tab;
+
+  /** One undoable apply for a Style-tab commit; the CSS tab shows the highlighted change. */
+  const applyStyle = (next: SpxTemplate | null) => {
+    if (!next || next === template) return;
+    applyTemplate(next);
+    setActiveTab('css');
+  };
 
   // Where values are read and keyframes stamped: the parked playhead, else the layer's
   // settled state (the end of its activation step).
@@ -278,15 +317,31 @@ export default function Inspector() {
       </div>
 
       <div className="inspector-tabs">
-        <button className={`tab ${tab === 'properties' ? 'active' : ''}`} onClick={() => setTab('properties')}>
+        <button
+          className={`tab ${activeInspectorTab === 'properties' ? 'active' : ''}`}
+          onClick={() => setTab('properties')}
+        >
           Properties
         </button>
-        <button className={`tab ${tab === 'animations' ? 'active' : ''}`} onClick={() => setTab('animations')}>
+        {place && (
+          <button
+            className={`tab ${activeInspectorTab === 'style' ? 'active' : ''}`}
+            onClick={() => setTab('style')}
+            data-testid="inspector-tab-style"
+            title="This placed field's design: position, typography, slot size — written into its own CSS rules"
+          >
+            Style
+          </button>
+        )}
+        <button
+          className={`tab ${activeInspectorTab === 'animations' ? 'active' : ''}`}
+          onClick={() => setTab('animations')}
+        >
           Animations
         </button>
       </div>
 
-      {tab === 'properties' && (
+      {activeInspectorTab === 'properties' && (
         <div className="inspector-body" data-testid="inspector-properties">
           {data ? (
             <>
@@ -432,7 +487,20 @@ export default function Inspector() {
         </div>
       )}
 
-      {tab === 'animations' && (
+      {activeInspectorTab === 'style' && place && (
+        <PlacedFieldStyle
+          key={part.selector}
+          template={template}
+          fieldId={fieldId!}
+          place={place}
+          textStyle={textStyle}
+          slot={slot}
+          onCommit={applyStyle}
+          onLiveCss={patchCss}
+        />
+      )}
+
+      {activeInspectorTab === 'animations' && (
         <div className="inspector-body" data-testid="inspector-animations">
           {/* Phase 5 — presets as keyframe generators (data templates): pick a motion
               style, choose the direction, Apply writes ordinary keyframes. The whole
@@ -637,6 +705,266 @@ export default function Inspector() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── The Style tab: a placed field's DESIGN, edited in place ──────────────────────────────
+
+const WEIGHT_OPTIONS = [
+  { value: 400, label: 'Regular' },
+  { value: 500, label: 'Medium' },
+  { value: 600, label: 'Semibold' },
+  { value: 700, label: 'Bold' },
+  { value: 800, label: 'Extra bold' },
+];
+
+/** rgb()/#hex → #rrggbb for the native color input; non-hex values get a neutral swatch. */
+function styleHex(value: string): string {
+  if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+  if (/^#[0-9a-f]{3}$/i.test(value)) return '#' + value.slice(1).split('').map((c) => c + c).join('');
+  const m = value.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return '#ffffff';
+  const h = (n: string) => Math.max(0, Math.min(255, Number(n))).toString(16).padStart(2, '0');
+  return `#${h(m[1])}${h(m[2])}${h(m[3])}`;
+}
+
+/** A commit-on-blur number row (Enter commits too). Uncontrolled so typing never fights the
+ *  store; the key remounts it with the fresh value after each apply. */
+function StyleNumRow({
+  label,
+  value,
+  placeholder,
+  step,
+  min,
+  testid,
+  hint,
+  onCommit,
+}: {
+  label: string;
+  value: number | null;
+  placeholder?: string;
+  step?: number;
+  min?: number;
+  testid: string;
+  hint?: string;
+  onCommit: (value: number) => void;
+}) {
+  return (
+    <div className="inspector-row">
+      <span className="inspector-row-label" title={hint}>{label}</span>
+      <span className="inspector-row-edit">
+        <input
+          className="inspector-input"
+          type="number"
+          key={String(value)}
+          defaultValue={value ?? undefined}
+          placeholder={placeholder}
+          step={step}
+          min={min}
+          data-testid={testid}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+          }}
+          onBlur={(e) => {
+            const raw = e.currentTarget.value.trim();
+            const v = Number(raw);
+            if (raw !== '' && Number.isFinite(v) && v !== value) onCommit(v);
+          }}
+        />
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The Style tab's body for a selected PLACED field (an imported design's text line or image
+ * slot). Everything here is a DESIGN decision written into the field's own CSS rules — the
+ * exact rules the canvas drag, nudge, and corner handle already read and write
+ * (blocks/designLayout.ts) — never a keyframe. Discrete edits commit as ONE undoable apply
+ * each; the color inputs patch live like the Style panel's swatches (no history spam).
+ */
+function PlacedFieldStyle({
+  template,
+  fieldId,
+  place,
+  textStyle,
+  slot,
+  onCommit,
+  onLiveCss,
+}: {
+  template: SpxTemplate;
+  fieldId: string;
+  place: LinePlacement;
+  textStyle: LineTextStyle | null;
+  slot: { width: number; height: number; scaled: boolean } | null;
+  onCommit: (next: SpxTemplate | null) => void;
+  onLiveCss: (css: string) => void;
+}) {
+  const patchText = (patch: LineTextPatch) => onCommit(setLineTextStyle(template, fieldId, patch));
+  const liveText = (patch: LineTextPatch) => {
+    const next = setLineTextStyle(template, fieldId, patch);
+    if (next) onLiveCss(next.css);
+  };
+  const weights = WEIGHT_OPTIONS.some((w) => w.value === (textStyle?.weight ?? 400))
+    ? WEIGHT_OPTIONS
+    : [...WEIGHT_OPTIONS, { value: textStyle!.weight!, label: String(textStyle!.weight) }];
+
+  return (
+    <div className="inspector-body" data-testid="inspector-style">
+      <div className="inspector-group-label">Position</div>
+      <StyleNumRow
+        label="X (design px)"
+        value={place.x}
+        testid="inspector-style-x"
+        hint="Measured from the artwork's left edge — the same value the canvas drag writes"
+        onCommit={(v) => onCommit(placeLine(template, place.wrapperId, v, place.y, place.scaled))}
+      />
+      <StyleNumRow
+        label="Y (design px)"
+        value={place.y}
+        testid="inspector-style-y"
+        hint="Measured from the artwork's top edge"
+        onCommit={(v) => onCommit(placeLine(template, place.wrapperId, place.x, v, place.scaled))}
+      />
+
+      {textStyle && (
+        <>
+          <div className="inspector-group-label">Text</div>
+          <div className="inspector-row">
+            <span className="inspector-row-label" title="The line's typeface — bundled fonts ship inside the export">
+              Font
+            </span>
+            <span className="inspector-row-edit">
+              <select
+                className="inspector-style-select"
+                value={textStyle.fontId ?? ''}
+                data-testid="inspector-style-font"
+                onChange={(e) => patchText({ fontId: e.target.value || null })}
+              >
+                <option value="">Design font</option>
+                {textStyle.fontId === 'custom' && (
+                  <option value="custom" disabled>
+                    Custom — as written in the CSS
+                  </option>
+                )}
+                {FONTS.map((f) => (
+                  <option key={f.id} value={f.id}>{f.family}</option>
+                ))}
+              </select>
+            </span>
+          </div>
+          <StyleNumRow
+            label="Size (design px)"
+            value={textStyle.fontSize?.value ?? null}
+            step={1}
+            min={4}
+            testid="inspector-style-size"
+            hint="The same value the canvas corner handle drags"
+            onCommit={(v) => patchText({ fontSize: Math.max(4, v) })}
+          />
+          <div className="inspector-row">
+            <span className="inspector-row-label">Weight</span>
+            <span className="inspector-row-edit">
+              <select
+                className="inspector-style-select"
+                value={textStyle.weight ?? 400}
+                data-testid="inspector-style-weight"
+                onChange={(e) => patchText({ weight: Number(e.target.value) })}
+              >
+                {weights.map((w) => (
+                  <option key={w.value} value={w.value}>{w.label}</option>
+                ))}
+              </select>
+            </span>
+          </div>
+          <div className="inspector-row">
+            <span className="inspector-row-label">Color</span>
+            <span className="inspector-row-edit">
+              <input
+                type="color"
+                className="inspector-style-swatch"
+                value={styleHex(textStyle.color ?? '#ffffff')}
+                data-testid="inspector-style-color"
+                onChange={(e) => liveText({ color: e.target.value })}
+              />
+              <input
+                className="inspector-input inspector-style-color-text"
+                value={textStyle.color ?? ''}
+                data-testid="inspector-style-color-text"
+                onChange={(e) => liveText({ color: e.target.value })}
+                placeholder="#hex or rgba(…)"
+              />
+            </span>
+          </div>
+          <div className="inspector-row">
+            <span
+              className="inspector-row-label"
+              title="Which edge of the text sits at X — a free-placed line has no column to align inside"
+            >
+              Anchor
+            </span>
+            <span className="inspector-preset-phase" role="group" aria-label="Anchor">
+              {(['left', 'center', 'right'] as const).map((a) => (
+                <button
+                  key={a}
+                  className={`tab ${textStyle.align === a ? 'active' : ''}`}
+                  data-testid={`inspector-style-align-${a}`}
+                  onClick={() => patchText({ align: a })}
+                >
+                  {a === 'left' ? 'Left' : a === 'center' ? 'Center' : 'Right'}
+                </button>
+              ))}
+            </span>
+          </div>
+          <StyleNumRow
+            label="Line height"
+            value={textStyle.lineHeight}
+            placeholder="normal"
+            step={0.05}
+            min={0.5}
+            testid="inspector-style-lineheight"
+            hint="Unitless multiple of the font size"
+            onCommit={(v) => patchText({ lineHeight: v })}
+          />
+          <StyleNumRow
+            label="Tracking (px)"
+            value={textStyle.letterSpacing}
+            placeholder="0"
+            step={0.1}
+            testid="inspector-style-spacing"
+            hint="Letter-spacing in design px"
+            onCommit={(v) => patchText({ letterSpacing: v })}
+          />
+        </>
+      )}
+
+      {slot && (
+        <>
+          <div className="inspector-group-label">Slot</div>
+          <StyleNumRow
+            label="Width (design px)"
+            value={slot.width}
+            step={1}
+            min={8}
+            testid="inspector-style-slot-w"
+            onCommit={(v) => onCommit(setSlotSize(template, place.wrapperId, Math.max(8, v), slot.height, slot.scaled))}
+          />
+          <StyleNumRow
+            label="Height (design px)"
+            value={slot.height}
+            step={1}
+            min={8}
+            testid="inspector-style-slot-h"
+            onCommit={(v) => onCommit(setSlotSize(template, place.wrapperId, slot.width, Math.max(8, v), slot.scaled))}
+          />
+        </>
+      )}
+
+      <p className="hint inspector-hint">
+        A placed field's look is design, not motion: these edit the field's own CSS rules — the
+        same ones the canvas drag and corner handle write. Motion lives on the Animations tab.
+      </p>
     </div>
   );
 }

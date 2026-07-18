@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { FONTS, familyFromFileName, fontFormatForExt, registerAppFont } from '../../../model/fonts';
 import { PALETTES, paletteById, type Palette, type TemplateVariant, type Zone9 } from '../../../model/wizard';
 import { fileToDataUrl } from '../../../assets/assetUtils';
-import { draftResolution, type DraftPatch, type WizardDraft } from '../draft';
+import type { DraftPatch, WizardDraft } from '../draft';
 
 /** A safe relative path for an imported font file (fonts/<sanitized>.<ext>). */
 function fontAssetPath(fileName: string): string {
@@ -68,21 +68,6 @@ export default function StyleStep({ variant, draft, onDraft }: Props) {
   const activeFont = draft.fontId ?? variant.defaultFontId;
   const activeZone = draft.zone ?? variant.defaultZone;
   const fontInput = useRef<HTMLInputElement>(null);
-
-  // An imported design brings its own layout, so the step slims to what still applies.
-  // Text size is per-line on the Text step (the assembler never reads --type-scale), so the
-  // global knob would be a dead control. Graphic size and Position only mean something when
-  // the artwork floats inside the frame — a frame-sized design covers the canvas as drawn,
-  // and scaling or re-anchoring it could only push it off its own frame.
-  const importedDesign = variant.category === 'imported-design';
-  const resolution = draftResolution(draft);
-  const fullFrame =
-    importedDesign &&
-    !!draft.designArt &&
-    draft.designArt.width === resolution.width &&
-    draft.designArt.height === resolution.height;
-  const showTypeSize = !importedDesign;
-  const showSizeAndZone = !fullFrame;
 
   /** Import a font file: embed it as a data-URL asset and select it. */
   const importFont = async (file: File) => {
@@ -224,77 +209,69 @@ export default function StyleStep({ variant, draft, onDraft }: Props) {
         </div>
       </div>
 
-      {(showSizeAndZone || showTypeSize) && (
-        <div className="row" style={{ alignItems: 'flex-start', gap: 24 }}>
-          {showSizeAndZone && (
-            <div className="panel-section">
-              <h3>Graphic size <span className="muted">(the whole graphic)</span></h3>
-              <div className="row" style={{ gap: 6 }}>
-                {SIZES.map((s) => (
-                  <button
-                    key={s.label}
-                    className={draft.sizeScale === s.scale ? 'active' : ''}
-                    onClick={() => onDraft({ sizeScale: s.scale })}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {showTypeSize && (
-            <div className="panel-section">
-              <h3>Text size <span className="muted">(type only)</span></h3>
-              <div className="row" style={{ gap: 6 }}>
-                {TYPE_SIZES.map((s) => (
-                  <button
-                    key={s.label}
-                    className={draft.typeScale === s.scale ? 'active' : ''}
-                    onClick={() => onDraft({ typeScale: s.scale })}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {showSizeAndZone && (
-            <div className="panel-section">
-              <h3>Position <span className="muted">(zones snap to safe areas)</span></h3>
-              <div className="wz-zones">
-                {ZONES.map((z) => (
-                  <button
-                    key={z}
-                    className={`wz-zone ${activeZone === z ? 'selected' : ''}`}
-                    onClick={() => onDraft({ zone: z })}
-                    title={z}
-                  />
-                ))}
-              </div>
-              <div className="row" style={{ gap: 8, marginTop: 8 }}>
-                <label className="wz-nudge">
-                  Nudge X
-                  <input
-                    type="number"
-                    value={draft.nudge.x}
-                    onChange={(e) => onDraft({ nudge: { x: Number(e.target.value) || 0 } })}
-                  />
-                </label>
-                <label className="wz-nudge">
-                  Nudge Y
-                  <input
-                    type="number"
-                    value={draft.nudge.y}
-                    onChange={(e) => onDraft({ nudge: { y: Number(e.target.value) || 0 } })}
-                  />
-                </label>
-              </div>
-            </div>
-          )}
+      <div className="row" style={{ alignItems: 'flex-start', gap: 24 }}>
+        <div className="panel-section">
+          <h3>Graphic size <span className="muted">(the whole graphic)</span></h3>
+          <div className="row" style={{ gap: 6 }}>
+            {SIZES.map((s) => (
+              <button
+                key={s.label}
+                className={draft.sizeScale === s.scale ? 'active' : ''}
+                onClick={() => onDraft({ sizeScale: s.scale })}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+
+        <div className="panel-section">
+          <h3>Text size <span className="muted">(type only)</span></h3>
+          <div className="row" style={{ gap: 6 }}>
+            {TYPE_SIZES.map((s) => (
+              <button
+                key={s.label}
+                className={draft.typeScale === s.scale ? 'active' : ''}
+                onClick={() => onDraft({ typeScale: s.scale })}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel-section">
+          <h3>Position <span className="muted">(zones snap to safe areas)</span></h3>
+          <div className="wz-zones">
+            {ZONES.map((z) => (
+              <button
+                key={z}
+                className={`wz-zone ${activeZone === z ? 'selected' : ''}`}
+                onClick={() => onDraft({ zone: z })}
+                title={z}
+              />
+            ))}
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 8 }}>
+            <label className="wz-nudge">
+              Nudge X
+              <input
+                type="number"
+                value={draft.nudge.x}
+                onChange={(e) => onDraft({ nudge: { x: Number(e.target.value) || 0 } })}
+              />
+            </label>
+            <label className="wz-nudge">
+              Nudge Y
+              <input
+                type="number"
+                value={draft.nudge.y}
+                onChange={(e) => onDraft({ nudge: { y: Number(e.target.value) || 0 } })}
+              />
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

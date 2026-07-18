@@ -56,6 +56,13 @@ line goes through THIS (placement), and the line is excluded from the position-K
 and the keyframe scale/rotate handles - moving a field independently of artwork drawn around
 it is what whole-unit motion exists to prevent (docs/IMPORT_MVP.md).
 
+`lineTextStyle`/`setLineTextStyle` are the same read/write idea for a text line's whole LOOK
+(the Inspector's Style tab): font-family (a bundled font id, the design font, or 'custom' when
+hand-written — picking a bundled face also ships its @font-face, deduped by the emitted rule),
+font-size, weight, color, line-height, letter-spacing on the span's `#fN` rule, and the anchor
+(the wrapper's translateX shift) on `#fwN`. Every write is a setCssDeclaration patch in the
+rule's own idiom, so the canvas gestures and these controls stay one language.
+
 `addPlacedLine(template, {title, ftype})` is the Data panel's add-field on an imported design:
 ONE pure transform emitting the mask wrapper + span (a registry `line` part), the placement +
 type rules in the assembler's exact idiom, and the SPX DataField (update() binds by id - no JS

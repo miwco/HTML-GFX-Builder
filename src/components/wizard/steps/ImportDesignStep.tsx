@@ -93,7 +93,7 @@ export default function ImportDesignStep({ art, images, resolution, onArt, onCle
         <strong>Drop your finished design here</strong>
         <span className="hint">
           The image you already made — a PNG with transparency keeps everything behind it
-          visible on air. It becomes the graphic itself; you add the text next.
+          visible on air. It becomes the graphic itself; you add the fields in the editor.
         </span>
       </div>
 
@@ -127,9 +127,11 @@ export default function ImportDesignStep({ art, images, resolution, onArt, onCle
       <div className="panel-section" style={{ marginTop: 14 }}>
         <h3>What happens next</h3>
         <p className="hint">
-          You place editable text fields on the design, style them to match it, then choose how
-          the whole graphic animates in and out. Your artwork is never redrawn or regenerated —
-          NoaCG only adds the broadcast behaviour around it, and exports it as a working template.
+          Create the project and you land in the real editor with the <strong>Data</strong> tab
+          open: add text, number, and image fields there — each appears on your design, ready to
+          drag into place, style, and animate as its own layer. Your artwork is never redrawn or
+          regenerated — NoaCG only adds the broadcast behaviour around it, and exports it as a
+          working template.
         </p>
       </div>
     </div>

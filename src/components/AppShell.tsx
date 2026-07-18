@@ -304,15 +304,18 @@ export default function AppShell() {
   // but not on mount, where activePanel is just its default and would override the layout's
   // own active tab.
   const activePanelSignal = useTemplateStore((s) => s.activePanel);
-  const prevPanelSignal = useRef(activePanelSignal);
+  const panelRevealNonce = useTemplateStore((s) => s.panelRevealNonce);
+  const prevPanelSignal = useRef(panelRevealNonce);
   useEffect(() => {
-    // Only a genuine CHANGE to activePanel is a reveal request — not mount, a StrictMode
-    // remount, or an unrelated re-render (which would clobber the layout's own active tab).
-    if (prevPanelSignal.current === activePanelSignal) return;
-    prevPanelSignal.current = activePanelSignal;
+    // Only a genuine setActivePanel CALL is a reveal request (the nonce bumps on every call,
+    // even one re-requesting the stored panel — e.g. the wizard revealing the default Data
+    // tab) — never mount, a StrictMode remount, or an unrelated re-render (which would
+    // clobber the layout's own active tab).
+    if (prevPanelSignal.current === panelRevealNonce) return;
+    prevPanelSignal.current = panelRevealNonce;
     if (!isMobile) revealPanel(activePanelSignal);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePanelSignal, isMobile]);
+  }, [panelRevealNonce, isMobile]);
 
   return (
     <div className="app">

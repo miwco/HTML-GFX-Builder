@@ -16,6 +16,7 @@
 // one transform) and the line's text size (the canvas resize handle's read/write pair).
 
 import type { SpxTemplate } from '../model/types';
+import { FONTS, fontById, fontFaceCss, fontStack } from '../model/fonts';
 import { addFieldToDefinition, addLayer, appendCss, nextFieldId, setCssDeclaration } from './edit';
 
 export interface LinePlacement {
@@ -128,6 +129,126 @@ export function setSlotSize(
   let css = template.css;
   css = setCssDeclaration(css, `#${wrapperId}`, 'width', placementCss(width, scaled));
   css = setCssDeclaration(css, `#${wrapperId}`, 'height', placementCss(height, scaled));
+  return { ...template, css };
+}
+
+// ── The line's TEXT LOOK — the Inspector's Style section (read/write pairs) ──────────────
+//
+// A placed line's typography is a DESIGN decision written in its own `#fN` rule (and its
+// alignment in the wrapper's transform), exactly like its position and size above. The
+// Inspector's Style section reads these back and patches them one declaration at a time —
+// the same idiom the assembler emits, so hand edits and generated code stay one language.
+
+export interface LineTextStyle {
+  /** The `#fN` rule's font-size, in design px (the canvas corner handle's value). */
+  fontSize: { value: number; scaled: boolean } | null;
+  /** A bundled font id; null = the design font (--font-heading); 'custom' = a hand-written
+   *  family the bundled list doesn't know (shown as-is, never silently rewritten). */
+  fontId: string | null | 'custom';
+  /** The raw font-family value, for showing a 'custom' family honestly. */
+  family: string | null;
+  weight: number | null;
+  color: string | null;
+  /** Which edge of the text sits at the placement x (the wrapper's translateX shift). */
+  align: 'left' | 'center' | 'right';
+  /** Unitless line-height; null = the browser's normal. */
+  lineHeight: number | null;
+  /** Letter-spacing in design px; null = normal. */
+  letterSpacing: number | null;
+}
+
+/** What the wrapper's transform means: the assembler expresses alignment as a shift of the
+ *  shrink-to-fit box (text-align would do nothing on a box that hugs its content). */
+function alignOf(css: string, wrapperId: string): 'left' | 'center' | 'right' {
+  const t = readDecl(css, `#${wrapperId}`, 'transform') ?? '';
+  if (t.includes('-100%')) return 'right';
+  if (t.includes('-50%')) return 'center';
+  return 'left';
+}
+
+/** A placed TEXT line's current look, read from its rules. Null for a non-text placed
+ *  field (an image slot has no font-size rule) or an unplaced selector. */
+export function lineTextStyle(html: string, css: string, fieldId: string): LineTextStyle | null {
+  const place = placedLines(html, css)[`#${fieldId}`];
+  if (!place) return null;
+  const fontSize = lineFontSize(css, fieldId);
+  if (!fontSize) return null; // not a text line
+  const family = readDecl(css, `#${fieldId}`, 'font-family');
+  const known = family ? FONTS.find((f) => family.startsWith(`"${f.family}"`)) : undefined;
+  const weightRaw = readDecl(css, `#${fieldId}`, 'font-weight');
+  const lineHeightRaw = readDecl(css, `#${fieldId}`, 'line-height');
+  const spacing = readPx(css, `#${fieldId}`, 'letter-spacing');
+  return {
+    fontSize,
+    fontId: family === 'var(--font-heading)' || !family ? null : known ? known.id : 'custom',
+    family,
+    weight: weightRaw && /^\d+$/.test(weightRaw) ? parseInt(weightRaw, 10) : null,
+    color: readDecl(css, `#${fieldId}`, 'color'),
+    align: alignOf(css, place.wrapperId),
+    lineHeight: lineHeightRaw && /^[\d.]+$/.test(lineHeightRaw) ? parseFloat(lineHeightRaw) : null,
+    letterSpacing: spacing?.value ?? null,
+  };
+}
+
+export interface LineTextPatch {
+  /** A bundled font id, or null for the design font (--font-heading). */
+  fontId?: string | null;
+  /** Design px (written in the rule's own idiom, like the corner handle). */
+  fontSize?: number;
+  weight?: number;
+  color?: string;
+  align?: 'left' | 'center' | 'right';
+  lineHeight?: number;
+  /** Design px. */
+  letterSpacing?: number;
+}
+
+/**
+ * Restyle a placed TEXT line: each given property becomes one declaration patch on the
+ * line's own `#fN` rule (alignment on its wrapper), in the idiom the rule already uses.
+ * Picking a bundled font also makes sure its @font-face ships in the CSS — the same
+ * visible, commented rule the assembler emits, deduped — so the preview and every export
+ * render it without any manual step. Returns null when the selector is not a placed text
+ * line (the caller simply doesn't offer the controls then).
+ */
+export function setLineTextStyle(
+  template: SpxTemplate,
+  fieldId: string,
+  patch: LineTextPatch,
+): SpxTemplate | null {
+  const place = placedLines(template.html, template.css)[`#${fieldId}`];
+  if (!place) return null;
+  const font = lineFontSize(template.css, fieldId);
+  if (!font) return null; // not a text line
+  let css = template.css;
+  const sel = `#${fieldId}`;
+
+  if (patch.fontId !== undefined) {
+    if (patch.fontId) {
+      const bundled = fontById(patch.fontId);
+      css = setCssDeclaration(css, sel, 'font-family', fontStack(bundled));
+      // The face must ship with the template (offline-first). Deduped by the emitted rule,
+      // so re-picking a font — or picking the heading font — adds nothing.
+      const face = fontFaceCss(bundled);
+      if (!css.includes(face)) css = `${css.replace(/\s*$/, '')}\n\n${face}\n`;
+    } else {
+      css = setCssDeclaration(css, sel, 'font-family', 'var(--font-heading)');
+    }
+  }
+  if (patch.fontSize !== undefined) {
+    css = setCssDeclaration(css, sel, 'font-size', placementCss(patch.fontSize, font.scaled));
+  }
+  if (patch.weight !== undefined) css = setCssDeclaration(css, sel, 'font-weight', String(patch.weight));
+  if (patch.color !== undefined) css = setCssDeclaration(css, sel, 'color', patch.color);
+  if (patch.lineHeight !== undefined) css = setCssDeclaration(css, sel, 'line-height', String(patch.lineHeight));
+  if (patch.letterSpacing !== undefined) {
+    css = setCssDeclaration(css, sel, 'letter-spacing', placementCss(patch.letterSpacing, font.scaled));
+  }
+  if (patch.align !== undefined) {
+    const shift =
+      patch.align === 'center' ? 'translateX(-50%)' : patch.align === 'right' ? 'translateX(-100%)' : 'none';
+    css = setCssDeclaration(css, `#${place.wrapperId}`, 'transform', shift);
+  }
   return { ...template, css };
 }
 

@@ -873,16 +873,6 @@ kbd {
 .wz-line-row input { flex: 1; }
 .wz-fid { font-family: ui-monospace, monospace; font-size: 11px; color: var(--accent); width: 24px; flex: none; }
 
-/* Import graphic: a line placed on the user's own artwork carries its own position and type,
-   so the row grows a second line of controls under the label/text pair. */
-.wz-line-row--placed { flex-wrap: wrap; align-items: flex-start; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
-.wz-place-grid { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 8px; padding-left: 32px; }
-.wz-place-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--text-dim); }
-.wz-place-grid input[type="number"] { width: 76px; flex: none; }
-.wz-place-grid select { width: 104px; }
-.wz-place-grid input[type="color"] { width: 32px; padding: 2px; flex: none; }
-.wz-place-color input:not([type="color"]) { width: 172px; flex: none; } /* fits an rgba(...) value */
-
 /* Step 4: style pickers */
 .wz-palettes { display: flex; flex-wrap: wrap; gap: 8px; }
 .wz-palette { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px; border-radius: 8px; }
@@ -2119,6 +2109,31 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   color: var(--text);
 }
 .inspector-preset-phase { display: inline-flex; gap: 2px; }
+
+/* The Style tab (a selected placed field on an imported design): typography + placement
+   controls sharing the property-row grid. */
+.inspector-style-select {
+  width: 128px;
+  height: 20px;
+  font-size: 11px;
+  padding: 1px 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+}
+.inspector-style-swatch {
+  width: 26px;
+  height: 20px;
+  padding: 1px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.inspector-style-color-text {
+  width: 96px;
+  text-align: left;
+}
 .inspector-preset-phase .tab { font-size: 10px; padding: 2px 8px; }
 .inspector-preset-apply {
   margin-left: auto;

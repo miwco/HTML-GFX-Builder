@@ -3,11 +3,12 @@
 The one core workflow this feature makes reliable, end to end:
 
 1. Choose **Import graphic** from the wizard.
-2. Import a flat PNG design (e.g. a lower third drawn in Photoshop).
-3. Add text fields and place them on the artwork.
-4. They are real SPX DataFields, so every playout system can edit them.
-5. Choose a whole-graphic **in** animation.
-6. Choose a whole-graphic **out** animation.
+2. Import a flat PNG design (e.g. a lower third drawn in Photoshop) — the wizard's ONLY job.
+3. Create: land in the real canvas editor with the **Data tab** open.
+4. Add text / number / image fields there — each is a real SPX DataField AND a real placed
+   layer on the artwork, so every playout system can edit it.
+5. Drag, nudge, and resize the fields on the canvas; restyle them in the Inspector's Style tab.
+6. Animate the whole design (the default in/out) or each layer on its own, from the Inspector.
 7. Preview with sample data.
 8. Export a working SPX / CasparCG template.
 
@@ -91,13 +92,14 @@ template like any other, so the timeline can key any layer after creation.
 The presets emit a legacy region which `convertToDataRegion` converts to `NOACG_ANIM` at
 create — the same emit→import path every category uses. No new engine code.
 
-## Positioning: the Text step and the canvas drag
+## Positioning: the canvas drag (and the Inspector's numeric X/Y)
 
-Text is placed in the wizard's **Text** step: X / Y in the artwork's own pixels (measured from
-its top-left) plus an anchor edge, with the live preview showing where each line lands. That is
-what writes `LineStyle.x/y` → the `#fwN` rule's `left`/`top`.
+A field's position lives in its wrapper's `#fwN` rule (`left`/`top`, design px measured from
+the artwork's top-left). The assembler's `LineStyle.x/y` still writes it for a template built
+with explicit lines, but the normal path is the editor: the canvas drag, the arrow-key nudge,
+and the Inspector Style tab's X/Y inputs all patch that same rule.
 
-**After creation, dragging a selected field on the canvas re-places it.** The design tension
+**Dragging a selected field on the canvas re-places it.** The design tension
 this had to resolve: on a data-block template, dragging a selected non-root layer writes **x/y
 keyframes** at the playhead — that is *motion*, not a design position. For a placed line a drag
 means "this is where the text sits". The resolution (`blocks/designLayout.ts`) follows the house
@@ -109,22 +111,30 @@ var(--scale))` or plain-px idiom) and is **excluded from the keyframe drag entir
 multi-select drag can never write motion keyframes for it. Everything else keeps the keyframe
 drag unchanged, and catalog templates are untouched (their masks carry no wrapper ids).
 
-## Wizard taste decisions (post-MVP pass)
+## The wizard is a SETUP flow, not a second editor (2026-07-18)
 
-Three calls made after the visual taste pass, all founder-ratified:
+The wizard is two steps — Start → Design — and its Design step's one CTA is **Create project**.
+Creating builds the imported-design template **bare** (no fields) and lands in the real editor
+with the **Data tab revealed** (`setActivePanel('data')`; the store's `panelRevealNonce` makes
+the reveal fire even though 'data' is the stored default). Everything the wizard's old Text /
+Style / Animation steps did lives in the editor now, once, on the real surfaces:
 
-- **One CTA on the Design step.** The step body has no button of its own; the wizard footer's
-  Next is the step's single forward action and reads **"Add text fields ›"** there — descriptive,
-  in the wizard's standard place.
-- **The Style step slims to what still applies.** Palette and Font always show (they style the
-  text lines). The global **Text size** knob never shows for an imported design — the assembler
-  sizes each line from its own `LineStyle.fontSize` (set on the Text step) and reads no
-  `--type-scale`. **Graphic size** and **Position** show only for a smaller-than-frame design;
-  a frame-sized design covers the canvas as drawn, and scaling or re-anchoring it could only
-  push it off its own frame.
-- **The box is labelled "Design", not "Panel".** `model/structure.ts` special-cases the
-  `imported-design` prefix, so the timeline row, canvas chip, and Inspector all say "Design" —
-  the box is the user's artwork, not a generated background panel.
+- **Fields** — the Data tab's add (below). The old wizard Text step's per-line X/Y/anchor/font/
+  size/weight/color grid is replaced by the canvas gestures plus the Inspector's Style tab,
+  which offer the same options and more against the SAME rules.
+- **Whole-unit motion** — the default entrance is the Fade design preset; changing it is the
+  Inspector's Animations tab on the Design (box) row, same presets, same generator.
+- **Palette / font as base tokens** — the created template still carries the :root contract
+  (default palette + font, or the project brand via the wizard's "Use current project's colors
+  & font" toggle, offered on the Design step). The Style *panel* edits them post-create; a new
+  line's defaults read them (`var(--text-color)`, `var(--font-heading)`).
+
+A bare design's HTML/CSS carry teaching comments saying where fields will land; `resolveOptions`
+honours an explicitly empty `lines` array for this (absent still falls back to suggestions).
+
+**The box is labelled "Design", not "Panel".** `model/structure.ts` special-cases the
+`imported-design` prefix, so the timeline row, canvas chip, and Inspector all say "Design" —
+the box is the user's artwork, not a generated background panel.
 
 ## The canvas + data-field phase (post-MVP, 2026-07-18)
 
@@ -175,9 +185,21 @@ template), and this phase makes the editor's data-field workflow first-class the
   its look with it — what a user comes here for is motion). The switch fires when a
   placed-design template arrives; a manual tab choice afterwards sticks. No Inspector
   restructuring.
+- **The Inspector grows a Style tab for a selected placed field** — the layer-specific
+  styling surface (the Inspector is where layer-specific things live; animation already
+  does). For a text line: font (bundled list or the design font — picking a bundled face
+  also ships its @font-face, deduped), size, weight, color, anchor, line-height, tracking;
+  for an image slot: its box; for both: numeric X/Y. Every control reads and writes the
+  field's OWN rules through `blocks/designLayout.ts` (`lineTextStyle`/`setLineTextStyle` +
+  the existing placement/size pairs) — the same rules the canvas gestures use, in the same
+  idiom, one undoable apply per edit (the color inputs patch live like the Style panel's
+  swatches). The tab is offered only while a placed field is selected; the global Style
+  PANEL keeps the :root contract (palette, heading font, scale) and is no longer the wrong
+  place to look for per-field text styling.
 
-E2E: the whole roundtrip (add → place → nudge → resize → per-layer animate → live sample
-data → validated export) is pinned in e2e/import-graphic.spec.ts.
+E2E: the whole roundtrip (wizard handoff → Data-tab add → place → nudge → resize → restyle →
+per-layer animate → live sample data → validated export) is pinned in
+e2e/import-graphic.spec.ts.
 
 ## Deliberately out of scope
 

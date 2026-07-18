@@ -132,7 +132,15 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
   return {
     resolution: draftResolution(draft),
     fps: draft.fps,
-    lines: draft.lines.length > 0 ? draft.lines : undefined,
+    // An imported design owns its lines OUTRIGHT — the wizard creates it BARE (fields are
+    // added in the editor's Data tab), so its empty array must reach the assembler as-is.
+    // Everywhere else an empty draft means "not decided yet" and falls back to suggestions.
+    lines:
+      variant.category === 'imported-design'
+        ? draft.lines
+        : draft.lines.length > 0
+          ? draft.lines
+          : undefined,
     extraFields: draft.extraFields.length > 0 ? draft.extraFields : undefined,
     palette: draft.customPalette ?? (draft.paletteId ? paletteById(draft.paletteId) : undefined),
     fontId: draft.fontId && draft.fontId !== 'custom' ? draft.fontId : undefined,

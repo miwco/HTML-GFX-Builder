@@ -86,7 +86,13 @@ export default function SampleDataPanel() {
         </p>
       </div>
 
-      {dataFields.length === 0 && <p className="muted">No editable data fields in this template.</p>}
+      {dataFields.length === 0 && (
+        <p className="muted">
+          {placedDesign
+            ? 'No fields on your design yet — add the first one below. It appears on the artwork, ready to drag into place.'
+            : 'No editable data fields in this template.'}
+        </p>
+      )}
 
       {dataFields.map((d) => (
         <SpxFieldRow key={d.key} descriptor={d} />

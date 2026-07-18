@@ -28,15 +28,10 @@ const STEP_TITLES = ['Start', 'Category', 'Template', 'Fields', 'Style', 'Animat
 const STEP_TITLES_IMPORT = ['Start', 'Images', 'Template', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_AI = ['Start', 'Create'];
 const STEP_TITLES_VIDEO = ['Start', 'Video'];
-const STEP_TITLES_DESIGN = ['Start', 'Design', 'Text', 'Style', 'Animation'];
-
-/**
- * Import-graphic mode reuses the ordinary step indices and SKIPS the Template step (2):
- * the design is the artwork the user brought, so there is nothing to pick. Keeping the
- * indices means Fields/Style/Animation stay 3/4/5 for every mode — no step is renumbered
- * and no existing flow shifts. This maps rail position → step index.
- */
-const DESIGN_STEPS = [0, 1, 3, 4, 5];
+// Import-graphic mode is a SETUP flow, not a second editor: bring the artwork in, create,
+// and land in the real canvas editor with the Data tab focused — fields, styling, and
+// animation all happen there (docs/IMPORT_MVP.md, "the wizard hands off").
+const STEP_TITLES_DESIGN = ['Start', 'Design'];
 
 /**
  * The choose-first creation wizard (replaces the old template gallery). Six steps —
@@ -104,7 +99,7 @@ export default function CreationWizard() {
   const demoOut =
     step === 5 &&
     !!variant &&
-    ['lower-third', 'info-card', 'scoreboard', 'corner-bug', 'imported-design'].includes(variant.category) &&
+    ['lower-third', 'info-card', 'scoreboard', 'corner-bug'].includes(variant.category) &&
     draft.animation.direction !== 'in';
 
   if (!open) return null;
@@ -149,6 +144,9 @@ export default function CreationWizard() {
   const create = () => {
     if (!previewTemplate || !variant) return;
     void applyGenerated(previewTemplate);
+    // An imported design creates BARE and hands off to the editor's Data tab — that is
+    // where its fields are added, as real placed layers (docs/IMPORT_MVP.md).
+    if (variant.category === 'imported-design') useTemplateStore.getState().setActivePanel('data');
     // Remember this look as the project brand so the next graphic matches it.
     saveBrand({
       styleTag: variant.styleTag,
@@ -162,16 +160,17 @@ export default function CreationWizard() {
 
   const nextDisabled =
     (step === 1 &&
-      (mode === 'design'
-        ? !draft.designArt
-        : mode === 'import'
-          ? draft.importedImages.length === 0 || !draft.category
-          : !draft.category)) ||
+      (mode === 'import'
+        ? draft.importedImages.length === 0 || !draft.category
+        : !draft.category)) ||
     (step === 2 && !draft.variantId);
 
+  // Design mode previews from the moment the artwork lands: the Design step IS the last
+  // step, so the user sees the real graphic (and its default entrance) before creating.
   const showPreview =
     mode === 'ai' ? step === 1 && !!aiResult
     : mode === 'video' ? false
+    : mode === 'design' ? step === 1 && !!previewTemplate
     : step >= 2 && !!previewTemplate;
   const stepTitles =
     mode === 'ai' ? STEP_TITLES_AI
@@ -179,8 +178,8 @@ export default function CreationWizard() {
     : mode === 'design' ? STEP_TITLES_DESIGN
     : mode === 'import' ? STEP_TITLES_IMPORT
     : STEP_TITLES;
-  // Rail position → step index. Only design mode skips one (see DESIGN_STEPS).
-  const stepIndexes = mode === 'design' ? DESIGN_STEPS : stepTitles.map((_, i) => i);
+  // Rail position → step index (1:1 in every mode).
+  const stepIndexes = stepTitles.map((_, i) => i);
   const railPos = stepIndexes.indexOf(step);
   const goToStep = (delta: number) => setStep(stepIndexes[railPos + delta] ?? step);
 
@@ -284,15 +283,15 @@ export default function CreationWizard() {
                 images={draft.importedImages}
                 resolution={draftResolution(draft)}
                 onArt={(designArt, importedImages) => {
-                  const v = variantById('imp01');
                   patch({
                     designArt,
                     importedImages,
                     category: 'imported-design',
+                    // There is no design to choose — the artwork IS it — so the variant is
+                    // settled here, and the graphic creates BARE: its text/number/image
+                    // fields are added in the editor's Data tab as real placed layers.
                     variantId: 'imp01',
-                    // There is no design to choose — the artwork is it — so the variant is
-                    // settled here and the Template step is skipped (see DESIGN_STEPS).
-                    lines: v ? v.suggestedLines.map((l) => ({ ...l })) : [],
+                    lines: [],
                     zone: null,
                     animation: { presetId: null, outPresetId: null },
                     ...(matchBrand && brand
@@ -371,7 +370,7 @@ export default function CreationWizard() {
         <div className="wz-footer">
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>
             {step > 0 && <button onClick={() => goToStep(-1)}>‹ Back</button>}
-            {brand && (mode === 'ai' ? step >= 1 : step >= 2) && (
+            {brand && (mode === 'ai' || mode === 'design' ? step >= 1 : step >= 2) && (
               <label className="wz-match" title="Reuse this project's palette and font so the new graphic belongs to the same package">
                 <input
                   type="checkbox"
@@ -402,22 +401,26 @@ export default function CreationWizard() {
               </button>
             )}
             {/* "Create project" is the quiet shortcut (primary only on the last step,
-                where it's the sole forward action); "Next ›" is the highlighted path. */}
-            {mode !== 'ai' && mode !== 'video' && step >= 2 && (
+                where it's the sole forward action); "Next ›" is the highlighted path.
+                Design mode's Design step IS its last step — Create is its one CTA, and
+                the editor's Data tab takes over from there. */}
+            {mode !== 'ai' && mode !== 'video' && (mode === 'design' ? step >= 1 : step >= 2) && (
               <button
-                className={step === 5 ? 'primary' : undefined}
+                className={step === 5 || mode === 'design' ? 'primary' : undefined}
                 disabled={!previewTemplate}
                 onClick={create}
-                title="Create the project now — remaining steps keep their defaults"
+                title={
+                  mode === 'design'
+                    ? 'Create the project — you add the fields in the editor next'
+                    : 'Create the project now — remaining steps keep their defaults'
+                }
               >
                 Create project
               </button>
             )}
-            {mode !== 'ai' && mode !== 'video' && step > 0 && step < 5 && (
+            {mode !== 'ai' && mode !== 'video' && mode !== 'design' && step > 0 && step < 5 && (
               <button className="primary wz-next" disabled={nextDisabled} onClick={() => goToStep(1)}>
-                {/* The Design step's forward action says what it does — it is the step's ONE
-                    CTA (the step body deliberately has no button of its own). */}
-                {mode === 'design' && step === 1 ? 'Add text fields ›' : 'Next ›'}
+                Next ›
               </button>
             )}
           </div>

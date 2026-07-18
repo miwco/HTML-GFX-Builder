@@ -57,7 +57,7 @@ export default function EntryStep({ onTemplates, onImportGraphic, onAi, onVideo,
         <button className="wz-entry-card" onClick={onImportGraphic} data-entry="import-graphic">
           <span className="wz-entry-icon">▦</span>
           <strong>Import graphic</strong>
-          <span className="hint">Already designed it? Bring the finished image in, place your editable text on it, and pick how it animates. No AI — you place every piece.</span>
+          <span className="hint">Already designed it? Bring the finished image in and add editable fields on top in the editor — drag, style, and animate each one. No AI — you place every piece.</span>
         </button>
         <button className="wz-entry-card" onClick={onBlank} data-entry="blank">
           <span className="wz-entry-icon">‹›</span>

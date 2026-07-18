@@ -3,13 +3,14 @@ import { awaitPreviewRebuild } from './_preview';
 import { lowerThirdPng } from './_png';
 import { elementPoint } from './_canvas';
 
-// The Import Graphic MVP workflow, end to end (docs/IMPORT_MVP.md): a flat PNG design becomes
-// a working SPX template with editable text fields and selectable in/out animations.
+// The Import Graphic workflow, end to end (docs/IMPORT_MVP.md): a flat PNG design becomes
+// a working SPX template with editable text fields and per-layer animation.
 //
-// This is the workflow the feature exists for, so the spec walks the USER'S path — entry card,
-// drop, place text, pick motion, create — and then checks the things that make it real: the
-// artwork renders, the fields are SPX-editable, the whole graphic animates as one unit, and
-// the export validates.
+// The wizard is a SETUP flow, not a second editor: bring the artwork in, create, and land
+// in the real canvas editor with the Data tab open. Fields are added there (real placed
+// layers, fully wired), styled through the Inspector's Style tab, and animated through its
+// Animations tab — so the spec walks the USER'S path: entry card, drop, create, add fields,
+// drag, style, animate, export.
 
 async function dropDesign(page: Page, width = 1920, height = 1080) {
   await page.goto('/app');
@@ -22,41 +23,96 @@ async function dropDesign(page: Page, width = 1920, height = 1080) {
   });
 }
 
-test('import graphic: a flat PNG becomes a working template with editable fields', async ({ page }) => {
+/** Create the imported design (bare — no fields yet) and land in the editor. */
+async function createBare(page: Page) {
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByRole('button', { name: 'Create project' }).click();
+    await expect(page.locator('.wz-modal')).toBeHidden();
+  });
+}
+
+/** Add a field through the Data panel's add row (the real UI path). */
+async function addFieldViaDataTab(page: Page, title: string, ftype?: string) {
+  await page.getByTestId('dock-tab-data').click();
+  await page.locator('.field-add-row input').fill(title);
+  if (ftype) await page.locator('.field-add-row select').selectOption(ftype);
+  await awaitPreviewRebuild(page, () =>
+    page.getByRole('button', { name: '+ Add' }).click(),
+  );
+}
+
+/** The standard fixture most tests use: created design + Name (f0) and Title (f1) fields. */
+async function createImported(page: Page) {
+  await dropDesign(page);
+  await createBare(page);
+  await addFieldViaDataTab(page, 'Name');
+  await addFieldViaDataTab(page, 'Title');
+}
+
+test('import graphic: the wizard is a setup flow — create lands in the editor, Data tab open', async ({ page }) => {
   await dropDesign(page);
 
-  // The artwork is MEASURED, not assumed — the flow states what it found.
+  // The artwork is MEASURED, not assumed — the flow states what it found — and the live
+  // preview shows the real graphic already on the Design step.
   await expect(page.locator('.asset-card')).toContainText('1920 × 1080');
   await expect(page.locator('.wz-step')).toContainText('Frame-sized');
+  await expect(page.locator('.wz-side')).toBeVisible();
 
-  await page.getByRole('button', { name: 'Add text fields ›' }).click();
+  // Two steps only, and Create is the one forward action — there is no wizard field,
+  // style, or animation stage any more (the editor owns all of that).
+  await expect(page.locator('.wz-dots .wz-dot')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(0);
 
-  // The Template step is skipped: the artwork IS the design.
-  await expect(page.locator('.wz-dot.active')).toContainText('Text');
+  await createBare(page);
 
-  const rows = page.locator('.wz-line-row');
-  await rows.first().locator('input').first().fill('Guest name');
-  await rows.nth(1).locator('input').first().fill('Guest title');
-
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-
-  // The artwork renders as the graphic itself, with the text on top of it.
+  // The handoff: the artwork renders as the graphic itself, the template is BARE (fields
+  // come next, from the Data tab), and the Data tab is the active panel of its dock.
   const frame = page.frameLocator('iframe.preview-frame');
   await expect(frame.locator('.imported-design-art')).toBeVisible();
-  await expect(frame.locator('#f0')).toHaveText('Alexandra Riva');
-
-  // The fields are real SPX DataFields, so the operator can edit them.
-  await page.getByTestId('dock-tab-data').click();
-  await expect(page.locator('.panel-body')).toContainText('Guest name');
-  await expect(page.locator('.panel-body')).toContainText('Guest title');
+  await expect(frame.locator('#f0')).toHaveCount(0);
+  await expect(
+    page.locator('.dock-tab.active [data-testid="dock-tab-data"]'),
+  ).toBeVisible();
+  await expect(page.locator('.panel-body')).toContainText('No fields on your design yet');
 });
 
-test('import graphic: the imported design animates — the gap this feature closes', async ({ page }) => {
+test('import graphic: fields added from the Data tab are real placed layers — the wizard step, replaced', async ({ page }) => {
   await dropDesign(page);
-  await page.getByRole('button', { name: 'Add text fields ›' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
+  await createBare(page);
+  await addFieldViaDataTab(page, 'Guest name');
+  await addFieldViaDataTab(page, 'Guest title');
+
+  // Visible elements in the preview, showing their sample text…
+  const frame = page.frameLocator('iframe.preview-frame');
+  await expect(frame.locator('#f0')).toHaveText('Guest name');
+  await expect(frame.locator('#f1')).toHaveText('Guest title');
+
+  // …placed lines + real SPX DataFields + synced sample values, the newest selected.
+  const state = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { placedLines } = await import('/src/blocks/designLayout.ts');
+    const s = useTemplateStore.getState();
+    return {
+      placed: placedLines(s.template.html, s.template.css),
+      titles: s.template.fields.map((f) => f.title),
+      samples: [s.sampleData['f0'], s.sampleData['f1']],
+      selected: s.selectedPart,
+    };
+  });
+  expect(state.placed['#f0']).toBeTruthy();
+  expect(state.placed['#f1']).toBeTruthy();
+  expect(state.placed['#f0']!.scaled).toBe(true); // the assembler's calc(--scale) idiom
+  expect(state.titles).toEqual(['Guest name', 'Guest title']);
+  expect(state.samples).toEqual(['Guest name', 'Guest title']);
+  expect(state.selected).toBe('#f1');
+
+  // …and timeline rows like any layer (the registry named them from the field titles).
+  await expect(page.locator('.tlv2-labels .timeline-label[data-part="#f0"]')).toContainText('Guest name');
+  await expect(page.locator('.tlv2-labels .timeline-label[data-part="#f1"]')).toContainText('Guest title');
+});
+
+test('import graphic: the imported design animates — whole unit in, whole unit out', async ({ page }) => {
+  await createImported(page);
 
   // The timeline dock reads the template's OWN code, so a real editable strip means the
   // imported design carries a NOACG_ANIM data block (an import used to get no strip at all).
@@ -73,6 +129,14 @@ test('import graphic: the imported design animates — the gap this feature clos
     .poll(async () => frame.locator('.imported-design').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
 
+  // ONE UNIT by default: GSAP writes inline styles onto the targets it animates. The box is
+  // animated, so it gets them; a field must not be touched on its own — that is exactly what
+  // would tear a flat design away from artwork drawn around it.
+  await expect
+    .poll(async () => frame.locator('.imported-design-box').evaluate((el) => el.getAttribute('style') ?? ''))
+    .not.toBe('');
+  expect(await frame.locator('#f0').evaluate((el) => el.getAttribute('style') ?? '')).toBe('');
+
   // The whole graphic leaves together on Stop.
   await page.getByRole('button', { name: '■ Stop' }).click();
   await expect
@@ -80,53 +144,19 @@ test('import graphic: the imported design animates — the gap this feature clos
     .toBe('0');
 });
 
-test('import graphic: in and out animations are chosen separately', async ({ page }) => {
-  await dropDesign(page);
-  await page.getByRole('button', { name: 'Add text fields ›' }).click();
-  await page.getByRole('button', { name: 'Next ›' }).click(); // Style
-
-  // The Style step slims to what still applies: a frame-sized design covers the canvas as
-  // drawn, so sizing and re-anchoring it are off the table, and text size is per-line on the
-  // Text step. Palette and font still style the lines.
-  await expect(page.locator('.wz-step')).toContainText('Palette');
-  await expect(page.locator('.wz-step')).toContainText('Font');
-  await expect(page.locator('.wz-step')).not.toContainText('Graphic size');
-  await expect(page.locator('.wz-step')).not.toContainText('Text size');
-  await expect(page.locator('.wz-step')).not.toContainText('Position');
-
-  await page.getByRole('button', { name: 'Next ›' }).click(); // Animation
-  await expect(page.locator('.wz-dot.active')).toContainText('Animation');
-
-  // Only whole-unit presets are offered: the line presets would tear a flat design apart.
-  await expect(page.locator('.wz-step')).toContainText('Pop');
-  await expect(page.locator('.wz-step')).not.toContainText('Line reveal');
-
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-
-  // ONE UNIT, checked by behaviour rather than by reading the code: GSAP writes inline styles
-  // onto the targets it animates. The box is animated, so it gets them; a text line must not be
-  // touched on its own — that is exactly what would tear a flat design away from its artwork.
-  const frame = page.frameLocator('iframe.preview-frame');
-  await page.getByRole('button', { name: '▶ Play' }).click();
-  await expect
-    .poll(async () => frame.locator('.imported-design-box').evaluate((el) => el.getAttribute('style') ?? ''))
-    .not.toBe('');
-  expect(await frame.locator('#f0').evaluate((el) => el.getAttribute('style') ?? '')).toBe('');
-});
-
 test('import graphic: a cropped design is placed as an object, not stretched', async ({ page }) => {
   await dropDesign(page, 900, 260);
   await expect(page.locator('.asset-card')).toContainText('900 × 260');
   await expect(page.locator('.wz-step')).toContainText('Smaller than');
+  await createBare(page);
 
-  // A floating design CAN be sized and anchored, so those knobs stay; the global text-size
-  // knob never applies to an imported design (each line is sized on the Text step).
-  await page.getByRole('button', { name: 'Add text fields ›' }).click();
-  await page.getByRole('button', { name: 'Next ›' }).click(); // Style
-  await expect(page.locator('.wz-step')).toContainText('Graphic size');
-  await expect(page.locator('.wz-step')).toContainText('Position');
-  await expect(page.locator('.wz-step')).not.toContainText('Text size');
+  // A floating design keeps its own size and sits in the default zone as an object.
+  const frame = page.frameLocator('iframe.preview-frame');
+  await expect(frame.locator('.imported-design-art')).toBeVisible();
+  const width = await frame
+    .locator('.imported-design-box')
+    .evaluate((el) => el.getBoundingClientRect().width);
+  expect(Math.round(width)).toBe(900);
 });
 
 test('import graphic: a 2× export is shown frame-sized, not pushed off the frame', async ({ page }) => {
@@ -136,10 +166,7 @@ test('import graphic: a 2× export is shown frame-sized, not pushed off the fram
   await dropDesign(page, 3840, 2160);
   await expect(page.locator('.asset-card')).toContainText('3840 × 2160');
   await expect(page.locator('.wz-step')).toContainText('2× export');
-
-  await page.getByRole('button', { name: 'Add text fields ›' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
+  await createBare(page);
 
   // The design unit is exactly the frame's width: edge to edge, as drawn (--scale is 1 here).
   const frame = page.frameLocator('iframe.preview-frame');
@@ -149,16 +176,6 @@ test('import graphic: a 2× export is shown frame-sized, not pushed off the fram
     .evaluate((el) => el.getBoundingClientRect().width);
   expect(Math.round(width)).toBe(1920);
 });
-
-/** Create the imported design and land in the editor with the preview rebuilt. */
-async function createImported(page: Page) {
-  await dropDesign(page);
-  await page.getByRole('button', { name: 'Add text fields ›' }).click();
-  await awaitPreviewRebuild(page, async () => {
-    await page.getByRole('button', { name: 'Create project' }).click();
-    await expect(page.locator('.wz-modal')).toBeHidden();
-  });
-}
 
 /** The current template's #fw0 rule position + #f0 font/tracks + history length. */
 async function placementState(page: Page) {
@@ -175,15 +192,6 @@ async function placementState(page: Page) {
       history: s.history.length,
     };
   });
-}
-
-/** Add a field through the Data panel's add row (the real UI path). */
-async function addFieldViaDataTab(page: Page, title: string) {
-  await page.getByTestId('dock-tab-data').click();
-  await page.locator('.field-add-row input').fill(title);
-  await awaitPreviewRebuild(page, () =>
-    page.getByRole('button', { name: '+ Add' }).click(),
-  );
 }
 
 test('import graphic: dragging a field places it in the CSS — never a keyframe', async ({ page }) => {
@@ -244,40 +252,6 @@ test('import graphic: Escape cancels a placement drag without touching the code'
   expect(inline).toBe('');
 });
 
-// ── The canvas + data-field phase: the Data tab's add-field is REAL on an imported design —
-//    it creates the element, the placement rule, the DataField, and the selectable layer in
-//    one undoable apply, and the new line behaves like any placed line from then on. ──
-
-test('import graphic: adding a field from the Data tab creates a real placed layer', async ({ page }) => {
-  await createImported(page);
-  await addFieldViaDataTab(page, 'Sponsor');
-
-  // A visible element in the preview, showing its sample text…
-  const frame = page.frameLocator('iframe.preview-frame');
-  await expect(frame.locator('#f2')).toHaveText('Sponsor');
-
-  // …a placed line + a real SPX DataField + a synced sample value, selected on arrival.
-  const state = await page.evaluate(async () => {
-    const { useTemplateStore } = await import('/src/store/templateStore.ts');
-    const { placedLines } = await import('/src/blocks/designLayout.ts');
-    const s = useTemplateStore.getState();
-    return {
-      place: placedLines(s.template.html, s.template.css)['#f2'] ?? null,
-      field: s.template.fields.find((f) => f.field === 'f2') ?? null,
-      sample: s.sampleData['f2'],
-      selected: s.selectedPart,
-    };
-  });
-  expect(state.place).not.toBeNull();
-  expect(state.place!.scaled).toBe(true); // the assembler's calc(--scale) idiom
-  expect(state.field?.title).toBe('Sponsor');
-  expect(state.sample).toBe('Sponsor');
-  expect(state.selected).toBe('#f2');
-
-  // …and a timeline row like any layer (the registry named it from the field title).
-  await expect(page.locator('.tlv2-labels .timeline-label[data-part="#f2"]')).toContainText('Sponsor');
-});
-
 test('import graphic: an added field is live — sample data drives it with no manual wiring', async ({ page }) => {
   await createImported(page);
   await addFieldViaDataTab(page, 'Sponsor');
@@ -299,10 +273,7 @@ test('import graphic: an added field is live — sample data drives it with no m
 
 test('import graphic: adding an image field creates a placed slot on the design', async ({ page }) => {
   await createImported(page);
-  await page.getByTestId('dock-tab-data').click();
-  await page.locator('.field-add-row input').fill('Logo');
-  await page.locator('.field-add-row select').selectOption('filelist');
-  await awaitPreviewRebuild(page, () => page.getByRole('button', { name: '+ Add' }).click());
+  await addFieldViaDataTab(page, 'Logo', 'filelist');
 
   // The slot is real everywhere at once: a filelist DataField + a placed, sized wrapper.
   const state = await page.evaluate(async () => {
@@ -417,6 +388,74 @@ test('import graphic: the corner handle resizes a field\'s text in the CSS', asy
   expect(after.f0Tracks).toEqual(before.f0Tracks); // design, never a scale keyframe
 });
 
+test('import graphic: the Inspector Style tab restyles a selected placed field', async ({ page }) => {
+  await createImported(page);
+
+  // Select the Name field; the Style tab is offered for placed fields only.
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  await expect(page.getByTestId('inspector')).toBeVisible({ timeout: 3000 });
+  await page.getByTestId('inspector-tab-style').click();
+  await expect(page.getByTestId('inspector-style')).toBeVisible();
+
+  // Size commits on Enter; weight/font/anchor commit on choice; color patches live.
+  await page.getByTestId('inspector-style-size').fill('48');
+  await page.getByTestId('inspector-style-size').press('Enter');
+  await page.getByTestId('inspector-style-weight').selectOption('700');
+  await page.getByTestId('inspector-style-align-center').click();
+  await page.getByTestId('inspector-style-font').selectOption('bebas-neue');
+  await page.getByTestId('inspector-style-color-text').fill('#f5a623');
+  await page.getByTestId('inspector-style-spacing').fill('2');
+  await awaitPreviewRebuild(page, () =>
+    page.getByTestId('inspector-style-spacing').press('Enter'),
+  );
+
+  // Every edit landed as a declaration in the field's OWN rules, in the scale idiom, and
+  // the picked bundled font ships as a real @font-face (offline-first, export-ready).
+  const state = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const css = useTemplateStore.getState().template.css;
+    return {
+      rule: css.match(/#f0 \{[^}]*\}/)?.[0] ?? '',
+      wrapperTransform: css.match(/#fw0 \{[^}]*\}/)?.[0]?.match(/transform:[^;]*/)?.[0] ?? '',
+      fontFaces: (css.match(/Bundled open-source font/g) || []).length,
+    };
+  });
+  expect(state.rule).toContain('font-size: calc(48px * var(--scale))');
+  expect(state.rule).toContain('font-weight: 700');
+  expect(state.rule).toContain('"Bebas Neue"');
+  expect(state.rule).toContain('color: #f5a623');
+  expect(state.rule).toContain('letter-spacing: calc(2px * var(--scale))');
+  expect(state.wrapperTransform).toContain('translateX(-50%)');
+  expect(state.fontFaces).toBe(2); // the heading face + the line's own
+
+  // The canvas/preview shows it (--scale is 1 at 1080p, so 48 design px are 48 px).
+  const frame = page.frameLocator('iframe.preview-frame');
+  await expect
+    .poll(async () =>
+      frame.locator('#f0').evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { size: cs.fontSize, color: cs.color, family: cs.fontFamily };
+      }),
+    )
+    .toEqual({ size: '48px', color: 'rgb(245, 166, 35)', family: '"Bebas Neue", "Arial Narrow", Arial, sans-serif' });
+
+  // Discrete style edits are ordinary undoable applies.
+  await page.keyboard.press('Control+z');
+  await expect
+    .poll(async () =>
+      page.evaluate(async () => {
+        const { useTemplateStore } = await import('/src/store/templateStore.ts');
+        return useTemplateStore.getState().template.css.includes('letter-spacing: calc(2px');
+      }),
+    )
+    .toBe(false);
+
+  // The Style tab is a placed-field surface: the artwork layer doesn't offer it.
+  await page.locator('.tlv2-labels .timeline-label[data-part=".imported-design-art"]').click();
+  await expect(page.getByTestId('inspector-part-label')).toHaveText('Artwork');
+  await expect(page.getByTestId('inspector-tab-style')).toHaveCount(0);
+});
+
 test('import graphic: the artwork and a field animate as separate layers from the Inspector', async ({ page }) => {
   await createImported(page);
 
@@ -450,11 +489,7 @@ test('import graphic: the artwork and a field animate as separate layers from th
 });
 
 test('import graphic: the exported SPX package validates', async ({ page }) => {
-  await dropDesign(page);
-  await page.getByRole('button', { name: 'Add text fields ›' }).click();
-  await page.getByRole('button', { name: 'Create project' }).click();
-  await expect(page.locator('.wz-modal')).toBeHidden();
-
+  await createImported(page);
   await page.getByTestId('dock-tab-export').click();
   // Export is gated on zero validation errors; the panel says so inline.
   await expect(page.locator('.panel-body')).not.toContainText('✗');

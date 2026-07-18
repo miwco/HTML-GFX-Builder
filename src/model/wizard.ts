@@ -301,8 +301,10 @@ export function paletteById(id: string): Palette {
 
 /** Fill every missing option with the variant's tasteful default. */
 export function resolveOptions(variant: TemplateVariant, options: WizardOptions = {}): ResolvedOptions {
-  const lines = (options.lines && options.lines.length > 0 ? options.lines : variant.suggestedLines)
-    .slice(0, variant.maxLines);
+  // An EXPLICIT lines array is honoured as given — including an empty one (an imported
+  // design creates bare: its fields are added in the editor's Data tab). Only an absent
+  // value falls back to the variant's suggestions.
+  const lines = (options.lines ?? variant.suggestedLines).slice(0, variant.maxLines);
   return {
     resolution: options.resolution ?? RESOLUTIONS[0],
     fps: options.fps ?? 25,

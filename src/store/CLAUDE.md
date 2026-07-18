@@ -79,3 +79,6 @@ templateStore.ts (zustand) holds the template plus editor UI state.
   UI state only - no history.
 - **activePanel** (`SidePanel` type) - the side panel's tab: FIVE ids
   (data/control/style/ai/export). Motion is not a tab - it lives on the timeline.
+  **panelRevealNonce** bumps on EVERY setActivePanel call - the docks key their reveal effect
+  on the nonce, not on the id changing, so re-requesting the stored panel still reveals it
+  (the Import Graphic wizard revealing the default 'data' tab is the case that needs this).

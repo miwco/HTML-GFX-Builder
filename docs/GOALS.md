@@ -789,6 +789,15 @@ logo slot: here the image IS the design.
       nudging extends beyond placed fields to EVERY selected layer - placed fields move as
       placement CSS, other layers key x/y at the playhead like the drag, one undoable apply
       per burst either way.
+- [x] **The wizard becomes a setup flow (2026-07-18)** - Import graphic is two steps (Start ->
+      Design -> Create): the template creates BARE and lands in the editor with the Data tab
+      revealed; the wizard's Text/Style/Animation steps are gone from the flow. Fields come
+      from the Data tab (the placed add), placement from the canvas + the Inspector Style
+      tab's numeric X/Y, and a selected placed field is styled in the Inspector's new Style
+      tab (font incl. shipped @font-face, size, weight, color, anchor, line-height, tracking;
+      slot box for image fields) - deterministic patches of the field's own rules
+      (blocks/designLayout.ts lineTextStyle/setLineTextStyle), undoable, live in preview and
+      export. Whole-unit and per-layer motion both live in the Inspector's Animations tab.
 
 ### Quality bar (always-on)
 - [x] `npm run build` green as the CI gate

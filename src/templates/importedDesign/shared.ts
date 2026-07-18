@@ -110,8 +110,14 @@ function artHtml(art: DesignArt): string {
     <img class="${PREFIX}-art" src="${art.path}" alt="" />`;
 }
 
-/** One masked text field per line, placed over the artwork by its own CSS rule below. */
+/** One masked text field per line, placed over the artwork by its own CSS rule below.
+ *  A bare design (the normal create — fields are added in the editor's Data tab) gets a
+ *  comment saying where they will land instead. */
 function fieldsHtml(o: ResolvedOptions): string {
+  if (o.lines.length === 0) {
+    return `    <!-- No fields yet — add text, number, and image fields from the Data tab.
+         Each lands here as its own masked, placed element. -->`;
+  }
   return o.lines
     .map(
       (line, i) =>
@@ -127,6 +133,10 @@ function fieldsHtml(o: ResolvedOptions): string {
  * are separate decisions: the canvas drags the wrapper, the Fields step restyles the span.
  */
 function fieldCss(o: ResolvedOptions): string {
+  if (o.lines.length === 0) {
+    return `/* None yet. Each field added from the Data tab gets its own placement rule here:
+   the wrapper (#fwN) carries WHERE it sits, the field (#fN) carries HOW it looks. */`;
+  }
   return o.lines
     .map((line, i) => {
       const st = lineStyleOf(line, i, o);

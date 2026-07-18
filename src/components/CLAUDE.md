@@ -22,7 +22,9 @@ in src/blocks/CLAUDE.md.
   the pending reveal and a live canvas gesture (store canvasGestureActive) skips it at fire time,
   so the workspace never resizes between the two clicks of a text double-click or under a drag
   (e2e/inline-edit.spec.ts pins this). The store's `activePanel` is a "reveal this panel" signal
-  (the wizard shows Export after an import) - honoured in the docks, but not on mount. The topbar
+  (the wizard shows Export after an import, Data after an Import Graphic create) - the docks key
+  the reveal on `panelRevealNonce` (bumped by every setActivePanel call), so re-requesting the
+  stored default still reveals, and mount never does. The topbar
   ◨/code toggles close-or-reveal those panels. Binds global Ctrl/Cmd+Z to undo() and
   Ctrl/Cmd+Shift+Z (+ Ctrl+Y) to redo() (skipped when focus is in Monaco or a form field).
   useIsMobile/useSplitter support the mobile and resizable layouts.
@@ -175,6 +177,15 @@ in src/blocks/CLAUDE.md.
   (perspective enables the 3D look; they pivot around the Pivot's transform-origin). Adding a
   numeric prop needs only a PROP_ROWS entry - no runtime/resolver/validation change; a new FILTER
   function needs only a FILTER_FUNCS entry in blocks/filterTrack.ts plus its PROP_ROWS row.
+  A selected PLACED FIELD (an imported design's line or slot - blocks/designLayout.ts
+  placedLines, code-derived) additionally offers a **Style tab**: numeric X/Y placement, and
+  for a text line the full typography set (font incl. bundled-face shipping, size, weight,
+  color, anchor, line-height, tracking), for an image slot its box - every control a
+  deterministic patch of the field's OWN rules via designLayout (setLineTextStyle, placeLine,
+  setSlotSize), one undoable apply per edit, colors patching live like the Style panel. The
+  tab exists only while a placed field is selected (a non-placed selection falls back to
+  Properties without clobbering the stored choice). A placed field's look is DESIGN, never
+  keyframes - the same doctrine as its drag.
   The Animations tab names which steps move the layer and holds the preset
   picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
   blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
@@ -320,8 +331,17 @@ undo/redo keys as AppShell with the same Monaco/form-field guard. AI chat gates 
 
 CreationWizard (Entry -> Category -> Template -> Fields -> Style -> Animation, persistent live
 preview), draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.create(options)`
-which generates the complete, commented template. FOUR entry cards: template, Create with AI,
-video, blank.
+which generates the complete, commented template. FIVE entry cards: template, Create with AI,
+video, Import graphic, blank.
+
+**Import graphic** (mode 'design', steps/ImportDesignStep) is a SETUP flow, not a second
+editor: Start -> Design (drop the PNG; live preview from the moment it lands) -> Create. The
+create is BARE (draftToOptions passes the empty lines array through for imported-design;
+resolveOptions honours an explicit empty array) and hands off to the editor with the Data tab
+revealed (setActivePanel('data') + the store's panelRevealNonce). Fields, styling, and motion
+all live in the editor: the Data tab's placed add, the canvas gestures, the Inspector's
+Style/Animations tabs. FieldsStep/StyleStep carry NO imported-design branches any more -
+design mode never reaches them. Contract: docs/IMPORT_MVP.md; E2E: e2e/import-graphic.spec.ts.
 
 The steps are driven by each variant's declared CAPABILITIES (model/wizard.ts): the Template
 step filters the card grid with style/logo/line-capacity chips; the Fields step offers up to
