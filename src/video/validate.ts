@@ -1,7 +1,8 @@
 // The full validate pipeline for a composition module: compile -> static contract checks
 // -> live probe in the player host (mount + render frames [0, mid, last], catching real
 // runtime errors with their frame numbers) -> the READABILITY pass at the hold frames,
-// where the host measures the mounted DOM (player-host/src/textChecks.ts) and reports text
+// where the host measures the mounted DOM (src/video/textChecks.js, inlined into the host at
+// build time) and reports text
 // the frame or an overflow-clipping ancestor cuts off. The AI repair loop feeds these exact
 // issues back to the model; the UI shows the same list. Duration/fps/resolution are never
 // validated against the AI - they come from project settings and are injected at load.

@@ -3,8 +3,9 @@
 // The failure this pins shipped twice before it was detectable: a hero headline cropped by
 // its own card - "BROADCAST KITCHEN" painting as "BROADCAST KITCH" - passed compile, the
 // static contract, and the runtime probe, because nothing throws when glyphs are cut. The
-// player host now measures the glyph extent at the hold frames (player-host/src/textChecks.ts)
-// and the validator turns a persistent crop into a repair round.
+// player host now measures the glyph extent at the hold frames (src/video/textChecks.js,
+// inlined into the host at build time) and the validator turns a persistent crop into a
+// repair round.
 //
 // The Anthropic API is mocked at the network level, so the real provider path runs: motion
 // plan, module emit, validation, repair, apply - on emits we choose.

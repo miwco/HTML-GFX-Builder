@@ -20,9 +20,9 @@
 // Beyond validation, every run gets RUNTIME READABILITY CHECKS at hold-phase frames -
 // occlusion ("the title is behind the shape panels", the video counterpart of the SPX
 // bench's overlap check) and CLIPPING ("KITCHEN" painting as "KITCH"). Both come from the
-// player host itself (player-host/src/textChecks.ts), the same code the AI's injected
-// validator probes with, so the bench and the generation gate can never drift apart. A
-// stale built host has no checks to call: `npm run build:player-host`.
+// player host itself, which inlines src/video/textChecks.js at build time — the same code
+// the AI's injected validator probes with, so the bench and the generation gate can never
+// drift apart. A stale built host has no checks to call: `npm run build:player-host`.
 
 import { chromium } from '@playwright/test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -123,8 +123,9 @@ async function seekTo(frameNo) {
 
 /**
  * Readability at the current frame, run by the player host's own checks
- * (player-host/src/textChecks.ts, installed on window.__noacgTextChecks at boot) so the
- * bench and the AI's injected validator judge a composition by the SAME code:
+ * (src/video/textChecks.js, inlined into the host at build time and installed on
+ * window.__noacgTextChecks at boot) so the bench and the AI's injected validator judge a
+ * composition by the SAME code:
  *   - OCCLUSION: "the title is painted behind the shape panels" (paint-order hit test).
  *   - CLIP: "KITCHEN" rendering as "KITCH" — glyphs cut by the frame or an
  *     overflow-hidden ancestor.
