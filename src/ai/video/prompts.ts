@@ -23,11 +23,27 @@ export const MOTION_PRINCIPLES = `## NoaCG motion-design principles (the permane
   sans/display/mono). Size EVERY piece of type from the frame (fractions of height/width),
   never a fixed px value - a support/kicker line is around height*0.025-0.035; a hardcoded
   22px kicker on a 1080p canvas is unreadably small.
-- THE TEXT FITS: the hero line must sit INSIDE the safe margins at its largest settled
-  moment. Derive hero type size from the frame width AND the actual string length -
-  roughly fontSize ≤ (width * 0.85) / (0.6 * characters) for heavy caps; a 12-character
-  title cannot use the same height fraction a 4-character one can. Once a reveal has
-  finished, no readable text may clip against an overflow mask or the frame edge.
+- SIZE THE HERO FROM ITS OWN STRING, never from a height fraction. Each bundled face lists
+  its measured width per uppercase character (the contract's font list); a height fraction
+  knows nothing about how long the title is or how wide the face runs, which is why it
+  fails in BOTH directions - long strings in a wide face overflow, short strings in a
+  narrow face come out timid.
+  Work it out explicitly, in this order:
+    charWidth = fontSize * capAdvance(face)     // capAdvance is given per face
+    lineWidth = charWidth * characters          // include the spaces
+  Choose fontSize so the settled hero line spans 55-80% of the frame width - that is a
+  FLOOR as much as a ceiling - and never more than 88%. A 4-character word therefore takes
+  a far larger fontSize than a 14-character one, in the same design.
+  VERY SHORT HEROES ARE THE EXCEPTION: at roughly three characters or fewer - a countdown
+  numeral, a monogram, "GO" - the width band stops meaning anything (one digit would demand
+  an absurd size to span half the frame), so HEIGHT governs instead: set such a hero to
+  about 35-60% of the frame height and let its width fall where it falls. The point of both
+  rules is the same - a hero that owns the frame - so never read the width band as licence
+  to shrink a single numeral until it spans 55%, and never let a short hero sit small just
+  because the arithmetic was written for words.
+  Then CHECK the result: at the settled moment no readable text may cross the frame edge or
+  clip against an overflow mask. A line set with white-space: nowrap has no safety net -
+  it will not wrap, it will simply run off the frame - so it must be sized to fit outright.
 - Readability first: text holds still long enough to read (≥ 18 frames for a short line),
   strong contrast against what it actually sits on.
 - Professional easing: springs and clamped interpolate curves with intent - decisive

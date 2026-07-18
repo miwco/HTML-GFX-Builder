@@ -66,6 +66,34 @@ export async function mockClaude(
   return { emits: () => emits };
 }
 
+/**
+ * Fail loudly when the dev server carries a REAL AI key.
+ *
+ * The suite pins offline mode through `webServer.env`, but `reuseExistingServer` means a
+ * server already running on this checkout's port is reused with whatever `.env` it started
+ * from. Since the video bench wants a real key in `.env` (scripts/video-bench.mjs), a
+ * hand-started server makes the stub-provider specs drive the REAL provider: they fail as a
+ * baffling "no assistant turn in 10s", and - the part that actually matters - each one fires
+ * a live generation and SPENDS MONEY. Observed six specs doing exactly that. Assert the
+ * transport before touching the wizard, so the failure names its own cause on the first line
+ * and no generation is ever started.
+ *
+ * Specs that mock the API at the network level (mockClaude + useFakeAiKey) seed their own
+ * key into localStorage and are unaffected; this guard is for the stub-provider specs.
+ */
+export async function expectOfflineAi(page: Page): Promise<void> {
+  const configured = await page.evaluate(async () => {
+    const { aiConfigured } = await import('/src/ai/settings.ts');
+    return aiConfigured();
+  });
+  expect(
+    configured,
+    'this spec needs the OFFLINE stub provider, but the dev server resolves AI as configured - ' +
+      "a hand-started server on this checkout's port is being reused with a real key in .env. " +
+      'Stop it and let the suite start its own (see CLAUDE.md "Verifying changes").',
+  ).toBe(false);
+}
+
 /** A fake key, so the real provider runs and the route above answers it. */
 export async function useFakeAiKey(page: Page): Promise<void> {
   await page.addInitScript(() =>

@@ -67,6 +67,16 @@ function substituteAssetRefs(html: string, assetMap: Map<string, string>): strin
   );
 }
 
+/**
+ * Resolve every `asset:<name>` reference to its data URL, for callers that need a portable
+ * document but not the driver - the source EXPORT. `asset:` is a NoaCG convention: nothing
+ * outside this app resolves it, so a downloaded composition that kept the reference would
+ * show a broken image, which is exactly what "the export is plug-and-play" forbids.
+ */
+export function inlineHyperframesAssets(html: string, assets: AssetFile[]): string {
+  return substituteAssetRefs(html, hyperframesAssetMap(assets));
+}
+
 /** A JSON payload safe to inline inside a <script> element. */
 function inlineJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
