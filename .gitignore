@@ -51,3 +51,6 @@ public/player-host/
 
 .vercel
 .env*.local
+
+# Generated bundled-font CSS for the render worker (from public/fonts)
+render-worker/remotion/*.generated.ts

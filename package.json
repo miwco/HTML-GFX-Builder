@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test --config=playwright.live.config.ts",
-    "postinstall": "node scripts/dev-port.mjs && node scripts/build-player-host.mjs"
+    "postinstall": "node scripts/dev-port.mjs && node scripts/gen-video-font-css.mjs && node scripts/build-player-host.mjs"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

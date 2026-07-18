@@ -14,8 +14,10 @@
 import React from 'react';
 import * as JsxRuntime from 'react/jsx-runtime';
 import * as Remotion from 'remotion';
-import { AbsoluteFill, cancelRender } from 'remotion';
+import { AbsoluteFill, cancelRender, continueRender, delayRender } from 'remotion';
 import type { RemotionRenderManifest } from '../../src/render/manifest';
+import { VIDEO_FONTS } from '../../src/video/videoFonts';
+import { VIDEO_FONT_FACE_CSS } from './videoFontFaces.generated';
 
 type UserComponent = React.ComponentType<Record<string, unknown>>;
 const moduleCache = new Map<string, UserComponent>();
@@ -44,6 +46,31 @@ function evalUserModule(compiledJs: string): UserComponent {
   moduleCache.set(compiledJs, candidate as UserComponent);
   return candidate as UserComponent;
 }
+
+/**
+ * Bundled video fonts, injected exactly as the live preview injects them (same data-URL
+ * @font-face rules, from the same public/fonts files) so the render uses the identical
+ * faces - WYSIWYG. A delayRender gate holds the render until the faces are registered, so
+ * no captured frame can paint fallback type. Data URLs mean no network, so the gate
+ * resolves in one microtask; the timeout is a defensive floor only.
+ */
+const VideoFonts: React.FC = () => {
+  const [handle] = React.useState(() => delayRender('Loading bundled video fonts', { timeoutInMilliseconds: 10_000 }));
+  React.useEffect(() => {
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
+        continueRender(handle);
+      }
+    };
+    Promise.all(VIDEO_FONTS.map((f) => document.fonts.load(`${f.weights[1]} 1em "${f.family}"`)))
+      .then(() => document.fonts.ready)
+      .then(finish, finish); // a font that fails to load must never hang the render
+    return () => finish();
+  }, [handle]);
+  return <style>{VIDEO_FONT_FACE_CSS}</style>;
+};
 
 /** Render/runtime errors inside the composition fail the JOB with the real message. */
 class UserErrorBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
@@ -79,6 +106,7 @@ export const UserComposition: React.FC<RemotionRenderManifest> = (manifest) => {
     manifest.output.format === 'mp4' ? (manifest.output.backgroundColor ?? '#000000') : undefined;
   return (
     <AbsoluteFill style={{ backgroundColor: background }}>
+      <VideoFonts />
       <UserErrorBoundary>
         <resolved.Comp {...(manifest.inputProps ?? {})} />
       </UserErrorBoundary>

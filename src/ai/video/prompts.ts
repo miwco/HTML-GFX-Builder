@@ -3,6 +3,8 @@
 // canonical example composition (a REAL module that passes the full pipeline - the taste
 // anchor, like lt01 is for SPX templates).
 
+import { videoFontFamiliesDoc } from '../../video/videoFonts';
+
 export const MOTION_PRINCIPLES = `## NoaCG motion-design principles (the permanent quality bar)
 - A COMMITTED CONCEPT: every piece is built around ONE memorable device you could name in
   a sentence ("the title assembles from sliced slabs", "a gold ribbon carries the
@@ -14,11 +16,13 @@ export const MOTION_PRINCIPLES = `## NoaCG motion-design principles (the permane
 - Purposeful movement: every animation exists to direct attention or express energy - no
   decoration-only motion. If removing a movement changes nothing, remove it.
 - Excellent typography: deliberate size CONTRAST (hero type 3-6x support type), tight
-  letter-spacing on large text, generous on small caps labels. System font stacks are fine
-  when chosen well (e.g. 'Arial Black', Helvetica for impact; Georgia for editorial).
-  Size EVERY piece of type from the frame (fractions of height/width), never a fixed px
-  value - a support/kicker line is around height*0.025-0.035; a hardcoded 22px kicker on a
-  1080p canvas is unreadably small.
+  letter-spacing on large text, generous on small caps labels. Prefer the BUNDLED broadcast
+  faces (listed in the contract) for hero type - the right face is the biggest single lever
+  on a premium look. A well-chosen system stack is still fine where nothing bundled fits
+  (e.g. Georgia / 'Times New Roman' for a serif/editorial look, since the bundled set is
+  sans/display/mono). Size EVERY piece of type from the frame (fractions of height/width),
+  never a fixed px value - a support/kicker line is around height*0.025-0.035; a hardcoded
+  22px kicker on a 1080p canvas is unreadably small.
 - THE TEXT FITS: the hero line must sit INSIDE the safe margins at its largest settled
   moment. Derive hero type size from the frame width AND the actual string length -
   roughly fontSize ≤ (width * 0.85) / (0.6 * characters) for heavy caps; a 12-character
@@ -109,6 +113,13 @@ export const REMOTION_CONTRACT = `## The composition contract (hard requirements
   real image slot exists; the "missing image -> designed substitute" rule above still applies.
 - Transparent projects: the root <AbsoluteFill> paints NO background. Opaque projects:
   paint a deliberate background (a designed dark gradient beats flat black).
+- BUNDLED FONTS - these broadcast faces are already loaded in BOTH the preview and the
+  final render; use one by writing its family name in fontFamily (with a fallback), e.g.
+  \`fontFamily: '"Bebas Neue", "Arial Narrow", Arial, sans-serif'\`. Available:
+${videoFontFamiliesDoc()}
+  Do NOT @font-face, import, link, or fetch a font - they are pre-injected, and any
+  network/URL font load is rejected by the validator. A system stack (Arial, Georgia, …)
+  is allowed where none of the above fits (there is no bundled serif).
 - Write clean, readable code a motion designer can edit: descriptive names, short comments
   explaining the WHY of each phase, timing constants gathered near the top. No cleverness,
   no premature abstraction.
@@ -222,7 +233,7 @@ export default function Composition({
                 position: 'relative',
                 transform: \`translateY(\${(1 - titleIn) * 110}%)\`,
                 color: '#f4f5f7',
-                fontFamily: '"Arial Black", "Arial Bold", Arial, sans-serif',
+                fontFamily: '"Archivo", "Arial Black", Arial, sans-serif', // a bundled face
                 fontSize: Math.round(height * 0.13),
                 fontWeight: 900,
                 letterSpacing: '0.01em',
@@ -249,7 +260,7 @@ export default function Composition({
           <div
             style={{
               marginTop: Math.round(height * 0.018),
-              fontFamily: 'Arial, Helvetica, sans-serif',
+              fontFamily: '"Inter", Arial, Helvetica, sans-serif', // a bundled face
               fontSize: Math.round(height * 0.028),
               fontWeight: 700,
               letterSpacing: '0.18em',

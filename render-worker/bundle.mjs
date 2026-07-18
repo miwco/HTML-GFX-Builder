@@ -7,11 +7,22 @@
 //   node render-worker/bundle.mjs      -> render-worker/bundle/
 
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { rmSync } from 'node:fs';
+import { existsSync, rmSync } from 'node:fs';
 import { bundle } from '@remotion/bundler';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+
+// The bundled-font CSS module (gitignored, generated from public/fonts) must exist before
+// the Remotion bundle imports it. Deploy runs this file with a fresh checkout, so generate
+// it here too - postinstall does the same for local dev.
+const genScript = path.join(HERE, '..', 'scripts', 'gen-video-font-css.mjs');
+if (existsSync(genScript)) {
+  console.log('generating bundled video fonts…');
+  execSync(`node "${genScript}"`, { stdio: 'inherit' });
+}
+
 const outDir = path.join(HERE, 'bundle');
 rmSync(outDir, { recursive: true, force: true });
 

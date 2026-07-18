@@ -125,13 +125,25 @@ product, not the answer; produce an original design that could sit next to them 
 brief always outranks the reference*. Feed two cards when the brief is ambiguous so no
 single card becomes the new attractor.
 
-### 3.3 Bundle the seven fonts into the video world (mechanical, permanent ceiling lift)
+### 3.3 Bundle the seven fonts into the video world (DONE - mechanical ceiling lift)
 
-Inject @font-face for the bundled woff2 set into the player host document and the render
-worker (data-URL or served file, both offline-safe), declare the available families in
-REMOTION_CONTRACT, and teach the skills which families suit which genre (the catalog
-already maps styleTags). Every output benefits; no output is forced to change. Parity
-rule: preview and render must load the same faces, or WYSIWYG breaks.
+Shipped. The seven OFL faces are now available to every composition in both the preview
+and the final render. Design (single source of truth = src/video/videoFonts.ts):
+- The @font-face rules are built once (videoFontFaceCss) and injected identically into
+  both worlds as DATA URLs (the preview iframe has an opaque origin, so a served font URL
+  would be a cross-origin CORS request every static server refuses - the bytes must be
+  embedded, exactly like the host's inlined JS).
+- Preview: scripts/build-player-host.mjs inlines the @font-face block + a boot warm-load
+  into the host page, and folds the font CSS into its build-hash so a font change rebuilds.
+- Render: scripts/gen-video-font-css.mjs emits render-worker/remotion/videoFontFaces.
+  generated.ts (gitignored; regenerated in postinstall and at the top of bundle.mjs), which
+  UserComposition injects behind a delayRender document.fonts gate so no captured frame
+  paints fallback type.
+- Contract: REMOTION_CONTRACT lists the families with genre hints, forbids @font-face /
+  import / fetch of a font (they are pre-injected - this also removes the network-URL
+  temptation that rejected a run in §5b), and the canonical example now sets a bundled face.
+Verified: all seven resolve in the live preview (distinct glyph widths, not fallback) and
+the render bundle embeds the data URLs.
 
 ### 3.4 License the full palette space
 

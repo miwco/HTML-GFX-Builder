@@ -136,13 +136,16 @@ src/
                scripts/ai-compare.mjs and src/ai/CLAUDE.md
   ai/video/    the VIDEO motion-design harness ("Video or animation with AI"): staged
                generation - keyword-first skill detection (skills.ts; one cheap Haiku
-               call only when nothing matches) -> Motion Director (forced emit_motion_plan
-               tool, a timed plan) -> Remotion coder (forced emit_remotion_module tool
-               against prompts.ts: the composition contract + motion principles + a
-               canonical example module that itself passes the pipeline) -> bounded
-               repair (2 rounds, exact validator errors with frame numbers fed back).
-               stubVideoProvider serves offline; refinements send recent chat + the
-               current module and ask for minimal change
+               call only when nothing matches) + design-DNA reference cards
+               (referenceCards.ts, keyword-picked, injected as inspiration not a template)
+               -> Motion Director (forced emit_motion_plan tool, a timed plan) -> Remotion
+               coder (forced emit_remotion_module tool against prompts.ts: the composition
+               contract + motion principles + a canonical example module that itself passes
+               the pipeline) -> bounded repair (2 rounds, exact validator errors with frame
+               numbers fed back). The skills are technique MENUS (commit to one device),
+               not recipes; the contract lists the BUNDLED FONTS (src/video/videoFonts.ts)
+               the composition may use. stubVideoProvider serves offline; refinements send
+               recent chat + the current module and ask for minimal change
   video/       the composition pipeline for the video project kind: compile.ts (sucrase
                TSX->CJS + static contract checks: imports limited to react/remotion,
                deterministic frame-derived animation, no network/DOM), validate.ts
@@ -150,7 +153,12 @@ src/
                playerBridge.ts (the postMessage client for the sandboxed player host;
                SERIALIZED load/probe, disposed bridges resolve immediately),
                bridgeRegistry.ts, types.ts (asset logical names - the `assets` prop
-               contract)
+               contract), and videoFonts.ts - the SINGLE SOURCE of the bundled broadcast
+               fonts (the same OFL faces model/fonts.ts ships), built into DATA-URL
+               @font-face and injected identically into the preview (build-player-host.mjs
+               inlines it - the opaque-origin iframe can't fetch fonts) and the render
+               (scripts/gen-video-font-css.mjs -> render-worker, behind a delayRender gate),
+               so preview == render
   validation/  validateTemplate.ts - runs before export and on AI output - and
                runtimeBench.ts: the live-iframe bench (lifecycle, field binding, overlap/
                overflow, doubled-text stress, house editability) the app injects into every

@@ -10,13 +10,26 @@ import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const hostDir = join(root, 'player-host');
 const outDir = join(root, 'public', 'player-host');
+const fontsDir = join(root, 'public', 'fonts');
 const hashFile = join(outDir, '.build-hash');
 const force = process.argv.includes('--force');
+
+// The bundled video fonts, as data-URL @font-face rules inlined into the host page. The
+// host iframe runs with an opaque origin (sandbox without allow-same-origin), so a served
+// font URL would be a cross-origin CORS request every static server refuses - the bytes
+// must be EMBEDDED, exactly like the host's inlined JS. Same source + builder as the
+// render worker (src/video/videoFonts.ts), so preview and render use identical faces.
+const { videoFontFaceCss, VIDEO_FONTS } = await import(pathToFileURL(join(root, 'src', 'video', 'videoFonts.ts')).href);
+const fontDataUrl = (file) => `data:font/woff2;base64,${readFileSync(join(fontsDir, file)).toString('base64')}`;
+const videoFontCss = videoFontFaceCss(fontDataUrl);
+// Warm the faces at boot so the first composition to mount paints real type, not fallback
+// (@font-face is otherwise lazy - registered only on first use).
+const fontWarmScript = `[${VIDEO_FONTS.map((f) => JSON.stringify(f.family)).join(',')}].forEach(function(f){try{document.fonts.load('700 1em "'+f+'"');}catch(e){}});`;
 
 function* walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -39,6 +52,9 @@ function sourceHash() {
     h.update(f.slice(hostDir.length));
     h.update(readFileSync(f));
   }
+  // The inlined font CSS is part of the output, so a font (or list) change must invalidate
+  // the cached build even though no host source changed.
+  h.update(videoFontCss);
   return h.digest('hex');
 }
 
@@ -83,6 +99,16 @@ html = html.replace(/<script type="module"[^>]*src="\.\/(assets\/[^"]+)"[^>]*><\
 });
 if (/src="\.\/assets\//.test(html)) {
   console.error('[player-host] inlining failed - external asset references remain');
+  process.exit(1);
+}
+
+// Inline the bundled video fonts (@font-face data URLs) + a boot-time warm script into the
+// head, so compositions render real broadcast type and the very first mount isn't fallback.
+const fontBlock = `<style id="noacg-video-fonts">\n${videoFontCss}\n</style>\n<script>${fontWarmScript}</script>\n`;
+if (html.includes('</head>')) {
+  html = html.replace('</head>', `${fontBlock}</head>`);
+} else {
+  console.error('[player-host] no </head> to inject fonts into');
   process.exit(1);
 }
 writeFileSync(indexPath, html);

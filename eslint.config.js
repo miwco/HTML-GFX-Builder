@@ -14,6 +14,7 @@ export default tseslint.config(
       '.claude/',
       '.render-dev/',
       'render-worker/bundle/', // webpack output (render-worker/bundle.mjs), not source
+      'render-worker/remotion/*.generated.ts', // data-URL font CSS (scripts/gen-video-font-css.mjs)
       'src/assets/gsap.min.js',
       'example_projects/', // vendored SPX reference packs, not ours to lint
       'playwright-report/',
