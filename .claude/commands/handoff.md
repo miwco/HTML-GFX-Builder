@@ -1,5 +1,5 @@
 ---
-description: End-of-session handoff for NoaCG Studio - a pasteable prompt for the next session, and whether this chat is safe to archive
+description: End-of-session handoff for NoaCG Studio - what should be done next, and whether this chat is safe to archive
 argument-hint: [optional note about what to focus on or what you know is unfinished]
 ---
 
@@ -8,30 +8,36 @@ is typically already committed, merged, pushed, and validated. Do NOT redo that 
 
 Optional focus from the user: $ARGUMENTS
 
-## Output - exactly two sections, nothing else
+## Output
 
-The user reads only these. No "what happened" summary, no hygiene checklist, no validation
-status section, no mention of other branches or worktrees (they prune those deliberately, in
+**The question this command answers is "what should be done next?"** Everything else is
+optional weight. No "what happened" summary, no hygiene checklist, no validation status
+section, no mention of other branches or worktrees (the user prunes those deliberately, in
 their own sessions).
 
-### 1. Pasteable prompt for the next session
+### 1. What's next
 
-One fenced code block, self-contained, for a cold reader in a fresh Claude Code or Codex
-session. It carries everything the dropped sections would have said:
+A short list, best next step first. Concrete enough to act on without re-reading the chat.
+Scope it to THIS session's line of work - never "go merge branch X". Include:
 
-- what was completed, and the repo/branch state if it matters;
-- what remains - **including anything known only from this chat**: a half-done feature, a bug
-  found but not fixed, a design agreed but not built, a decision deferred. This is the most
-  valuable content here; git cannot reconstruct it and archiving destroys it;
-- any blocking step the work implies - a `supabase/` migration, a `VITE_*` env var, a
-  `render-worker`/`player-host` rebuild, a nested `CLAUDE.md` or `docs/GOALS.md` now wrong;
-- key constraints or decisions, pointing at the right nested `CLAUDE.md`; known risks;
-- the best next step.
+- **Unfinished work known only from this chat** - a half-done feature, a bug found but not
+  fixed, a design agreed but not built, a decision deferred. This is the most valuable line in
+  the output: git cannot reconstruct it and archiving the chat destroys it.
+- **A blocking step the work implies** - a `supabase/` migration, a `VITE_*` env var, a
+  `render-worker`/`player-host` rebuild, a nested `CLAUDE.md` or `docs/GOALS.md` now wrong.
+- **Optional follow-ups**, clearly marked as optional so they are easy to skip.
 
-Scope it to THIS session's line of work - never "go merge branch X". No transcript dump. If
-nothing remains, still give a compact context prompt in case the user revisits the area.
+If there is genuinely nothing to do next, say so in one line. Don't invent work.
 
-### 2. Bottom line
+### 2. Pasteable prompt - only if work remains
+
+A single self-contained code block for a fresh Claude Code or Codex session: what was
+completed, repo/branch state if it matters, the remaining work, key constraints or decisions
+(point at the right nested `CLAUDE.md`), known risks, the best next step. No transcript dump.
+
+Skip this section entirely when nothing remains - don't pad it out to look complete.
+
+### 3. Bottom line
 
 One or two lines, last. Lead with exactly one of these, verbatim, then why, in plain language:
 
