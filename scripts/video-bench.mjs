@@ -240,12 +240,15 @@ for (const example of selected) {
           seen.set(issue.key, entry);
         }
       }
-      // An OCCLUSION at any hold sample is a finding (text buried behind a panel for part
-      // of the hold is still buried). A CLIP must persist across EVERY sample: text still
-      // emerging from a mask at the first sample is an entrance, not a defect — the same
-      // rule the injected validator applies, for the same reason.
+      // A CLIP must persist across EVERY sample (text still emerging from a mask at the
+      // first sample is an entrance, not a defect) — the same rule the injected validator
+      // applies. An OCCLUSION needs a MAJORITY: it can legitimately cover part of the hold,
+      // but a single sample is not enough. Measured, not guessed: a benched countdown put
+      // its outgoing digit behind the dial for exactly one sample mid-swap — a transition
+      // working as designed, reported as a defect under the old any-sample rule.
+      const minSamples = (kind) => (kind === 'clip' ? CHECK_FRACTIONS.length : 2);
       const issues = [...seen.values()]
-        .filter((e) => (e.kind === 'clip' ? e.fracs.length === CHECK_FRACTIONS.length : true))
+        .filter((e) => e.fracs.length >= minSamples(e.kind))
         .map((e) => `@${e.fracs.map((f) => `${Math.round(f * 100)}%`).join(',')}: ${e.message}`);
 
       results.push({ id, label, run, ok: !rejected, summary, inputs: state.inputs, shots, issues, rejectionErrors });

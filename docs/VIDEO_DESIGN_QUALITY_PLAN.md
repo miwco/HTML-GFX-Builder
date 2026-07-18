@@ -301,7 +301,31 @@ All three landed; §6.1 records the decisions worth knowing.
   player host by scripts/build-player-host.mjs and into the composed document by
   hyperframes/compose.ts, exactly as the bundled fonts already do. The frame choice and the
   persistence rule are shared as a normal module (src/video/readability.ts).
-- **Not yet measured on real output**: the thresholds are calibrated against two hand-written
-  reproductions of the known failures, not a bench corpus. A bench run (§5's arms, or just the
-  neutral briefs) is what would confirm the false-positive rate; until then the demotion above
-  is what bounds the cost of being wrong.
+### 6.2 Measured on real output (14 generations, Sonnet 5)
+
+`bench-clip-briefs` (the 3 neutral briefs ×2) and `bench-clip-chips` (the 4 rewritten chips
+×2). Findings, all verified against the frame strips rather than the pass count:
+
+- **False positives: none.** 13 of the 14 compositions render their type intact at the hold,
+  and the check stayed silent on every one. The cooking brief - which produced "KITCH" twice
+  in the baseline - now renders "SUNDAY KITCHEN" complete in both runs.
+- **A blind spot the corpus exposed, now fixed.** The 14th (a logo reveal) rendered a
+  COMPLETELY BLANK frame - glyph halves absolutely positioned inside a zero-height
+  overflow:hidden wrapper - and every check scored it clean. The cause was the check's own
+  "big enough to matter" gate: it measured the ELEMENT's box, and type clipped away entirely
+  has a zero-area box. So total clipping was invisible while partial clipping was caught,
+  exactly backwards. The clip check now gates on the GLYPH extent; re-probing the whole
+  corpus afterwards, the broken one is flagged at both hold frames (so it would drive a
+  repair round) and all 13 good ones stay silent.
+- **The occlusion rule was too eager.** A benched countdown put its outgoing digit behind the
+  dial for exactly ONE sample mid-swap - a transition working as designed, reported as a
+  defect by the any-sample rule. Occlusion now needs a MAJORITY of the hold samples; clipping
+  still needs all of them.
+- **Still unaddressed: safe-area margins.** An awards reveal set its headline running nearly
+  frame-edge to frame-edge (~8% side margin). Nothing is cut, so the clip check is right to
+  stay quiet - but this is the second failure class §6 named, and it needs its own rule
+  (glyph extent vs a safe-area inset), not a wider clip threshold.
+
+**The tool that made this cheap:** `scripts/probe-composition.mjs` replays a SAVED module
+through the real player host and prints the findings, spending nothing. Run the bench once,
+then iterate on the checks against its whole output directory as often as you like.

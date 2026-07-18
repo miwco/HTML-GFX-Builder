@@ -61,11 +61,22 @@
     return (el.textContent || '').trim().slice(0, 28);
   }
 
+  /** Text smaller than this on screen is decoration, not the hero - ignored by both checks. */
+  var MIN_AREA_PX = 500;
+
   /**
    * Every element that renders its OWN readable text: visible, not tiny, carrying a direct
-   * non-empty text node, and big enough on screen to matter. Both checks start here.
+   * non-empty text node. Both checks start here.
+   *
+   * `requireBoxArea` is the difference between them, and it is load-bearing. Occlusion
+   * hit-tests sample points, so it needs an element with a real box. CLIPPING must NOT gate
+   * on the box: an element clipped away ENTIRELY has a zero-area box (a real failure seen in
+   * the bench - glyph halves absolutely positioned inside a zero-height overflow:hidden
+   * span, rendering a completely blank frame that every check scored clean). Gating on the
+   * box made total clipping invisible while partial clipping was caught - exactly backwards.
+   * The clip check gates on the GLYPH extent instead (see clipIssues).
    */
-  function readableTextElements(doc, win) {
+  function readableTextElements(doc, win, requireBoxArea) {
     var out = [];
     var all = doc.querySelectorAll('body *');
     for (var i = 0; i < all.length; i++) {
@@ -79,8 +90,11 @@
         if (node.nodeType === 3 && (node.textContent || '').trim()) ownText = true;
       }
       if (!ownText) continue;
-      var r = el.getBoundingClientRect();
-      if (r.width > 0 && r.width * r.height > 500) out.push(el);
+      if (requireBoxArea) {
+        var r = el.getBoundingClientRect();
+        if (!(r.width > 0 && r.width * r.height > MIN_AREA_PX)) continue;
+      }
+      out.push(el);
     }
     return out;
   }
@@ -154,11 +168,14 @@
   /** Text whose glyphs are cut by the frame edge or by an overflow-clipping ancestor. */
   function clipIssues(doc, win) {
     var issues = [];
-    var texts = readableTextElements(doc, win);
+    // No box-area gate here (see readableTextElements): the glyph extent decides what counts
+    // as hero text, so type clipped away to nothing is still measured.
+    var texts = readableTextElements(doc, win, false);
     for (var i = 0; i < texts.length; i++) {
       var el = texts[i];
       var text = textExtent(el, doc);
       if (!text || width(text) <= 0 || height(text) <= 0) continue;
+      if (width(text) * height(text) <= MIN_AREA_PX) continue;
 
       var found = clipRegion(el, win);
       var region = selfClip(el, win, found.region);
@@ -220,7 +237,7 @@
    */
   function occlusionIssues(doc, win) {
     var issues = [];
-    var texts = readableTextElements(doc, win);
+    var texts = readableTextElements(doc, win, true);
     for (var i = 0; i < texts.length; i++) {
       var el = texts[i];
       var r = el.getBoundingClientRect();

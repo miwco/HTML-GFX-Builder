@@ -42,6 +42,20 @@ const CLIPPED_TEXT = `
   };
 `;
 
+/** Type clipped away ENTIRELY: the glyph sits in an absolutely-positioned span inside a
+ *  zero-height overflow:hidden wrapper, so the frame renders blank. Taken from a real bench
+ *  logo reveal that shipped a completely empty composition and scored clean - the element's
+ *  own box has zero area, which is why the check must measure the GLYPHS, not the box. */
+const CLIPPED_TO_NOTHING = `
+  const React = require('react');
+  const R = require('remotion');
+  exports.default = function C() {
+    return React.createElement(R.AbsoluteFill, { style: { background: '#101318', alignItems: 'center', justifyContent: 'center' } },
+      React.createElement('span', { style: { position: 'relative', display: 'inline-block', overflow: 'hidden', width: '0.62em', fontSize: 160, fontWeight: 900 } },
+        React.createElement('span', { style: { position: 'absolute', inset: 0, color: '#fff' } }, 'MERIDIAN')));
+  };
+`;
+
 /** The same headline, given room. Nothing to report - the false-positive guard. */
 const FITTED_TEXT = `
   const React = require('react');
@@ -167,4 +181,14 @@ test('the probe reports text clipped at the check frames - and stays quiet when 
   await post(page, { type: 'probe', id: 9, frames: [0, 45, 89], checkFrames: [45, 58] });
   await expect.poll(async () => (await probeResults()).length).toBe(2);
   expect((await probeResults())[1].textIssues).toEqual([]);
+
+  // Type clipped away to NOTHING - the worst case, and the one a box-area filter hides,
+  // because the element's own rect has zero area while the glyphs are fully cropped.
+  await post(page, { type: 'load', id: 10, compiledJs: CLIPPED_TO_NOTHING, settings: SETTINGS, inputProps: {}, assets: [], autoplay: false });
+  await expect.poll(() => eventsOfType(page, 'loaded')).toHaveLength(3);
+  await post(page, { type: 'probe', id: 10, frames: [0, 45, 89], checkFrames: [45, 58] });
+  await expect.poll(async () => (await probeResults()).length).toBe(3);
+  const blank = (await probeResults())[2];
+  expect(blank.textIssues.length).toBeGreaterThan(0);
+  expect(blank.textIssues[0].message).toContain('MERIDIAN');
 });
