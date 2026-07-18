@@ -10,6 +10,7 @@ import { saveAs } from 'file-saver';
 import gsapSource from '../../assets/gsap.min.js?raw';
 import { useVideoProjectStore } from '../../store/videoProjectStore';
 import { loadHyperframesFontCss } from '../../video/hyperframes/fontCss';
+import { inlineHyperframesAssets } from '../../video/hyperframes/compose';
 import { isRenderConfigured } from '../../render/config';
 import VideoRenderPanel from './VideoRenderPanel';
 
@@ -26,9 +27,13 @@ export default function VideoExportPanel() {
       const head =
         (fontCss ? `<style>/* Bundled broadcast fonts */\n${fontCss}\n</style>\n` : '') +
         `<script>/* GSAP (bundled) */\n${gsapSource}\n</script>`;
-      const html = /<head[^>]*>/i.test(project.html)
-        ? project.html.replace(/<head[^>]*>/i, (m) => `${m}\n${head}`)
-        : head + project.html;
+      // Uploaded images ride along as data URLs too: `asset:<name>` is a NoaCG convention,
+      // so a downloaded file that kept the reference would show a broken image everywhere
+      // except inside this app.
+      const source = inlineHyperframesAssets(project.html, project.assets);
+      const html = /<head[^>]*>/i.test(source)
+        ? source.replace(/<head[^>]*>/i, (m) => `${m}\n${head}`)
+        : head + source;
       saveAs(new Blob([html], { type: 'text/html;charset=utf-8' }), `${stem}.html`);
       return;
     }

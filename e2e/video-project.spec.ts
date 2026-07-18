@@ -4,6 +4,7 @@
 // switch leaving the SPX project untouched.
 
 import { test, expect, type Page } from '@playwright/test';
+import { expectOfflineAi } from './_video';
 
 /** The player host iframe's content (Playwright reaches into sandboxed frames). */
 function player(page: Page) {
@@ -22,6 +23,9 @@ async function waitForGeneration(page: Page) {
 
 async function createCountdownProject(page: Page): Promise<void> {
   await page.goto('/app');
+  // Offline-stub spec: a reused server carrying a real key would drive the real provider,
+  // fail as a baffling timeout, and spend money doing it.
+  await expectOfflineAi(page);
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   // The countdown example chip fills the prompt; Create is instant (generation runs in
   // the editor chat via the offline stub).
@@ -32,6 +36,9 @@ async function createCountdownProject(page: Page): Promise<void> {
 
 async function createStingerProject(page: Page): Promise<void> {
   await page.goto('/app');
+  // Offline-stub spec: a reused server carrying a real key would drive the real provider,
+  // fail as a baffling timeout, and spend money doing it.
+  await expectOfflineAi(page);
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   await page.getByRole('button', { name: 'Sports stinger', exact: true }).click();
   await page.getByTestId('video-create').click();
@@ -61,6 +68,9 @@ test('the logo-reveal example renders a designed wordmark, not a placeholder', a
   // The built-in examples act as acceptance tests. With no logo uploaded, the reveal must
   // set a real typographic wordmark - never a grey box or the literal text "LOGO".
   await page.goto('/app');
+  // Offline-stub spec: a reused server carrying a real key would drive the real provider,
+  // fail as a baffling timeout, and spend money doing it.
+  await expectOfflineAi(page);
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   await page.getByRole('button', { name: 'Logo reveal', exact: true }).click();
   await page.getByTestId('video-create').click();
@@ -80,6 +90,9 @@ test('a generic prompt renders the default title sample without errors', async (
   // exercise that path, and a duplicate `const title` once made it crash at load with
   // "Identifier 'title' has already been declared". It must compile and render.
   await page.goto('/app');
+  // Offline-stub spec: a reused server carrying a real key would drive the real provider,
+  // fail as a baffling timeout, and spend money doing it.
+  await expectOfflineAi(page);
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   await page.getByTestId('video-prompt').fill('a nice clean opener for my channel');
   await page.getByTestId('video-create').click();
@@ -166,6 +179,9 @@ test('image inputs: the Content panel picks an uploaded asset that renders in th
   // so it adds no bytes to the render manifest. The reveal shows the wordmark until one is
   // picked, then swaps to the image LIVE (through set-props, no recompile).
   await page.goto('/app');
+  // Offline-stub spec: a reused server carrying a real key would drive the real provider,
+  // fail as a baffling timeout, and spend money doing it.
+  await expectOfflineAi(page);
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   await page.getByRole('button', { name: 'Logo reveal', exact: true }).click();
   await page.getByTestId('video-create').click();

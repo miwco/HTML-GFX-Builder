@@ -34,6 +34,51 @@ const FORBIDDEN: { re: RegExp; what: string; instead: string }[] = [
   { re: /\.play\s*\(/, what: 'calling .play()', instead: 'the timeline stays paused - the driver (and the renderer) seek it; never start playback yourself' },
 ];
 
+/**
+ * XML namespace URIs are IDENTIFIERS, never fetched - the browser matches them as strings.
+ * They must not read as "this document goes to the network": an inline <svg> carries
+ * xmlns="http://www.w3.org/2000/svg" as a matter of course, and rejecting it fails a
+ * perfectly offline composition. Observed burning BOTH repair rounds on a countdown that
+ * drew its ring pulse in SVG - the repair message told the model to reference an uploaded
+ * asset instead, which is meaningless advice for a namespace, so the round was unwinnable
+ * by construction and the generation failed outright.
+ */
+const NAMESPACE_URLS = [
+  'http://www.w3.org/2000/svg',
+  'http://www.w3.org/1999/xlink',
+  'http://www.w3.org/1999/xhtml',
+  'http://www.w3.org/2000/xmlns/',
+  'http://www.w3.org/XML/1998/namespace',
+];
+
+/**
+ * The first URL the document would actually FETCH, or null. Comments are stripped first (a
+ * URL in a comment is documentation, not a request) and namespace URIs are excluded. Every
+ * other http(s) reference - a remote image, a stylesheet, a font, a script - still fails,
+ * which is the whole point of the rule.
+ */
+function findRemoteUrl(html: string): string | null {
+  const withoutComments = html.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const m of withoutComments.matchAll(/https?:\/\/[^\s"'()<>]*/g)) {
+    if (!NAMESPACE_URLS.some((ns) => m[0] === ns || m[0].startsWith(`${ns}/`))) return m[0];
+  }
+  return null;
+}
+
+/**
+ * Does anything in the document actually read this variable? These three are the complete
+ * set of routes a value can take into a composition - the driver substitutes `data-var-text`
+ * and sets `--<id>` on the composition root, and compose resolves `data-var-src` to an asset
+ * URL - so a variable matched by none of them is inert by construction.
+ */
+function isVariableBound(html: string, id: string): boolean {
+  const safe = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return (
+    new RegExp(`data-var-(?:text|src)\\s*=\\s*["']${safe}["']`).test(html) ||
+    new RegExp(`var\\(\\s*--${safe}\\b`).test(html)
+  );
+}
+
 /** Static contract checks on the SOURCE (before/independent of the live probe). */
 export function staticValidateHyperframes(html: string, assets: AssetFile[], settings: VideoCompSettings): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -87,10 +132,11 @@ export function staticValidateHyperframes(html: string, assets: AssetFile[], set
       message: '<video>/<audio> elements are not supported in HyperFrames projects yet - build the piece from images, text, and shapes.',
     });
   }
-  if (/https?:\/\//.test(html)) {
+  const remote = findRemoteUrl(html);
+  if (remote) {
     issues.push({
       rule: 'network-url',
-      message: `http(s):// URLs are not allowed - reference uploaded assets as asset:<name>; everything must work offline.${quoteMatch(html, /https?:\/\//)}`,
+      message: `The document loads ${remote} over the network - nothing may be fetched at render time. Reference uploaded assets as asset:<name>, or draw the element instead. (XML namespace URIs like xmlns="http://www.w3.org/2000/svg" are fine - they are identifiers, not downloads.)`,
     });
   }
 
@@ -114,6 +160,19 @@ export function staticValidateHyperframes(html: string, assets: AssetFile[], set
       issues.push({
         rule: 'variables',
         message: `Variable "${v.id}" has unknown type "${v.type}" - use string, number, color, boolean, enum, or image.`,
+      });
+    } else if (!isVariableBound(html, v.id)) {
+      // A declared-but-unbound variable renders a control in the Content panel that does
+      // nothing when the user changes it - a promise the document does not keep. Nothing
+      // else catches it: the document is otherwise perfectly legal. The contract asks the
+      // model for this and it mostly complies, but "mostly" ships broken controls (measured
+      // at 1 in 6 generations, then 3 in 36), so the platform enforces it.
+      issues.push({
+        rule: 'variables',
+        message:
+          `Variable "${v.id}" is declared but nothing reads it, so its control would do nothing. ` +
+          `Bind it - data-var-text="${v.id}" on a text element, data-var-src="${v.id}" on an image, ` +
+          `or read it in CSS as var(--${v.id}, <fallback>) - or remove the declaration.`,
       });
     }
   }

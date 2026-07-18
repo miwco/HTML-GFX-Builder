@@ -30,6 +30,16 @@ export interface VideoFont {
   file: string;
   /** Variable-font weight range the single file covers. */
   weights: [number, number];
+  /**
+   * MEASURED average glyph advance per character, in em, for uppercase text at the face's
+   * heaviest weight - measured in Chromium off the bundled woff2, not estimated. The AI
+   * needs this to size hero type: the faces differ by nearly 2x (Archivo 0.74, Bebas Neue
+   * 0.38), so one generic "~0.6 per character" guess simultaneously overflows the wide
+   * faces and leaves the narrow ones timid and under-scale. Both were observed before this
+   * existed - a fixture line clipped at both frame edges, and titles spanning a third of
+   * the frame - from the same single wrong constant.
+   */
+  capAdvance: number;
   /** One-line genre hint the AI reads (which look each face suits). */
   hint: string;
 }
@@ -40,6 +50,7 @@ export const VIDEO_FONTS: VideoFont[] = [
     fallback: 'Arial, sans-serif',
     file: 'inter.woff2',
     weights: [400, 800],
+    capAdvance: 0.68,
     hint: 'neutral workhorse sans - clean captions, body, UI-style labels',
   },
   {
@@ -47,6 +58,7 @@ export const VIDEO_FONTS: VideoFont[] = [
     fallback: 'Arial, sans-serif',
     file: 'space-grotesk.woff2',
     weights: [400, 700],
+    capAdvance: 0.61,
     hint: 'modern technical grotesque - the NoaCG display face, tech/product feel',
   },
   {
@@ -54,6 +66,7 @@ export const VIDEO_FONTS: VideoFont[] = [
     fallback: 'Arial, sans-serif',
     file: 'archivo.woff2',
     weights: [400, 900],
+    capAdvance: 0.74,
     hint: 'sturdy grotesque; heavy weights hit hard - sport, bold confident titles',
   },
   {
@@ -61,6 +74,7 @@ export const VIDEO_FONTS: VideoFont[] = [
     fallback: '"Arial Narrow", Arial, sans-serif',
     file: 'oswald.woff2',
     weights: [400, 700],
+    capAdvance: 0.52,
     hint: 'condensed uppercase - big names in tight space, sport/news straps',
   },
   {
@@ -68,6 +82,7 @@ export const VIDEO_FONTS: VideoFont[] = [
     fallback: '"Arial Narrow", Arial, sans-serif',
     file: 'bebas-neue.woff2',
     weights: [400, 400],
+    capAdvance: 0.38,
     hint: 'tall all-caps display - poster impact, hero title cards',
   },
   {
@@ -75,6 +90,7 @@ export const VIDEO_FONTS: VideoFont[] = [
     fallback: 'Arial, sans-serif',
     file: 'manrope.woff2',
     weights: [400, 800],
+    capAdvance: 0.65,
     hint: 'soft rounded sans - social, streaming, friendly/approachable titles',
   },
   {
@@ -82,6 +98,7 @@ export const VIDEO_FONTS: VideoFont[] = [
     fallback: 'Consolas, "Courier New", monospace',
     file: 'jetbrains-mono.woff2',
     weights: [400, 700],
+    capAdvance: 0.60,
     hint: 'monospace - data, timecode, scores, technical small-caps labels',
   },
 ];
@@ -110,9 +127,15 @@ export function videoFontFaceCss(
   ).join('\n');
 }
 
-/** The bundled families as a list for the AI contract/skills (name + how to use each). */
+/**
+ * The bundled families as a list for the AI contract/skills: name, how to use each, and the
+ * MEASURED width per character. The width is there because the model cannot see the fonts -
+ * without it, it estimates, and a face 23% wider than the estimate (Archivo) overflows the
+ * frame while one 37% narrower (Bebas Neue) lands far short of it.
+ */
 export function videoFontFamiliesDoc(): string {
   return VIDEO_FONTS.map(
-    (f) => `  - "${f.family}" (weights ${f.weights[0]}-${f.weights[1]}): ${f.hint}`,
+    (f) =>
+      `  - "${f.family}" (weights ${f.weights[0]}-${f.weights[1]}, ~${f.capAdvance.toFixed(2)} em wide per uppercase character): ${f.hint}`,
   ).join('\n');
 }

@@ -6,6 +6,7 @@
 // next door (video-project.spec.ts) must stay untouched by all of this.
 
 import { test, expect, type Page } from '@playwright/test';
+import { expectOfflineAi } from './_video';
 
 /** The preview iframe's content (Playwright reaches into sandboxed srcdoc frames). */
 function player(page: Page) {
@@ -19,6 +20,9 @@ async function waitForGeneration(page: Page) {
 /** Create a HyperFrames project from the wizard (the stinger example -> the HF stinger sample). */
 async function createHyperframesProject(page: Page, useExample = true): Promise<void> {
   await page.goto('/app');
+  // These specs run on the offline stub; a reused server with a real key would drive the
+  // real provider and spend money. Say so before doing anything else.
+  await expectOfflineAi(page);
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   await expect(page.getByTestId('video-step')).toBeVisible();
   // The engine selector: Remotion is preselected; HyperFrames is the experimental card.
@@ -248,4 +252,69 @@ test('reload restores the HyperFrames project; export offers composition.html', 
   const contents = fs.readFileSync(path, 'utf8');
   expect(contents).toContain('data-composition-id');
   expect(contents).toContain('GSAP (bundled)');
+});
+
+test('the offline rule blocks real network loads without blocking XML namespaces', async ({ page }) => {
+  // The rule exists to stop the document FETCHING anything at render time. A bare
+  // /https?:\/\// match also hit xmlns="http://www.w3.org/2000/svg", so any composition
+  // that drew part of itself in SVG was rejected - and no repair round could fix it, since
+  // the namespace is what the markup needs. Both halves are pinned here: namespaces and
+  // URLs inside comments pass, every genuine remote load still fails.
+  await page.goto('/app');
+  const results = await page.evaluate(async () => {
+    const { staticValidateHyperframes } = await import('/src/video/hyperframes/validate.ts');
+    const settings = { width: 1920, height: 1080, fps: 30, durationInFrames: 150, transparent: false };
+    const doc = (body: string, head = '') =>
+      `<!doctype html><html lang="en"><head><style>body{margin:0}${head}</style></head><body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="5">${body}</div>
+<script>window.__timelines={};var tl=gsap.timeline({paused:true});window.__timelines['main']=tl;</script>
+</body></html>`;
+    const rules = (html: string) => staticValidateHyperframes(html, [], settings).map((i) => i.rule);
+    return {
+      inlineSvg: rules(doc('<svg xmlns="http://www.w3.org/2000/svg"><circle cx="5" cy="5" r="4"/></svg>')),
+      commentUrl: rules(doc('<!-- easing reference: https://greensock.com/docs --><div>x</div>')),
+      remoteImage: rules(doc('<img src="https://cdn.example.com/logo.png">')),
+      remoteFont: rules(doc('<div>x</div>', "@import url('https://fonts.googleapis.com/css?family=X');")),
+    };
+  });
+  expect(results.inlineSvg).not.toContain('network-url');
+  expect(results.commentUrl).not.toContain('network-url');
+  expect(results.remoteImage).toContain('network-url');
+  expect(results.remoteFont).toContain('network-url');
+});
+
+test('a declared variable nothing reads is rejected as a control that would do nothing', async ({ page }) => {
+  // Prompt guidance alone did not hold this: benchmarking saw an accent colour declared and
+  // then written as a hex literal, leaving a Content-panel control that changed nothing.
+  // Binding is deterministic and checkable, so the platform checks it.
+  await page.goto('/app');
+  const results = await page.evaluate(async () => {
+    const { staticValidateHyperframes } = await import('/src/video/hyperframes/validate.ts');
+    const settings = { width: 1920, height: 1080, fps: 30, durationInFrames: 90, transparent: false };
+    const doc = (vars: string, body: string, css = '') =>
+      `<!doctype html><html lang="en" data-composition-variables='${vars}'>
+<head><style>body{margin:0}${css}</style></head><body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="3">
+<section class="clip" data-start="0" data-duration="3" data-track-index="1">${body}</section></div>
+<script>window.__timelines={};var tl=gsap.timeline({paused:true});window.__timelines['main']=tl;</script>
+</body></html>`;
+    const unbound = (html: string) =>
+      staticValidateHyperframes(html, [], settings)
+        .filter((i) => /nothing reads it/.test(i.message))
+        .map((i) => i.message.match(/Variable "([^"]+)"/)?.[1]);
+    const TITLE = '[{"id":"title","type":"string","label":"T","default":"HELLO"}]';
+    const ACCENT = '[{"id":"accent","type":"color","label":"A","default":"#f6a623"}]';
+    return {
+      boundText: unbound(doc(TITLE, '<h1 data-var-text="title">HELLO</h1>')),
+      boundCss: unbound(doc(ACCENT, '<h1>HELLO</h1>', '#root h1 { color: var(--accent, #f6a623); }')),
+      boundImage: unbound(
+        doc('[{"id":"logo","type":"image","label":"L","default":"logo"}]', '<img data-var-src="logo" src="asset:logo" alt="">'),
+      ),
+      hardcoded: unbound(doc(ACCENT, '<h1>HELLO</h1>', '#root h1 { color: #f6a623; }')),
+    };
+  });
+  expect(results.boundText, 'data-var-text counts as bound').toEqual([]);
+  expect(results.boundCss, 'var(--id) in CSS counts as bound').toEqual([]);
+  expect(results.boundImage, 'data-var-src counts as bound').toEqual([]);
+  expect(results.hardcoded, 'a hex literal instead of var(--accent) is a dead control').toEqual(['accent']);
 });
