@@ -37,8 +37,9 @@ before merging).
 - Never stash or discard uncommitted changes without explicitly asking first.
 - If a merge hits conflicts you are not confident resolving, `git merge --abort` and
   report the conflicting files rather than guessing.
-- Do not remove any worktree or branch until the merge commit is confirmed to contain it
-  (`git branch --merged main`).
+- Never remove a worktree or delete a branch. Cleanup is out of scope for this command -
+  `/cleanup-worktrees` owns it and runs from the primary `main` checkout, where removal
+  actually works.
 - Never touch other worktrees' work. Merge only the ONE requested branch; its merge brings
   in only that branch's commits and must never overwrite or discard work living on other
   worktrees' branches. Do not `git checkout`/`switch`/`restore` files across worktrees, and
@@ -168,10 +169,10 @@ Do this immediately before merging - main may have moved on the remote while you
    local-only commits ahead of `origin/main`, you must already have the user's explicit
    confirmation that publishing them is intended.
 
-## Phase 5 - Finish and clean up
+## Phase 5 - Finish
 
 1. Confirm the branch is contained: `git branch --merged main` includes `<branch>`.
-2. Only then offer cleanup (ask, don't assume): `git worktree remove <path>` and
-   `git branch -d <branch>` (lowercase `-d` only - it refuses if not merged).
-3. Final report: merged commits, verified SHA now on `main`, build result, push result,
-   remaining worktrees.
+2. Final report: merged commits, verified SHA now on `main`, build result, push result.
+3. Do NOT remove the worktree or delete the branch, and do not offer to. Just note that
+   `/cleanup-worktrees` (run from the primary `main` checkout) sweeps merged branches and
+   their worktrees when the user wants them gone.
