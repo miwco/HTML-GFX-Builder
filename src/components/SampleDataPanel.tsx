@@ -87,7 +87,7 @@ export default function SampleDataPanel() {
       </div>
 
       {dataFields.length === 0 && (
-        <p className="muted">
+        <p className="hint">
           {placedDesign
             ? 'No fields on your design yet — add the first one below. It appears on the artwork, ready to drag into place.'
             : 'No editable data fields in this template.'}

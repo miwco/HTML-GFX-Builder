@@ -74,8 +74,11 @@ export default function ImportDesignStep({ art, images, resolution, onArt, onCle
 
   return (
     <div>
+      {/* Once the design is in, the drop zone steps DOWN to a quiet swap target: keeping it
+          at full height would give the loudest element on the step to an action the user has
+          already finished, and push everything that still matters below the fold. */}
       <div
-        className={`wz-drop ${dragOver ? 'over' : ''}`}
+        className={`wz-drop ${art ? 'compact' : ''} ${dragOver ? 'over' : ''}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); void take(e.dataTransfer.files); }}
@@ -90,11 +93,13 @@ export default function ImportDesignStep({ art, images, resolution, onArt, onCle
           style={{ display: 'none' }}
           onChange={(e) => { if (e.target.files) void take(e.target.files); e.target.value = ''; }}
         />
-        <strong>Drop your finished design here</strong>
-        <span className="hint">
-          The image you already made — a PNG with transparency keeps everything behind it
-          visible on air. It becomes the graphic itself; you add the fields in the editor.
-        </span>
+        <strong>{art ? 'Drop another design to replace it' : 'Drop your finished design here'}</strong>
+        {!art && (
+          <span className="hint">
+            The image you already made — a PNG with transparency keeps everything behind it
+            visible on air. It becomes the graphic itself; you add the fields in the editor.
+          </span>
+        )}
       </div>
 
       {error && <p className="status-bad" style={{ marginTop: 10 }}>✗ {error}</p>}

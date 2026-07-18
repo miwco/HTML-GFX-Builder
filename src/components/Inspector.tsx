@@ -749,6 +749,11 @@ const WEIGHT_OPTIONS = [
   { value: 800, label: 'Extra bold' },
 ];
 
+/** True when the native swatch can honestly represent the value (it only speaks hex). */
+function isHexColor(value: string | null): boolean {
+  return !!value && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
+}
+
 /** rgb()/#hex → #rrggbb for the native color input; non-hex values get a neutral swatch. */
 function styleHex(value: string): string {
   if (/^#[0-9a-f]{6}$/i.test(value)) return value;
@@ -928,7 +933,10 @@ function PlacedFieldStyle({
 
       {textStyle && (
         <>
-          <div className="inspector-group-label">Text</div>
+          {/* "Typography", not "Text": the Content group above already has a row called Text
+              (the value shown on air), and two different things under one word one screen
+              apart is exactly the confusion this panel exists to remove. */}
+          <div className="inspector-group-label">Typography</div>
           <div className="inspector-row">
             <span className="inspector-row-label" title="The line's typeface — bundled fonts ship inside the export">
               Font
@@ -976,13 +984,18 @@ function PlacedFieldStyle({
               </select>
             </span>
           </div>
+          {/* A line's colour is often the design's own `var(--text-color)`, which the native
+              swatch cannot show (it only speaks hex) — so the swatch renders as a neutral
+              "inherited" chip there instead of claiming to be white, and the value keeps the
+              full width. Picking a colour from the swatch replaces the variable, as it should. */}
           <div className="inspector-row">
             <span className="inspector-row-label">Color</span>
             <span className="inspector-row-edit">
               <input
                 type="color"
-                className="inspector-style-swatch"
+                className={`inspector-style-swatch${isHexColor(textStyle.color) ? '' : ' inherited'}`}
                 value={styleHex(textStyle.color ?? '#ffffff')}
+                title={isHexColor(textStyle.color) ? undefined : `From the design: ${textStyle.color ?? 'unset'}`}
                 data-testid="inspector-style-color"
                 onChange={(e) => liveText({ color: e.target.value })}
               />
@@ -991,6 +1004,7 @@ function PlacedFieldStyle({
                 value={textStyle.color ?? ''}
                 data-testid="inspector-style-color-text"
                 onChange={(e) => liveText({ color: e.target.value })}
+                title={textStyle.color ?? undefined}
                 placeholder="#hex or rgba(…)"
               />
             </span>

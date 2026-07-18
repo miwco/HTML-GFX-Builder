@@ -843,6 +843,10 @@ kbd {
   background: var(--bg-3);
 }
 .wz-drop.over { border-color: var(--accent); background: rgba(246, 166, 35, 0.08); }
+/* A design is already chosen: the zone stays available as a swap target but stops competing
+   with the step's real content (Import graphic, step 2). */
+.wz-drop.compact { padding: 12px 16px; }
+.wz-drop.compact strong { font-size: 12px; font-weight: 500; color: var(--text-dim); }
 
 /* Step 1: categories */
 .wz-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
@@ -2130,8 +2134,16 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   border: 1px solid var(--border);
   border-radius: 4px;
 }
+/* The value is a CSS variable or another form the native picker can't show — read as
+   "inherited from the design" rather than as a wrong (white) colour. */
+.inspector-style-swatch.inherited {
+  opacity: 0.45;
+  filter: grayscale(1);
+}
 .inspector-style-color-text {
-  width: 96px;
+  /* Wide enough for the design's own `var(--text-color)` — the common value here — instead
+     of clipping it mid-token. */
+  width: 128px;
   text-align: left;
 }
 .inspector-style-text {
