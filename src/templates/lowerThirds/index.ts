@@ -1,5 +1,5 @@
-// The lower-third catalog: 13 hand-tuned designs across four style directions
-// (4 minimal · 3 sport · 3 glass · 3 noacg house). Each is a TemplateVariant whose
+// The lower-third catalog: 14 hand-tuned designs across four style directions
+// (4 minimal · 3 sport · 3 glass · 4 noacg house). Each is a TemplateVariant whose
 // create(options) generates a complete, teachable SPX template (see shared.ts +
 // docs/DESIGN_LANGUAGE.md).
 
@@ -17,12 +17,14 @@ import { lt10 } from './lt10';
 import { lt11 } from './lt11';
 import { lt12 } from './lt12';
 import { lt13 } from './lt13';
+import { lt14 } from './lt14';
 
 export const LOWER_THIRDS: TemplateVariant[] = [
   // NoaCG house (the product's own on-air look — brand-kit overlays as templates)
   lt11, // House Strap — amber bar + void blur panel, mono kicker title
   lt12, // House Breaking — accent label chip over a void headline panel
   lt13, // House Interview — three-line strap: name / org / mono location
+  lt14, // House Handle — the compact social mark (the social-handle type's design)
   // Minimal / clean
   lt01, // Hairline — vertical hairline accent, pure typography
   lt02, // Underline — accent underline draws in between name and title

@@ -228,6 +228,36 @@ export function canonicalPath(group: AnimGroup, isMain: boolean, targetId: strin
   return null;
 }
 
+/** The timeline a state plays when entered: a main-group waypoint's positional step, or an
+ *  off-path state's inline one. Mirrors the interpreter's noacgStepFor. */
+function stepForState(data: AnimData, group: AnimGroup, stateId: string): AnimStep | null {
+  if (group === data.machine?.groups[0]) {
+    const at = group.defaultPath?.indexOf(stateId) ?? -1;
+    if (at >= 0) return data.steps[at] ?? null;
+  }
+  return stateById(group, stateId)?.timeline ?? null;
+}
+
+/**
+ * Can this state's timeline be relied on to END? A timer arms with a call scheduled at the
+ * timeline's end, so a state whose timeline never gets there never advances — silently.
+ *
+ * Two things make an end unreachable. A `repeat: -1` loop track obviously never finishes. And
+ * MEASURED motion (a `dynamics` builder) returns a segment whose length is read off the DOM at
+ * play time — the marquee and roll builders return endless ones — so its duration is simply
+ * not knowable when the machine is authored. Both are rejected: a timer on either would be a
+ * promise the runtime cannot keep.
+ */
+function hasEndlessMotion(data: AnimData, group: AnimGroup, stateId: string): boolean {
+  const step = stepForState(data, group, stateId);
+  if (!step) return false;
+  if ((step.dynamics ?? []).length > 0) return true;
+  for (const perProp of Object.values(step.loops ?? {})) {
+    for (const loop of Object.values(perProp)) if (loop.repeat < 0) return true;
+  }
+  return false;
+}
+
 /** Semantic judgement for validateTemplate — runs only on a machine that already passed the
  *  shape gate (isAnimData). Errors block export; warnings advise. */
 export function validateMachine(data: AnimData): { errors: string[]; warnings: string[] } {
@@ -266,6 +296,16 @@ export function validateMachine(data: AnimData): { errors: string[]; warnings: s
     for (const t of group.transitions) {
       if (t.trigger === 'data-condition') {
         warnings.push(`Group "${group.id}": "${t.from}" → "${t.to}" uses the reserved data-condition trigger — it never fires in this version.`);
+      }
+      // A timer arms when its state's entry timeline ENDS. A timeline holding endless motion
+      // (a repeat:-1 loop, or a measured builder that returns one) never ends, so the timer
+      // would never arm and the state would silently never advance. Verified against GSAP:
+      // a call scheduled at an endless timeline's duration does not fire.
+      if (t.trigger === 'timer' && hasEndlessMotion(data, group, t.from)) {
+        errors.push(
+          `Group "${group.id}": state "${t.from}" has a timer transition but its timeline never ends ` +
+            `(it carries an endless loop or measured motion), so the timer would never fire.`,
+        );
       }
     }
   });

@@ -30,26 +30,39 @@ function renderClock() {
   document.querySelector('.${prefix}-clock').textContent = m + ':' + (s < 10 ? '0' + s : s);
 }
 
+// One tick: count down, and at zero stop and let the design's CSS say "time's up".
+function tickClock() {
+  clockSecondsLeft = clockSecondsLeft - 1;
+  if (clockSecondsLeft <= 0) {
+    clockSecondsLeft = 0;
+    stopClock();
+    document.querySelector('.${prefix}').classList.add('${prefix}-done');
+  }
+  renderClock();
+}
+
 // Reset to the full duration and tick down once a second.
 function startClock() {
   stopClock();
   document.querySelector('.${prefix}').classList.remove('${prefix}-done');
   clockSecondsLeft = clockDurationSeconds();
   renderClock();
-  clockTimer = setInterval(function () {
-    clockSecondsLeft = clockSecondsLeft - 1;
-    if (clockSecondsLeft <= 0) {
-      clockSecondsLeft = 0;
-      stopClock();
-      // Zero reached — the design's CSS decides what "time's up" looks like.
-      document.querySelector('.${prefix}').classList.add('${prefix}-done');
-    }
-    renderClock();
-  }, 1000);
+  clockTimer = setInterval(tickClock, 1000);
 }
 
 function stopClock() {
   if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+}
+
+// pauseClock()/resumeClock(): hold the count where it is and pick it up again. Unlike
+// stopClock()/startClock() these keep the remaining time, which is what an operator means by
+// pausing a game clock. The countdown type's machine drives them from a parallel state group.
+function pauseClock() {
+  if (clockTimer) { clearInterval(clockTimer); clockTimer = null; }
+}
+
+function resumeClock() {
+  if (!clockTimer && clockSecondsLeft > 0) clockTimer = setInterval(tickClock, 1000);
 }
 
 // Show the full duration on load (before the first play()), so previews look right.

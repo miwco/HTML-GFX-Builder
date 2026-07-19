@@ -191,6 +191,30 @@ export const qz01: TemplateVariant = defineQuizVariant(
 .quiz-dim .quiz-letter,
 .quiz-dim .quiz-text {
   opacity: 0.35;                   /* wrong answers drop back, still readable */
+}
+
+/* ── The selection arc (the state machine's events) ── */
+
+/* Selected: the contestant's pick, before anyone knows if it is right. A keyline ring only -
+   the flood is reserved for the reveal, so the two moments never look alike. */
+.quiz-sel::before {
+  box-shadow: inset 0 0 0 calc(3px * var(--scale)) var(--accent);
+}
+
+/* Locked: the unpicked rows step back, so the chosen row is unmistakably the standing answer.
+   The machine is what makes it final; this is how the viewer sees that it did. */
+.quiz-locked .quiz-option:not(.quiz-sel) .quiz-letter,
+.quiz-locked .quiz-option:not(.quiz-sel) .quiz-text {
+  opacity: 0.55;                   /* quieter than a dim - the question is still live */
+}
+
+/* Wrong: the pick that lost. The family's semantic down-colour, the same escape hatch the
+   market tickers take for a falling value - it never becomes a second brand accent. */
+.quiz-wrong::before {
+  box-shadow: inset 0 0 0 calc(3px * var(--scale)) #e57a7d;
+}
+.quiz-wrong .quiz-letter {
+  color: #e57a7d;                  /* the losing row's leading edge carries the colour */
 }`,
     hasAccent: false, // the accent edge is a painted ::after layer, not a .quiz-accent element
   }),

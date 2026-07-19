@@ -14,7 +14,7 @@ async function toTemplateStep(page: Page, category: string) {
 test('style, logo, and line filters narrow the lower-thirds grid; clear restores all', async ({ page }) => {
   await toTemplateStep(page, 'Lower thirds');
   const cards = page.locator('.wz-variant');
-  await expect(cards).toHaveCount(13);
+  await expect(cards).toHaveCount(14);
 
   // Style: Glass keeps exactly the glass designs.
   await page.locator('.wz-filter', { hasText: 'Glass' }).click();
@@ -30,7 +30,7 @@ test('style, logo, and line filters narrow the lower-thirds grid; clear restores
 
   // Clear brings the whole catalog back.
   await page.locator('.wz-filter', { hasText: 'Clear' }).click();
-  await expect(cards).toHaveCount(13);
+  await expect(cards).toHaveCount(14);
 
   // Line capacity: 3+ lines keeps only the roomier designs.
   await page.locator('.wz-filter', { hasText: '3+ lines' }).click();
@@ -48,7 +48,7 @@ test('an impossible combination shows the empty state with its own clear', async
   await page.locator('.wz-filter', { hasText: 'Logo slot' }).click();
   await expect(page.locator('.wz-variant')).toHaveCount(0);
   await page.locator('.wz-filter-empty button', { hasText: 'Clear filters' }).click();
-  await expect(page.locator('.wz-variant')).toHaveCount(13);
+  await expect(page.locator('.wz-variant')).toHaveCount(14);
 });
 
 test('facets that cannot narrow a category are not offered', async ({ page }) => {

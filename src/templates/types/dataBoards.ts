@@ -1,0 +1,98 @@
+// The DATA BOARD types — graphics whose content is a LIST the operator types, rendered by a
+// design-owned runtime. Neither needs a state machine: their motion is measured from the
+// content (an infographic builder), which coexists with the derived linear machine untouched.
+//
+// Worth stating, because it is the point of the whole model: a category of content-shaped
+// animation needed no machine at all, and the validator still vouches for its builder.
+
+import { paletteById } from '../../model/wizard';
+import { ig02 } from '../infographics/ig02';
+import { ig06 } from '../infographics/ig06';
+import type { GraphicType } from './graphicType';
+
+// The promoted variants' own sample content, unchanged. A type describes the SHAPE of a
+// graphic's content ("rows of time and title"), not new copy for it — rewriting a shipped
+// variant's samples would change what its existing users see for no gain.
+const SCHEDULE_SAMPLE = '20:00 | News at Eight\n21:00 | The Debate\n22:15 | Late Edition';
+const POLL_SAMPLE = 'Streaming | 78\nBroadcast | 54\nOn demand | 36';
+
+/** AGENDA / SCHEDULE — 22 of the 60 formats want a running order (agenda, schedule, setlist,
+ *  lineup, next-up). Promoted out of the infographic category, where it was a variant. */
+export const agendaType: GraphicType = {
+  id: 'agenda',
+  name: 'Agenda',
+  description: 'What is coming up, as a list of times and titles.',
+  frequency: 22,
+  structure: {
+    prefix: 'infographic',
+    category: 'infographic',
+    parts: [
+      { id: 'box', selector: '.infographic-box', kind: 'panel', required: true },
+    ],
+  },
+  fields: [
+    // The rows are the CONTENT, held in a hidden source the runtime renders from — one
+    // "time | show" per line. `lines` maps to an SPX textarea and to the control page's
+    // multi-line editor.
+    { key: 'rows', label: 'Schedule', kind: 'lines', value: SCHEDULE_SAMPLE, role: 'line' },
+    { key: 'heading', label: 'Heading', kind: 'text', value: 'COMING UP TONIGHT', role: 'line' },
+  ],
+  machine: {},
+  controls: [],
+  capabilities: {
+    maxLines: 2,
+    logo: 'none',
+    animationPresets: ['rows-cascade', 'fade', 'slide-up'],
+    defaultZone: 'mid-center',
+  },
+  designs: [
+    {
+      id: 'ig06',
+      name: 'Schedule Board',
+      description: 'A clean running order: tabular times against titles, cascading in.',
+      styleTag: 'minimal',
+      palette: paletteById('ivory'),
+      fontId: 'inter',
+      create: (_type, options) => ig06.create(options),
+    },
+  ],
+};
+
+/** POLL / VOTE RESULT — 13 of the 60 formats show one (poll results, voting, results tables,
+ *  percentage bars, seat counts). Also promoted out of the infographic category. */
+export const pollType: GraphicType = {
+  id: 'poll',
+  name: 'Poll result',
+  description: 'A question and its answers as bars — the vote, the survey, the count.',
+  frequency: 13,
+  structure: {
+    prefix: 'infographic',
+    category: 'infographic',
+    parts: [
+      { id: 'box', selector: '.infographic-box', kind: 'panel', required: true },
+    ],
+  },
+  fields: [
+    { key: 'options', label: 'Options', kind: 'lines', value: POLL_SAMPLE, role: 'line' },
+    { key: 'question', label: 'Question', kind: 'text', value: 'How do you watch live news?', role: 'line' },
+  ],
+  machine: {},
+  controls: [],
+  capabilities: {
+    maxLines: 2,
+    logo: 'none',
+    animationPresets: ['bars-grow', 'fade', 'rows-cascade'],
+    defaultZone: 'mid-left',
+  },
+  designs: [
+    {
+      id: 'ig02',
+      name: 'Glass Bars',
+      description: 'Labelled bars that grow to their share, with the figure riding each tip.',
+      styleTag: 'glass',
+      palette: paletteById('orchid'),
+      fontId: 'manrope',
+      create: (_type, options) => ig02.create(options),
+    },
+  ],
+};

@@ -14,8 +14,10 @@ import { INFOGRAPHICS } from './infographics';
 import { VERSUS } from './versus';
 import { QUIZ } from './quiz';
 import { IMPORTED_DESIGNS } from './importedDesign/shared';
+import { mergeCatalog, typeVariants } from './types/registry';
 
-export const CATALOG: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
+/** The hand-written variants — a category's own files, in their curated browse order. */
+const HAND_WRITTEN: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
   'lower-third': LOWER_THIRDS,
   'info-card': INFO_CARDS,
   'end-credits': END_CREDITS,
@@ -30,6 +32,16 @@ export const CATALOG: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
   // Not browsable in the category grid — the Import Graphic entry is its only way in.
   'imported-design': IMPORTED_DESIGNS,
 };
+
+/**
+ * The catalog: the hand-written lists with every registered GRAPHIC TYPE's designs merged in.
+ * A type that PROMOTES an existing variant replaces it by id and in place, so a promoted
+ * design keeps its position in the grid and its identity everywhere else it is referenced.
+ */
+export const CATALOG: Partial<Record<TemplateCategory, TemplateVariant[]>> = mergeCatalog(
+  HAND_WRITTEN,
+  typeVariants(),
+);
 
 export function variantsFor(category: TemplateCategory | null): TemplateVariant[] {
   return (category && CATALOG[category]) || [];

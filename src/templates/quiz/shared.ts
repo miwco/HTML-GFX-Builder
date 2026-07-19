@@ -101,6 +101,21 @@ const QUIZ_FIELDS: SpxField[] = [
       { text: 'D', value: 'D' },
     ],
   },
+  // The contestant's pick. This is DATA, not state: one "Selected" state plus this value is
+  // what keeps a four-answer quiz at a handful of states instead of one per answer.
+  {
+    field: 'f6',
+    ftype: 'dropdown',
+    title: 'Selected answer',
+    value: '',
+    items: [
+      { text: '—', value: '' },
+      { text: 'A', value: 'A' },
+      { text: 'B', value: 'B' },
+      { text: 'C', value: 'C' },
+      { text: 'D', value: 'D' },
+    ],
+  },
 ];
 
 /**
@@ -153,13 +168,44 @@ function motionSpeed() {
 ${setFieldValueJs}
 
 // clearReveal(): remove a previous reveal so the graphic is back to the neutral state
-// (fresh data, replay, or a second question all start un-revealed).
+// (fresh data, replay, or a second question all start un-revealed). It clears the SELECTION
+// and the lock too: a visual reset that left a board looking judged would be a lie, and snap
+// clears inline styles but never classes.
 function clearReveal() {
   var options = document.querySelectorAll('.quiz-option');
   for (var i = 0; i < options.length; i++) {
     options[i].classList.remove('quiz-correct');
     options[i].classList.remove('quiz-dim');
+    options[i].classList.remove('quiz-sel');
+    options[i].classList.remove('quiz-wrong');
   }
+  var root = document.querySelector('.quiz');
+  if (root) root.classList.remove('quiz-locked');
+}
+
+// quizRow(letter): the option row a letter names, or null. A -> row 0, B -> row 1, …
+function quizRow(letter) {
+  var index = 'ABCD'.indexOf(String(letter || '').trim().toUpperCase());
+  var options = document.querySelectorAll('.quiz-option');
+  return index === -1 ? null : (options[index] || null);
+}
+
+// applySelection(): mark the contestant's pick, read from the hidden #f6. One state and this
+// value carry every answer — there is deliberately no state per option.
+function applySelection() {
+  var options = document.querySelectorAll('.quiz-option');
+  for (var i = 0; i < options.length; i++) options[i].classList.remove('quiz-sel');
+  var row = quizRow(document.getElementById('f6').textContent);
+  if (!row) return;                // nothing picked yet, or an unknown letter
+  row.classList.add('quiz-sel');
+  gsap.fromTo(row, { scale: 1.04 }, { scale: 1, duration: 0.25 / motionSpeed(), ease: 'back.out(1.6)' });
+}
+
+// applyLock(): the answer is locked in. The dimming says so; the MACHINE is what actually
+// makes it final, by simply having no "select" arrow leaving this state.
+function applyLock() {
+  var root = document.querySelector('.quiz');
+  if (root) root.classList.add('quiz-locked');
 }
 
 // update(data): SPX sends field values as JSON, e.g. {"f0":"…","f1":"Venus","f5":"B"}.
@@ -182,6 +228,8 @@ function revealAnswer() {
   var index = 'ABCD'.indexOf(letter);        // A -> row 0, B -> row 1, …
   var options = document.querySelectorAll('.quiz-option');
   if (index === -1 || !options[index]) return;  // unknown letter — do nothing
+  var picked = document.getElementById('f6');
+  var pickedLetter = picked ? picked.textContent.trim().toUpperCase() : '';
   clearReveal();                   // a second Continue press stays clean
   for (var i = 0; i < options.length; i++) {
     options[i].classList.add(i === index ? 'quiz-correct' : 'quiz-dim');
@@ -191,6 +239,16 @@ function revealAnswer() {
     { scale: 1.06 },
     { scale: 1, duration: ${REVEAL_SECONDS} / motionSpeed(), ease: 'back.out(2)' }
   );
+  // A WRONG pick gets its own treatment — the criterion asks for the selected and the correct
+  // answer to be told apart, not just for the right one to light up.
+  if (pickedLetter && pickedLetter !== letter) {
+    var wrong = quizRow(pickedLetter);
+    if (wrong) {
+      wrong.classList.remove('quiz-dim');
+      wrong.classList.add('quiz-wrong');
+      gsap.fromTo(wrong, { x: -6 }, { x: 0, duration: 0.4 / motionSpeed(), ease: 'elastic.out(1, 0.4)' });
+    }
+  }
 }
 
 // play(): take the quiz on air — start un-revealed, run the entrance timeline.
@@ -239,8 +297,11 @@ export function assembleQuiz(
     body: `  <!-- Quiz root — the question, four answer rows, and the hidden correct letter. -->
   <div class="quiz">
 ${design.html}
-    <!-- Hidden correct-answer source — SPX writes field f5 here; next() reads it. -->
+    <!-- Hidden correct-answer source — SPX writes field f5 here; the reveal reads it. -->
     <div id="f5" style="display: none">B</div>
+    <!-- Hidden selected-answer source — the contestant's pick (field f6). It is DATA: one
+         "selected" state plus this letter, never one state per answer. -->
+    <div id="f6" style="display: none"></div>
   </div>`,
   });
 

@@ -132,6 +132,39 @@ function resetScorePop() {
   }
 }
 
+// ── Match state (driven by the graphic's state machine, when it has one) ────────────────
+// A match clock and a full-time marker are PLAYOUT logic, not motion, so they live out here
+// with the score pop rather than inside the marked region. A scoreboard with no machine never
+// calls them and behaves exactly as before.
+var matchClockTimer = null;      // the 1-second interval while the match clock runs
+var matchSeconds = 0;            // elapsed match time, in seconds
+
+function paintMatchClock() {
+  var el = document.querySelector('.scoreboard-clock');
+  if (!el) return;                                  // a design without a clock: nothing to paint
+  var m = Math.floor(matchSeconds / 60);
+  var s = matchSeconds % 60;
+  el.textContent = m + ':' + (s < 10 ? '0' + s : s);
+}
+
+// startMatchClock(): run the clock from where it stands — a restart after a stoppage must
+// not reset the match to 0:00.
+function startMatchClock() {
+  if (matchClockTimer) return;
+  matchClockTimer = setInterval(function () { matchSeconds = matchSeconds + 1; paintMatchClock(); }, 1000);
+}
+
+function stopMatchClock() {
+  if (matchClockTimer) { clearInterval(matchClockTimer); matchClockTimer = null; }
+}
+
+// markFinal(): the match is over — the design's CSS decides what "final" looks like.
+function markFinal() {
+  stopMatchClock();
+  var root = document.querySelector('.scoreboard');
+  if (root) root.classList.add('scoreboard-final');
+}
+
 // next(): SPX Continue — advance one step along the default path. This design ships
 // single-step, so it normally does nothing; it still funnels to the interpreter so a
 // template that GROWS a step (or a state machine) stays drivable through the SPX contract.

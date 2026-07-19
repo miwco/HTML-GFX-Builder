@@ -81,6 +81,35 @@ function buildInTimeline() {
 ${outTimeline()}
 ${MARK_CLOSE}`,
   },
+
+  {
+    id: 'ticker-rotate' as AnimPresetId,
+    name: 'Timed rotate',
+    description: 'One item at a time, advanced by the graphic’s own timer — pausable on air.',
+    autoEase: { easeIn: 'power2.out', easeOut: 'power2.in' },
+    // The entrance FINISHES. That is the whole point of this preset: the cycling comes from
+    // the graphic's state machine, and a machine timer arms only when its state's timeline
+    // ends. The two endless presets above can never carry one (a call scheduled at an endless
+    // timeline's end never fires), which is why a timed ticker needs an entrance of its own
+    // rather than a flag on theirs.
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Timed rotate — fade the strip in and show the first item. The ADVANCE between
+// items is a state-machine timer, not motion authored here, so this timeline ends.
+${knobs(cfg)}
+
+// buildInTimeline(): reveal the strip and put the first item up.
+function buildInTimeline() {
+  var tl = gsap.timeline();
+  tl.set('.ticker', { opacity: 1 });           // reveal the (CSS-hidden) graphic
+  tl.fromTo('.ticker-box', { opacity: 0 }, { opacity: 1, duration: 0.5 / animSpeed, ease: easeIn });
+  // Show item one. Every later item arrives on the machine's beat (see tickerShowNext).
+  tl.call(function () { if (typeof tickerShowNext === 'function') tickerShowNext(); });
+  return tl;
+}
+
+${outTimeline()}
+${MARK_CLOSE}`,
+  },
 ];
 
 export function tickerPresetById(id: AnimPresetId): AnimPreset {

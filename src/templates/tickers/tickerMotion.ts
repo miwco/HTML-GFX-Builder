@@ -18,6 +18,38 @@ import { motionSpeedJs } from '../shared/base';
 export const TICKER_MOTION_JS = `// ---- Measured motion (the animation data references these by name) ----
 ${motionSpeedJs}
 
+// tickerShowNext(): the ROTATOR's beat — put the next item in the track, on its own.
+//
+// This is deliberately NOT measured motion. A marquee's travel has to be measured because its
+// distance depends on the text; showing one item at a time does not — the movement is a fixed
+// slide the timeline keyframes, and all this does is swap what the slot contains. That matters
+// beyond tidiness: a state whose timeline never ends can never arm a timer (a call scheduled
+// at the timeline's end never fires), so a machine-driven cycle cannot use endless motion.
+// Advancing the index in a plain call, which adds no duration at all, is what lets the beat be
+// a real timer transition.
+var tickerIndex = 0;              // which item is showing (runtime data, never a state)
+
+function tickerItems() {
+  var source = document.getElementById('f0');
+  if (!source) return [];
+  return source.textContent.split('\\n').map(function (l) { return l.trim(); })
+    .filter(function (l) { return l !== ''; });
+}
+
+function tickerShowNext() {
+  tickerIndex = tickerIndex + 1;
+  tickerShowCurrent();
+}
+
+// tickerShowCurrent(): put the CURRENT item in the slot without advancing — what a data
+// update needs, so re-typing the items does not skip one.
+function tickerShowCurrent() {
+  var items = tickerItems();
+  var track = document.getElementById('ticker-track');
+  if (!track || items.length === 0) return;
+  track.innerHTML = renderTickerItem(items[tickerIndex % items.length]);
+}
+
 // tickerMarquee(): the classic endless travel. The track holds the items TWICE, so sliding
 // exactly one set width and repeating reads as seamless — and the width is measured here,
 // at play() time, because it depends on how much text the operator typed.

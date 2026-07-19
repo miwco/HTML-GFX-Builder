@@ -112,7 +112,9 @@ marked ANIMATION region - no second scene model, no parallel format. Essentials:
   template - so the determinism holds identically in the editor, in an exported overlay, and
   under SPX.
 - A template with no `machine` key IS the implicit one-group linear machine, derived on read and
-  never persisted: the whole existing catalog behaves exactly as before.
+  never persisted: the whole existing catalog behaves exactly as before. A **graphic type**
+  (`docs/GRAPHIC_TYPES.md`) follows the same rule - it persists a machine only when the derived
+  one is wrong, which is why most types add nothing to what they emit.
 
 ## Architecture map
 
@@ -122,7 +124,9 @@ Directories marked * have their own CLAUDE.md with the binding per-area contract
 src/
   model/ *     SpxTemplate types, SPX parse/serialize, catalog data, fonts, brand, packets;
                structure.ts (element identity) + fieldModel.ts (the FieldDescriptor contract)
-  templates/ * the wizard catalog: shared assemblers + 11 categories; :root style contract
+  templates/ * the wizard catalog: shared assemblers + 11 categories; :root style contract;
+               types/ = the GRAPHIC TYPE registry (docs/GRAPHIC_TYPES.md) - what a graphic IS,
+               independent of its look; compiles into catalog variants, replacing by id
   store/ *     templateStore.ts (zustand) - applyTemplate/undo choke point + editor UI state
   preview/     composeDocument.ts - inlines CSS + GSAP + JS + assets into the iframe srcdoc
   blocks/ *    deterministic transforms: block registry, field editing, the Timeline v2 engine,

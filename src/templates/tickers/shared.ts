@@ -62,6 +62,10 @@ function tickerRuntimeJs(name: string, animationBlock: string): string {
 // rebuildTicker(): re-render the items from the hidden #f0 source (one item per line).
 function rebuildTicker() {
   var track = document.getElementById('ticker-track');
+  // A ROTATING ticker shows one item at a time and the graphic's own timer advances it, so
+  // rendering the whole list here would both look wrong and pile every item into the strip at
+  // once. Hand it back to the rotator instead.
+  if (TICKER_ROTATE && typeof tickerShowNext === 'function') { tickerShowCurrent(); return; }
   var lines = document.getElementById('f0').textContent.split('\\n');
   var html = '';
   lines.forEach(function (raw) {
@@ -117,6 +121,43 @@ ${animationBlock}
 `;
 }
 
+/**
+ * Rotating tickers show ONE item at a time, advanced by the graphic's own state machine.
+ *
+ * Every ticker design is built for the marquee: the track is one endless nowrap row that
+ * TRAVELS past a clipping viewport, so a long story is fine — it scrolls by. A rotating strip
+ * has nowhere to travel to, so the same markup would just push a long story off the end of the
+ * strip and into whatever cap sits there. These rules turn the track back into an ordinary
+ * block that fits its viewport and wraps, which is the auto-fit pattern used everywhere else.
+ */
+const ROTATE_CSS = `
+/* ── Rotating strip: the item FITS the viewport instead of travelling past it. ── */
+
+/* The viewport clips because a marquee's items have to vanish at the strip's edges. Nothing
+   travels here, so clipping would only ever cut a wrapped story in half — let the strip grow
+   to whatever the current item needs instead. */
+.ticker-viewport {
+  overflow: visible;
+}
+
+#ticker-track {
+  display: block;                  /* not an endless row — one item, in normal flow */
+  width: 100%;                     /* fill the space the caps leave */
+  white-space: normal;             /* a long story wraps rather than running off the strip */
+  will-change: opacity, transform; /* the machine's beat fades and lifts it */
+}
+
+.ticker-item {
+  display: block;                  /* the item is the line, not a cell in a row */
+  overflow-wrap: break-word;       /* break a very long unbroken word */
+}
+
+/* The separator punctuates a ROW of stories; a rotating strip shows one at a time. */
+.ticker-sep {
+  display: none;
+}
+`;
+
 const ITEMS_SAMPLE = [
   'Welcome to tonight’s live show',
   'Guest lineup announced for next week',
@@ -170,7 +211,7 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 
 /* ── Design ── */
 ${design.css}
-`;
+${o.animation.presetId === 'ticker-rotate' ? ROTATE_CSS : ''}`;
 
   const preset = tickerPresetById(o.animation.presetId);
   const ease = resolveEasing(o.animation.easing, preset.autoEase);
@@ -187,7 +228,11 @@ ${design.css}
   const js = tickerRuntimeJs(
     meta.name,
     `// Marquee designs render the items twice for a seamless loop; flip designs don't.
-var TICKER_DOUBLE_ITEMS = ${design.doubleItems};
+var TICKER_DOUBLE_ITEMS = ${o.animation.presetId === 'ticker-rotate' ? false : design.doubleItems};
+
+// A ROTATING ticker shows one item at a time, advanced by the graphic's state machine rather
+// than by endless motion — so the whole list never goes into the strip at once.
+var TICKER_ROTATE = ${o.animation.presetId === 'ticker-rotate'};
 
 ${design.rowBuilderJs}
 

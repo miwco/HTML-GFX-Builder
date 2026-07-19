@@ -145,6 +145,7 @@ export type AnimPresetId =
   // Ticker motion formats (templates/tickers/tickerPresets.ts):
   | 'ticker-marquee'
   | 'ticker-flip'
+  | 'ticker-rotate'
   // Countdown-clock formats (templates/startingSoon + templates/gameTimers):
   | 'hold-loop'
   | 'timer-run'
@@ -271,6 +272,10 @@ export type LogoSupport = 'none' | 'optional' | 'built-in';
 export interface TemplateVariant {
   /** e.g. "lt01". */
   id: string;
+  /** The GRAPHIC TYPE this variant is a design of (templates/types/), when it has one — the
+   *  back-pointer Phase 4's node editor and Phase 5's control generator look up. Absent on a
+   *  hand-written variant that no type has claimed yet. */
+  typeId?: string;
   category: TemplateCategory;
   name: string;
   styleTag: StyleTag;

@@ -77,6 +77,34 @@ blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/varian
   `revealNextStep` idiom). It re-fits on `document.fonts.ready` as well as DOM-ready - a
   DOM-ready-only pass measures the FALLBACK face and overflows once the real one swaps in.
 
+## types/ - the GRAPHIC TYPE registry (docs/GRAPHIC_TYPES.md)
+
+A **type** declares what a graphic IS - structure contract, fields, state groups and default
+path, control events - independent of what it looks like; a **design** is one look. A type is a
+DECLARATION, not a second way to build a template: `variantsFromType` compiles one into
+ordinary TemplateVariants that go through the category assemblers below, so
+`variant.create(options)` stays the single contract the wizard, the AI, the sweeps and every
+spec speak. `catalog.ts` merges them with `mergeCatalog`, REPLACING BY ID, so a type that
+promotes an existing variant keeps that variant's id and its slot in the browse grid.
+
+**THE RULE:** *persist a machine only when the derived one is wrong.* `deriveMachine` already
+gives every template a correct one-group linear machine, so a type with no branches, parallel
+groups or event overrides compiles to NO `machine` key and emits byte-identical output. Seven
+of the twelve types are in that class.
+
+Fields are declared with LOGICAL keys and a `role` (`line` first, `logo` last - both enforced
+with a throw, because the order is what keeps the compiled `fN` ids in step with the assembler
+that emits them). The main group's default path is DERIVED, never declared: its length must
+equal the step count, which depends on the preset and the line count. `attachMachine` puts the
+compiled machine on after assembly and THROWS if it is off-shape - unlike `convertToDataRegion`
+it is compiling our own declaration, so degrading would ship a control page whose buttons do
+nothing.
+
+**The trap to know:** a timer never arms on a timeline that never ends (the arming call is
+scheduled at the timeline's end). A `repeat: -1` loop or a measured `dynamics` builder makes
+that unreachable, so `validateMachine` errors on it. This is why the ticker type is a rotator
+with its own `ticker-rotate` preset rather than the endless marquee.
+
 ## Categories
 
 - **lowerThirds/** - lt01…lt13 on shared.ts (prefix 'lower-third', `dataRegion: true` - the
