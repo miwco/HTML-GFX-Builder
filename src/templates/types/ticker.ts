@@ -16,7 +16,7 @@
 // most literal. The marquee remains a catalog variant with no machine, unchanged.
 
 import { paletteById } from '../../model/wizard';
-import { tk05 } from '../tickers/tk05';
+import { tk07 } from '../tickers/tk07';
 import type { GraphicType } from './graphicType';
 
 const ITEMS_SAMPLE = [
@@ -114,15 +114,15 @@ export const tickerType: GraphicType = {
   },
   designs: [
     {
-      id: 'tk05',
-      name: 'House Wire',
-      description: 'The house strip: void blur, half-strength amber edge, solid label block.',
+      // A design of its OWN rather than the marquee's: promoting tk05 would have turned the
+      // house news wire into a rotator, and the marquee is a graphic people chose on purpose.
+      id: 'tk07',
+      name: 'House Rotator',
+      description: 'The house strip, one story at a time — timed, and pausable on air.',
       styleTag: 'noacg',
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
-      // The preset is pinned rather than inherited: tk05's own default is the endless
-      // marquee, which the machine cannot drive.
-      create: (_type, options) => tk05.create({ ...options, animation: { ...options?.animation, presetId: 'ticker-rotate' } }),
+      create: (_type, options) => tk07.create(options),
     },
   ],
 };

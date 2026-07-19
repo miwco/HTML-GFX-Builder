@@ -8,9 +8,11 @@ import { tk03 } from './tk03';
 import { tk04 } from './tk04';
 import { tk05 } from './tk05';
 import { tk06 } from './tk06';
+import { tk07 } from './tk07';
 
 export const TICKERS: TemplateVariant[] = [
   tk05, // House Wire — noacg news wire with a live clock cap (sibling lt11)
+  tk07, // House Rotator — the same strip, one story at a time on the graphic's own timer
   tk06, // House Markets — noacg mono market items, sign-colored deltas (sibling tk05)
   tk01, // News Strip — minimal marquee (sibling lt01/lt02)
   tk02, // Volt Rail — sport marquee (sibling lt05/lt06)

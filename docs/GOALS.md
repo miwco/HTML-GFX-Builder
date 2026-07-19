@@ -845,6 +845,36 @@ in `docs/noacg-master-goals.md`; the model itself is contracted in `docs/STATE_M
       pause/resume, and a settled preview that never advances), and the compatibility test
       (`update`/`play`/`next`/`stop` alone walk the default path). Zero export-target changes.
 
+### Graphic types (2026-07-20 — Phase 2 of the template-library stage)
+
+Contract: `docs/GRAPHIC_TYPES.md`. Types chosen by frequency across the 60 formats in
+`live_format_graphics_needs.xlsx` (measured, not estimated).
+
+- [x] **A type is first-class** - it declares structure, fields, state groups + default path,
+      and control events, with no mention of colour, type or shape. That separation is what
+      Phase 3 (types × themes), Phase 4 (one editor per type) and Phase 5 (control pages
+      generated from the machine) all need.
+- [x] **Types compile into variants, not around them** - `variant.create(options)` stays the
+      one contract; `mergeCatalog` replaces by id, so a promoted design keeps its identity and
+      its slot. Pinned by a spec asserting promotion changes nothing but the machine.
+- [x] **Persist a machine only when the derived one is wrong** - 7 of the 12 types declare
+      none and emit byte-identical output.
+- [x] **Twelve types**: lower third (52/60), sponsor bug (37), countdown (30), topic card (29),
+      title card (23), agenda (22), social handle (17), poll (13), holding screen (9), ticker
+      (8), scoreboard (5), quiz board. Title card replaced the quote card (6/60) on the doc's
+      own frequency criterion; the social bug and the ticker rotator are new designs.
+- [x] **The acceptance criteria are met by SHIPPED types**, not only fixtures: the quiz board
+      for the Millionaire arc (one Selected state + a data field; lock removes the arrow rather
+      than refusing the event), the scoreboard for parallel groups and simultaneous events, the
+      ticker for timer auto-advance with pause/resume, every type for SPX compatibility.
+- [x] **Phase 1's debt paid**: the step editor works under a machine (steps and waypoints move
+      together; a waypoint an authored branch points at is demoted, not orphaned), plus four
+      real bugs - two silently-dead affordances, a rename that drifted from state ids, OGraf's
+      step pointer desyncing, and an off-shape machine that only warned and shipped.
+- [x] **A trap encoded as a rule**: a timer never arms on a timeline that never ends, so a
+      timer state carrying endless loops or measured motion is now a validation error. This is
+      why the ticker type is a rotator with its own finishing entrance preset.
+
 ### Quality bar (always-on)
 - [x] `npm run build` green as the CI gate
 - [x] Playwright E2E for core UI flows

@@ -3,9 +3,9 @@
 // block in dark mono ink, items travelling endlessly, and a live mono clock in the right
 // cap. Sibling of lt11 House Strap (same bar-and-void voice turned horizontal).
 
-import { paletteById, type TemplateVariant } from '../../model/wizard';
+import { paletteById, type ResolvedOptions, type TemplateVariant } from '../../model/wizard';
 import { fontById, labelFontFaceCss } from '../../model/fonts';
-import { defineTickerVariant } from './shared';
+import { defineTickerVariant, type TickerDesign } from './shared';
 
 export const tk05: TemplateVariant = defineTickerVariant(
   {
@@ -41,7 +41,15 @@ export const tk05: TemplateVariant = defineTickerVariant(
       'HH:MM clock holding the right cap. Sibling of lt11 House Strap.',
     uicolor: '4',
   },
-  (o) => ({
+  (o) => houseWire(o),
+);
+
+/**
+ * The House Wire look. Exported because tk07 wears the same strip and advances it differently
+ * (a timed rotation rather than endless travel) — the two share a face, not a motion.
+ */
+export function houseWire(o: ResolvedOptions): TickerDesign {
+  return {
     // Strip = label block (left) + marquee viewport (middle) + live clock cap (right).
     html: `    <!-- House Wire: accent label left, endless marquee middle, live clock right. -->
     <div class="ticker-box">
@@ -151,6 +159,7 @@ if (document.readyState === 'loading') {
   paintTickerClock(); setInterval(paintTickerClock, 1000);
 }`,
     // Marquee design: the items render twice so sliding one set length loops seamlessly.
+    // (A rotating strip shows one item at a time; assembleTicker turns this off for it.)
     doubleItems: true,
-  }),
-);
+  };
+}

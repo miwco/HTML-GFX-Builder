@@ -282,12 +282,20 @@ const results = await page.evaluate(async (CATEGORY) => {
       continue;
     }
     if (isTicker) {
+      // A marquee holds every item in the track at once (twice over, for the seamless loop).
+      // A ROTATING ticker shows one at a time and its own timer advances them, so the same
+      // count would be wrong by design — check that the item on screen is one the operator
+      // actually typed instead.
+      const rotates = tpl.js.includes('TICKER_ROTATE = true');
       const r6 = await runInFrame(tpl, async (w, d) => {
         w.update(JSON.stringify({ f0: 'Item one\nItem two\nItem three', f1: 'LIVE' }));
         const track = d.getElementById('ticker-track');
-        return { items: track.children.length, label: d.getElementById('f1')?.textContent };
+        return { items: track.children.length, shown: track.textContent.trim(), label: d.getElementById('f1')?.textContent };
       });
-      row.checks.autoFit = !r6.fatal && r6.errs.length === 0 && r6.items >= 3 && r6.label === 'LIVE';
+      const carriesItems = rotates
+        ? ['Item one', 'Item two', 'Item three'].some((i) => r6.shown?.includes(i))
+        : r6.items >= 3;
+      row.checks.autoFit = !r6.fatal && r6.errs.length === 0 && carriesItems && r6.label === 'LIVE';
       if (!row.checks.autoFit) row.issues.push('ticker-track: ' + JSON.stringify(r6));
       out.push(row);
       continue;
