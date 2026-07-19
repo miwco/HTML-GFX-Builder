@@ -3,14 +3,16 @@
 The one core workflow this feature makes reliable, end to end:
 
 1. Choose **Import graphic** from the wizard.
-2. Import a flat PNG design (e.g. a lower third drawn in Photoshop) — the wizard's ONLY job.
-3. Create: land in the real canvas editor with the **Data tab** open.
-4. Add text / number / image fields there — each is a real SPX DataField AND a real placed
+2. Import a flat PNG design (e.g. a lower third drawn in Photoshop).
+3. **Prepare** (optional, skippable): erase baked-in text with the flat-fill engine, and pick
+   the scaling mode — fixed (default) or horizontal 9-slice stretch (both below).
+4. Create: land in the real canvas editor with the **Data tab** open.
+5. Add text / number / image fields there — each is a real SPX DataField AND a real placed
    layer on the artwork, so every playout system can edit it.
-5. Drag, nudge, and resize the fields on the canvas; restyle them in the Inspector's Style tab.
-6. Animate the whole design (the default in/out) or each layer on its own, from the Inspector.
-7. Preview with sample data.
-8. Export a working SPX / CasparCG template.
+6. Drag, nudge, and resize the fields on the canvas; restyle them in the Inspector's Style tab.
+7. Animate the whole design (the default in/out) or each layer on its own, from the Inspector.
+8. Preview with sample data.
+9. Export a working SPX / CasparCG template.
 
 **Success condition:** a user turns an imported lower-third PNG into a working SPX template
 with two editable text fields and selectable in/out animations in under ten minutes.
@@ -52,7 +54,8 @@ keyframes, validation, and all six export targets.
 ```
 .imported-design            root — positioned, opacity:0 until play()
   .imported-design-box      the design UNIT: art + text animate together
-    .imported-design-art    the artwork (<img>, or an empty box before import)
+    .imported-design-art    the artwork (<img>; in stretch mode a border-image 9-slice div;
+                            an empty box before import)
     .imported-design-mask   one per line, id="fwN" — carries the POSITION
       span#fN               the field — carries the TYPE; SPX writes into it
 ```
@@ -111,9 +114,11 @@ var(--scale))` or plain-px idiom) and is **excluded from the keyframe drag entir
 multi-select drag can never write motion keyframes for it. Everything else keeps the keyframe
 drag unchanged, and catalog templates are untouched (their masks carry no wrapper ids).
 
-## The wizard is a SETUP flow, not a second editor (2026-07-18)
+## The wizard is a SETUP flow, not a second editor (2026-07-18; third step 2026-07-19)
 
-The wizard is two steps — Start → Design — and its Design step's one CTA is **Create project**.
+The wizard is three steps — Start → Design → **Prepare** (the erase + scaling sections below) —
+and Create is offered from the Design step onward: a design that needs no preparation goes
+drop → Create, exactly the two-step flow this section originally described.
 Creating builds the imported-design template **bare** (no fields) and lands in the real editor
 with the **Data tab revealed** (`setActivePanel('data')`; the store's `panelRevealNonce` makes
 the reveal fire even though 'data' is the stored default). Everything the wizard's old Text /
@@ -131,6 +136,11 @@ Style / Animation steps did lives in the editor now, once, on the real surfaces:
 
 A bare design's HTML/CSS carry teaching comments saying where fields will land; `resolveOptions`
 honours an explicitly empty `lines` array for this (absent still falls back to suggestions).
+
+**One amendment to "bare" (2026-07-19): bare *unless the user erased a region*.** Erasing
+baked-in text is an explicit "editable text goes here", so the erased rectangle seeds the first
+field at create — through the same `addPlacedLine` transform as every other field (see the
+Prepare section below). The fast path (Create from the Design step) stays exactly bare.
 
 **The box is labelled "Design", not "Panel".** `model/structure.ts` special-cases the
 `imported-design` prefix, so the timeline row, canvas chip, and Inspector all say "Design" —
@@ -249,6 +259,125 @@ template), and this phase makes the editor's data-field workflow first-class the
 E2E: the whole roundtrip (wizard handoff → Data-tab add → place → nudge → resize → restyle →
 per-layer animate → live sample data → validated export) is pinned in
 e2e/import-graphic.spec.ts.
+
+## The Prepare step: erasing baked-in text (2026-07-19)
+
+Text exported INTO the design file is pixels — it can never become a live field. The Prepare
+step (wizard step 3) removes it deterministically, offline, with no AI: the user drags a box
+over the text on a source-pixel artwork surface (`components/wizard/DesignPrepCanvas`), and
+`assets/eraseRegion.ts` flat-fills it from the sampled background.
+
+**The heuristic** (`eraseRegionFlat`): a ring of 16 single-pixel probes **3 px outside** the
+rectangle — 5 across the top, 5 across the bottom, 3 per side. Outside, because the text's own
+antialiasing lives inside the box and would pollute the verdict; a ring, because a background
+flat above the text but a gradient below it must fail. Probes that fall off the image are
+skipped (a design cropped at the frame edge is legitimate).
+
+**The tolerance:** `FLAT_BG_TOLERANCE = 10` — the worst per-channel 8-bit spread across the
+surviving samples, **alpha included**. Flat design-tool exports sample identical or ±1–2 counts
+even across PNG round-trips; gradients, textures, and photo backdrops blow past 10 within a few
+pixels. Alpha participates so a soft drop shadow crossing the ring fails honestly instead of
+leaving a visible seam after the fill.
+
+- **Flat** → the box is filled with the samples' per-channel mean (written into `ImageData`
+  directly — `fillRect` would COMPOSITE a semi-transparent fill over the text and ghost it
+  through) and applied immediately; hold-to-compare shows the original. A mean alpha ≤ 8
+  writes true transparency, not a tinted veil.
+- **Not flat** → the warning names the deviation, recommends re-exporting the design without
+  the text, and offers **Use it anyway** (applies the average-colour fill the preview showed).
+- The cleaned PNG is downloadable (`<base>-clean.png`), the erase is removable, and every
+  re-run starts from the untouched upload (`draft.designOriginal`) — **fills never compound**.
+- Erasing happens in the file's **SOURCE pixels** (a 2× retina export is erased at 2×); only
+  the seeded field's placement maps through the fitToFrame ratio into design px.
+
+**The seeded field.** The erased rectangle seeds the first text field at create
+(`draft.ts withEraseSeedField` → `addPlacedLine`): placed at the rect, shrink slot the width
+of the mark, font size `min(72% of the rect height, rect width / 7)` — the width cap matters
+because a script original's box height is far above its cap height, and 72% of it alone seeds
+type twice the visual size the design was drawn with. The field's colour contrasts against the
+erase's own sampled fill (dark ink on a light fill, white on a dark one) — the palette default
+is invisible on a light design.
+
+E2E: e2e/import-prepare.spec.ts (pixel-asserted, including retina and the non-flat refusal).
+
+## Scaling mode: fixed vs horizontal 9-slice stretch (2026-07-19)
+
+Different graphic types scale differently, so it is a per-graphic CHOICE on the Prepare step,
+never an assumption:
+
+- **Fixed (default)** — the image renders exactly as drawn; long values shrink their text
+  (the fit contract above). Title cards, full-frames, scoreboards, panels. Emits byte-identical
+  code to before the mode existed — saved templates and the fast path are untouched.
+- **Stretch horizontally** — the artwork becomes a **CSS border-image 9-slice**: the user drags
+  two vertical guides (end of the left cap, start of the right cap), the drawn caps keep their
+  exact shape, and the plain middle band widens with the longest text field. Lower thirds,
+  straps, name tags. Disabled for frame-sized art (no room to grow into).
+
+**Why border-image** (over three-layer DOM or pre-sliced assets): one element paints all nine
+patches from one geometry, so there are no subpixel seams at fractional `--scale`; slice values
+are in the FILE's own pixels while cap widths are design px, so retina exports slice correctly
+for free; and the guides ARE the working declarations, so they parse back out of the code.
+
+**The emitted contract** (all in the `.imported-design-art` rule — the guides live nowhere
+else, and `blocks/designLayout.ts designStretchInfo` derives mode + guides from exactly these):
+
+```css
+.imported-design-box { width: calc((1050px + var(--stretch-x, 0px)) * var(--scale)); }
+.imported-design-art {
+  border-left-width: calc(186px * var(--scale));   /* guide 1: where the left cap ends   */
+  border-right-width: calc(314px * var(--scale));  /* width − guide 2: the right cap     */
+  border-image-source: url("images/tg123.png");
+  border-image-slice: 0 314 0 186 fill;            /* the same guides, in FILE pixels    */
+  border-image-repeat: stretch;
+}
+```
+
+- **The image ref is a CSS declaration, never an inline style.** The editor's entrance reset
+  (`PlayoutSimulator resetGraphic`, gsap `clearProps: 'all'`) strips inline styles — an
+  inline `border-image-source` made the artwork vanish in the editor while every other
+  surface painted it. (The clearProps-eats-authored-inline-styles gotcha, met before in the
+  render work.)
+- Longhands only — the `border-image` shorthand resets the parts it doesn't mention.
+- A root-relative `url("images/…")` in template.css resolves everywhere EXCEPT the SPX folder
+  package, whose stylesheet ships one level down: `spxStarter.ts cssForSubfolder` rewrites
+  bucket refs to `../` in the packaged copy only (this also fixed the pre-existing bundled
+  @font-face `fonts/…` → `css/fonts/…` bug), and `importTemplate.ts` strips the hop on zip
+  import so the round-trip stays byte-identical.
+
+**The runtime ladder: stretch → shrink → clip.** One value drives everything — `--stretch-x`
+(design px) on the design box, read by the box width, the artwork's middle band, and every
+driving slot's `max-width` (the `+ var(--stretch-x, 0px)` idiom; `readPx`/`placementCss`
+mirror it so slot-width edits never drop it). `stretchDesignWidth()`
+(templates/importedDesign/stretch.ts; design-owned ES5 OUTSIDE the marked region, like
+textFit) measures the widest `[data-stretch]` line's deficit on every `update()`, DOM-ready,
+and `document.fonts.ready`, and widens the design by exactly that — capped at
+`STRETCH_SAFE = 0.04` inside the frame edge (just inside the bench's 3.5% title-safe, so the
+boundary never flaps), direction-aware for right-anchored zones (probed by a test widen, not
+guessed from CSS). Past the cap the grown slot is what `fitPlacedText()` measures, so the
+existing shrink answers only the residue; past the floor, the slot clips. Measurements are
+layout metrics (`scrollWidth`/`clientWidth`/`offsetLeft`) on purpose — they ignore GSAP
+transforms, so an `update()` arriving mid-entrance still measures true, and the runtime never
+shares a property with the box presets (they own transform/opacity, stretch owns width).
+
+`addPlacedLine` on a stretch design marks lines left of the right cap as drivers
+(`data-stretch` on the wrapper, slot to the cap start); right-cap lines and fixed designs are
+unchanged. The Prepare step proves the mode live: a content-width slider pushes progressively
+longer sample text through the preview's normal `update()`, so the user watches the emitted
+runtime itself. With stretch picked and nothing erased, the PREVIEW build places one demo line
+(`withStretchDemoLine`) so the slider has something to widen — the one sanctioned deviation
+from preview == created code; Create rebuilds without it.
+
+**Future modes without migration:** mode is DERIVED from the declarations, never stored, so
+vertical stretch later = top/bottom border widths + slice values + a `--stretch-y` term in the
+box height and a vertical branch in the runtime; `DesignStretch` already reserves the axis.
+
+**Known limitations (deferred by decision):** a placed field over the RIGHT cap does not ride
+the stretch (right-edge-anchored placement rules through the drag/nudge/Inspector loop are a
+follow-up); a middle-band field is left-anchored, so a centered title does not re-center as
+the band grows.
+
+E2E: e2e/import-stretch.spec.ts (guides parse-back, the full ladder, cap fidelity, the guide
+drag, the fixed default).
 
 ## Deliberately out of scope
 

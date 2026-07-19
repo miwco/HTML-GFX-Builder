@@ -71,6 +71,16 @@ by templates/shared/textFit.ts's `fitPlacedText()`, marked `data-fit="shrink"` o
 hook when the template predates it - ONCE, idempotently (the lottieInsert bootstrap pattern).
 New lines from `addPlacedLine` default to `shrink` with the room to the artwork's right edge.
 
+`designStretchInfo(html, css)` derives a design's SCALING MODE + 9-slice guides from the
+emitted declarations (`.{prefix}-art` carrying border-image-slice + readable cap widths =
+stretch; anything else - including every saved template - reads as fixed, null). The slot of a
+stretch-driving line carries the growing idiom `calc((Npx + var(--stretch-x, 0px)) *
+var(--scale))`: `readPx` reads it back with a `stretch` flag and `placementCss`'s third
+argument writes it - `setLineFit` MUST mirror it (LineFit.stretch) or an edited slot stops
+growing. On a stretch design `addPlacedLine` marks lines left of the right cap as drivers
+(`data-stretch` wrapper attribute, slot to the cap start); it also takes optional
+fontSize/maxWidth/color overrides (the Prepare step's erased-region seed field).
+
 `addPlacedLine(template, {title, ftype})` is the Data panel's add-field on an imported design:
 ONE pure transform emitting the mask wrapper + span (a registry `line` part), the placement +
 type rules in the assembler's exact idiom, and the SPX DataField (update() binds by id - no JS

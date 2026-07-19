@@ -365,14 +365,22 @@ preview), draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.
 which generates the complete, commented template. FIVE entry cards: template, Create with AI,
 video, Import graphic, blank.
 
-**Import graphic** (mode 'design', steps/ImportDesignStep) is a SETUP flow, not a second
-editor: Start -> Design (drop the PNG; live preview from the moment it lands) -> Create. The
-create is BARE (draftToOptions passes the empty lines array through for imported-design;
-resolveOptions honours an explicit empty array) and hands off to the editor with the Data tab
-revealed (setActivePanel('data') + the store's panelRevealNonce). Fields, styling, and motion
-all live in the editor: the Data tab's placed add, the canvas gestures, the Inspector's
-Style/Animations tabs. FieldsStep/StyleStep carry NO imported-design branches any more -
-design mode never reaches them. Contract: docs/IMPORT_MVP.md; E2E: e2e/import-graphic.spec.ts.
+**Import graphic** (mode 'design', steps/ImportDesignStep + steps/PrepareDesignStep) is a
+SETUP flow, not a second editor: Start -> Design (drop the PNG; live preview from the moment
+it lands; Create here is the FAST PATH, byte-identical bare fixed-mode) -> Prepare -> Create.
+The **Prepare step** carries the two artwork decisions: ERASE baked-in text (a source-px rect
+drawn on DesignPrepCanvas -> assets/eraseRegion flat-fill; flat verdicts apply immediately,
+non-flat holds behind "Use it anyway"; re-runs always start from draft.designOriginal so fills
+never compound; the erased rect SEEDS the first field at create - the one amendment to "bare")
+and the SCALING MODE (fixed default / horizontal 9-slice stretch with draggable guides + a
+content-width demo slider that pushes sample text through WizardPreview's demoText prop into
+the real emitted runtime; with stretch and no erase the PREVIEW build adds one demo line that
+Create strips). The create hands off to the editor with the Data tab revealed
+(setActivePanel('data') + the store's panelRevealNonce). Fields, styling, and motion all live
+in the editor: the Data tab's placed add, the canvas gestures, the Inspector's Style/Animations
+tabs. FieldsStep/StyleStep carry NO imported-design branches any more - design mode never
+reaches them. Contract: docs/IMPORT_MVP.md; E2E: e2e/import-graphic.spec.ts +
+e2e/import-prepare.spec.ts + e2e/import-stretch.spec.ts.
 
 The steps are driven by each variant's declared CAPABILITIES (model/wizard.ts): the Template
 step filters the card grid with style/logo/line-capacity chips; the Fields step offers up to

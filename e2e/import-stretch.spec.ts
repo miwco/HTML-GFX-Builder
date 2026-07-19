@@ -125,6 +125,37 @@ test('stretch: picking it writes the 9-slice into the created code, and the guid
   expect(fields).toBe(0);
 });
 
+test('stretch: the SPX folder package carries the 9-slice with subfolder-correct refs', async ({ page }) => {
+  await dropCard(page);
+  await page.getByTestId('mode-stretch').click();
+  await createProject(page);
+
+  // The packaged css/template.css hops bucket urls to ../ (it ships one level down while
+  // assets unpack at the project root); the editor's own css stays root-relative.
+  const pkg = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { EXPORT_TARGETS } = await import('/src/export/registry.ts');
+    const t = useTemplateStore.getState().template;
+    const zip = await EXPORT_TARGETS.find((x) => x.id === 'spx')!.build(t, {
+      sampleData: useTemplateStore.getState().sampleData,
+    });
+    const files = Object.keys(zip.files);
+    const css = await zip.files[files.find((f) => f.endsWith('css/template.css'))!].async('string');
+    return {
+      hasArtFile: files.some((f) => /images\/card/.test(f)),
+      artRefHops: /url\(["']?\.\.\/images\//.test(css),
+      fontRefHops: /url\(["']?\.\.\/fonts\//.test(css),
+      storeStaysRootRelative: /url\("images\//.test(t.css),
+    };
+  });
+  expect(pkg).toEqual({
+    hasArtFile: true,
+    artRefHops: true,
+    fontRefHops: true,
+    storeStaysRootRelative: true,
+  });
+});
+
 test('stretch: a long value grows the design at full type size, and a short one springs back', async ({ page }) => {
   await dropCard(page);
   await eraseTextBar(page);

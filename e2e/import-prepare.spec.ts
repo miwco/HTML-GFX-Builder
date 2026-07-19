@@ -167,16 +167,20 @@ test('erase: the erased region seeds the first text field, placed and sized from
   // ≈ 72% of the rect's height. Everything through the same reader modules the app uses.
   const state = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
-    const { placedLines, lineFit, lineFontSize } = await import('/src/blocks/designLayout.ts');
+    const { placedLines, lineFit, lineFontSize, lineTextStyle } = await import('/src/blocks/designLayout.ts');
     const s = useTemplateStore.getState();
     return {
       placed: placedLines(s.template.html, s.template.css)['#f0'],
       fit: lineFit(s.template.html, s.template.css, 'f0'),
       font: lineFontSize(s.template.css, 'f0'),
+      color: lineTextStyle(s.template.html, s.template.css, 'f0')?.color,
       titles: s.template.fields.map((f) => f.title),
     };
   });
   expect(state.titles).toEqual(['Name']);
+  // The field contrasts against its own sampled fill: dark ink on this light card (the
+  // palette's white default would be invisible on it).
+  expect(state.color).toBe('#16181c');
   // The drawn rect: x 160..570, y 240..342 (fractions of the 1000×600 fixture) ± pointer rounding.
   expect(Math.abs(state.placed!.x - 160)).toBeLessThan(10);
   expect(Math.abs(state.placed!.y - 240)).toBeLessThan(10);
