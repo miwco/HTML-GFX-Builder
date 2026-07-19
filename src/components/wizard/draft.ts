@@ -3,6 +3,7 @@
 // WizardOptions, and resolveOptions() (model/wizard.ts) fills the rest.
 
 import { ASPECTS, type AssetFile, type Resolution, type SpxTemplate } from '../../model/types';
+import { addPlacedLine } from '../../blocks/designLayout';
 import { anyPresetById, type AnimPhase } from '../../blocks/presetRegistry';
 import { parseAnimData, spliceAnimData } from '../../blocks/animData';
 import { applyPresetData, presetDonor } from '../../blocks/presetApply';
@@ -185,8 +186,32 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
  * onto the Out step with the same generator the Inspector's Animations tab uses — so the wizard
  * preview and the created project are always the exact same code.
  */
+/**
+ * The erased region's field (Import Graphic, Prepare step). An imported design creates BARE
+ * — with ONE exception: erasing baked-in text is an explicit "editable text goes here", so
+ * the erased rectangle seeds the first field, through the same addPlacedLine transform the
+ * Data tab and canvas text tools use. The rect is in the artwork's SOURCE pixels; placement
+ * is design px, so the fitToFrame ratio maps between them (the retina case).
+ */
+function withEraseSeedField(template: SpxTemplate, draft: WizardDraft): SpxTemplate {
+  if (!draft.designErase || !draft.designArt) return template;
+  const art = draft.designArt;
+  const k = art.width / (art.sourceWidth ?? art.width);
+  const r = draft.designErase.rect;
+  const added = addPlacedLine(template, {
+    title: 'Name',
+    ftype: 'textfield',
+    at: { x: Math.round(r.x * k), y: Math.round(r.y * k) },
+    // The marked box wraps the text with a little air — the type itself is about 72% of it.
+    fontSize: Math.max(10, Math.round(r.height * k * 0.72)),
+    maxWidth: Math.max(64, Math.round(r.width * k)),
+  });
+  return added ? added.template : template;
+}
+
 export function buildDraftTemplate(variant: TemplateVariant, draft: WizardDraft): SpxTemplate {
-  const template = variant.create(draftToOptions(variant, draft));
+  let template = variant.create(draftToOptions(variant, draft));
+  if (variant.category === 'imported-design') template = withEraseSeedField(template, draft);
   const inId = draft.animation.presetId ?? variant.animationPresets[0];
   const outId = draft.animation.outPresetId;
   if (!outId || outId === inId) return template;

@@ -425,6 +425,11 @@ export interface NewPlacedLineSpec {
   /** The initial shown text (markup + DataField value). Absent = the title (the Data
    *  panel's add); '' = born empty (the T tool — the user types the first value). */
   text?: string;
+  /** Explicit design font-size in px (the Prepare step's erased-region field, sized from
+   *  the text the user marked). Absent = inherit from the reference line / the default. */
+  fontSize?: number;
+  /** Explicit slot width in design px. Absent = the room to the artwork's right edge. */
+  maxWidth?: number;
 }
 
 /**
@@ -460,7 +465,7 @@ export function addPlacedLine(
   const placed = placedLines(template.html, template.css);
   const ref = referenceLine(placed);
   const refFont = ref ? lineFontSize(template.css, ref.fieldId) : null;
-  const fontSize = refFont?.value ?? Math.max(14, Math.round(boxWidth * 0.016));
+  const fontSize = spec.fontSize ?? refFont?.value ?? Math.max(14, Math.round(boxWidth * 0.016));
   const scaled = ref ? ref.place.scaled : true;
   // An explicit position (the canvas text tools' click / drag point) wins; otherwise the
   // stacking default keeps the Data panel's add reading top-down like the design does.
@@ -486,9 +491,10 @@ export function addPlacedLine(
   });
   if (insertAt === -1) return null;
   // The new line FITS by default: it keeps one row and condenses if the operator's value
-  // outgrows the room between it and the artwork's right edge. Without a cap a long name
-  // runs off the design (and off the frame) - the fit contract exists for exactly that.
-  const maxWidth = Math.max(64, Math.round(boxWidth - x - boxWidth * 0.04));
+  // outgrows the room between it and the artwork's right edge (or the explicit slot the
+  // caller measured — the erased region's width). Without a cap a long name runs off the
+  // design (and off the frame) - the fit contract exists for exactly that.
+  const maxWidth = spec.maxWidth ?? Math.max(64, Math.round(boxWidth - x - boxWidth * 0.04));
 
   lines.splice(
     insertAt + 1,

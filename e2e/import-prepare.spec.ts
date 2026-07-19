@@ -147,6 +147,59 @@ test('erase: re-running starts from the original — fills never compound', asyn
   expect(px.r).toBeLessThan(60);
 });
 
+test('erase: the erased region seeds the first text field, placed and sized from the mark', async ({ page }) => {
+  await dropCard(page, framedCardPng(1000, 600));
+  await toEraseSurface(page);
+  await drawRect(page, MARK.x0, MARK.y0, MARK.x1, MARK.y1);
+  await expect(page.getByTestId('erase-done')).toContainText('A text field will sit');
+  await createProject(page);
+
+  // The field exists on the design, showing its sample where the baked text was.
+  const frame = page.frameLocator('iframe.preview-frame');
+  await expect(frame.locator('#f0')).toHaveText('Name');
+
+  // …as a real placed line: position ≈ the marked rect (design px = source px here, the
+  // artwork is smaller than the frame), a shrink slot ≈ the rect's width, and a font size
+  // ≈ 72% of the rect's height. Everything through the same reader modules the app uses.
+  const state = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { placedLines, lineFit, lineFontSize } = await import('/src/blocks/designLayout.ts');
+    const s = useTemplateStore.getState();
+    return {
+      placed: placedLines(s.template.html, s.template.css)['#f0'],
+      fit: lineFit(s.template.html, s.template.css, 'f0'),
+      font: lineFontSize(s.template.css, 'f0'),
+      titles: s.template.fields.map((f) => f.title),
+    };
+  });
+  expect(state.titles).toEqual(['Name']);
+  // The drawn rect: x 160..570, y 240..342 (fractions of the 1000×600 fixture) ± pointer rounding.
+  expect(Math.abs(state.placed!.x - 160)).toBeLessThan(10);
+  expect(Math.abs(state.placed!.y - 240)).toBeLessThan(10);
+  expect(state.fit!.mode).toBe('shrink');
+  expect(Math.abs((state.fit!.maxWidth ?? 0) - 410)).toBeLessThan(20);
+  expect(Math.abs((state.font!.value ?? 0) - Math.round(102 * 0.72))).toBeLessThan(10);
+});
+
+test('erase: on a 2x export the seeded field maps to design pixels', async ({ page }) => {
+  await dropCard(page, framedCardPng(3840, 2160));
+  await toEraseSurface(page);
+  await drawRect(page, MARK.x0, MARK.y0, MARK.x1, MARK.y1);
+  await expect(page.getByTestId('erase-done')).toBeVisible();
+  await createProject(page);
+
+  // Source rect x starts at 0.16 × 3840 ≈ 614; the design shows the art frame-sized at
+  // 1920, so the placement is HALVED — the erase stayed in source px, the field in design px.
+  const placed = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { placedLines } = await import('/src/blocks/designLayout.ts');
+    const s = useTemplateStore.getState();
+    return placedLines(s.template.html, s.template.css)['#f0'];
+  });
+  expect(Math.abs(placed!.x - 307)).toBeLessThan(10);
+  expect(Math.abs(placed!.y - 432)).toBeLessThan(10);
+});
+
 test('erase: the cleaned PNG is downloadable', async ({ page }) => {
   await dropCard(page, framedCardPng(1000, 600), 'my-card.png');
   await toEraseSurface(page);
