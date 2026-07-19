@@ -237,15 +237,33 @@ not a real failure - `fonts.check` is the authoritative test.)
 
 Ordered by value. The first needs no tokens and is the most important.
 
-1. **Why did a composition the validator rejects get applied?** The transparent lower-third
-   above passed validation at generation time and fails the same validator now, on the same
-   source. Either the probe observes a state the settled preview does not (a script that
-   mutates layout after boot is one candidate - this composition has exactly that), or the
-   persistence rule dropped a finding that a later sample would have caught. **Reproducer,
-   no generation needed:** load the saved composition through
-   `validateHyperframesComposition` with the real bridge (`transparent: true`, 4 s) and
-   compare against the same source probed after an apply + replay. If the two disagree, the
-   gate has a state-dependence bug and every quality figure that rests on it is soft.
+1. **The readability gate's verdict is not stable across sessions.** This is the most
+   important open item, it needs no generations, and the reproducer is committed:
+   `e2e/fixtures/hf-transparent-lower-third.html` - the benched lower-third whose text sits
+   at x = -1551 through the whole hold.
+
+   What was measured, all via `validateHyperframesComposition` with the real mounted bridge
+   at 4 s / `transparent: true`:
+
+   - six consecutive runs in one session: **6/6 FAIL**, byte-identical findings;
+   - a later session, same settings, first call: **PASS**;
+   - a third session: **3/3 FAIL**.
+
+   So the gate is deterministic *within* a session and disagrees *across* sessions on
+   byte-identical input. That is enough to explain how this composition was applied at
+   generation time and rejected afterwards.
+
+   Two hypotheses were tested and **ruled out**: a font-loading race against the
+   width-measuring script the composition writes (the tight loop would have flickered - it
+   did not), and the validator's candidate load racing the preview's own reload after a
+   project change (forced that race explicitly; the verdict did not move). The mechanism is
+   still unknown. Next places to look: whether `holdFrames` lands on different frames when
+   the bridge is reused versus freshly mounted, and whether the driver's seek has settled
+   before the checks run (the probe's settle is two rAFs raced against a 150 ms timeout,
+   which is exactly the kind of thing that resolves differently on a warm versus cold page).
+
+   No e2e spec was added for this deliberately: asserting either verdict today would commit
+   a flaky test to the suite. Fix the instability first, then pin it.
 2. **The transparent/overlay brief is the weakest case on both engines** - the only
    readability finding in the varied pass, the most repairs on each engine, and the one
    design shape neither contract says much about (where a strap sits, safe margins, not
@@ -275,9 +293,10 @@ measured font widths, and export self-containment - all verified directly rather
 inferred.
 
 **What is not.** Any figure resting on the readability gate is soft until follow-up 1 is
-resolved. Design-taste conclusions are unreliable at these sample sizes and should not be
-drawn from single runs; the within-brief spread is wide enough to swamp anything worth
-chasing.
+resolved - the gate has been observed giving opposite verdicts on identical input in
+different sessions, so a "clean" run means less than it looks. Design-taste conclusions are
+unreliable at these sample sizes and should not be drawn from single runs; the within-brief
+spread is wide enough to swamp anything worth chasing.
 
 **Cost discipline.** A clean generation is ~7-8k in / ~6-7k out (about $0.08). A run with two
 repair rounds costs roughly three times that. Always prove a bench change with `--stub`
