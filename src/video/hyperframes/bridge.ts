@@ -85,6 +85,20 @@ export class HyperframesBridge {
     assets: AssetFile[],
     opts: { autoplay?: boolean } = {},
   ): Promise<LoadResult> {
+    const run = () => this.runLoad(source, settings, values, assets, opts);
+    const op = this.chain.then(run, run);
+    this.chain = op;
+    return op;
+  }
+
+  /** The load itself, OFF the chain - callers chain it (see load / loadAndProbe). */
+  private runLoad(
+    source: string,
+    settings: VideoCompSettings,
+    values: Record<string, string | number>,
+    assets: AssetFile[],
+    opts: { autoplay?: boolean } = {},
+  ): Promise<LoadResult> {
     const run = async (): Promise<LoadResult> => {
       if (this.disposedFlag || !this.iframe) {
         return { ok: false, message: 'the player was replaced', disposed: true };
@@ -121,6 +135,32 @@ export class HyperframesBridge {
         this.iframe!.srcdoc = doc;
       });
     };
+    return run();
+  }
+
+  /**
+   * Mount a composition and probe it as ONE chain entry - the call validation must use.
+   *
+   * Separate `load()` then `probe()` are two entries, and the gap between them is not empty:
+   * the preview panel rebuilds this same iframe on a debounce, and a rebuild enqueued while
+   * the candidate is still loading lands BEFORE the probe (the probe can only be enqueued once
+   * the load resolves). The checks then measure the project's own composition and report it
+   * clean - a verdict about a document nobody asked to validate. Measured happening: a
+   * readability spec failed about one run in eight under load, with the trace showing
+   * `load(project) done` landing between `probe start` and `probe done`.
+   */
+  loadAndProbe(
+    source: string,
+    settings: VideoCompSettings,
+    assets: AssetFile[],
+    frames: number[],
+    checkFrames: number[],
+  ): Promise<{ loaded: LoadResult; probe: ProbeResult | null }> {
+    const run = async (): Promise<{ loaded: LoadResult; probe: ProbeResult | null }> => {
+      const loaded = await this.runLoad(source, settings, {}, assets, { autoplay: false });
+      if (!loaded.ok) return { loaded, probe: null };
+      return { loaded, probe: await this.runProbe(frames, checkFrames) };
+    };
     const op = this.chain.then(run, run);
     this.chain = op;
     return op;
@@ -129,23 +169,26 @@ export class HyperframesBridge {
   /** Probe frames on the currently loaded composition (validation). `checkFrames`
    *  additionally get the driver's readability checks - pass HOLD frames only. */
   probe(frames: number[], checkFrames: number[] = []): Promise<ProbeResult> {
-    const run = (): Promise<ProbeResult> => {
-      if (this.disposedFlag || !this.booted) {
-        return Promise.resolve({
-          ok: false,
-          errors: [{ frame: 0, message: 'no composition is loaded' }],
-          textIssues: [],
-        });
-      }
-      const id = this.loadId;
-      return new Promise((resolve) => {
-        this.pendingProbe = { id, resolve };
-        this.post({ type: 'probe', id, frames, checkFrames });
-      });
-    };
+    const run = () => this.runProbe(frames, checkFrames);
     const op = this.chain.then(run, run);
     this.chain = op;
     return op;
+  }
+
+  /** The probe itself, OFF the chain - callers chain it (see probe / loadAndProbe). */
+  private runProbe(frames: number[], checkFrames: number[]): Promise<ProbeResult> {
+    if (this.disposedFlag || !this.booted) {
+      return Promise.resolve({
+        ok: false,
+        errors: [{ frame: 0, message: 'no composition is loaded' }],
+        textIssues: [],
+      });
+    }
+    const id = this.loadId;
+    return new Promise((resolve) => {
+      this.pendingProbe = { id, resolve };
+      this.post({ type: 'probe', id, frames, checkFrames });
+    });
   }
 
   play(): void {

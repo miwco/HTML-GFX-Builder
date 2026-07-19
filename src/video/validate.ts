@@ -44,22 +44,31 @@ export async function validateVideoModule(
   // happened must not read as a verified-clean module (see VideoValidationResult).
   let probed = false;
   let probeBridge = bridge;
+  const d = settings.durationInFrames;
   for (let attempt = 0; probeBridge && attempt < 2; attempt++) {
-    const loaded = await probeBridge.load(compiled.js, settings, {}, assets, { autoplay: false });
+    // loadAndProbe, never load-then-probe: the preview panel shares this host and rebuilds it
+    // on a debounce, and a rebuild enqueued in the gap between the two would run FIRST -
+    // leaving the checks to measure the project's own module and call it clean.
+    const { loaded, probe } = await probeBridge.loadAndProbe(
+      compiled.js,
+      settings,
+      {},
+      assets,
+      [0, Math.floor(d / 2), Math.max(0, d - 1)],
+      holdFrames(d),
+    );
     if (!loaded.ok && loaded.disposed) {
       const fresh = getActivePlayerBridge();
       probeBridge = fresh && fresh !== probeBridge ? fresh : null;
       continue;
     }
-    if (!loaded.ok) {
-      errors.push({ rule: 'runtime', message: loaded.message });
+    if (!loaded.ok || !probe) {
+      errors.push({
+        rule: 'runtime',
+        message: loaded.ok ? 'the module could not be probed' : loaded.message,
+      });
       return { ok: false, errors, warnings, compiledJs: compiled.js, probed: false };
     }
-    const d = settings.durationInFrames;
-    const probe = await probeBridge.probe(
-      [0, Math.floor(d / 2), Math.max(0, d - 1)],
-      holdFrames(d),
-    );
     for (const e of probe.errors) {
       errors.push({ rule: 'runtime', message: `frame ${e.frame}: ${e.message}` });
     }

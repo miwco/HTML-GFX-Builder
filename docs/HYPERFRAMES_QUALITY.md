@@ -153,6 +153,44 @@ verdict. And seek-settle timing - the two-rAF-versus-150 ms settle is in the **R
 (`player-host/src/HostApp.tsx`) only; the HyperFrames probe seeks and measures synchronously in
 one message handler and has no settle to race.
 
+### A preview rebuild could overtake the probe and get measured instead
+
+The third instance of this document's recurring failure, and the one that took a wrong diagnosis
+first - which is itself the finding worth keeping.
+
+A readability spec failed about one run in eight under four-worker load, reporting `probed:
+true` with an empty finding list on a fixture whose text is permanently off-frame. The first
+explanation was a paint race: the HyperFrames probe measures synchronously right after
+`tl.time()`, unlike the Remotion host which settles two animation frames first, so perhaps the
+glyphs had no layout yet and `textChecks` skipped them. A settle was added. **The failure rate
+did not move**, and the change was reverted rather than kept as plausible-looking insurance -
+geometry comes from `getBoundingClientRect`, which forces layout synchronously, so there was
+never anything to wait for.
+
+Instrumenting the actual call order found it immediately:
+
+```
+  2ms load(FIXTURE) start
+494ms load(project) start      <- the panel's debounced rebuild enqueues
+504ms load(FIXTURE) done
+504ms probe start              <- the probe can only enqueue NOW, behind it
+732ms load(project) done       <- so the rebuild runs first, replacing the document
+770ms probe done issues=0      <- the checks measure the project, and pass it
+```
+
+Both bridges serialize work on a promise chain, so the earlier guess that the panel "bypassed
+the chain" was wrong too. The defect is subtler: validation's `load` and `probe` were **two
+separate chain entries**, and the probe can only be enqueued once the load resolves - so
+anything enqueued in that window legitimately runs first. The preview panel shares the same
+iframe and rebuilds it on a debounce, so its load slid in between and the gate delivered a
+verdict on a composition nobody asked it to check.
+
+Fixed by making the pair atomic: `loadAndProbe()` on both `HyperframesBridge` and `PlayerBridge`
+runs mount-then-measure inside ONE chain entry, and both validators use it. The spec that caught
+this deliberately does **not** wait for the preview to go quiet - it races the rebuild on
+purpose and asserts the candidate was still mounted when the probe finished, so a regression in
+the guarantee fails the test instead of hiding behind a wait.
+
 ## Findings that did not change the code
 
 ### Dead space cannot A/B a prompt change
@@ -331,28 +369,19 @@ what remains of it is the spend.
    bench's MAJORITY persistence rule rather than the all-frames rule `persistentTextIssues`
    applies to crops, and `ruleFor()` needs a rule name of its own instead of folding it into
    `text-clip`.
-3. **A preview rebuild can replace the document the gate is probing.** `HyperframesBridge`
-   serializes load and probe on its own chain, but the panel rebuilds the frame's `srcdoc`
-   through React on a debounce, which does not go through that chain. A rebuild landing
-   mid-probe therefore has the checks measure the project's own composition instead of the
-   candidate being validated - and report it clean, for the wrong composition. Found while
-   fixing a readability spec that failed about one run in eight under load; the spec now waits
-   for a quiet preview and asserts the candidate was still mounted when the probe finished,
-   but the underlying race is the app's, not the test's. The fix is ownership: validation
-   should probe a frame the panel cannot rebuild under it.
-4. **The transparent/overlay brief is the weakest case on both engines** - the only
+3. **The transparent/overlay brief is the weakest case on both engines** - the only
    readability finding in the varied pass, the most repairs on each engine, and the one
    design shape neither contract says much about (where a strap sits, safe margins, not
    filling the frame). This is the strongest candidate for a *measured* prompt improvement,
    but it needs more than one sample per engine before anyone writes prose.
-5. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
+4. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
    because the finding told the model to resize a line whose real problem was that it had
    been rendered twice ("NOACGNOACG"). A finding that notices a repeated substring and says
    so would probably be fixable inside the two rounds.
-6. **The countdown-style minimal reveal** - historically the weakest brief, and the
+5. **The countdown-style minimal reveal** - historically the weakest brief, and the
    "uncommitted default" look it falls into is unmoved by prose. It came through clean in
    this pass, so treat the earlier finding as unconfirmed rather than settled.
-7. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
+6. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
    A real feature (validator, driver, compose, and the render worker all have to agree on how
    a media clip seeks deterministically), not a prompt change.
 

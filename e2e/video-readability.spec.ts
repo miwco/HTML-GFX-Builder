@@ -246,26 +246,12 @@ test.describe('the gate reports whether it actually ran', () => {
     await createHyperframesProject(page);
     await expect(page.locator('.ai-msg.assistant').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('.video-player-frame')).toBeVisible();
-    // Wait for the preview to go QUIET before validating. The panel rebuilds the frame's
-    // srcdoc on a debounce after a generation applies, and validation mounts its candidate
-    // into that same frame - so a rebuild still pending here lands mid-probe and the checks
-    // measure the project's own composition instead of the fixture. It then reports clean,
-    // for the composition nobody asked about. Observed as a ~1-in-8 failure under four-worker
-    // contention, diagnosed by reading back the srcdoc the probe had actually measured.
-    let previousDoc = '';
-    await expect
-      .poll(
-        async () => {
-          const now = await page
-            .locator('.video-player-frame')
-            .evaluate((el: HTMLIFrameElement) => el.getAttribute('srcdoc') ?? '');
-          const settled = now.length > 0 && now === previousDoc;
-          previousDoc = now;
-          return settled;
-        },
-        { timeout: 15_000, intervals: [250] },
-      )
-      .toBe(true);
+    // Deliberately NOT waiting for the preview to go quiet. The panel rebuilds this same
+    // frame on a debounce after a generation applies, so validating right now races that
+    // rebuild - which is the point: validation mounts its candidate and probes it as ONE
+    // bridge chain entry, so a rebuild cannot land in between and have the checks measure
+    // the project's composition instead. Waiting here would hide a regression in exactly
+    // that guarantee.
 
     const results = await page.evaluate(
       async ([html, settings]) => {

@@ -230,19 +230,27 @@ export async function validateHyperframesComposition(
   // composition and costs the AI harness its repair rounds.
   let probed = false;
   let probeBridge = bridge;
+  const d = settings.durationInFrames;
   for (let attempt = 0; probeBridge && attempt < 2; attempt++) {
-    const loaded = await probeBridge.load(html, settings, {}, assets, { autoplay: false });
+    // loadAndProbe, never load-then-probe: the preview panel shares this iframe and rebuilds
+    // it on a debounce, and a rebuild enqueued in the gap between the two would run FIRST -
+    // leaving the checks to measure the project's own composition and call it clean.
+    const { loaded, probe } = await probeBridge.loadAndProbe(
+      html,
+      settings,
+      assets,
+      [0, Math.floor(d / 2), Math.max(0, d - 1)],
+      holdFrames(d),
+    );
     if (!loaded.ok && loaded.disposed) {
       const fresh = getActiveHyperframesBridge();
       probeBridge = fresh && fresh !== probeBridge ? fresh : null;
       continue;
     }
-    if (!loaded.ok) {
-      errors.push({ rule: 'runtime', message: loaded.message });
+    if (!loaded.ok || !probe) {
+      errors.push({ rule: 'runtime', message: loaded.ok ? 'the composition could not be probed' : loaded.message });
       return { ok: false, errors, warnings, compiledJs: null, probed: false };
     }
-    const d = settings.durationInFrames;
-    const probe = await probeBridge.probe([0, Math.floor(d / 2), Math.max(0, d - 1)], holdFrames(d));
     for (const e of probe.errors) {
       errors.push({ rule: 'runtime', message: `frame ${e.frame}: ${e.message}` });
     }

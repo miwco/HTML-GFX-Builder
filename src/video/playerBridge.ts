@@ -137,6 +137,47 @@ export class PlayerBridge {
     assets: AssetFile[],
     opts: { autoplay?: boolean } = {},
   ): Promise<LoadResult> {
+    const run = () => this.runLoad(compiledJs, settings, inputProps, assets, opts);
+    const op = this.chain.then(run, run);
+    this.chain = op;
+    return op;
+  }
+
+  /**
+   * Mount a module and probe it as ONE chain entry - the call validation must use.
+   *
+   * Separate `load()` then `probe()` are two entries, and the preview panel shares this host:
+   * a rebuild enqueued while the candidate is still loading lands BEFORE the probe (which can
+   * only be enqueued once the load resolves), so the checks measure the project's own module
+   * and report it clean. Diagnosed on the HyperFrames bridge, whose chain is identical; fixed
+   * here too so the two engines cannot disagree about something this basic.
+   */
+  loadAndProbe(
+    compiledJs: string,
+    settings: VideoCompSettings,
+    inputProps: Record<string, unknown>,
+    assets: AssetFile[],
+    frames: number[],
+    checkFrames: number[],
+  ): Promise<{ loaded: LoadResult; probe: ProbeResult | null }> {
+    const run = async (): Promise<{ loaded: LoadResult; probe: ProbeResult | null }> => {
+      const loaded = await this.runLoad(compiledJs, settings, inputProps, assets, { autoplay: false });
+      if (!loaded.ok) return { loaded, probe: null };
+      return { loaded, probe: await this.runProbe(frames, checkFrames) };
+    };
+    const op = this.chain.then(run, run);
+    this.chain = op;
+    return op;
+  }
+
+  /** The load itself, OFF the chain - callers chain it (see load / loadAndProbe). */
+  private runLoad(
+    compiledJs: string,
+    settings: VideoCompSettings,
+    inputProps: Record<string, unknown>,
+    assets: AssetFile[],
+    opts: { autoplay?: boolean } = {},
+  ): Promise<LoadResult> {
     const run = (): Promise<LoadResult> => {
       if (this.disposedFlag) {
         return Promise.resolve({ ok: false, message: 'the player was replaced', disposed: true });
@@ -168,31 +209,32 @@ export class PlayerBridge {
         );
       });
     };
-    const op = this.chain.then(run, run);
-    this.chain = op;
-    return op;
+    return run();
   }
 
   /** Probe frames on the current module (validation). Serialized like load. `checkFrames`
    *  additionally get the host's readability checks - pass HOLD frames only. */
   probe(frames: number[], checkFrames: number[] = []): Promise<ProbeResult> {
-    const run = (): Promise<ProbeResult> => {
-      if (this.disposedFlag) {
-        return Promise.resolve({
-          ok: false,
-          errors: [{ frame: 0, message: 'the player was replaced' }],
-          textIssues: [],
-        });
-      }
-      const id = this.loadId;
-      return new Promise((resolve) => {
-        this.pendingProbe = { id, resolve };
-        this.post({ type: 'probe', id, frames, checkFrames });
-      });
-    };
+    const run = () => this.runProbe(frames, checkFrames);
     const op = this.chain.then(run, run);
     this.chain = op;
     return op;
+  }
+
+  /** The probe itself, OFF the chain - callers chain it (see probe / loadAndProbe). */
+  private runProbe(frames: number[], checkFrames: number[]): Promise<ProbeResult> {
+    if (this.disposedFlag) {
+      return Promise.resolve({
+        ok: false,
+        errors: [{ frame: 0, message: 'the player was replaced' }],
+        textIssues: [],
+      });
+    }
+    const id = this.loadId;
+    return new Promise((resolve) => {
+      this.pendingProbe = { id, resolve };
+      this.post({ type: 'probe', id, frames, checkFrames });
+    });
   }
 
   play(): void {
