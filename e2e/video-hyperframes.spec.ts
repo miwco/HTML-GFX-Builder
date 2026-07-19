@@ -262,6 +262,38 @@ test('the offline rule blocks real network loads without blocking XML namespaces
   expect(results.remoteFont).toContain('network-url');
 });
 
+test('a comment saying the composition avoids a banned API is not a use of it', async ({ page }) => {
+  // The prompts ask for commented code, so the model writes exactly the sentences that trip
+  // the patterns: `// deterministic distance, no repeat:-1` matched /repeat\s*:\s*-1/ and was
+  // rejected. Measured in a 21-run bench: three of three forbidden-api findings were this,
+  // and one burned BOTH repair rounds and failed the generation - the finding quotes the
+  // offending line, so the model rewords the comment and matches again. Same unwinnable shape
+  // as the xmlns bug above. Both halves are pinned: the comment passes, the real call fails.
+  await page.goto('/app');
+  const results = await page.evaluate(async () => {
+    const { staticValidateHyperframes } = await import('/src/video/hyperframes/validate.ts');
+    const settings = { width: 1920, height: 1080, fps: 30, durationInFrames: 150, transparent: false };
+    const doc = (script: string, body = '<div>x</div>') =>
+      `<!doctype html><html lang="en"><head><style>body{margin:0}</style></head><body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="5">${body}</div>
+<script>window.__timelines={};var tl=gsap.timeline({paused:true});${script}window.__timelines['main']=tl;</script>
+</body></html>`;
+    const rules = (html: string) => staticValidateHyperframes(html, [], settings).map((i) => i.rule);
+    return {
+      lineComment: rules(doc('// two legs, deterministic and finite (no repeat:-1)\n')),
+      blockComment: rules(doc('/* seeded scatter - never Math.random() */\n')),
+      htmlComment: rules(doc('', '<!-- the pulse is finite, no repeat: -1 --><div>x</div>')),
+      realRepeat: rules(doc('tl.to("#x",{opacity:0,repeat: -1,yoyo:true},0);')),
+      realRandom: rules(doc('var j = Math.random();')),
+    };
+  });
+  expect(results.lineComment).not.toContain('forbidden-api');
+  expect(results.blockComment).not.toContain('forbidden-api');
+  expect(results.htmlComment).not.toContain('forbidden-api');
+  expect(results.realRepeat).toContain('forbidden-api');
+  expect(results.realRandom).toContain('forbidden-api');
+});
+
 test('a declared variable nothing reads is rejected as a control that would do nothing', async ({ page }) => {
   // Prompt guidance alone did not hold this: benchmarking saw an accent colour declared and
   // then written as a hex literal, leaving a Content-panel control that changed nothing.

@@ -7,7 +7,7 @@
 import type { ValidationIssue } from '../../validation/validateTemplate';
 import type { AssetFile } from '../../model/types';
 import { describeAssets, type VideoCompSettings, type VideoValidationResult } from '../types';
-import { quoteMatch } from '../compile';
+import { blankComments, quoteMatch } from '../compile';
 import { holdFrames, persistentTextIssues } from '../readability';
 import { getActiveHyperframesBridge } from '../bridgeRegistry';
 import type { HyperframesBridge } from './bridge';
@@ -53,14 +53,14 @@ const NAMESPACE_URLS = [
 ];
 
 /**
- * The first URL the document would actually FETCH, or null. Comments are stripped first (a
- * URL in a comment is documentation, not a request) and namespace URIs are excluded. Every
- * other http(s) reference - a remote image, a stylesheet, a font, a script - still fails,
- * which is the whole point of the rule.
+ * The first URL the document would actually FETCH, or null. Namespace URIs are excluded, and
+ * the caller has already blanked comments (a URL in a comment is documentation, not a
+ * request - including in a `//` line comment, which this function's own stripping used to
+ * miss). Every other http(s) reference - a remote image, a stylesheet, a font, a script -
+ * still fails, which is the whole point of the rule.
  */
 function findRemoteUrl(html: string): string | null {
-  const withoutComments = html.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-  for (const m of withoutComments.matchAll(/https?:\/\/[^\s"'()<>]*/g)) {
+  for (const m of html.matchAll(/https?:\/\/[^\s"'()<>]*/g)) {
     if (!NAMESPACE_URLS.some((ns) => m[0] === ns || m[0].startsWith(`${ns}/`))) return m[0];
   }
   return null;
@@ -81,8 +81,12 @@ function isVariableBound(html: string, id: string): boolean {
 }
 
 /** Static contract checks on the SOURCE (before/independent of the live probe). */
-export function staticValidateHyperframes(html: string, assets: AssetFile[], settings: VideoCompSettings): ValidationIssue[] {
+export function staticValidateHyperframes(htmlRaw: string, assets: AssetFile[], settings: VideoCompSettings): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  // Every pattern check below asks what the document DOES, so none of them may read comments
+  // - the prompts ask for commented code, and "// no repeat:-1" used to be a rejection.
+  // parseHyperframesComposition still gets the RAW document: it reads real markup.
+  const html = blankComments(htmlRaw);
 
   if (html.length > MAX_HTML_BYTES) {
     issues.push({
@@ -91,7 +95,7 @@ export function staticValidateHyperframes(html: string, assets: AssetFile[], set
     });
   }
 
-  const parsed = parseHyperframesComposition(html);
+  const parsed = parseHyperframesComposition(htmlRaw);
   if (!parsed.root) {
     issues.push({
       rule: 'composition-root',

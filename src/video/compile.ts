@@ -43,6 +43,62 @@ const FORBIDDEN: { re: RegExp; what: string; instead: string }[] = [
 ];
 
 /**
+ * The source with every COMMENT body replaced by spaces, same length and same line breaks.
+ *
+ * Every rule below is a claim about what the composition DOES, and a comment does nothing.
+ * Scanning raw source makes the model's own prose incriminating - and the prompts ask for
+ * commented code, so the model writes exactly the sentences that trip the patterns. Measured:
+ * three of three `forbidden-api` findings in a 21-run HyperFrames bench were the model
+ * asserting it had AVOIDED the API - `// deterministic distance, no repeat:-1` matched
+ * /repeat\s*:\s*-1/. One of them burned both repair rounds and failed the generation, because
+ * the finding quotes the offending line, the model rewords the comment, and it matches again.
+ * Same shape as the xmlns namespace bug in docs/HYPERFRAMES_QUALITY.md: a rule that cannot be
+ * satisfied makes the repair loop unwinnable by construction.
+ *
+ * Blanking rather than deleting keeps every offset and line number exact, so `quoteMatch`
+ * still names the right line. The scanner tracks string literals so a `//` inside a quoted
+ * value (`href="//cdn"`, `'https://…'`) is never mistaken for a comment; where it cannot tell
+ * (an unmatched apostrophe in HTML text) it leaves the text alone, which preserves today's
+ * behaviour rather than hiding a real violation. Comments only ever LOSE the power to
+ * trigger a rule - a commented-out `export default` no longer satisfies its check either.
+ */
+export function blankComments(source: string): string {
+  const out = source.split('');
+  const blank = (from: number, to: number) => {
+    for (let i = from; i < to && i < out.length; i++) if (out[i] !== '\n') out[i] = ' ';
+  };
+  let i = 0;
+  while (i < source.length) {
+    const two = source.slice(i, i + 2);
+    const ch = source[i];
+    if (ch === '"' || ch === "'" || ch === '`') {
+      // Skip the literal whole, honouring backslash escapes.
+      let j = i + 1;
+      while (j < source.length && source[j] !== ch) j += source[j] === '\\' ? 2 : 1;
+      i = j + 1;
+    } else if (two === '//') {
+      const end = source.indexOf('\n', i);
+      const stop = end === -1 ? source.length : end;
+      blank(i, stop);
+      i = stop;
+    } else if (two === '/*') {
+      const end = source.indexOf('*/', i + 2);
+      const stop = end === -1 ? source.length : end + 2;
+      blank(i, stop);
+      i = stop;
+    } else if (source.startsWith('<!--', i)) {
+      const end = source.indexOf('-->', i + 4);
+      const stop = end === -1 ? source.length : end + 3;
+      blank(i, stop);
+      i = stop;
+    } else {
+      i++;
+    }
+  }
+  return out.join('');
+}
+
+/**
  * Quote the exact source line a pattern matched, as a suffix for the finding's message.
  * The repair round gets the model's OWN line back instead of an abstract rule - the one
  * change that reliably converts "understood the rule, edited around it" into a real fix
@@ -85,8 +141,10 @@ export function compileTsx(tsx: string): CompileResult {
 }
 
 /** Static contract checks on the SOURCE (before/independent of the live probe). */
-export function staticValidate(tsx: string, assets: VideoAssetInfo[]): ValidationIssue[] {
+export function staticValidate(tsxRaw: string, assets: VideoAssetInfo[]): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  // Every pattern check below asks what the module DOES, so none of them may read comments.
+  const tsx = blankComments(tsxRaw);
 
   if (tsx.length > MAX_TSX_BYTES) {
     issues.push({

@@ -340,3 +340,28 @@ test('an oversized project says so instead of losing the work silently', async (
 
   await expect(page.getByTestId('video-autosave-failed')).toBeVisible({ timeout: 10_000 });
 });
+
+test('the Remotion static rules read code, not comments', async ({ page }) => {
+  // The engine-neutral half of the HyperFrames finding (docs/HYPERFRAMES_QUALITY.md): the
+  // FORBIDDEN patterns used to scan raw source, so a module commenting that it avoids an API
+  // was rejected for using it - and the repair message quotes that comment, which reads as
+  // nonsense and makes the round unwinnable. It fired on HyperFrames in the bench because
+  // only that engine bans `repeat: -1`, but the defect was shared; this pins the fix here.
+  await page.goto('/app');
+  const results = await page.evaluate(async () => {
+    const { staticValidate } = await import('/src/video/compile.ts');
+    const rules = (tsx: string) => staticValidate(tsx, []).map((i) => i.rule);
+    return {
+      lineComment: rules('export default function C(){\n  // seeded, never Math.random()\n  return null;\n}'),
+      blockComment: rules('export default function C(){\n  /* no fetch( ) at render time */\n  return null;\n}'),
+      commentUrl: rules('export default function C(){\n  // see https://remotion.dev/docs\n  return null;\n}'),
+      realRandom: rules('export default function C(){\n  const r = Math.random();\n  return r;\n}'),
+      realUrl: rules('export default function C(){\n  return "https://cdn.example.com/x.png";\n}'),
+    };
+  });
+  expect(results.lineComment).not.toContain('forbidden-api');
+  expect(results.blockComment).not.toContain('forbidden-api');
+  expect(results.commentUrl).not.toContain('network-url');
+  expect(results.realRandom).toContain('forbidden-api');
+  expect(results.realUrl).toContain('network-url');
+});

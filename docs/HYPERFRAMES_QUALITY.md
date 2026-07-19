@@ -46,8 +46,13 @@ Beyond validation:
 - **Dead space** - the largest rectangle of the frame carrying no designed element at the
   hold, backdrops excluded. A metric and an outlier detector, **not** a pass/fail gate and
   not something to tune against; see the variance finding below.
-- **Dead controls** (HyperFrames) - declared composition variables nothing binds. Now
-  enforced by the validator, so this stays as an independent audit of that rule.
+- **Dead controls**, on BOTH engines - a declared control nothing reads. HyperFrames: a
+  composition variable nothing binds (the validator enforces this, so the bench is an
+  independent audit of the rule). Remotion: a declared input the module never reads off
+  `fields`, counting all three read routes - nothing in the product enforces that one, so here
+  the bench is the only thing looking. Auditing both is what makes a cross-engine repair-round
+  comparison honest: a rule only one engine enforces shows up as repair rounds there and as
+  silence on the other, which looks like a quality gap and is not one.
 
 ## Findings that changed the code
 
@@ -398,34 +403,170 @@ survived its repair rounds.
 cannot say whether that is the HyperFrames contract being harder to satisfy, the Remotion coder
 being better served by its example, or noise at this sample size. Recorded, not explained.
 
+## Why the engines diverge on repair rounds (42 generations, ~$7.48)
+
+The 28-generation pass recorded an unexplained 8-against-0 split and left it as the next thing
+to measure. Same committed brief set, three samples per brief per engine. A dev-server crash
+took the HyperFrames arm's `logo-sting-with-asset` brief (3 runs), so both arms are compared on
+the **six briefs that completed on both** - otherwise HyperFrames would be scored on the harder
+subset.
+
+| | HyperFrames | Remotion |
+|---|---|---|
+| Runs (matched briefs) | 18 | 18 |
+| Contract-valid | 17/18 | 18/18 |
+| Gate probed | 18/18 | 18/18 |
+| Runs needing a repair | **10** | **2** |
+| Repair rounds | 15 | 3 |
+| Dead controls, as the audit counts them | 0 | 0 |
+| Controls that actually work when used | **16/18** | 18/18 |
+| Tokens | 261,688 in / 229,469 out | 162,785 in / 154,647 out |
+
+Read the two control rows together. The audit asks whether a binding exists, and by that
+measure both engines are perfect. Two HyperFrames runs shipped a binding that exists and does
+not work - one writes into a hidden node the viewer never sees, one writes the value twice -
+and both were *produced by the repair round the audit's own rule triggered*. Both are measured
+below, in the app, not inferred.
+
+The split holds: 10 of 18 against 2 of 18 runs needing repair, Fisher's exact p = 0.012. It is
+not noise. The causes decompose into three unrelated things, only one of which is the engine
+composing worse.
+
+**The token premium is entirely repair rounds, not the medium.** A repair-free run costs
+7,807 in / 7,998 out on HyperFrames and 8,038 in / 7,963 out on Remotion - within noise of each
+other. The HyperFrames coder prompt is also the *smaller* of the two (~2.4k tokens of contract
+plus example, against Remotion's ~2.9k). Every token of the ~60% premium is bought by rounds.
+
+### `forbidden-api` ×3 - the validator was reading the model's comments
+
+All three were false positives, and not one was a real API use. The `FORBIDDEN` loop scanned
+raw source, so `/\brepeat\s*:\s*-1\b/` matched sentences like
+
+```
+// deterministic distance, no repeat:-1, no runtime randomness.
+```
+
+On `awards-reveal-r2` this burned **both** repair rounds and failed the generation outright -
+the only contract failure in the pass. The failure is self-sustaining: the finding quotes the
+offending line, so the model rewords its comment and matches again. This is the third instance
+of the shape this document keeps finding - a rule that cannot be satisfied makes the repair loop
+unwinnable by construction - after the xmlns namespace bug and the "give the root a single
+class" message in `src/ai/CLAUDE.md`. The prompts ask for commented code, so the harness was
+selecting for the sentences that trip it.
+
+**Fixed** by `blankComments` (`src/video/compile.ts`), shared by both validators: comment bodies
+are replaced by spaces before any pattern scan, preserving every offset so `quoteMatch` still
+names the right line. It tracks string literals, so `href="//cdn"` is not mistaken for a
+comment; where it cannot tell, it leaves the text alone, which keeps today's behaviour rather
+than hiding a real violation. Verified against the three saved rejections (all three now clean)
+and against real violations (all still rejected). The defect was **shared with Remotion** - a
+`// never call Math.random()` comment would have been rejected there too, and a URL in a `//`
+comment tripped `network-url` on both. It only surfaced on HyperFrames because only that engine
+bans `repeat: -1`. Pinned on both engines: `e2e/video-hyperframes.spec.ts` and
+`e2e/video-project.spec.ts`.
+
+### `variables` ×9 - the binding contract fights the motion
+
+This is the real HyperFrames-specific cost, and it is not an enforcement artefact. The obvious
+suspicion - that Remotion ships the same dead controls unflagged, since `validateVideoModule` is
+never even handed the declared inputs - was tested and is **false**: the bench now audits
+Remotion inputs against all three read routes (`fields.k`, `fields['k']`, destructuring), and
+found **0 dead inputs across 21 runs**. Remotion genuinely binds what it declares.
+
+The difference is what a binding *is*. Remotion's is a **value** the code reads, so
+`fields.title` can be split, mapped, and staggered freely. HyperFrames' `data-var-text` is a
+**node identity**, and the driver sets `textContent` on it - which requires the element to be a
+leaf. Animated headline text is the one thing that is never a leaf: the model splits it into
+per-word or per-half spans, exactly as the motion skills teach. The binding and the motion want
+the same element, so on every text-hero brief the model must pick one.
+
+All nine findings were plain `string` (×6) and `color` (×3) variables - not the `boolean`/`enum`
+types the contract advertises without giving them a working route, which is a separate latent
+trap that did not fire here. The colours were cheap to fix (`var(--accent)` in CSS, one round).
+The three text cases each resolved badly, in a different way:
+
+- **`long-title-r1` satisfied the rule with a hidden mirror.** It kept its eight per-word spans
+  and added `<div id="line1-source" class="var-source" data-var-text="line1">` plus a one-shot
+  script copying the words into the visible spans at load. That is the hidden-holder pattern the
+  SPX contract explicitly bans, and the control is **dead**: scalar edits apply through set-vars
+  with no reload (pinned in `e2e/video-hyperframes.spec.ts`), so the sync never re-runs.
+  Measured in the app - the control was set to "EDITED BY THE USER", the hidden node took the
+  text, and the visible title still read "THE LONG ROAD TO". The run shipped marked clean.
+- **`long-title-r2` paid in motion.** It dropped per-word staggering entirely (zero word spans
+  in the shipped source) and bound a leaf `<span class="hero-line">`.
+- **`single-word-hero-r3` broke the control while passing the rule.** It split LANDFALL into
+  two halves and put `data-var-text="title"` on **both**. The driver writes the value into every
+  match, so editing the control renders the word twice - measured live: setting it to
+  "HURRICANE" rendered `HURRICANEHURRICANE`.
+
+That last one closes open follow-up #3 below. The unexplained "NOACGNOACG" duplication was not a
+model error to be talked out of with a sharper message - it is the driver faithfully writing one
+variable into every element that shares its id, which is what the model does when it splits
+animated text and dutifully binds each fragment. Only one run in 18 shared a binding this way,
+so it does not explain the clipping gap generally, but it does explain that finding.
+
+**Not fixed here** - the honest fix is a design decision, not a patch. The options are to give
+the driver a re-apply hook so a composition can rebuild split text when a value changes, to
+reject a shared `data-var-text` id and a hidden bound element (which catches both bad
+resolutions but leaves the model with no legal path, so it would raise repair rounds), or to
+teach the contract a supported pattern for animating bound text. Left for a decision rather than
+guessed at.
+
+### The rest is a real, and much smaller, composition gap
+
+Stripping the false positives and the binding conflict leaves `text-clip` ×8 and
+`text-safe-area` ×3 on HyperFrames against `text-clip` ×3 on Remotion - identical rules, the
+same `textChecks.js`, both probes calling the same three checks. HyperFrames does clip text more
+often. That is worth chasing, and it is a far smaller claim than 15-against-3 suggests: of the
+23 HyperFrames findings, 3 were a gate bug and 9 came from a contract conflict Remotion does not
+have.
+
+**What this does not establish.** Three samples per brief is still small, the arms are matched on
+six briefs rather than seven, and the readability gap in particular rests on 4 runs against 1.
+The `variables` mechanism is the part that is solid: it was traced to specific code, reproduced
+in the app twice, and the competing explanation (that Remotion hides the same defect) was tested
+and refuted.
+
 ## Open follow-ups
 
 Ordered by value. The re-measurement turned up two; the total-crop half is done (above), so
 what remains of it is the spend.
 
-1. **Explain the repair-round gap between the engines** (8 against 0 on identical briefs).
-   Worth one more pass at a larger sample before drawing any conclusion; if it holds, the
-   HyperFrames contract or its worked example is costing real tokens for no quality gain.
+1. **Decide how a composition binds text it also animates.** The measured cause of the
+   repair-round gap (above): `data-var-text` needs a leaf element, animated headline text is
+   never one, and each of the three ways the model resolved that was bad - a hidden mirror that
+   passes the rule while being dead, a dropped stagger, or a value written into every fragment.
+   Three routes, none free: a driver re-apply hook so split text can be rebuilt when a value
+   changes; validator rules against a shared `data-var-text` id and a hidden bound element
+   (correct, but leaves no legal path and would *raise* repair rounds unless paired with the
+   first); or a taught pattern in the contract. Needs a decision before code.
 2. **The transparent/overlay brief is the weakest case on both engines** - the only
    readability finding in the varied pass, the most repairs on each engine, and the one
    design shape neither contract says much about (where a strap sits, safe margins, not
    filling the frame). This is the strongest candidate for a *measured* prompt improvement,
    but it needs more than one sample per engine before anyone writes prose.
-3. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
-   because the finding told the model to resize a line whose real problem was that it had
-   been rendered twice ("NOACGNOACG"). A finding that notices a repeated substring and says
-   so would probably be fixable inside the two rounds.
-4. **The countdown-style minimal reveal** - historically the weakest brief, and the
+3. ~~**Sharpen the repair message when text looks duplicated.**~~ **Explained, not a message
+   problem.** "NOACGNOACG" is the driver writing one variable's value into every element that
+   shares its `data-var-text` id - what the model does when it splits animated text and binds
+   each fragment. Reproduced live (`HURRICANEHURRICANE`). Subsumed by item 1; no wording change
+   would have helped.
+4. **`boolean` and `enum` variables have no working binding route.** The contract advertises six
+   types; the driver has two scalar routes (`--<id>` in CSS, `data-var-text`), and neither makes
+   a boolean or an enum do anything useful. Latent rather than measured - all nine `variables`
+   findings were `string`/`color` - so either give them a route or stop offering them.
+5. **The countdown-style minimal reveal** - historically the weakest brief, and the
    "uncommitted default" look it falls into is unmoved by prose. It came through clean in
    this pass, so treat the earlier finding as unconfirmed rather than settled.
-5. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
+6. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
    A real feature (validator, driver, compose, and the render worker all have to agree on how
    a media clip seeks deterministically), not a prompt change.
 
 ## Handoff
 
-**State.** Everything described here is on `main` except the readability-gate fix and its two
-specs, which are on `claude/hf-readability-gate-determinism`. The bench supports both engines
+**State.** Everything described here is on `main` except the comment-blanking fix, its two
+specs, and the repair-round analysis, which are on `claude/hyperframes-repair-analysis`. The
+one thing the 42-generation pass found and did NOT fix is follow-up 1 - it needs a decision on
+how a composition binds text it also animates. The bench supports both engines
 (`--engine`), runs free against the offline provider (`--stub`), and records tokens, repair
 rounds and their causes, the sources that failed a repair round, dead space, and dead
 controls. Offline coverage is 14/14 clean across both engines and all seven briefs.
@@ -433,7 +574,9 @@ controls. Offline coverage is 14/14 clean across both engines and all seven brie
 **What is trustworthy.** Contract validity (36/36 across two earlier multi-sample runs, 14/14
 here), the deterministic checks (unbound variables, namespace URLs, asset inlining), the
 measured font widths, and export self-containment - all verified directly rather than
-inferred.
+inferred. So is the repair-round decomposition in the 42-generation pass: the comment false
+positives were replayed against the three saved rejections, and both variable defects were
+reproduced by driving the real app.
 
 **What is not.** Every readability figure collected BEFORE the gate fix, since a probe that
 could not run was recorded as clean and the bias is one-directional (optimistic) - treat the

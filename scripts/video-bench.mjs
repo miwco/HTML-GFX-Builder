@@ -286,11 +286,21 @@ async function measureDeadSpace(frame) {
 }
 
 /**
- * HyperFrames only: are the declared controls actually WIRED? The validator now rejects an
- * unbound variable, so a SHIPPED generation should never have one - this stays as an
- * independent audit of that rule rather than as the rule itself.
+ * Are the declared controls actually WIRED? A control nothing reads does nothing when the
+ * user changes it, on either engine.
+ *
+ * HyperFrames' validator rejects an unbound variable, so a SHIPPED HyperFrames generation
+ * should never have one and this stays an independent audit of that rule. Remotion has NO
+ * such rule - `validateVideoModule` is never even handed the declared inputs - so the same
+ * defect ships unflagged there. Auditing BOTH is what makes a cross-engine repair-round
+ * comparison honest: a rule only one engine enforces shows up as repair rounds on that
+ * engine and as nothing at all on the other, which looks like a quality gap and is not one.
  */
-function checkVariableBindings(html) {
+function checkDeadControls(source, inputs) {
+  return ENGINE === 'hyperframes' ? hyperframesDeadVars(source) : remotionDeadInputs(source, inputs);
+}
+
+function hyperframesDeadVars(html) {
   const m = html.match(/data-composition-variables\s*=\s*'([^']*)'/);
   if (!m) return [];
   let decls;
@@ -302,7 +312,7 @@ function checkVariableBindings(html) {
   const dead = [];
   for (const d of Array.isArray(decls) ? decls : []) {
     if (!d?.id) continue;
-    const id = d.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const id = escapeRe(d.id);
     const bound =
       new RegExp(`data-var-(text|src)\\s*=\\s*["']${id}["']`).test(html) ||
       new RegExp(`var\\(\\s*--${id}\\b`).test(html);
@@ -310,6 +320,33 @@ function checkVariableBindings(html) {
   }
   return dead;
 }
+
+/**
+ * The Remotion counterpart: a declared input the module never reads off its `fields` prop.
+ * All three real read routes count - `fields.key`, `fields['key']`, and destructuring
+ * (`const { key } = fields`) - because a false positive here would invent a defect and
+ * corrupt the very comparison this audit exists to make.
+ */
+function remotionDeadInputs(tsx, inputs) {
+  // Every `{ ... }` destructured off a fields object, as one blob to search for names.
+  const destructured = [...tsx.matchAll(/\{([^{}]*)\}\s*=\s*(?:props\s*\.\s*)?fields\b/g)]
+    .map((m) => m[1])
+    .join(',');
+  const dead = [];
+  for (const decl of inputs) {
+    const key = String(decl).split(':')[0];
+    if (!key) continue;
+    const k = escapeRe(key);
+    const read =
+      new RegExp(`\\bfields\\s*\\??\\s*\\.\\s*${k}\\b`).test(tsx) ||
+      new RegExp(`\\bfields\\s*\\??\\.?\\s*\\[\\s*['"]${k}['"]\\s*\\]`).test(tsx) ||
+      new RegExp(`(^|[,{\\s])${k}\\s*(?=[,:=}]|$)`).test(destructured);
+    if (!read) dead.push(`"${key}" is declared but the module never reads fields.${key}`);
+  }
+  return dead;
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Seek the player transport to a frame and let it settle. */
 async function seekTo(frameNo) {
@@ -487,7 +524,7 @@ for (const example of selected) {
       }
       // An overlay is meant to leave the frame empty - see measureDeadSpace.
       const deadSpace = example.transparent ? null : Math.max(0, ...deadSpaces);
-      const deadVars = ENGINE === 'hyperframes' ? checkVariableBindings(state.source) : [];
+      const deadVars = checkDeadControls(state.source, state.inputs);
 
       // The generation's own trace: stages seen, calls made, and the findings each repair
       // round was fired by. A rejected result keeps the previous code in the store, so the
