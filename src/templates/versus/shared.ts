@@ -49,6 +49,7 @@ import {
   runtimeJs,
   zoneCssText,
 } from '../shared/base';
+import type { AnimData } from '../../blocks/animData';
 import { convertToDataRegion } from '../shared/standard';
 import type { PresetConfig } from '../lowerThirds/animPresets';
 import { versusPresetById } from './vsPresets';
@@ -91,7 +92,11 @@ export function versusLines(o: ResolvedOptions): { teamA: LineSpec; teamB: LineS
 }
 
 /** Build the complete versus SpxTemplate. */
-export function assembleVersus(meta: VsMeta, design: VsDesign, o: ResolvedOptions): SpxTemplate {
+export function assembleVersus(meta: VsMeta, design: VsDesign, o: ResolvedOptions,
+  /** Refine the converted animation data — the seam a graphic TYPE injects its machine
+   *  through (see shared/standard.ts composeRefine for the ordering rule). */
+  refine?: (data: AnimData) => AnimData,
+): SpxTemplate {
   const font = resolveHeadingFont(o); // imported font wins over the bundled set
   const scale = computeScale(o);
   const lines = versusLines(o);
@@ -230,7 +235,7 @@ ${design.css}
         text: f.value,
         styles: {},
       })),
-  });
+  }, refine);
 }
 
 /** The authoring API for versus variant modules. */
@@ -238,12 +243,15 @@ export function defineVersusVariant(
   spec: Omit<TemplateVariant, 'create'>,
   meta: VsMeta,
   buildDesign: (o: ResolvedOptions) => VsDesign,
+  /** Optional animation-data refinement (a graphic type's machine rides in here). It is
+   *  built per create() because a type's compiled machine depends on the resolved options. */
+  refine?: (o: ResolvedOptions) => ((data: AnimData) => AnimData) | undefined,
 ): TemplateVariant {
   const variant: TemplateVariant = {
     ...spec,
     create(options?: WizardOptions) {
       const o = resolveOptions(variant, options);
-      return assembleVersus(meta, buildDesign(o), o);
+      return assembleVersus(meta, buildDesign(o), o, refine?.(o));
     },
   };
   return variant;

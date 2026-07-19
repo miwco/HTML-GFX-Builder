@@ -36,6 +36,7 @@ import {
   zoneCssText,
 } from '../shared/base';
 import { clockRuntimeJs } from '../shared/clock';
+import type { AnimData } from '../../blocks/animData';
 import { convertToDataRegion } from '../shared/standard';
 import type { PresetConfig } from '../lowerThirds/animPresets';
 import { gameTimerPresetById } from './gtPresets';
@@ -115,7 +116,11 @@ const LABEL_SAMPLE = 'ROUND 1';
 const MINUTES_SAMPLE = '3';
 
 /** Build the complete game-timer SpxTemplate. */
-export function assembleGameTimer(meta: GameTimerMeta, design: GameTimerDesign, o: ResolvedOptions): SpxTemplate {
+export function assembleGameTimer(meta: GameTimerMeta, design: GameTimerDesign, o: ResolvedOptions,
+  /** Refine the converted animation data — the seam a graphic TYPE injects its machine
+   *  through (see shared/standard.ts composeRefine for the ordering rule). */
+  refine?: (data: AnimData) => AnimData,
+): SpxTemplate {
   const font = resolveHeadingFont(o);
   const scale = computeScale(o);
   // The auto-fit cap: timers may run wide (label + big clock), so ~70 % of the canvas.
@@ -214,7 +219,7 @@ ${design.css}
   // startClock()/stopClock() hooks, so the countdown survives the flip; the clock runtime
   // itself lives OUTSIDE the region and is untouched. A conversion failure keeps the legacy
   // emit — never a broken template.
-  return convertToDataRegion(template);
+  return convertToDataRegion(template, refine);
 }
 
 /**
@@ -279,12 +284,15 @@ export function defineGameTimerVariant(
   spec: Omit<TemplateVariant, 'create'>,
   meta: GameTimerMeta,
   buildDesign: (o: ResolvedOptions) => GameTimerDesign,
+  /** Optional animation-data refinement (a graphic type's machine rides in here). It is
+   *  built per create() because a type's compiled machine depends on the resolved options. */
+  refine?: (o: ResolvedOptions) => ((data: AnimData) => AnimData) | undefined,
 ): TemplateVariant {
   const variant: TemplateVariant = {
     ...spec,
     create(options?: WizardOptions) {
       const o = resolveOptions(variant, options);
-      return assembleGameTimer(meta, buildDesign(o), o);
+      return assembleGameTimer(meta, buildDesign(o), o, refine?.(o));
     },
   };
   return variant;

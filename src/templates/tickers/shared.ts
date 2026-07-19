@@ -34,6 +34,7 @@ import {
   zoneCssText,
 } from '../shared/base';
 import type { PresetConfig } from '../lowerThirds/animPresets';
+import type { AnimData } from '../../blocks/animData';
 import { convertToDataRegion } from '../shared/standard';
 import { tickerPresetById } from './tickerPresets';
 import { TICKER_MOTION_JS } from './tickerMotion';
@@ -124,7 +125,11 @@ const ITEMS_SAMPLE = [
 ].join('\n');
 
 /** Build the complete ticker SpxTemplate. */
-export function assembleTicker(meta: TickerMeta, design: TickerDesign, o: ResolvedOptions): SpxTemplate {
+export function assembleTicker(meta: TickerMeta, design: TickerDesign, o: ResolvedOptions,
+  /** Refine the converted animation data — the seam a graphic TYPE injects its machine
+   *  through (see shared/standard.ts composeRefine for the ordering rule). */
+  refine?: (data: AnimData) => AnimData,
+): SpxTemplate {
   const font = resolveHeadingFont(o);
   const scale = computeScale(o);
 
@@ -209,7 +214,7 @@ ${preset.emit(cfg)}`,
   // becomes ordinary keyframes; the measured travel rides across as a `dynamics` segment
   // naming its builder above (docs/DYNAMIC_MOTION_SCOPE.md). The builders themselves sit
   // outside the region and are untouched by the conversion.
-  return convertToDataRegion(template);
+  return convertToDataRegion(template, refine);
 }
 
 /** The authoring API for ticker variant modules. */
@@ -217,12 +222,15 @@ export function defineTickerVariant(
   spec: Omit<TemplateVariant, 'create'>,
   meta: TickerMeta,
   buildDesign: (o: ResolvedOptions) => TickerDesign,
+  /** Optional animation-data refinement (a graphic type's machine rides in here). It is
+   *  built per create() because a type's compiled machine depends on the resolved options. */
+  refine?: (o: ResolvedOptions) => ((data: AnimData) => AnimData) | undefined,
 ): TemplateVariant {
   const variant: TemplateVariant = {
     ...spec,
     create(options?: WizardOptions) {
       const o = resolveOptions(variant, options);
-      return assembleTicker(meta, buildDesign(o), o);
+      return assembleTicker(meta, buildDesign(o), o, refine?.(o));
     },
   };
   return variant;

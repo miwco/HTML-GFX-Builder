@@ -34,6 +34,7 @@ import {
   zoneCssText,
 } from '../shared/base';
 import { clockRuntimeJs } from '../shared/clock';
+import type { AnimData } from '../../blocks/animData';
 import { convertToDataRegion } from '../shared/standard';
 import type { PresetConfig } from '../lowerThirds/animPresets';
 import { ssPresetById } from './ssPresets';
@@ -105,6 +106,9 @@ export function assembleStartingSoon(
   meta: StartingSoonMeta,
   design: StartingSoonDesign,
   o: ResolvedOptions,
+  /** Refine the converted animation data — the seam a graphic TYPE injects its machine
+   *  through (see shared/standard.ts composeRefine for the ordering rule). */
+  refine?: (data: AnimData) => AnimData,
 ): SpxTemplate {
   const font = resolveHeadingFont(o);
   const scale = computeScale(o);
@@ -199,7 +203,7 @@ ${design.css}
   // step-calls model (§3b) carries startClock()/stopClock(), so the hold loop and countdown
   // both survive the flip; the clock runtime lives OUTSIDE the region and is untouched. A
   // conversion failure keeps the legacy emit — never a broken template.
-  return convertToDataRegion(template);
+  return convertToDataRegion(template, refine);
 }
 
 /** The authoring API for starting-soon variant modules. */
@@ -207,12 +211,15 @@ export function defineStartingSoonVariant(
   spec: Omit<TemplateVariant, 'create'>,
   meta: StartingSoonMeta,
   buildDesign: (o: ResolvedOptions) => StartingSoonDesign,
+  /** Optional animation-data refinement (a graphic type's machine rides in here). It is
+   *  built per create() because a type's compiled machine depends on the resolved options. */
+  refine?: (o: ResolvedOptions) => ((data: AnimData) => AnimData) | undefined,
 ): TemplateVariant {
   const variant: TemplateVariant = {
     ...spec,
     create(options?: WizardOptions) {
       const o = resolveOptions(variant, options);
-      return assembleStartingSoon(meta, buildDesign(o), o);
+      return assembleStartingSoon(meta, buildDesign(o), o, refine?.(o));
     },
   };
   return variant;

@@ -40,6 +40,7 @@ import {
   zoneCssText,
 } from '../shared/base';
 import { presetById, type PresetConfig } from '../lowerThirds/animPresets';
+import type { AnimData } from '../../blocks/animData';
 import { convertToDataRegion } from '../shared/standard';
 
 export interface SbDesign {
@@ -143,7 +144,11 @@ ${animationBlock}
 }
 
 /** Build the complete scoreboard SpxTemplate. */
-export function assembleScoreboard(meta: SbMeta, design: SbDesign, o: ResolvedOptions): SpxTemplate {
+export function assembleScoreboard(meta: SbMeta, design: SbDesign, o: ResolvedOptions,
+  /** Refine the converted animation data — the seam a graphic TYPE injects its machine
+   *  through (see shared/standard.ts composeRefine for the ordering rule). */
+  refine?: (data: AnimData) => AnimData,
+): SpxTemplate {
   const font = resolveHeadingFont(o); // imported font wins over the bundled set
   const scale = computeScale(o);
   // Scoreboards span two team groups side by side — cap wider than a single strap.
@@ -231,7 +236,7 @@ ${design.css}
       text: f.value,
       styles: {},
     })),
-  });
+  }, refine);
 }
 
 /** The authoring API for scoreboard variant modules. */
@@ -239,12 +244,15 @@ export function defineScoreboardVariant(
   spec: Omit<TemplateVariant, 'create'>,
   meta: SbMeta,
   buildDesign: (o: ResolvedOptions) => SbDesign,
+  /** Optional animation-data refinement (a graphic type's machine rides in here). It is
+   *  built per create() because a type's compiled machine depends on the resolved options. */
+  refine?: (o: ResolvedOptions) => ((data: AnimData) => AnimData) | undefined,
 ): TemplateVariant {
   const variant: TemplateVariant = {
     ...spec,
     create(options?: WizardOptions) {
       const o = resolveOptions(variant, options);
-      return assembleScoreboard(meta, buildDesign(o), o);
+      return assembleScoreboard(meta, buildDesign(o), o, refine?.(o));
     },
   };
   return variant;

@@ -36,6 +36,7 @@ import {
   zoneCssText,
 } from '../shared/base';
 import type { PresetConfig } from '../lowerThirds/animPresets';
+import type { AnimData } from '../../blocks/animData';
 import { convertToDataRegion } from '../shared/standard';
 import { igPresetById } from './igPresets';
 import { IG_MOTION_JS } from './igMotion';
@@ -114,7 +115,11 @@ ${animationBlock}
 }
 
 /** Build the complete infographic SpxTemplate. */
-export function assembleInfographic(meta: IgMeta, design: IgDesign, o: ResolvedOptions): SpxTemplate {
+export function assembleInfographic(meta: IgMeta, design: IgDesign, o: ResolvedOptions,
+  /** Refine the converted animation data — the seam a graphic TYPE injects its machine
+   *  through (see shared/standard.ts composeRefine for the ordering rule). */
+  refine?: (data: AnimData) => AnimData,
+): SpxTemplate {
   const font = resolveHeadingFont(o); // imported font wins over the bundled set
   const scale = computeScale(o);
   // Infographics carry a value + label block (or a bar chart) — cap a bit wider than a strap.
@@ -216,7 +221,7 @@ ${design.css}
   // Timeline v2: the preset's region becomes the NOACG_ANIM data block. The panel entrance
   // rides across as ordinary keyframes; the measured motion rides across as a `dynamics`
   // segment naming its builder — the builders themselves are untouched, outside the markers.
-  return convertToDataRegion(template);
+  return convertToDataRegion(template, refine);
 }
 
 /** The authoring API for infographic variant modules. */
@@ -224,12 +229,15 @@ export function defineInfographicVariant(
   spec: Omit<TemplateVariant, 'create'>,
   meta: IgMeta,
   buildDesign: (o: ResolvedOptions) => IgDesign,
+  /** Optional animation-data refinement (a graphic type's machine rides in here). It is
+   *  built per create() because a type's compiled machine depends on the resolved options. */
+  refine?: (o: ResolvedOptions) => ((data: AnimData) => AnimData) | undefined,
 ): TemplateVariant {
   const variant: TemplateVariant = {
     ...spec,
     create(options?: WizardOptions) {
       const o = resolveOptions(variant, options);
-      return assembleInfographic(meta, buildDesign(o), o);
+      return assembleInfographic(meta, buildDesign(o), o, refine?.(o));
     },
   };
   return variant;

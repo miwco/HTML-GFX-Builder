@@ -32,6 +32,7 @@ import {
   zoneCssText,
 } from '../shared/base';
 import type { PresetConfig } from '../lowerThirds/animPresets';
+import type { AnimData } from '../../blocks/animData';
 import { convertToDataRegion } from '../shared/standard';
 import { creditsPresetById } from './creditsPresets';
 import { CREDITS_MOTION_JS } from './creditsMotion';
@@ -156,7 +157,11 @@ const CREDITS_SAMPLE = [
 ].join('\n');
 
 /** Build the complete end-credits SpxTemplate. */
-export function assembleCredits(meta: CreditsMeta, design: CreditsDesign, o: ResolvedOptions): SpxTemplate {
+export function assembleCredits(meta: CreditsMeta, design: CreditsDesign, o: ResolvedOptions,
+  /** Refine the converted animation data — the seam a graphic TYPE injects its machine
+   *  through (see shared/standard.ts composeRefine for the ordering rule). */
+  refine?: (data: AnimData) => AnimData,
+): SpxTemplate {
   const font = resolveHeadingFont(o);
   const scale = computeScale(o);
 
@@ -240,7 +245,7 @@ ${design.css}
   // becomes ordinary keyframes; the measured travel rides across as a `dynamics` segment
   // naming its builder above (docs/DYNAMIC_MOTION_SCOPE.md). The builders themselves sit
   // outside the region and are untouched by the conversion.
-  return convertToDataRegion(template);
+  return convertToDataRegion(template, refine);
 }
 
 /** The authoring API for end-credits variant modules. */
@@ -248,12 +253,15 @@ export function defineCreditsVariant(
   spec: Omit<TemplateVariant, 'create'>,
   meta: CreditsMeta,
   buildDesign: (o: ResolvedOptions) => CreditsDesign,
+  /** Optional animation-data refinement (a graphic type's machine rides in here). It is
+   *  built per create() because a type's compiled machine depends on the resolved options. */
+  refine?: (o: ResolvedOptions) => ((data: AnimData) => AnimData) | undefined,
 ): TemplateVariant {
   const variant: TemplateVariant = {
     ...spec,
     create(options?: WizardOptions) {
       const o = resolveOptions(variant, options);
-      return assembleCredits(meta, buildDesign(o), o);
+      return assembleCredits(meta, buildDesign(o), o, refine?.(o));
     },
   };
   return variant;
