@@ -1749,7 +1749,9 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                   // On a phone every one of these lines would advertise a desktop gesture —
                   // double-click, arrow keys, the corner handle — so the chip shows just the
                   // name there: less guidance beats an instruction the device can't follow.
-                  hint: pressEligible || isMobile
+                  // The padlock states the lock in its own words, so the chip drops the hint
+                  // beside it rather than ellipsizing both into halves of a sentence.
+                  hint: pressEligible || isMobile || lockToggleFor
                     ? undefined
                     : isLocked(selectedPart.selector)
                       ? 'Locked — unlock it to move or resize it here'

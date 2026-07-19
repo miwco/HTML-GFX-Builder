@@ -176,7 +176,6 @@ test('import graphic: the locked artwork never captures a drag — bare artwork 
   // The artwork is locked by default: selecting it says so, and it offers no move handles.
   await page.locator('.tlv2-labels .timeline-label[data-part=".imported-design-art"]').click();
   await expect(page.getByTestId('canvas-lock')).toContainText('Locked');
-  await expect(page.getByTestId('selection-chip')).toContainText('Locked —');
   await expect(page.getByTestId('layer-scale-handle')).toHaveCount(0);
 
   const before = await writes(page);
