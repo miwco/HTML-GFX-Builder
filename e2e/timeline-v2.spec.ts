@@ -733,17 +733,25 @@ test('v2: scoreboards create as data blocks — the score pop keeps working arou
   await expect
     .poll(async () => frame.locator('.scoreboard').evaluate((el) => getComputedStyle(el).opacity))
     .toBe('1');
-  await frame
-    .locator('body')
-    .evaluate(() => (window as unknown as { update: (d: string) => void }).update(JSON.stringify({ f1: '7' })));
-  await expect
-    .poll(async () =>
-      frame.locator('#f1').evaluate((el) => {
-        const m = getComputedStyle(el.parentElement!).transform.match(/matrix\(([\d.]+)/);
-        return m ? Number(m[1]) : 1;
-      }),
-    )
-    .toBeGreaterThan(1.05);
+  // The pop is a 0.4 s spring from 1.35 back to 1, so polling for it from OUTSIDE the page is
+  // a race: one slow round-trip and the sampling starts after it is over, reading a settled 1
+  // forever. Sample from inside the page instead and report the PEAK - the assertion then
+  // means "the score popped" rather than "the runner happened to look in time".
+  const peakScale = await frame.locator('body').evaluate(async () => {
+    const el = document.getElementById('f1')!.parentElement!;
+    const read = () => {
+      const m = getComputedStyle(el).transform.match(/matrix\(([\d.]+)/);
+      return m ? Number(m[1]) : 1;
+    };
+    (window as unknown as { update: (d: string) => void }).update(JSON.stringify({ f1: '7' }));
+    let peak = read();
+    for (let i = 0; i < 60; i++) {
+      peak = Math.max(peak, read());
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+    }
+    return peak;
+  });
+  expect(peakScale).toBeGreaterThan(1.05);
 });
 
 

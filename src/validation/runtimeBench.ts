@@ -46,6 +46,10 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const TIME_SCALE = 20;
 /** Real-time wait that equals TIME_SCALE× that much animation time. */
 const SETTLE_MS = 300;
+/** How long the on-air check keeps looking before calling a graphic invisible. Generous on
+ *  purpose: it costs nothing when the graphic is already up (the poll returns immediately),
+ *  and it is what keeps a starved rAF from being reported as a broken entrance. */
+const ON_AIR_BUDGET_MS = 2_000;
 /** Title-safe margin (fraction of the canvas each side) - escaping it is a warning. */
 const TITLE_SAFE = 0.035;
 /** Overlap thresholds: intersection as a fraction of the SMALLER element's rect. */
@@ -66,6 +70,15 @@ interface TemplateGlobals {
 const issue = (rule: string, message: string): ValidationIssue => ({ rule, message });
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/** Poll a condition until it holds or the budget runs out. Returns whether it held. */
+async function waitFor(condition: () => boolean, budgetMs: number, stepMs = 50): Promise<boolean> {
+  for (let waited = 0; waited < budgetMs; waited += stepMs) {
+    if (condition()) return true;
+    await wait(stepMs);
+  }
+  return condition();
+}
 
 /** '#id', '.first-class', or the tag name - how findings name an element. */
 function labelFor(el: Element): string {
@@ -461,7 +474,12 @@ export async function benchTemplateRuntime(
     const onAir = () =>
       collectLeaves(win).some((el) => intersection(el.getBoundingClientRect(), canvasRect) > 0);
 
-    if (!onAir()) {
+    // Sampling ONCE after a fixed wait makes this a race, not a check: an entrance that fades
+    // in reads as invisible until enough of it has played, and a hidden benching iframe can
+    // have its rAF starved for a stretch under a loaded parallel run - so the assertion could
+    // fail for a graphic that is perfectly fine. Poll instead: the moment the graphic is on
+    // air we move on, and only a graphic that NEVER appears within the budget is an error.
+    if (!(await waitFor(onAir, ON_AIR_BUDGET_MS))) {
       errors.push(
         issue(
           'bench-entrance',

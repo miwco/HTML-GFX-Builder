@@ -49,6 +49,27 @@ const HARNESS = `
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const stateOf = (w, group) => w.noacgMachineState().groups[group];
   const opacityOf = (w, sel) => Number(w.getComputedStyle(w.document.querySelector(sel)).opacity);
+  // Read a value once it SETTLES on what we expect, or give up and return whatever it is
+  // (so the assertion still reports the real number). Animations run on real wall time here,
+  // and a loaded parallel run can starve rAF for a stretch - sleeping a fixed span would make
+  // these assertions a race against the machine's mood rather than a check of the model.
+  async function settled(read, want, budgetMs) {
+    budgetMs = budgetMs || 3000;
+    for (var waited = 0; waited < budgetMs; waited += 40) {
+      if (read() === want) return read();
+      await sleep(40);
+    }
+    return read();
+  }
+  /** The same, for a threshold rather than an exact value. */
+  async function reaches(read, atLeast, budgetMs) {
+    budgetMs = budgetMs || 3000;
+    for (var waited = 0; waited < budgetMs; waited += 40) {
+      if (read() >= atLeast) return read();
+      await sleep(40);
+    }
+    return read();
+  }
 `;
 
 test('schema: migration on read, canonical fixed point over machines, shape rejections', async ({ page }) => {
@@ -154,31 +175,28 @@ test('simplicity guard: a lower third is three states, drivable end-to-end with 
     ${HARNESS}
     // Implicit half: NO machine key — the schema adds zero weight to the simple case.
     const wi = await boot(await buildMachineTemplate(${JSON.stringify(LOWER_THIRD_IMPLICIT)}));
+    const ltOpacity = () => opacityOf(wi, '.lt');
     wi.play();
-    await sleep(700);
-    const implicitOnAir = opacityOf(wi, '.lt');
+    const implicitOnAir = await settled(ltOpacity, 1);
     wi.stop();
-    await sleep(500);
-    const implicitOff = opacityOf(wi, '.lt');
+    const implicitOff = await settled(ltOpacity, 0);
     wi.play(); // replay-safe
-    await sleep(700);
-    const implicitReplay = opacityOf(wi, '.lt');
+    const implicitReplay = await settled(ltOpacity, 1);
 
     // Explicit twin: Off → On → Out with the authored next→Out arrow.
     const we = await boot(await buildMachineTemplate(${JSON.stringify(LOWER_THIRD_EXPLICIT)}));
     const beforePlayNext = we.revealNextStep(); // next() off air: a deterministic no-op
     we.play();
-    await sleep(700);
+    const explicitOnAir = await settled(() => opacityOf(we, '.lt'), 1);
     const explicitOn = stateOf(we, 'main');
-    const explicitOnAir = opacityOf(we, '.lt');
     we.next(); // fires the authored on→out arrow — next alone finishes the walk
-    await sleep(600);
+    const explicitOffAfterNext = await settled(() => opacityOf(we, '.lt'), 0);
     return {
       implicitOnAir, implicitOff, implicitReplay,
       beforePlayNextIsNull: beforePlayNext === null,
       explicitOn,
       explicitOnAir,
-      explicitOffAfterNext: opacityOf(we, '.lt'),
+      explicitOffAfterNext,
       explicitStateAfterNext: stateOf(we, 'main'),
     };
   })()`);
@@ -202,27 +220,24 @@ test('millionaire: selection is data on one state, lock makes select structurall
     const has = (sel, cls) => w.document.querySelector(sel).classList.contains(cls);
     const f5 = () => w.document.getElementById('f5').textContent;
     w.play();
-    await sleep(550);
+    await settled(() => opacityOf(w, '.qz'), 1);
     const rowsBeforeReveal = opacityOf(w, '.qz-rows'); // pre-armed hidden until the reveal
     w.noacgDispatch('reveal');
-    await sleep(550);
-    const rowsAfterReveal = opacityOf(w, '.qz-rows');
+    const rowsAfterReveal = await settled(() => opacityOf(w, '.qz-rows'), 1);
     // Select B, then change freely to C — ONE Selected state, the answer is a data value.
+    // The highlight is painted by the state's entry call, which fires at t=0 of its timeline.
     w.noacgDispatch('select', { f5: 'B' });
-    await sleep(120);
-    const selectedB = has('.qz-row-b', 'qz-sel');
+    const selectedB = await settled(() => has('.qz-row-b', 'qz-sel'), true);
     w.noacgDispatch('select', { f5: 'C' });
-    await sleep(120);
-    const changedToC = has('.qz-row-c', 'qz-sel') && !has('.qz-row-b', 'qz-sel');
+    const changedToC = await settled(() => has('.qz-row-c', 'qz-sel') && !has('.qz-row-b', 'qz-sel'), true);
     w.noacgDispatch('lock');
-    await sleep(120);
-    const locked = stateOf(w, 'flow');
+    const locked = stateOf(w, 'flow'); // the pointer moves synchronously — no wait needed
     // Structurally illegal now: no select arrow leaves Locked — the event AND its payload drop.
     w.noacgDispatch('select', { f5: 'D' });
-    await sleep(120);
+    await sleep(120); // a real (if brief) chance to wrongly take effect
     const afterIllegal = { state: stateOf(w, 'flow'), f5: f5(), selStays: has('.qz-row-c', 'qz-sel') };
     w.noacgDispatch('judge');
-    await sleep(200);
+    await settled(() => has('.qz-row-b', 'qz-correct'), true);
     const judged = {
       correctOnB: has('.qz-row-b', 'qz-correct'),
       wrongOnC: has('.qz-row-c', 'qz-wrong'),
@@ -263,33 +278,32 @@ test('scorebug: data stays data, parallel groups fire independently through one 
     ${HARNESS}
     const w = await boot(await buildMachineTemplate(${JSON.stringify(SCOREBUG)}));
     w.play();
-    await sleep(550);
+    await settled(() => opacityOf(w, '.sb'), 1);
     // One tick: a data update plus two events for DIFFERENT groups — the serial queue
     // resolves them deterministically, and the update itself moves no state.
     w.update(JSON.stringify({ f0: '14', f1: '7' }));
     w.noacgDispatch('flag');
     w.noacgDispatch('clockStart');
     const rightAfter = { board: stateOf(w, 'board'), flag: stateOf(w, 'flag'), clock: stateOf(w, 'clock') };
-    await sleep(400);
-    const settled = {
+    const flagShown = await settled(() => opacityOf(w, '.sb-flag'), 1);
+    const landed = {
       score: w.document.getElementById('f0').textContent,
-      flagShown: opacityOf(w, '.sb-flag'),
+      flagShown,
       clockRunning: w.__clockRunning,
     };
     // The guard drops a repeat: no 'flag' arrow leaves 'shown'.
     w.noacgDispatch('flag');
-    await sleep(100);
     const repeatDropped = stateOf(w, 'flag') === 'shown';
     w.noacgDispatch('clearFlag');
     w.noacgDispatch('clockStop');
-    await sleep(400);
-    const cleared = { flag: stateOf(w, 'flag'), flagHidden: opacityOf(w, '.sb-flag'), clockRunning: w.__clockRunning };
-    return { rightAfter, settled, repeatDropped, cleared };
+    const flagHidden = await settled(() => opacityOf(w, '.sb-flag'), 0);
+    const cleared = { flag: stateOf(w, 'flag'), flagHidden, clockRunning: w.__clockRunning };
+    return { rightAfter, landed, repeatDropped, cleared };
   })()`);
   expect(result).toMatchObject({
     // Pointers move SYNCHRONOUSLY at dispatch — visible before any animation settles.
     rightAfter: { board: 'on', flag: 'shown', clock: 'running' },
-    settled: { score: '14', flagShown: 1, clockRunning: true },
+    landed: { score: '14', flagShown: 1, clockRunning: true },
     repeatDropped: true,
     cleared: { flag: 'none', flagHidden: 0, clockRunning: false },
   });
@@ -303,17 +317,17 @@ test('ticker: timer auto-advance cycles items, pause/resume works, a settled pre
     const w = await boot(await buildMachineTemplate(${JSON.stringify(TICKER)}));
     w.gsap.globalTimeline.timeScale(20); // 1 s of authored time ≈ 50 ms of wall clock
     w.play();
-    await sleep(600); // entrance + several timer beats at ×20
-    const ticked = w.__tick;
+    // Cycling by TIMER alone — no operator input. Wait for real beats rather than a fixed
+    // span, so a starved rAF slows the test instead of failing it.
+    const ticked = await reaches(() => w.__tick, 2);
     const cycling = stateOf(w, 'cycle');
     w.noacgDispatch('pause');
-    await sleep(60);
+    await sleep(60); // let any beat already in flight land
     const atPause = w.__tick;
-    await sleep(400);
+    await sleep(500); // several beats' worth of wall time — a paused ticker must not move
     const paused = { state: stateOf(w, 'cycle'), frozen: w.__tick === atPause };
     w.noacgDispatch('resume');
-    await sleep(400);
-    const resumedTick = w.__tick;
+    const resumedTick = await reaches(() => w.__tick, atPause + 1);
     // The settled design view must NEVER auto-advance: settle-style parking (pause +
     // progress(1, true)) suppresses the timer-arming call entirely.
     const w2 = await boot(await buildMachineTemplate(${JSON.stringify(TICKER)}));
@@ -342,17 +356,18 @@ test('compatibility: update/play/next/stop alone — the export surface — walk
     // Every export target calls EXACTLY these four globals — nothing else.
     w.update(JSON.stringify({ f0: 'Which planet is second from the sun?', f5: '', f6: 'B' }));
     w.play();
-    await sleep(500);
+    await settled(() => opacityOf(w, '.qz'), 1);
+    // The pointer moves synchronously on each next(), so the walk itself needs no waiting —
+    // only the final fade to black does.
     const walk = [stateOf(w, 'flow')];
     for (let i = 0; i < 4; i++) {
       w.next();
-      await sleep(300);
       walk.push(stateOf(w, 'flow'));
     }
-    await sleep(400);
+    const offAirAtEnd = await settled(() => opacityOf(w, '.qz'), 0);
     return {
       walk,
-      offAirAtEnd: opacityOf(w, '.qz'),
+      offAirAtEnd,
       spxSteps: tpl.settings.steps,
       globalsEmitted: ['function play()', 'function stop()', 'function next()', 'function update(data)']
         .every((g) => tpl.js.includes(g)),
@@ -441,4 +456,18 @@ test('preview: snap-to-state works in the editor, and the event strip guards lik
   await page.getByTestId('sim-event-select').click();
   await page.waitForTimeout(200);
   await expect(page.getByTestId('sim-state-chip')).toHaveText('locked');
+
+  // And a LEGAL event dispatched from the strip actually plays its state's timeline through
+  // the whole app path (store -> simulator -> preview iframe), not just moves the pointer.
+  const frame = page.frameLocator('iframe.preview-frame');
+  await page.locator('.simulator button', { hasText: 'Play' }).click();
+  await expect(page.getByTestId('sim-state-chip')).toHaveText('question');
+  await expect
+    .poll(async () => frame.locator('.qz-rows').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('0'); // pre-armed by the entrance: the rows wait for their reveal
+  await page.getByTestId('sim-event-reveal').click();
+  await expect(page.getByTestId('sim-state-chip')).toHaveText('answers');
+  await expect
+    .poll(async () => Number(await frame.locator('.qz-rows').evaluate((el) => getComputedStyle(el).opacity)))
+    .toBeGreaterThan(0.9);
 });
