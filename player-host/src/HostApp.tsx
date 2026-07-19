@@ -212,7 +212,11 @@ export default function HostApp({ nonce }: Props) {
           // Skip the checks on a frame that just threw - the DOM is whatever survived.
           if (readabilityFrames.has(frame) && errorLogRef.current.length === 0) {
             const checks = window.__noacgTextChecks;
-            for (const issue of [...(checks?.clip() ?? []), ...(checks?.safeArea() ?? [])]) {
+            for (const issue of [
+              ...(checks?.clip() ?? []),
+              ...(checks?.safeArea() ?? []),
+              ...(checks?.occlusion() ?? []),
+            ]) {
               textIssues.push({ frame, ...issue });
             }
           }

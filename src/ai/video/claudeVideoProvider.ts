@@ -344,7 +344,7 @@ function noteUnprobed<T extends Awaited<ReturnType<VideoValidator>>>(validation:
  *  the rounds are spent - the SPX harness's doctrine for its editability findings. A clipped
  *  headline is a real defect and worth two rewrites; a false positive that survives them
  *  should ship with a warning, not silently discard a composition the user waited for. */
-const SOFT_RULES = new Set(['text-clip', 'text-safe-area']);
+const SOFT_RULES = new Set(['text-clip', 'text-safe-area', 'text-occluded']);
 
 /**
  * `text-clip-total` is missing from that set ON PURPOSE, and must stay missing: it is the

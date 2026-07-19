@@ -22,6 +22,14 @@ export function holdFrames(durationInFrames: number): number[] {
  * through the first sample (a reveal that lands late, type still settling) clears itself by
  * the second one; a genuinely cropped headline is cut at both. This is the main defence
  * against burning a repair round on a false positive.
+ *
+ * Occlusion rides the SAME rule rather than the bench's looser majority. The bench samples
+ * three points in the hold and accepts two, because it is a reporting tool and a missed
+ * observation costs nothing. This is a gate: a finding here spends a repair round, and a
+ * transition that legitimately sweeps a panel across the hero would be flagged by a majority
+ * of two. Requiring the hero to be covered at every checked frame keeps that case clean and
+ * still catches the failure that was measured shipping - text parked behind a panel for the
+ * whole hold, covered at every sample.
  */
 export function persistentTextIssues(
   issues: ProbeTextIssue[],
@@ -56,6 +64,10 @@ export function persistentTextIssues(
  * composition the user waited for - the right call when the finding might be a false positive
  * or a legible near-miss.
  *
+ * `text-occluded` is soft for the same reason as `text-clip`: the hit test samples five points
+ * and can be fooled by a decorative layer that is technically painted, so it drives repair
+ * rounds but does not throw finished work away on its own.
+ *
  * `text-clip-total` is NOT soft, and is deliberately absent from SOFT_RULES. At 100% loss the
  * visible extent of the line is zero: nothing of it is painted at any checked hold frame.
  * That is not a marginal crop and it cannot be a false positive, so demoting it ships a
@@ -65,6 +77,7 @@ export function persistentTextIssues(
  */
 function ruleFor(kind: string, minLossPct: number): string {
   if (kind === 'safe-area') return 'text-safe-area';
+  if (kind === 'occlusion') return 'text-occluded';
   return minLossPct >= TOTAL_CLIP_PCT ? 'text-clip-total' : 'text-clip';
 }
 

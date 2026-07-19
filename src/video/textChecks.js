@@ -367,7 +367,14 @@
         issues.push({
           kind: 'occlusion',
           key: 'occlusion:' + label(el),
-          message: '"' + label(el) + '" is painted BEHIND ' + blocker + ' (' + blocked + '/5 sample points covered)',
+          // Say what to DO, like the clip and safe-area messages: this text is handed to the
+          // model verbatim as a repair round, and "it is behind a panel" on its own reads as a
+          // sizing problem, which is the one fix that cannot work.
+          message:
+            '"' + label(el) + '" is painted BEHIND ' + blocker + ' (' + blocked +
+            '/5 sample points covered). This is a LAYERING problem, not a size one: raise the ' +
+            'text above the covering element (paint it later, or give it the higher z-index), ' +
+            'or move the covering element off it. Do not shrink or move the text to dodge it.',
         });
       }
     }

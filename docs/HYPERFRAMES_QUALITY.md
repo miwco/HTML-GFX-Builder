@@ -338,12 +338,22 @@ defect, by two different routes:
    keeps the forgiving behaviour; a total one stays failed. The two paths are pinned as a pair
    in `e2e/video-readability.spec.ts` - the same module, differing only in how far the text is
    pushed out of its box, reaching opposite verdicts.
-2. **r2 shipped an occluded hero, and no gate can see it.** `src/video/textChecks.js` exports
-   `occlusion()`, the bench calls it, and **neither engine's validator does** - the HyperFrames
-   driver probes `clip().concat(safeArea())` and the Remotion host the same pair. Text painted
-   behind a panel therefore ships unflagged on both engines. This also qualifies the claim in
-   `src/video/readability.ts` that the engines judge a composition identically: they do, but
-   both are blind in the same place (follow-up 2).
+2. **r2 shipped an occluded hero, and no gate could see it.** `src/video/textChecks.js` exports
+   `occlusion()`, the bench calls it, and **neither engine's validator did** - the HyperFrames
+   driver probed `clip().concat(safeArea())` and the Remotion host the same pair. Text painted
+   behind a panel therefore shipped unflagged on both engines, which qualified the claim in
+   `src/video/readability.ts` that the engines judge a composition identically: they did, but
+   both were blind in the same place.
+
+   **Fixed.** Both probes now include `occlusion()`, reported as `text-occluded` (soft - the
+   hit test samples five points and can be fooled by a decorative painted layer, so it drives
+   repair rounds without discarding finished work). It keeps the ALL-frames persistence rule
+   rather than the bench's looser majority-of-three: the bench only reports, while a gate
+   finding costs a repair round, and a majority would flag a transition that legitimately
+   sweeps a panel across the hero. The occlusion message also now says what to DO - it is fed
+   to the model verbatim, and "it is behind a panel" alone reads as a sizing problem, which is
+   the one fix that cannot work. Pinned as a pair in `e2e/video-readability.spec.ts`: the
+   covered document is rejected, the same document with the panel moved off the text is not.
 
 The bench now records a **gate self-check** per run - it re-validates the finished source
 against the live bridge and reports whether the gate `probed`, so no readability figure from
@@ -363,25 +373,19 @@ what remains of it is the spend.
    needs the seven-brief set on both engines, which is what makes it a spend rather than a
    free follow-up. Until then this document quotes no defect rate at all, which is the honest
    position.
-2. **Wire occlusion into the gate.** `textChecks.js` exports `occlusion()`; the bench uses it,
-   neither validator does, so text painted behind a panel ships unflagged on both engines
-   (r2). Not a one-liner: occlusion legitimately covers part of a hold, so it needs the
-   bench's MAJORITY persistence rule rather than the all-frames rule `persistentTextIssues`
-   applies to crops, and `ruleFor()` needs a rule name of its own instead of folding it into
-   `text-clip`.
-3. **The transparent/overlay brief is the weakest case on both engines** - the only
+2. **The transparent/overlay brief is the weakest case on both engines** - the only
    readability finding in the varied pass, the most repairs on each engine, and the one
    design shape neither contract says much about (where a strap sits, safe margins, not
    filling the frame). This is the strongest candidate for a *measured* prompt improvement,
    but it needs more than one sample per engine before anyone writes prose.
-4. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
+3. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
    because the finding told the model to resize a line whose real problem was that it had
    been rendered twice ("NOACGNOACG"). A finding that notices a repeated substring and says
    so would probably be fixable inside the two rounds.
-5. **The countdown-style minimal reveal** - historically the weakest brief, and the
+4. **The countdown-style minimal reveal** - historically the weakest brief, and the
    "uncommitted default" look it falls into is unmoved by prose. It came through clean in
    this pass, so treat the earlier finding as unconfirmed rather than settled.
-6. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
+5. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
    A real feature (validator, driver, compose, and the render worker all have to agree on how
    a media clip seeks deterministically), not a prompt change.
 

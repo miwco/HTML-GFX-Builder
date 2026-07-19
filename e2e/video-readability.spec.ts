@@ -302,3 +302,71 @@ test.describe('the gate reports whether it actually ran', () => {
     }
   });
 });
+
+test('text painted behind a panel is caught by the gate, not just by the bench', async ({ page }) => {
+  // textChecks.js has always exported occlusion(), and the bench has always called it - but
+  // neither engine's VALIDATOR did, so a hero parked behind a panel shipped unflagged on both.
+  // Benchmarking watched exactly that happen (docs/HYPERFRAMES_QUALITY.md, the re-measurement's
+  // r2: bench saw the hero covered at 4 of 5 sample points, the gate called the run clean).
+  // Both halves are pinned: the occluded document is rejected, the same document with the panel
+  // moved off the text is not - so this cannot pass by flagging everything.
+  await createHyperframesProject(page);
+  await expect(page.locator('.ai-msg.assistant').first()).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('.video-player-frame')).toBeVisible();
+
+  const results = await page.evaluate(async () => {
+    const { validateHyperframesComposition } = await import('/src/video/hyperframes/validate.ts');
+    const { getActiveHyperframesBridge } = await import('/src/video/bridgeRegistry.ts');
+    const settings = { width: 1920, height: 1080, fps: 30, durationInFrames: 120, transparent: false };
+
+    // `panelLeft` decides the verdict: 0 parks an opaque panel over the headline for the whole
+    // hold, 1500 leaves it clear. Everything else about the two documents is identical.
+    const documentWith = (panelLeft: number) => `<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8" /><title>t</title>
+<style>
+  body { margin: 0; }
+  #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0e1117; }
+  .headline { position: absolute; left: 200px; top: 480px; color: #fff; font: 800 96px Arial; white-space: nowrap; }
+  .panel { position: absolute; left: ${panelLeft}px; top: 400px; width: 900px; height: 260px; background: #1d2430; }
+</style></head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="4">
+  <section class="clip" data-start="0" data-duration="4" data-track-index="1">
+    <div class="headline">BROADCAST KITCHEN</div>
+    <div class="panel"></div>
+  </section>
+</div>
+<script>
+  window.__timelines = window.__timelines || {};
+  var tl = gsap.timeline({ paused: true });
+  tl.to('#root', { opacity: 1, duration: 0.1 }, 0);
+  window.__timelines['main'] = tl;
+</script>
+</body>
+</html>`;
+
+    const verdict = async (panelLeft: number) => {
+      const r = await validateHyperframesComposition(
+        documentWith(panelLeft),
+        settings,
+        [],
+        getActiveHyperframesBridge(),
+      );
+      return { probed: r.probed, ok: r.ok, rules: r.errors.map((e) => e.rule), messages: r.errors.map((e) => e.message) };
+    };
+    // The covered case first, then the clear one, through the same live bridge.
+    return { covered: await verdict(0), clear: await verdict(1500) };
+  });
+
+  expect(results.covered.probed, 'the covered case must actually have been measured').toBe(true);
+  expect(results.covered.rules, 'a hero behind a panel is an occlusion finding').toContain('text-occluded');
+  expect(results.covered.messages.join(' '), 'the repair message must name LAYERING, not size').toContain(
+    'LAYERING problem',
+  );
+
+  expect(results.clear.probed, 'the clear case must actually have been measured').toBe(true);
+  expect(results.clear.rules, 'the same document with the panel moved off the text is clean').not.toContain(
+    'text-occluded',
+  );
+});
