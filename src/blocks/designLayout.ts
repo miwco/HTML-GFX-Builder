@@ -485,6 +485,9 @@ export interface NewPlacedLineSpec {
   fontSize?: number;
   /** Explicit slot width in design px. Absent = the room to the artwork's right edge. */
   maxWidth?: number;
+  /** Explicit text colour (the erased-region field contrasts against its sampled fill).
+   *  Absent = inherit from the reference line / the design default. */
+  color?: string;
 }
 
 /**
@@ -531,7 +534,8 @@ export function addPlacedLine(
     ? Math.round(spec.at.y)
     : ref ? Math.round(ref.place.y + fontSize * 1.6) : Math.round(boxWidth * (9 / 16) * 0.74);
   const weight = (ref && readDecl(template.css, `#${ref.fieldId}`, 'font-weight')) ?? '400';
-  const color = (ref && readDecl(template.css, `#${ref.fieldId}`, 'color')) ?? 'var(--text-color)';
+  const color =
+    spec.color ?? (ref && readDecl(template.css, `#${ref.fieldId}`, 'color')) ?? 'var(--text-color)';
 
   const sample = spec.text ?? (spec.ftype === 'number' ? '0' : spec.title);
 

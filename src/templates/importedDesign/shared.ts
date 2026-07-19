@@ -109,10 +109,9 @@ function artHtml(art: DesignArt): string {
   }
   if (art.stretch?.horizontal) {
     return `    <!-- The imported artwork, as a stretchable 9-slice: the drawn caps stay exact and
-         the plain middle band widens with the text (the slicing lives in the ${PREFIX}-art
-         rule; the stretch runtime below decides how much). The image rides on the element
-         itself so its relative path resolves next to index.html, like any <img src>. -->
-    <div class="${PREFIX}-art" style="border-image-source: url('${art.path}')"></div>`;
+         the plain middle band widens with the text. The whole mechanism lives in the
+         ${PREFIX}-art rule in template.css; the stretch runtime below decides how much. -->
+    <div class="${PREFIX}-art"></div>`;
   }
   return `    <!-- The imported artwork. It IS the design: the text below sits on top of it. -->
     <img class="${PREFIX}-art" src="${art.path}" alt="" />`;
@@ -163,7 +162,9 @@ function artBoxCss(art: DesignArt): string {
    border-left-width is where the left cap ENDS, border-right-width is the RIGHT CAP's
    width (both design px) — and border-image-slice carries the same guides in the file's
    own pixels (a 2× export slices at 2×). Longhands on purpose: the border-image shorthand
-   would reset the image source, which rides on the element in the HTML. */
+   would reset the parts it doesn't mention. The image ref is a DECLARATION here, never an
+   inline style — the editor's entrance reset clears inline styles, and the design must
+   survive it. */
 .${PREFIX}-art {
   display: block;
   width: 100%;                     /* fills the box — extra width lands in the middle band */
@@ -174,6 +175,7 @@ function artBoxCss(art: DesignArt): string {
   border-bottom-width: 0;
   border-left-width: calc(${left}px * var(--scale));
   border-right-width: calc(${capRight}px * var(--scale));
+  border-image-source: url("${art.path}");
   border-image-slice: 0 ${srcRight} 0 ${srcLeft} fill;  /* top right bottom left, file px */
   border-image-repeat: stretch;    /* the middle band stretches — it is drawn plain for this */
 }`;

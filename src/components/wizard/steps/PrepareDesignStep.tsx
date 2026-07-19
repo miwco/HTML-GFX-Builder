@@ -84,7 +84,7 @@ export default function PrepareDesignStep({
       const result = await eraseRegionFlat(original.data, rect);
       if (result.sampling.uniform) {
         onApplyErase(
-          { rect, uniform: true, maxDeviation: result.sampling.maxDeviation },
+          { rect, uniform: true, maxDeviation: result.sampling.maxDeviation, fill: result.sampling.fill },
           [{ ...original, data: result.dataUrl }],
         );
       } else {
@@ -98,7 +98,12 @@ export default function PrepareDesignStep({
   const applyPending = () => {
     if (!pending || !original) return;
     onApplyErase(
-      { rect: pending.rect, uniform: false, maxDeviation: pending.result.sampling.maxDeviation },
+      {
+        rect: pending.rect,
+        uniform: false,
+        maxDeviation: pending.result.sampling.maxDeviation,
+        fill: pending.result.sampling.fill,
+      },
       [{ ...original, data: pending.result.dataUrl }],
     );
     setPending(null);

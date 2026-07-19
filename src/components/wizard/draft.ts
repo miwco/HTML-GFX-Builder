@@ -32,6 +32,8 @@ export interface DesignEraseState {
   /** Whether the background samples counted as flat (assets/eraseRegion FLAT_BG_TOLERANCE). */
   uniform: boolean;
   maxDeviation: number;
+  /** The applied fill colour — the seeded field contrasts against exactly this. */
+  fill: { r: number; g: number; b: number; a: number };
 }
 
 export interface WizardDraft {
@@ -198,12 +200,20 @@ function withEraseSeedField(template: SpxTemplate, draft: WizardDraft): SpxTempl
   const art = draft.designArt;
   const k = art.width / (art.sourceWidth ?? art.width);
   const r = draft.designErase.rect;
+  // The field sits ON the erased fill, so contrast against exactly that: dark ink on a
+  // light fill, white on a dark one (a transparent fill reads as the dark broadcast frame).
+  const f = draft.designErase.fill;
+  const luminance = f.a < 64 ? 0 : (0.2126 * f.r + 0.7152 * f.g + 0.0722 * f.b) / 255;
   const added = addPlacedLine(template, {
+    color: luminance > 0.5 ? '#16181c' : '#ffffff',
     title: 'Name',
     ftype: 'textfield',
     at: { x: Math.round(r.x * k), y: Math.round(r.y * k) },
-    // The marked box wraps the text with a little air — the type itself is about 72% of it.
-    fontSize: Math.max(10, Math.round(r.height * k * 0.72)),
+    // Approximate the erased text's size from its box: ~72% of the height (the box wraps
+    // ascenders/descenders with air), CAPPED by width/7 — a name is roughly a dozen glyphs
+    // at ~half an em each, and a tall script original (whose box height far exceeds its cap
+    // height) would otherwise seed type twice the visual size the design was drawn with.
+    fontSize: Math.max(10, Math.round(Math.min(r.height * k * 0.72, (r.width * k) / 7))),
     maxWidth: Math.max(64, Math.round(r.width * k)),
   });
   return added ? added.template : template;

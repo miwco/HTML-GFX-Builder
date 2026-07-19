@@ -67,7 +67,10 @@ async function stretchState(page: Page) {
       info: designStretchInfo(s.template.html, s.template.css),
       valid: v.ok,
       errors: v.errors,
-      html: s.template.html.includes('border-image-source'),
+      // The image ref must be a CSS declaration, never an inline style — the editor's
+      // entrance reset clears inline styles, and the artwork has to survive it.
+      cssRef: s.template.css.includes('border-image-source'),
+      inlineRef: s.template.html.includes('border-image-source'),
     };
   });
 }
@@ -111,7 +114,8 @@ test('stretch: picking it writes the 9-slice into the created code, and the guid
   const state = await stretchState(page);
   // No erase: the guides default to the middle third (35% / 65% of the 1000px artwork).
   expect(state.info).toEqual({ left: 350, right: 650 });
-  expect(state.html).toBe(true); // the artwork's source rides inline on the element
+  expect(state.cssRef).toBe(true);
+  expect(state.inlineRef).toBe(false); // survives the editor's clearProps entrance reset
   expect(state.valid).toBe(true); // the export gate passes
   // The created template is otherwise BARE — the preview's demo line never ships.
   const fields = await page.evaluate(async () => {
@@ -131,6 +135,14 @@ test('stretch: a long value grows the design at full type size, and a short one 
   const { info } = await stretchState(page);
   expect(Math.abs(info!.left - 160)).toBeLessThan(12);
   expect(Math.abs(info!.right - 570)).toBeLessThan(12);
+
+  // The artwork actually PAINTS after the editor's settle (which clears inline styles —
+  // the reason the image ref lives in the CSS rule and never on the element).
+  const painted = await page
+    .frameLocator('iframe.preview-frame')
+    .locator('.imported-design-art')
+    .evaluate((el) => getComputedStyle(el).borderImageSource.startsWith('url'));
+  expect(painted).toBe(true);
 
   const rest = await boxMetrics(page);
   await setSample(page, 'Alexandra Konstantinopoulos');
@@ -180,7 +192,7 @@ test('fixed default: no stretch markers, and a long value shrinks its text inste
 
   const state = await stretchState(page);
   expect(state.info).toBeNull();
-  expect(state.html).toBe(false); // the classic <img> artwork, untouched
+  expect(state.cssRef).toBe(false); // the classic <img> artwork, untouched
 
   const rest = await boxMetrics(page);
   await setSample(page, 'Alexandra Konstantinopoulos-Virtanen');

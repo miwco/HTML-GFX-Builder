@@ -182,7 +182,8 @@ test('erase: the erased region seeds the first text field, placed and sized from
   expect(Math.abs(state.placed!.y - 240)).toBeLessThan(10);
   expect(state.fit!.mode).toBe('shrink');
   expect(Math.abs((state.fit!.maxWidth ?? 0) - 410)).toBeLessThan(20);
-  expect(Math.abs((state.font!.value ?? 0) - Math.round(102 * 0.72))).toBeLessThan(10);
+  // The seed size: min(72% of the rect height, rect width / 7) — here width/7 binds.
+  expect(Math.abs((state.font!.value ?? 0) - Math.round(410 / 7))).toBeLessThan(10);
 });
 
 test('erase: on a 2x export the seeded field maps to design pixels', async ({ page }) => {
