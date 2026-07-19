@@ -506,17 +506,39 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     applyTemplate({ ...template, ...change.patch }); // one undoable apply — same as the gutter
     requestReplay();
   };
+  // ── The DESIGN UNIT of an imported design: the artwork and the box that holds it together
+  //    with the text placed on it. They are not layers you size on their own — the artwork's
+  //    size IS the composition's size, and every placed field's left/top/font-size is written
+  //    as `calc(Npx * var(--scale))` against it. So their corner handle is the DESIGN scale
+  //    handle (one :root --scale patch, the same write the Style panel's size knob makes),
+  //    which moves artwork and fields as one; a scale KEYFRAME on the artwork alone would
+  //    leave every field behind and break the layout the user imported. Motion is untouched:
+  //    the Inspector's Properties tab still keyframes the artwork's scale like any layer.
+  //    Code-derived as always (designInfo), so catalog templates keep the layer handles. ──
+  const designUnit = useMemo(
+    () => (designInfo ? [`.${designInfo.prefix}-art`, `.${designInfo.prefix}-box`] : []),
+    [designInfo],
+  );
+  const designUnitSelected = !!selectedPart && designUnit.includes(selectedPart.selector);
+
   // The corner scale handle anchors to the hovered root — or to the selection while the
-  // WHOLE GRAPHIC is selected, so the chip's one existing root action stays reachable.
-  const handleRect = hoverRect ?? (selectedPart?.kind === 'root' ? selRect : null);
+  // WHOLE GRAPHIC (or an imported design's own unit) is selected, so the chip's one existing
+  // root action stays reachable.
+  const handleRect = hoverRect ?? (selectedPart?.kind === 'root' || designUnitSelected ? selRect : null);
 
   // A single selected NON-ROOT layer on a data-block template gets scale + rotate handles on
   // its selection box; dragging them keys scale/rotation at the playhead (pivoting around the
   // layer's transform-origin — the Inspector pivot). The root keeps its own --scale handle.
   // A PLACED line is the exception: its corner handle resizes the TEXT (a design decision in
-  // its `#fN` rule), so the keyframe handles step aside for it — same doctrine as its drag.
+  // its `#fN` rule), so the keyframe handles step aside for it — same doctrine as its drag —
+  // and so does an imported design's own unit (above), whose corner scales the composition.
   const layerTfSel =
-    dataModel && selectedParts.length === 1 && selectedPart && selectedPart.kind !== 'root' && !placed[selectedPart.selector]
+    dataModel &&
+    selectedParts.length === 1 &&
+    selectedPart &&
+    selectedPart.kind !== 'root' &&
+    !placed[selectedPart.selector] &&
+    !designUnitSelected
       ? selectedPart.selector
       : null;
 
