@@ -22,6 +22,16 @@ import type {
 import { paletteById } from '../../model/wizard';
 import type { EasingId } from '../../model/easings';
 import type { CustomFont } from '../../model/fonts';
+import type { EraseRect } from '../../assets/eraseRegion';
+
+/** The applied baked-text erase: the marked rectangle (in the artwork's SOURCE pixels) and
+ *  the sampling verdict it ran with. The rectangle also seeds the first text field at create. */
+export interface DesignEraseState {
+  rect: EraseRect;
+  /** Whether the background samples counted as flat (assets/eraseRegion FLAT_BG_TOLERANCE). */
+  uniform: boolean;
+  maxDeviation: number;
+}
 
 export interface WizardDraft {
   category: TemplateCategory | null;
@@ -69,6 +79,10 @@ export interface WizardDraft {
   logoEnabled: boolean | null;
   /** The artwork the graphic IS, in the Import Graphic flow (measured at import). */
   designArt: DesignArt | null;
+  /** The untouched upload, kept so an erase re-runs from clean pixels (never compounds). */
+  designOriginal: AssetFile | null;
+  /** The applied baked-text erase (Prepare step); null = none. */
+  designErase: DesignEraseState | null;
 }
 
 /** A draft update: top-level fields replace; `animation` and `nudge` deep-merge. */
@@ -109,6 +123,8 @@ export function initialDraft(): WizardDraft {
     logoAssetPath: null,
     logoEnabled: null,
     designArt: null,
+    designOriginal: null,
+    designErase: null,
   };
 }
 

@@ -58,11 +58,15 @@ test('import graphic: the wizard is a setup flow — create lands in the editor,
   await expect(page.locator('.wz-step')).toContainText('Frame-sized');
   await expect(page.locator('.wz-side')).toBeVisible();
 
-  // Two steps only, and Create is the one forward action — there is no wizard field,
-  // style, or animation stage any more (the editor owns all of that).
-  await expect(page.locator('.wz-dots .wz-dot')).toHaveCount(2);
-  await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(0);
+  // Three steps — Design, then the optional Prepare (erase baked-in text, scaling mode) —
+  // and Create is available already on the Design step: the FAST PATH for a design that
+  // needs no preparation. There is still no wizard field, style, or animation stage
+  // (the editor owns all of that).
+  await expect(page.locator('.wz-dots .wz-dot')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(1);
 
+  // Creating HERE (never visiting Prepare) must yield exactly the bare fixed-mode
+  // template it always did — the assertions below pin that fast path.
   await createBare(page);
 
   // The handoff: the artwork renders as the graphic itself, the template is BARE (fields

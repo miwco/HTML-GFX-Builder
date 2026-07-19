@@ -12,6 +12,7 @@ import BrandLogo from '../BrandLogo';
 import EntryStep from './steps/EntryStep';
 import ImportStep from './steps/ImportStep';
 import ImportDesignStep from './steps/ImportDesignStep';
+import PrepareDesignStep from './steps/PrepareDesignStep';
 import CategoryStep from './steps/CategoryStep';
 import TemplateStep from './steps/TemplateStep';
 import FieldsStep from './steps/FieldsStep';
@@ -28,10 +29,11 @@ const STEP_TITLES = ['Start', 'Category', 'Template', 'Fields', 'Style', 'Animat
 const STEP_TITLES_IMPORT = ['Start', 'Images', 'Template', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_AI = ['Start', 'Create'];
 const STEP_TITLES_VIDEO = ['Start', 'Video'];
-// Import-graphic mode is a SETUP flow, not a second editor: bring the artwork in, create,
-// and land in the real canvas editor with the Data tab focused — fields, styling, and
-// animation all happen there (docs/IMPORT_MVP.md, "the wizard hands off").
-const STEP_TITLES_DESIGN = ['Start', 'Design'];
+// Import-graphic mode is a SETUP flow, not a second editor: bring the artwork in, prepare it
+// (erase baked-in text, pick how it meets long text), create, and land in the real canvas
+// editor with the Data tab focused — fields, styling, and animation all happen there
+// (docs/IMPORT_MVP.md, "the wizard hands off").
+const STEP_TITLES_DESIGN = ['Start', 'Design', 'Prepare'];
 
 /**
  * The choose-first creation wizard (replaces the old template gallery). Six steps —
@@ -165,12 +167,12 @@ export default function CreationWizard() {
         : !draft.category)) ||
     (step === 2 && !draft.variantId);
 
-  // Design mode previews from the moment the artwork lands: the Design step IS the last
-  // step, so the user sees the real graphic (and its default entrance) before creating.
+  // Design mode previews from the moment the artwork lands, through the Prepare step —
+  // the user sees the real graphic (and its default entrance) before creating.
   const showPreview =
     mode === 'ai' ? step === 1 && !!aiResult
     : mode === 'video' ? false
-    : mode === 'design' ? step === 1 && !!previewTemplate
+    : mode === 'design' ? step >= 1 && !!previewTemplate
     : step >= 2 && !!previewTemplate;
   const stepTitles =
     mode === 'ai' ? STEP_TITLES_AI
@@ -286,6 +288,10 @@ export default function CreationWizard() {
                   patch({
                     designArt,
                     importedImages,
+                    // A fresh drop resets the Prepare step: the pristine pixels become the
+                    // erase's source, and any erase from a previous artwork is meaningless.
+                    designOriginal: importedImages[0] ?? null,
+                    designErase: null,
                     category: 'imported-design',
                     // There is no design to choose — the artwork IS it — so the variant is
                     // settled here, and the graphic creates BARE: its text/number/image
@@ -299,7 +305,15 @@ export default function CreationWizard() {
                       : { paletteId: null, customPalette: null, fontId: null }),
                   });
                 }}
-                onClear={() => patch({ designArt: null, importedImages: [], variantId: null })}
+                onClear={() =>
+                  patch({
+                    designArt: null,
+                    importedImages: [],
+                    variantId: null,
+                    designOriginal: null,
+                    designErase: null,
+                  })
+                }
               />
             )}
             {step === 1 && mode === 'import' && (
@@ -323,7 +337,24 @@ export default function CreationWizard() {
                 }}
               />
             )}
-            {step === 2 && (
+            {step === 2 && mode === 'design' && draft.designArt && (
+              <PrepareDesignStep
+                art={draft.designArt}
+                images={draft.importedImages}
+                original={draft.designOriginal}
+                erase={draft.designErase}
+                onApplyErase={(designErase, importedImages) =>
+                  patch({ designErase, importedImages })
+                }
+                onClearErase={() =>
+                  patch({
+                    designErase: null,
+                    importedImages: draft.designOriginal ? [draft.designOriginal] : draft.importedImages,
+                  })
+                }
+              />
+            )}
+            {step === 2 && mode !== 'design' && (
               <TemplateStep
                 variants={orderedVariants}
                 draft={draft}
@@ -402,11 +433,12 @@ export default function CreationWizard() {
             )}
             {/* "Create project" is the quiet shortcut (primary only on the last step,
                 where it's the sole forward action); "Next ›" is the highlighted path.
-                Design mode's Design step IS its last step — Create is its one CTA, and
-                the editor's Data tab takes over from there. */}
+                Design mode: Create from the Design step is the fast path (a design with no
+                baked-in text and no scaling choice needs nothing from Prepare); the Prepare
+                step is its last step, where Create is the one CTA. */}
             {mode !== 'ai' && mode !== 'video' && (mode === 'design' ? step >= 1 : step >= 2) && (
               <button
-                className={step === 5 || mode === 'design' ? 'primary' : undefined}
+                className={step === 5 || (mode === 'design' && step === 2) ? 'primary' : undefined}
                 disabled={!previewTemplate}
                 onClick={create}
                 title={
@@ -418,7 +450,7 @@ export default function CreationWizard() {
                 Create project
               </button>
             )}
-            {mode !== 'ai' && mode !== 'video' && mode !== 'design' && step > 0 && step < 5 && (
+            {mode !== 'ai' && mode !== 'video' && (mode === 'design' ? step === 1 : step > 0 && step < 5) && (
               <button className="primary wz-next" disabled={nextDisabled} onClick={() => goToStep(1)}>
                 Next ›
               </button>
