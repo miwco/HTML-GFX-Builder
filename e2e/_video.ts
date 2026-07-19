@@ -101,6 +101,31 @@ export async function useFakeAiKey(page: Page): Promise<void> {
   );
 }
 
+/**
+ * Create a HYPERFRAMES project from the wizard (the stinger example -> the HF stinger sample)
+ * and wait for the shell. Shared, because both the engine-flow specs and the readability specs
+ * need a live HyperFrames preview mounted before they can assert anything about it.
+ */
+export async function createHyperframesProject(page: Page, useExample = true): Promise<void> {
+  await page.goto('/app');
+  // These specs run on the offline stub; a reused server with a real key would drive the
+  // real provider and spend money. Say so before doing anything else.
+  await expectOfflineAi(page);
+  await page.getByRole('button', { name: 'Video or animation with AI' }).click();
+  await expect(page.getByTestId('video-step')).toBeVisible();
+  // The engine selector: Remotion is preselected; HyperFrames is the experimental card.
+  await expect(page.getByTestId('video-engine-remotion')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('video-engine-hyperframes').click();
+  await expect(page.getByTestId('video-engine-hyperframes')).toHaveAttribute('aria-checked', 'true');
+  if (useExample) {
+    await page.getByRole('button', { name: 'Sports stinger', exact: true }).click();
+  } else {
+    await page.getByTestId('video-prompt').fill('a nice clean opener for my channel');
+  }
+  await page.getByTestId('video-create').click();
+  await expect(page.getByTestId('video-shell')).toBeVisible();
+}
+
 /** Create a video project through the wizard and wait for its first generation to land. */
 export async function createVideoProject(page: Page): Promise<void> {
   await page.goto('/app');

@@ -10,8 +10,26 @@
 // The Anthropic API is mocked at the network level, so the real provider path runs: motion
 // plan, module emit, validation, repair, apply - on emits we choose.
 
+import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
-import { createVideoProject, mockClaude, player, useFakeAiKey, type EmittedModule } from './_video';
+import {
+  createHyperframesProject,
+  createVideoProject,
+  mockClaude,
+  player,
+  useFakeAiKey,
+  type EmittedModule,
+} from './_video';
+
+/** A benched lower-third whose hero text sits ~3300px left of the frame for its whole hold -
+ *  nothing in it is readable, so the runtime checks must flag it at every hold frame. Read
+ *  from disk, not fetched: the dev server injects its HMR client into any .html it serves,
+ *  which would trip the external-script rule before the live probe ever ran. */
+const OFF_FRAME_LOWER_THIRD = readFileSync(
+  new URL('./fixtures/hf-transparent-lower-third.html', import.meta.url),
+  'utf8',
+);
+const FIXTURE_SETTINGS = { width: 1920, height: 1080, fps: 30, durationInFrames: 120, transparent: true };
 
 /** `boxWidth` decides the verdict: 420 crops the headline, 1600 gives it room. */
 function moduleFor(summary: string, boxWidth: number): EmittedModule {
@@ -158,5 +176,82 @@ test.describe('the generation gate', () => {
     await expect(reply).toContainText('Headline in a tight card.');
     await expect(reply).not.toContainText('failed validation');
     await expect(player(page).getByText('BROADCAST KITCHEN')).toBeVisible({ timeout: 10_000 });
+  });
+});
+
+test.describe('the gate reports whether it actually ran', () => {
+  // The findings above exist ONLY when a preview is mounted to measure them. A validation
+  // with no player attached has therefore checked NOTHING - but it used to return an empty
+  // error list, which is indistinguishable from a clean result. Since the repair loop only
+  // fires on !ok, a composition whose text sits permanently off-frame sailed through
+  // untouched, and the same input passed or failed purely on whether the preview happened to
+  // be mounted: stable within a session, contradictory across them. `probed` is what makes
+  // "not checked" legible, and both halves of that contract are pinned here.
+
+  test('a validation that could not measure anything says so instead of reporting clean', async ({ page }) => {
+    await page.goto('/app');
+    const results = await page.evaluate(
+      async ([html, settings]) => {
+        const { validateHyperframesComposition } = await import('/src/video/hyperframes/validate.ts');
+        const { HyperframesBridge } = await import('/src/video/hyperframes/bridge.ts');
+        const sum = (r: { ok: boolean; probed: boolean; errors: { rule: string }[] }) => ({
+          ok: r.ok,
+          probed: r.probed,
+          rules: r.errors.map((e) => e.rule),
+        });
+        return {
+          // No preview at all - the offline stub's shape, and every headless caller.
+          nullBridge: sum(await validateHyperframesComposition(html, settings, [], null)),
+          // A bridge exists but its iframe was never attached: the panel had not mounted yet.
+          neverAttached: sum(
+            await validateHyperframesComposition(html, settings, [], new HyperframesBridge({})),
+          ),
+        };
+      },
+      [OFF_FRAME_LOWER_THIRD, FIXTURE_SETTINGS] as const,
+    );
+
+    for (const [name, r] of Object.entries(results)) {
+      expect(r.probed, `${name}: nothing was measured, so probed must say so`).toBe(false);
+      expect(r.rules, `${name}: no runtime finding can exist without a probe`).not.toContain('text-clip');
+    }
+  });
+
+  test('with a preview mounted the checks run - and a bridge that died mid-validation recovers onto the live one', async ({
+    page,
+  }) => {
+    await createHyperframesProject(page);
+    await expect(page.locator('.ai-msg.assistant').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.video-player-frame')).toBeVisible();
+
+    const results = await page.evaluate(
+      async ([html, settings]) => {
+        const { validateHyperframesComposition } = await import('/src/video/hyperframes/validate.ts');
+        const { HyperframesBridge } = await import('/src/video/hyperframes/bridge.ts');
+        const { getActiveHyperframesBridge } = await import('/src/video/bridgeRegistry.ts');
+        const sum = (r: { ok: boolean; probed: boolean; errors: { rule: string }[] }) => ({
+          ok: r.ok,
+          probed: r.probed,
+          rules: r.errors.map((e) => e.rule),
+        });
+        const live = getActiveHyperframesBridge();
+        // A bridge disposed under a remount must not take the checks down with it: the
+        // validator retries against whatever preview is mounted NOW.
+        const dead = new HyperframesBridge({});
+        dead.dispose();
+        return {
+          mountedPreview: live ? sum(await validateHyperframesComposition(html, settings, [], live)) : null,
+          deadBridgeRecovers: sum(await validateHyperframesComposition(html, settings, [], dead)),
+        };
+      },
+      [OFF_FRAME_LOWER_THIRD, FIXTURE_SETTINGS] as const,
+    );
+
+    expect(results.mountedPreview, 'the mounted preview registers itself for sibling validators').not.toBeNull();
+    for (const [name, r] of Object.entries(results)) {
+      expect(r!.probed, `${name}: the checks must have actually run`).toBe(true);
+      expect(r!.rules, `${name}: off-frame hero text is a clip finding`).toContain('text-clip');
+      expect(r!.ok, `${name}: an unreadable composition must not validate`).toBe(false);
+    }
   });
 });

@@ -6,7 +6,7 @@
 // next door (video-project.spec.ts) must stay untouched by all of this.
 
 import { test, expect, type Page } from '@playwright/test';
-import { expectOfflineAi } from './_video';
+import { createHyperframesProject } from './_video';
 
 /** The preview iframe's content (Playwright reaches into sandboxed srcdoc frames). */
 function player(page: Page) {
@@ -15,27 +15,6 @@ function player(page: Page) {
 
 async function waitForGeneration(page: Page) {
   await expect(page.locator('.ai-msg.assistant').first()).toBeVisible({ timeout: 10_000 });
-}
-
-/** Create a HyperFrames project from the wizard (the stinger example -> the HF stinger sample). */
-async function createHyperframesProject(page: Page, useExample = true): Promise<void> {
-  await page.goto('/app');
-  // These specs run on the offline stub; a reused server with a real key would drive the
-  // real provider and spend money. Say so before doing anything else.
-  await expectOfflineAi(page);
-  await page.getByRole('button', { name: 'Video or animation with AI' }).click();
-  await expect(page.getByTestId('video-step')).toBeVisible();
-  // The engine selector: Remotion is preselected; HyperFrames is the experimental card.
-  await expect(page.getByTestId('video-engine-remotion')).toHaveAttribute('aria-checked', 'true');
-  await page.getByTestId('video-engine-hyperframes').click();
-  await expect(page.getByTestId('video-engine-hyperframes')).toHaveAttribute('aria-checked', 'true');
-  if (useExample) {
-    await page.getByRole('button', { name: 'Sports stinger', exact: true }).click();
-  } else {
-    await page.getByTestId('video-prompt').fill('a nice clean opener for my channel');
-  }
-  await page.getByTestId('video-create').click();
-  await expect(page.getByTestId('video-shell')).toBeVisible();
 }
 
 test('create with the HyperFrames engine -> stub generation -> live preview renders', async ({ page }) => {
@@ -318,3 +297,4 @@ test('a declared variable nothing reads is rejected as a control that would do n
   expect(results.boundImage, 'data-var-src counts as bound').toEqual([]);
   expect(results.hardcoded, 'a hex literal instead of var(--accent) is a dead control').toEqual(['accent']);
 });
+
