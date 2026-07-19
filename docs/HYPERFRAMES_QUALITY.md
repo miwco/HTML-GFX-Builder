@@ -122,6 +122,37 @@ provider: six failed as a baffling "no assistant turn in 10 s", each having fire
 generation first. `expectOfflineAi` (`e2e/_video.ts`) now asserts the transport before the
 wizard is touched, so the run stops with the cause named and *before* any spend.
 
+### The readability gate reported "could not check" as "clean"
+
+The gate returned opposite verdicts on byte-identical input in different sessions -
+deterministic within a session, contradictory across them. The cause was not timing.
+
+`validateHyperframesComposition` ran its live probe under `if (bridge && !bridge.disposed)`,
+then handled the load result with `if (!loaded.ok && !loaded.disposed)` and `if (loaded.ok)`.
+A **disposed** load matched neither branch, so nothing was recorded and the function returned
+an empty error list - and an empty error list reads as `ok`. `bridge.load()` returns disposed
+whenever `disposedFlag` is set **or the bridge has no iframe attached**, so any validation
+that ran before the preview panel mounted, or while it was remounting, silently reported a
+clean composition it had never looked at.
+
+That is the whole "instability": the verdict tracked whether a preview happened to be mounted,
+which is stable within a session and varies across them. It also closes the gap recorded above
+- the composition was applied at generation time because `claudeVideoProvider`'s repair loop
+only fires on `!ok`, so a silent pass skipped every repair round.
+
+Two things follow in the code. `VideoValidationResult` now carries **`probed`**, so callers can
+tell a verified-clean result from an unchecked one, and the AI harness attaches an explicit
+"the runtime checks did not run" warning instead of presenting unverified work as verified.
+And the HyperFrames validator now retries against the currently mounted bridge when its own is
+disposed - the recovery `validateVideoModule` already had, which the HyperFrames port never
+picked up. Both halves are pinned in `e2e/video-readability.spec.ts`.
+
+Two hypotheses were **falsified** along the way, and neither is worth revisiting. A font-swap
+race: forcing the fallback face moved the measured hero width 864 → 790 px without moving the
+verdict. And seek-settle timing - the two-rAF-versus-150 ms settle is in the **Remotion** host
+(`player-host/src/HostApp.tsx`) only; the HyperFrames probe seeks and measures synchronously in
+one message handler and has no settle to race.
+
 ## Findings that did not change the code
 
 ### Dead space cannot A/B a prompt change
@@ -161,7 +192,10 @@ no `<video>`/`<audio>` clips, no sub-compositions, image-variable changes reload
 > that was measured against a *parallel* implementation of the gate developed on a branch;
 > `main`'s gate (`src/video/textChecks.js` + `src/video/readability.ts`) is different code
 > with a stricter persistence rule. Those figures are indicative, not a measurement of what
-> ships. The current pass re-measures against the real gate.
+> ships. **They have since become weaker still**: the gate they were re-measured against
+> reported an unrunnable probe as a clean result, so any run where the preview was not mounted
+> counted as clean without being checked. The defect is fixed; the numbers have not been
+> re-collected (open follow-up 1).
 
 ## The varied-brief pass (14 generations, $1.62)
 
@@ -207,9 +241,11 @@ Three things follow, and they matter more than the single defect:
 3. **Yet it was applied at generation time**, after two repair rounds that made it worse
    (55% clipped → 100%). The app does not apply failed results - it keeps the previous
    version and says so - which means validation *passed* at that moment and fails now on the
-   same source. That gap is unexplained and is the most valuable open thread here: something
-   about the state the validator probes differs from the settled preview. The reproducer is
-   saved and needs no tokens to chase.
+   same source. **That gap is now explained**: the validator reported a probe it could not
+   run as a clean result, so the generation-time call passed without measuring anything and
+   the repair loop never fired. See "The readability gate reported 'could not check' as
+   'clean'" above. The reproducer is committed as
+   `e2e/fixtures/hf-transparent-lower-third.html`.
 
 ### A correction to this document's own metric
 
@@ -235,35 +271,16 @@ not a real failure - `fonts.check` is the authoritative test.)
 
 ## Open follow-ups
 
-Ordered by value. The first needs no tokens and is the most important.
+Ordered by value. The first is the most important and, unlike the item it replaces, it does
+cost generations - the token-free half of that thread (finding and fixing the gate) is done.
 
-1. **The readability gate's verdict is not stable across sessions.** This is the most
-   important open item, it needs no generations, and the reproducer is committed:
-   `e2e/fixtures/hf-transparent-lower-third.html` - the benched lower-third whose text sits
-   at x = -1551 through the whole hold.
-
-   What was measured, all via `validateHyperframesComposition` with the real mounted bridge
-   at 4 s / `transparent: true`:
-
-   - six consecutive runs in one session: **6/6 FAIL**, byte-identical findings;
-   - a later session, same settings, first call: **PASS**;
-   - a third session: **3/3 FAIL**.
-
-   So the gate is deterministic *within* a session and disagrees *across* sessions on
-   byte-identical input. That is enough to explain how this composition was applied at
-   generation time and rejected afterwards.
-
-   Two hypotheses were tested and **ruled out**: a font-loading race against the
-   width-measuring script the composition writes (the tight loop would have flickered - it
-   did not), and the validator's candidate load racing the preview's own reload after a
-   project change (forced that race explicitly; the verdict did not move). The mechanism is
-   still unknown. Next places to look: whether `holdFrames` lands on different frames when
-   the bridge is reused versus freshly mounted, and whether the driver's seek has settled
-   before the checks run (the probe's settle is two rAFs raced against a 150 ms timeout,
-   which is exactly the kind of thing that resolves differently on a warm versus cold page).
-
-   No e2e spec was added for this deliberately: asserting either verdict today would commit
-   a flaky test to the suite. Fix the instability first, then pin it.
+1. **Re-measure every readability figure against the fixed gate.** The gate is fixed (see
+   "The readability gate reported 'could not check' as 'clean'"), but every number in this
+   document that rests on it was collected *through* the broken version - and the failure
+   mode was a silent pass, so runs where the preview was not mounted were recorded as clean.
+   The direction of the error is known: readability results are biased optimistic. This costs
+   real tokens, which is why it is not already done. Until it is, treat "clean" counts and the
+   19% → 0% defect-rate figure as unverified rather than merely soft.
 2. **The transparent/overlay brief is the weakest case on both engines** - the only
    readability finding in the varied pass, the most repairs on each engine, and the one
    design shape neither contract says much about (where a strap sits, safe margins, not
@@ -282,7 +299,8 @@ Ordered by value. The first needs no tokens and is the most important.
 
 ## Handoff
 
-**State.** Everything described here is on `main`. The bench supports both engines
+**State.** Everything described here is on `main` except the readability-gate fix and its two
+specs, which are on `claude/hf-readability-gate-determinism`. The bench supports both engines
 (`--engine`), runs free against the offline provider (`--stub`), and records tokens, repair
 rounds and their causes, the sources that failed a repair round, dead space, and dead
 controls. Offline coverage is 14/14 clean across both engines and all seven briefs.
@@ -292,11 +310,13 @@ here), the deterministic checks (unbound variables, namespace URLs, asset inlini
 measured font widths, and export self-containment - all verified directly rather than
 inferred.
 
-**What is not.** Any figure resting on the readability gate is soft until follow-up 1 is
-resolved - the gate has been observed giving opposite verdicts on identical input in
-different sessions, so a "clean" run means less than it looks. Design-taste conclusions are
-unreliable at these sample sizes and should not be drawn from single runs; the within-brief
-spread is wide enough to swamp anything worth chasing.
+**What is not.** Any figure resting on the readability gate. The gate itself is now sound - it
+reports `probed` and no longer passes work it never measured - but every readability number
+here was collected before that fix, when a probe that could not run was recorded as a clean
+result. The bias is one-directional (optimistic), so a "clean" run means less than it looks
+until follow-up 1 re-measures. Design-taste conclusions are unreliable at these sample sizes
+and should not be drawn from single runs; the within-brief spread is wide enough to swamp
+anything worth chasing.
 
 **Cost discipline.** A clean generation is ~7-8k in / ~6-7k out (about $0.08). A run with two
 repair rounds costs roughly three times that. Always prove a bench change with `--stub`
