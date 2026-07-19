@@ -366,7 +366,8 @@ which generates the complete, commented template. FIVE entry cards: template, Cr
 video, Import graphic, blank.
 
 **Import graphic** (mode 'design', steps/ImportDesignStep + steps/PrepareDesignStep) is a
-SETUP flow, not a second editor: Start -> Design (drop the PNG; live preview from the moment
+SETUP flow, not a second editor: Start -> Design (drop the image - any raster format the
+browser decodes: PNG, JPEG, WebP, GIF, AVIF; live preview from the moment
 it lands; Create here is the FAST PATH, byte-identical bare fixed-mode) -> Prepare -> Create.
 The **Prepare step** carries the two artwork decisions: ERASE baked-in text (a source-px rect
 drawn on DesignPrepCanvas -> assets/eraseRegion flat-fill; flat verdicts apply immediately,

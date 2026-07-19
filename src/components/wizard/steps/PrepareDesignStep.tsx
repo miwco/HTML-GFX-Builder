@@ -197,7 +197,7 @@ export default function PrepareDesignStep({
             </button>
             {cleanedUrl && (
               <a className="btn" data-testid="erase-download" href={cleanedUrl} download={downloadName}>
-                Download cleaned PNG
+                Download cleaned artwork
               </a>
             )}
             <button data-testid="erase-remove" onClick={() => { setPending(null); onClearErase(); }}>

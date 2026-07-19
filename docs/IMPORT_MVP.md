@@ -3,7 +3,10 @@
 The one core workflow this feature makes reliable, end to end:
 
 1. Choose **Import graphic** from the wizard.
-2. Import a flat PNG design (e.g. a lower third drawn in Photoshop).
+2. Import a flat design image (e.g. a lower third drawn in Photoshop). Any raster format the
+   browser decodes is accepted — PNG, JPEG, WebP, GIF, AVIF — because everything downstream
+   works off the decoded pixels, never the container. PNG/WebP are the ones that carry the
+   transparency a broadcast overlay usually wants; that is advice, not a restriction.
 3. **Prepare** (optional, skippable): erase baked-in text with the flat-fill engine, and pick
    the scaling mode — fixed (default) or horizontal 9-slice stretch (both below).
 4. Create: land in the real canvas editor with the **Data tab** open.
