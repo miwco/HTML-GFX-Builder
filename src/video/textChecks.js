@@ -247,22 +247,48 @@
       var axis = 'width';
       var pct = Math.round((lostW / width(text)) * 100);
 
-      // Name the culprit so the repair round has somewhere to go: the innermost clipper, or
-      // the frame when nothing else took the bite.
-      var cutter = found.clippers.length ? describe(found.clippers[0]) : 'the frame edge';
+      // Name the box that actually BINDS the width - the NARROWEST clipping ancestor, not
+      // merely the innermost one. The two differ whenever a full-width wrapper sits inside a
+      // narrower ancestor, and the difference is the whole value of the finding: measured on
+      // real generations, the innermost clipper was a 1926px full-width element while the
+      // room was 963px, so a model told to widen "that box" would have widened something
+      // already wide enough and the crop would have survived the round.
+      var binding = null;
+      var bindingW = Infinity;
+      for (var c = 0; c < found.clippers.length; c++) {
+        var cw = found.clippers[c].getBoundingClientRect().width;
+        if (cw < bindingW) {
+          bindingW = cw;
+          binding = found.clippers[c];
+        }
+      }
+      var cutter = binding ? describe(binding) : 'the frame edge';
 
       // Hand over the ARITHMETIC, not just the verdict. "Fit the type to the box" is only
       // actionable if the model knows how wide the box is, and it cannot measure a rendered
-      // frame - it is writing code against a description. Both numbers come free from
-      // geometry already computed above: how much room the line wants, and how much it got.
+      // frame - it is writing code against a description. The number describes the SAME
+      // element the sentence names, so the instruction and the measurement cannot disagree.
       // Measured need for this: the benched compositions size type against the FRAME while
       // the text sits in a strap the composition itself invented, so the two numbers are
       // computed from unrelated bases and a repair round has no way to discover the gap.
       var needPx = Math.round(width(text));
-      var roomPx = Math.round(Math.max(0, width(region)));
-      var sizing =
-        ' The line needs ' + needPx + 'px but ' +
-        (found.clippers.length ? 'that box gives it ' : 'the frame leaves ') + roomPx + 'px.';
+      var roomPx = Math.round(Math.max(0, binding ? bindingW : width(region)));
+      // Two different defects wear the same percentage, and they take OPPOSITE fixes. Text
+      // wider than its box must shrink; text that FITS its box and is still cut is sitting
+      // outside the visible area and must MOVE - shrinking it there is the one repair that
+      // cannot work. Reporting widths in that second case actively misleads: a real
+      // generation measured "needs 1183px" inside a 1920px box while half of it was cropped,
+      // and the arithmetic alone would have sent the model to shrink type that already fits.
+      // The occlusion message learned the same lesson (docs/HYPERFRAMES_QUALITY.md): say
+      // what to DO, because a finding that implies the wrong fix is worse than a vague one.
+      var tooWide = roomPx > 0 && roomPx < needPx;
+      var sizing = tooWide
+        ? ' The line needs ' + needPx + 'px but ' +
+          (binding ? 'that box gives it ' : 'the frame leaves ') + roomPx + 'px.' +
+          ' Give the text room (or fit the type to the box);'
+        : ' At ' + needPx + 'px it FITS that ' + roomPx +
+          'px box - it is positioned outside the visible area, so move it into view rather than' +
+          ' shrinking it;';
       issues.push({
         kind: 'clip',
         // How much of the glyph run is gone, so a caller can tell a near-miss from text that
@@ -272,8 +298,7 @@
         key: 'clip:' + label(el) + ':' + axis,
         message:
           '"' + label(el) + '" is CUT OFF - ' + pct + '% of its ' + axis + ' is clipped by ' + cutter +
-          '.' + sizing +
-          ' Give the text room (or fit the type to the box); readable text must never be cropped at the hold.',
+          '.' + sizing + ' readable text must never be cropped at the hold.',
       });
     }
     return issues;
