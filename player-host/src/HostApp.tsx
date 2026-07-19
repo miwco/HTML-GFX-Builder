@@ -33,6 +33,8 @@ interface TextIssue {
   kind: string;
   key: string;
   message: string;
+  /** Clip findings only: how much of the glyph run is cut (100 = nothing painted). */
+  lossPct?: number;
 }
 
 /** Omit that distributes over a union (plain Omit collapses HostToApp to common keys). */

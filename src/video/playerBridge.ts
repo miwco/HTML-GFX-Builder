@@ -27,6 +27,9 @@ export interface ProbeTextIssue {
   /** Stable across frames - the app intersects on this, never on the prose. */
   key: string;
   message: string;
+  /** Clip findings only: the percentage of the glyph run that is cut. 100 means nothing of
+   *  the line is painted, which readability.ts escalates past the soft-finding demotion. */
+  lossPct?: number;
 }
 
 export interface ProbeResult {

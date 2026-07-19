@@ -288,12 +288,18 @@ probed produced no findings and therefore no rounds.
 defect, by two different routes:
 
 1. **r1 shipped text that is 100% clipped**, after the model failed to fix it across both
-   repair rounds. This is by design, not a second bug: `SOFT_RULES` in
+   repair rounds. This was by design, not a second bug: `SOFT_RULES` in
    `src/ai/video/claudeVideoProvider.ts` demotes `text-clip` to a warning once the rounds are
    spent, so the user gets their composition with a caveat rather than nothing. The doctrine is
-   sound for a *marginal* crop; it is wrong for this finding, because "100% of its width is
-   clipped" is not a plausible false positive - it is certainly unreadable. Severity is
-   available in the message and is currently ignored (follow-up 2).
+   sound for a *marginal* crop; it was wrong for this finding, because "100% of its width is
+   clipped" is not a plausible false positive - it is certainly unreadable.
+
+   **Fixed.** `textChecks.js` now carries the loss percentage on each clip finding, and
+   `readability.ts` reports a line whose visible extent is zero at every hold frame under its
+   own rule, `text-clip-total`, which is deliberately absent from `SOFT_RULES`. A partial crop
+   keeps the forgiving behaviour; a total one stays failed. The two paths are pinned as a pair
+   in `e2e/video-readability.spec.ts` - the same module, differing only in how far the text is
+   pushed out of its box, reaching opposite verdicts.
 2. **r2 shipped an occluded hero, and no gate can see it.** `src/video/textChecks.js` exports
    `occlusion()`, the bench calls it, and **neither engine's validator does** - the HyperFrames
    driver probes `clip().concat(safeArea())` and the Remotion host the same pair. Text painted
@@ -311,38 +317,33 @@ was.
 
 ## Open follow-ups
 
-Ordered by value. The first two are what the re-measurement above turned up, and neither needs
-further generations to act on.
+Ordered by value. The re-measurement turned up two; the total-crop half is done (above), so
+what remains of it is the spend.
 
 1. **Widen the re-measurement.** Three samples of one brief established that the 19% → 0%
    figure does not reproduce, but they cannot replace it with a number. A cross-brief rate
    needs the seven-brief set on both engines, which is what makes it a spend rather than a
    free follow-up. Until then this document quotes no defect rate at all, which is the honest
    position.
-2. **Stop demoting a total crop.** `SOFT_RULES` demotes `text-clip` to a warning after two
-   repair rounds so a false positive cannot discard finished work. That protects a marginal
-   crop, but r1 shipped text that was **100% clipped** - a finding that cannot be a false
-   positive. Gate the demotion on severity (the percentage is already in the message): a
-   partial crop keeps shipping with a warning, a total one is a hard failure.
-3. **Wire occlusion into the gate.** `textChecks.js` exports `occlusion()`; the bench uses it,
+2. **Wire occlusion into the gate.** `textChecks.js` exports `occlusion()`; the bench uses it,
    neither validator does, so text painted behind a panel ships unflagged on both engines
    (r2). Not a one-liner: occlusion legitimately covers part of a hold, so it needs the
    bench's MAJORITY persistence rule rather than the all-frames rule `persistentTextIssues`
    applies to crops, and `ruleFor()` needs a rule name of its own instead of folding it into
    `text-clip`.
-4. **The transparent/overlay brief is the weakest case on both engines** - the only
+3. **The transparent/overlay brief is the weakest case on both engines** - the only
    readability finding in the varied pass, the most repairs on each engine, and the one
    design shape neither contract says much about (where a strap sits, safe margins, not
    filling the frame). This is the strongest candidate for a *measured* prompt improvement,
    but it needs more than one sample per engine before anyone writes prose.
-5. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
+4. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
    because the finding told the model to resize a line whose real problem was that it had
    been rendered twice ("NOACGNOACG"). A finding that notices a repeated substring and says
    so would probably be fixable inside the two rounds.
-6. **The countdown-style minimal reveal** - historically the weakest brief, and the
+5. **The countdown-style minimal reveal** - historically the weakest brief, and the
    "uncommitted default" look it falls into is unmoved by prose. It came through clean in
    this pass, so treat the earlier finding as unconfirmed rather than settled.
-7. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
+6. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
    A real feature (validator, driver, compose, and the render worker all have to agree on how
    a media clip seeks deterministically), not a prompt change.
 

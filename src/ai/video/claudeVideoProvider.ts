@@ -346,6 +346,15 @@ function noteUnprobed<T extends Awaited<ReturnType<VideoValidator>>>(validation:
  *  should ship with a warning, not silently discard a composition the user waited for. */
 const SOFT_RULES = new Set(['text-clip', 'text-safe-area']);
 
+/**
+ * `text-clip-total` is missing from that set ON PURPOSE, and must stay missing: it is the
+ * verdict that no part of the line is painted at any hold frame (src/video/readability.ts).
+ * The demotion above exists to protect work from a finding that might be wrong; a total crop
+ * cannot be wrong, so demoting it just ships text the viewer never sees. The guard below
+ * already handles it - one non-soft error is enough to keep the whole result failed - so
+ * nothing here needs to name it, only to leave it out.
+ */
+
 function demoteSoftFindings<T extends Awaited<ReturnType<VideoValidator>>>(validation: T): T {
   if (validation.ok || validation.errors.some((e) => !SOFT_RULES.has(e.rule))) return validation;
   return { ...validation, ok: true, errors: [], warnings: [...validation.warnings, ...validation.errors] };

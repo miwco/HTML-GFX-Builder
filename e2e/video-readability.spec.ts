@@ -31,8 +31,12 @@ const OFF_FRAME_LOWER_THIRD = readFileSync(
 );
 const FIXTURE_SETTINGS = { width: 1920, height: 1080, fps: 30, durationInFrames: 120, transparent: true };
 
-/** `boxWidth` decides the verdict: 420 crops the headline, 1600 gives it room. */
-function moduleFor(summary: string, boxWidth: number): EmittedModule {
+/**
+ * `boxWidth` decides the verdict: 420 crops the headline, 1600 gives it room. `shiftX` slides
+ * the text inside that box - large negative values push it entirely outside, which is a TOTAL
+ * crop (nothing painted) rather than a partial one, and the two are gated differently.
+ */
+function moduleFor(summary: string, boxWidth: number, shiftX = 0): EmittedModule {
   return {
     summary,
     tsx: `import { AbsoluteFill } from 'remotion';
@@ -42,7 +46,7 @@ export default function Composition({ fields = {} }: { fields?: Record<string, s
   return (
     <AbsoluteFill style={{ background: '#101318', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: ${boxWidth}, overflow: 'hidden' }}>
-        <div style={{ color: '#fff', fontSize: 96, fontWeight: 800, whiteSpace: 'nowrap' }}>
+        <div style={{ color: '#fff', fontSize: 96, fontWeight: 800, whiteSpace: 'nowrap', marginLeft: ${shiftX} }}>
           {headline}
         </div>
       </div>
@@ -177,6 +181,25 @@ test.describe('the generation gate', () => {
     await expect(reply).not.toContainText('failed validation');
     await expect(player(page).getByText('BROADCAST KITCHEN')).toBeVisible({ timeout: 10_000 });
   });
+
+  test('a TOTAL crop is kept failed instead of shipping with a warning', async ({ page }) => {
+    // The counterpart of the test above, and the line between them is the whole point. That
+    // one survives its repair rounds and ships, because a partial crop might be a false
+    // positive or still legible. This one paints NOTHING - the headline sits far outside its
+    // own clipping box at every hold frame - which cannot be a false positive, so the
+    // demotion must not rescue it. Measured shipping for real before this rule existed
+    // (docs/HYPERFRAMES_QUALITY.md, the re-measurement's r1).
+    const { emits } = await mockClaude(page, [moduleFor('Headline pushed off its card.', 1600, -4000)], AS_SLOW_AS_REAL);
+    await createVideoProject(page);
+
+    await expect.poll(() => emits(), { timeout: 40_000 }).toBe(3); // generation + 2 repair rounds
+    const reply = page.locator('.ai-msg.assistant').last();
+    await expect(reply, 'a composition with no visible text must not be presented as done').toContainText(
+      'failed validation',
+    );
+    // The previous working composition is kept, and the failure names the total crop.
+    await expect(page.getByText(/CUT OFF - 100%/)).toBeVisible({ timeout: 10_000 });
+  });
 });
 
 test.describe('the gate reports whether it actually ran', () => {
@@ -213,7 +236,7 @@ test.describe('the gate reports whether it actually ran', () => {
 
     for (const [name, r] of Object.entries(results)) {
       expect(r.probed, `${name}: nothing was measured, so probed must say so`).toBe(false);
-      expect(r.rules, `${name}: no runtime finding can exist without a probe`).not.toContain('text-clip');
+      expect(r.rules, `${name}: no runtime finding of any kind can exist without a probe`).toEqual([]);
     }
   });
 
@@ -250,7 +273,8 @@ test.describe('the gate reports whether it actually ran', () => {
     expect(results.mountedPreview, 'the mounted preview registers itself for sibling validators').not.toBeNull();
     for (const [name, r] of Object.entries(results)) {
       expect(r!.probed, `${name}: the checks must have actually run`).toBe(true);
-      expect(r!.rules, `${name}: off-frame hero text is a clip finding`).toContain('text-clip');
+      // Nothing of this fixture's text is painted, so it escalates past the soft rule.
+      expect(r!.rules, `${name}: text painted nowhere is a TOTAL clip`).toContain('text-clip-total');
       expect(r!.ok, `${name}: an unreadable composition must not validate`).toBe(false);
     }
   });

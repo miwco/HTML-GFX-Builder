@@ -258,6 +258,7 @@ export const HF_DRIVER_JS = `(function () {
                 kind: found[q].kind,
                 key: found[q].key,
                 message: found[q].message,
+                lossPct: found[q].lossPct,
               });
             }
           }

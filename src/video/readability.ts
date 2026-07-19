@@ -28,19 +28,46 @@ export function persistentTextIssues(
   frames: number[],
 ): { rule: string; message: string }[] {
   if (frames.length === 0 || issues.length === 0) return [];
-  const seen = new Map<string, { frames: Set<number>; kind: string; message: string }>();
+  const seen = new Map<string, { frames: Set<number>; kind: string; message: string; minLossPct: number }>();
   for (const i of issues) {
-    const entry = seen.get(i.key) ?? { frames: new Set<number>(), kind: i.kind, message: i.message };
+    const entry = seen.get(i.key) ?? {
+      frames: new Set<number>(),
+      kind: i.kind,
+      message: i.message,
+      minLossPct: Number.POSITIVE_INFINITY,
+    };
     entry.frames.add(i.frame);
+    // The LOWEST loss across the checked frames, for the same reason the finding has to
+    // appear at every one of them: escalating on the worst frame would let a line that is
+    // merely mid-entrance at one sample be judged as if it never arrived.
+    entry.minLossPct = Math.min(entry.minLossPct, i.lossPct ?? Number.POSITIVE_INFINITY);
     seen.set(i.key, entry);
   }
   return [...seen.values()]
     .filter((e) => e.frames.size >= frames.length)
-    .map((e) => ({ rule: ruleFor(e.kind), message: e.message }));
+    .map((e) => ({ rule: ruleFor(e.kind, e.minLossPct), message: e.message }));
 }
 
-/** The validator rule each runtime finding reports under. Both are SOFT (see the provider's
- *  SOFT_RULES): they drive repair rounds, but never throw finished work away on their own. */
-function ruleFor(kind: string): string {
-  return kind === 'safe-area' ? 'text-safe-area' : 'text-clip';
+/**
+ * The validator rule each runtime finding reports under.
+ *
+ * `text-clip` and `text-safe-area` are SOFT (the provider's SOFT_RULES): they drive repair
+ * rounds, but once those rounds are spent they demote to warnings rather than throw away a
+ * composition the user waited for - the right call when the finding might be a false positive
+ * or a legible near-miss.
+ *
+ * `text-clip-total` is NOT soft, and is deliberately absent from SOFT_RULES. At 100% loss the
+ * visible extent of the line is zero: nothing of it is painted at any checked hold frame.
+ * That is not a marginal crop and it cannot be a false positive, so demoting it ships a
+ * composition whose text the viewer will never see - measured happening (docs/
+ * HYPERFRAMES_QUALITY.md, the re-measurement's r1, which shipped both lines fully clipped
+ * after two failed repair rounds). A partial crop keeps the old, forgiving behaviour.
+ */
+function ruleFor(kind: string, minLossPct: number): string {
+  if (kind === 'safe-area') return 'text-safe-area';
+  return minLossPct >= TOTAL_CLIP_PCT ? 'text-clip-total' : 'text-clip';
 }
+
+/** Loss at which a clipped line has nothing left on screen (textChecks.js rounds the
+ *  percentage, so this catches a visible extent of zero and nothing else). */
+const TOTAL_CLIP_PCT = 100;

@@ -240,6 +240,10 @@
       var cutter = found.clippers.length ? describe(found.clippers[0]) : 'the frame edge';
       issues.push({
         kind: 'clip',
+        // How much of the glyph run is gone, so a caller can tell a near-miss from text that
+        // is not painted at all. At 100 the visible extent is zero - nothing of the line
+        // reaches the screen - which is the one clip verdict that cannot be a false positive.
+        lossPct: pct,
         key: 'clip:' + label(el) + ':' + axis,
         message:
           '"' + label(el) + '" is CUT OFF - ' + pct + '% of its ' + axis + ' is clipped by ' + cutter +
