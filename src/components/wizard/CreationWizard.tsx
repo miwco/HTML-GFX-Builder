@@ -12,6 +12,7 @@ import BrandLogo from '../BrandLogo';
 import EntryStep from './steps/EntryStep';
 import ImportStep from './steps/ImportStep';
 import ImportDesignStep from './steps/ImportDesignStep';
+import PrepareDesignStep from './steps/PrepareDesignStep';
 import CategoryStep from './steps/CategoryStep';
 import TemplateStep from './steps/TemplateStep';
 import FieldsStep from './steps/FieldsStep';
@@ -28,10 +29,11 @@ const STEP_TITLES = ['Start', 'Category', 'Template', 'Fields', 'Style', 'Animat
 const STEP_TITLES_IMPORT = ['Start', 'Images', 'Template', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_AI = ['Start', 'Create'];
 const STEP_TITLES_VIDEO = ['Start', 'Video'];
-// Import-graphic mode is a SETUP flow, not a second editor: bring the artwork in, create,
-// and land in the real canvas editor with the Data tab focused — fields, styling, and
-// animation all happen there (docs/IMPORT_MVP.md, "the wizard hands off").
-const STEP_TITLES_DESIGN = ['Start', 'Design'];
+// Import-graphic mode is a SETUP flow, not a second editor: bring the artwork in, prepare it
+// (erase baked-in text, pick how it meets long text), create, and land in the real canvas
+// editor with the Data tab focused — fields, styling, and animation all happen there
+// (docs/IMPORT_MVP.md, "the wizard hands off").
+const STEP_TITLES_DESIGN = ['Start', 'Design', 'Prepare'];
 
 /**
  * The choose-first creation wizard (replaces the old template gallery). Six steps —
@@ -55,6 +57,9 @@ export default function CreationWizard() {
   // graphics in the same package).
   const [brand, setBrand] = useState<ProjectBrand | null>(null);
   const [matchBrand, setMatchBrand] = useState(false);
+  // Prepare step's content-width slider (Import graphic, stretch mode): preview-only demo
+  // text pushed into the live preview — never part of the draft or the created template.
+  const [stretchDemo, setStretchDemo] = useState<string | null>(null);
   // Backdrop click-to-close must only fire on a genuine outside click - not when a text
   // selection drag STARTED inside an input (e.g. the video duration field) and released
   // over the backdrop. The browser routes that release's `click` to the backdrop (the
@@ -68,6 +73,7 @@ export default function CreationWizard() {
       setMode('template');
       setDraft(initialDraft());
       setAiResult(null);
+      setStretchDemo(null);
       const b = loadBrand();
       setBrand(b);
       // Off by default: reusing the previous project's look is an explicit choice,
@@ -88,10 +94,11 @@ export default function CreationWizard() {
 
   const variant = draft.variantId ? variantById(draft.variantId) : undefined;
 
-  // The live preview always renders the draft as real template code.
+  // The live preview always renders the draft as real template code. Design mode's preview
+  // may additionally carry the stretch-demo line (preview-only; create() builds without it).
   const previewTemplate = useMemo(
-    () => (variant ? buildDraftTemplate(variant, draft) : null),
-    [variant, draft],
+    () => (variant ? buildDraftTemplate(variant, draft, { stretchDemo: mode === 'design' }) : null),
+    [variant, draft, mode],
   );
 
   // On the Animation step the preview demos the full lifecycle (in → hold → out → in)
@@ -143,7 +150,9 @@ export default function CreationWizard() {
 
   const create = () => {
     if (!previewTemplate || !variant) return;
-    void applyGenerated(previewTemplate);
+    // Design mode rebuilds WITHOUT the preview-only stretch-demo line; every other mode's
+    // preview is exactly the created code already.
+    void applyGenerated(mode === 'design' ? buildDraftTemplate(variant, draft) : previewTemplate);
     // An imported design creates BARE and hands off to the editor's Data tab — that is
     // where its fields are added, as real placed layers (docs/IMPORT_MVP.md).
     if (variant.category === 'imported-design') useTemplateStore.getState().setActivePanel('data');
@@ -165,12 +174,12 @@ export default function CreationWizard() {
         : !draft.category)) ||
     (step === 2 && !draft.variantId);
 
-  // Design mode previews from the moment the artwork lands: the Design step IS the last
-  // step, so the user sees the real graphic (and its default entrance) before creating.
+  // Design mode previews from the moment the artwork lands, through the Prepare step —
+  // the user sees the real graphic (and its default entrance) before creating.
   const showPreview =
     mode === 'ai' ? step === 1 && !!aiResult
     : mode === 'video' ? false
-    : mode === 'design' ? step === 1 && !!previewTemplate
+    : mode === 'design' ? step >= 1 && !!previewTemplate
     : step >= 2 && !!previewTemplate;
   const stepTitles =
     mode === 'ai' ? STEP_TITLES_AI
@@ -286,6 +295,10 @@ export default function CreationWizard() {
                   patch({
                     designArt,
                     importedImages,
+                    // A fresh drop resets the Prepare step: the pristine pixels become the
+                    // erase's source, and any erase from a previous artwork is meaningless.
+                    designOriginal: importedImages[0] ?? null,
+                    designErase: null,
                     category: 'imported-design',
                     // There is no design to choose — the artwork IS it — so the variant is
                     // settled here, and the graphic creates BARE: its text/number/image
@@ -299,7 +312,15 @@ export default function CreationWizard() {
                       : { paletteId: null, customPalette: null, fontId: null }),
                   });
                 }}
-                onClear={() => patch({ designArt: null, importedImages: [], variantId: null })}
+                onClear={() =>
+                  patch({
+                    designArt: null,
+                    importedImages: [],
+                    variantId: null,
+                    designOriginal: null,
+                    designErase: null,
+                  })
+                }
               />
             )}
             {step === 1 && mode === 'import' && (
@@ -323,7 +344,29 @@ export default function CreationWizard() {
                 }}
               />
             )}
-            {step === 2 && (
+            {step === 2 && mode === 'design' && draft.designArt && (
+              <PrepareDesignStep
+                art={draft.designArt}
+                resolution={draftResolution(draft)}
+                images={draft.importedImages}
+                original={draft.designOriginal}
+                erase={draft.designErase}
+                onApplyErase={(designErase, importedImages) =>
+                  patch({ designErase, importedImages })
+                }
+                onClearErase={() =>
+                  patch({
+                    designErase: null,
+                    importedImages: draft.designOriginal ? [draft.designOriginal] : draft.importedImages,
+                  })
+                }
+                onStretch={(stretch) =>
+                  patch({ designArt: { ...draft.designArt!, stretch: stretch ?? undefined } })
+                }
+                onDemoText={setStretchDemo}
+              />
+            )}
+            {step === 2 && mode !== 'design' && (
               <TemplateStep
                 variants={orderedVariants}
                 draft={draft}
@@ -361,6 +404,7 @@ export default function CreationWizard() {
                 template={mode === 'ai' ? aiResult!.template : previewTemplate!}
                 replayKey={replayKey}
                 demoOut={demoOut}
+                demoText={mode === 'design' ? stretchDemo : null}
               />
             </aside>
           )}
@@ -402,11 +446,12 @@ export default function CreationWizard() {
             )}
             {/* "Create project" is the quiet shortcut (primary only on the last step,
                 where it's the sole forward action); "Next ›" is the highlighted path.
-                Design mode's Design step IS its last step — Create is its one CTA, and
-                the editor's Data tab takes over from there. */}
+                Design mode: Create from the Design step is the fast path (a design with no
+                baked-in text and no scaling choice needs nothing from Prepare); the Prepare
+                step is its last step, where Create is the one CTA. */}
             {mode !== 'ai' && mode !== 'video' && (mode === 'design' ? step >= 1 : step >= 2) && (
               <button
-                className={step === 5 || mode === 'design' ? 'primary' : undefined}
+                className={step === 5 || (mode === 'design' && step === 2) ? 'primary' : undefined}
                 disabled={!previewTemplate}
                 onClick={create}
                 title={
@@ -418,7 +463,7 @@ export default function CreationWizard() {
                 Create project
               </button>
             )}
-            {mode !== 'ai' && mode !== 'video' && mode !== 'design' && step > 0 && step < 5 && (
+            {mode !== 'ai' && mode !== 'video' && (mode === 'design' ? step === 1 : step > 0 && step < 5) && (
               <button className="primary wz-next" disabled={nextDisabled} onClick={() => goToStep(1)}>
                 Next ›
               </button>

@@ -223,6 +223,22 @@ export interface DesignArt {
   /** The file's real pixel size, kept when it differs from the fitted width/height above. */
   sourceWidth?: number;
   sourceHeight?: number;
+  /** How the artwork meets text longer than it was drawn for. Absent = fixed (the image
+   *  renders exactly as drawn — today's behaviour, and the default). */
+  stretch?: DesignStretch;
+}
+
+/**
+ * The imported artwork's scaling mode, per axis so more modes can be added later without
+ * migrating anything: absent = fixed; `horizontal` = a 9-slice whose middle band stretches
+ * with the widest text field (lower thirds, straps, name tags); `vertical` is reserved for
+ * growing panels. All values are DESIGN px from the artwork's top-left.
+ */
+export interface DesignStretch {
+  /** `left` = where the left cap ends, `right` = where the right cap starts. */
+  horizontal?: { left: number; right: number };
+  /** Reserved — the vertical axis lands here later with no data migration. */
+  vertical?: { top: number; bottom: number };
 }
 
 /** WizardOptions with every default resolved — what variant builders actually receive. */

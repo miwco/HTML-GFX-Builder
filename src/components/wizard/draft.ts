@@ -3,6 +3,7 @@
 // WizardOptions, and resolveOptions() (model/wizard.ts) fills the rest.
 
 import { ASPECTS, type AssetFile, type Resolution, type SpxTemplate } from '../../model/types';
+import { addPlacedLine } from '../../blocks/designLayout';
 import { anyPresetById, type AnimPhase } from '../../blocks/presetRegistry';
 import { parseAnimData, spliceAnimData } from '../../blocks/animData';
 import { applyPresetData, presetDonor } from '../../blocks/presetApply';
@@ -22,6 +23,18 @@ import type {
 import { paletteById } from '../../model/wizard';
 import type { EasingId } from '../../model/easings';
 import type { CustomFont } from '../../model/fonts';
+import type { EraseRect } from '../../assets/eraseRegion';
+
+/** The applied baked-text erase: the marked rectangle (in the artwork's SOURCE pixels) and
+ *  the sampling verdict it ran with. The rectangle also seeds the first text field at create. */
+export interface DesignEraseState {
+  rect: EraseRect;
+  /** Whether the background samples counted as flat (assets/eraseRegion FLAT_BG_TOLERANCE). */
+  uniform: boolean;
+  maxDeviation: number;
+  /** The applied fill colour — the seeded field contrasts against exactly this. */
+  fill: { r: number; g: number; b: number; a: number };
+}
 
 export interface WizardDraft {
   category: TemplateCategory | null;
@@ -69,6 +82,10 @@ export interface WizardDraft {
   logoEnabled: boolean | null;
   /** The artwork the graphic IS, in the Import Graphic flow (measured at import). */
   designArt: DesignArt | null;
+  /** The untouched upload, kept so an erase re-runs from clean pixels (never compounds). */
+  designOriginal: AssetFile | null;
+  /** The applied baked-text erase (Prepare step); null = none. */
+  designErase: DesignEraseState | null;
 }
 
 /** A draft update: top-level fields replace; `animation` and `nudge` deep-merge. */
@@ -109,6 +126,8 @@ export function initialDraft(): WizardDraft {
     logoAssetPath: null,
     logoEnabled: null,
     designArt: null,
+    designOriginal: null,
+    designErase: null,
   };
 }
 
@@ -169,8 +188,70 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
  * onto the Out step with the same generator the Inspector's Animations tab uses — so the wizard
  * preview and the created project are always the exact same code.
  */
-export function buildDraftTemplate(variant: TemplateVariant, draft: WizardDraft): SpxTemplate {
-  const template = variant.create(draftToOptions(variant, draft));
+/**
+ * The erased region's field (Import Graphic, Prepare step). An imported design creates BARE
+ * — with ONE exception: erasing baked-in text is an explicit "editable text goes here", so
+ * the erased rectangle seeds the first field, through the same addPlacedLine transform the
+ * Data tab and canvas text tools use. The rect is in the artwork's SOURCE pixels; placement
+ * is design px, so the fitToFrame ratio maps between them (the retina case).
+ */
+function withEraseSeedField(template: SpxTemplate, draft: WizardDraft): SpxTemplate {
+  if (!draft.designErase || !draft.designArt) return template;
+  const art = draft.designArt;
+  const k = art.width / (art.sourceWidth ?? art.width);
+  const r = draft.designErase.rect;
+  // The field sits ON the erased fill, so contrast against exactly that: dark ink on a
+  // light fill, white on a dark one (a transparent fill reads as the dark broadcast frame).
+  const f = draft.designErase.fill;
+  const luminance = f.a < 64 ? 0 : (0.2126 * f.r + 0.7152 * f.g + 0.0722 * f.b) / 255;
+  const added = addPlacedLine(template, {
+    color: luminance > 0.5 ? '#16181c' : '#ffffff',
+    title: 'Name',
+    ftype: 'textfield',
+    at: { x: Math.round(r.x * k), y: Math.round(r.y * k) },
+    // Approximate the erased text's size from its box: ~72% of the height (the box wraps
+    // ascenders/descenders with air), CAPPED by width/7 — a name is roughly a dozen glyphs
+    // at ~half an em each, and a tall script original (whose box height far exceeds its cap
+    // height) would otherwise seed type twice the visual size the design was drawn with.
+    fontSize: Math.max(10, Math.round(Math.min(r.height * k * 0.72, (r.width * k) / 7))),
+    maxWidth: Math.max(64, Math.round(r.width * k)),
+  });
+  return added ? added.template : template;
+}
+
+/**
+ * PREVIEW-ONLY: a sample line for the Prepare step's stretch demo. With stretch picked but
+ * nothing erased, the created template is bare — there is no field for the content-width
+ * slider to widen — so the preview build (and only it) places one demo line in the middle
+ * band, through the same addPlacedLine transform as everything else. This is the ONE
+ * sanctioned deviation from preview == created code (docs/IMPORT_MVP.md): the demo exists
+ * exactly so the user can verify the guides before creating.
+ */
+function withStretchDemoLine(template: SpxTemplate, draft: WizardDraft): SpxTemplate {
+  const art = draft.designArt;
+  const hz = art?.stretch?.horizontal;
+  if (!art || !hz || draft.designErase) return template; // the erase-seeded field is the demo
+  const added = addPlacedLine(template, {
+    title: 'Sample',
+    ftype: 'textfield',
+    text: 'Alexandra Riva',
+    at: { x: Math.round(hz.left + art.width * 0.03), y: Math.round(art.height * 0.4) },
+    fontSize: Math.min(64, Math.max(12, Math.round(art.height * 0.12))),
+  });
+  return added ? added.template : template;
+}
+
+export function buildDraftTemplate(
+  variant: TemplateVariant,
+  draft: WizardDraft,
+  // The wizard PREVIEW passes stretchDemo; create() never does — see withStretchDemoLine.
+  opts: { stretchDemo?: boolean } = {},
+): SpxTemplate {
+  let template = variant.create(draftToOptions(variant, draft));
+  if (variant.category === 'imported-design') {
+    template = withEraseSeedField(template, draft);
+    if (opts.stretchDemo) template = withStretchDemoLine(template, draft);
+  }
   const inId = draft.animation.presetId ?? variant.animationPresets[0];
   const outId = draft.animation.outPresetId;
   if (!outId || outId === inId) return template;

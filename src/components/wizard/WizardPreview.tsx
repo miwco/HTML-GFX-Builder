@@ -8,6 +8,9 @@ interface Props {
   replayKey?: number;
   /** Demo the full lifecycle — in, hold, out, back in — after each (re)play. */
   demoOut?: boolean;
+  /** Import graphic's Prepare step: override the FIRST field's pushed value, so the
+   *  content-width slider drives the emitted stretch runtime live. Null = the samples. */
+  demoText?: string | null;
 }
 
 type SpxWindow = Window & { play?: () => void; stop?: () => void; next?: () => void; update?: (d: string) => void };
@@ -17,7 +20,7 @@ type SpxWindow = Window & { play?: () => void; stop?: () => void; next?: () => v
  * The entrance plays automatically on every (debounced) rebuild so each choice is felt
  * immediately; Replay / Out let the user test the motion at any time.
  */
-export default function WizardPreview({ template, replayKey = 0, demoOut = false }: Props) {
+export default function WizardPreview({ template, replayKey = 0, demoOut = false, demoText = null }: Props) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState({ w: 0, h: 0 });
@@ -39,6 +42,16 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
   // debounce, and onLoad/demo timers fire from older closures — the ref never lies.
   const templateRef = useRef(template);
   templateRef.current = template;
+  const demoTextRef = useRef(demoText);
+  demoTextRef.current = demoText;
+
+  /** The values a push sends: the template's samples, with the demo override on field 1. */
+  const pushValues = (tpl: SpxTemplate) => {
+    const values = Object.fromEntries(tpl.fields.map((f) => [f.field, f.value]));
+    const demo = demoTextRef.current;
+    if (demo != null && tpl.fields.length) values[tpl.fields[0].field] = demo;
+    return values;
+  };
 
   const { width, height } = template.resolution;
 
@@ -90,7 +103,7 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
     if (!w || typeof w.play !== 'function') return;
     clearDemo();
     const tpl = templateRef.current;
-    w.update?.(JSON.stringify(Object.fromEntries(tpl.fields.map((f) => [f.field, f.value]))));
+    w.update?.(JSON.stringify(pushValues(tpl)));
     w.play();
     measureBox(); // every (re)play follows a load or a data push — refresh the zoom framing
     if (demoOut) {
@@ -122,6 +135,15 @@ export default function WizardPreview({ template, replayKey = 0, demoOut = false
     if (replayKey > 0) playIn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replayKey]);
+
+  // Push the demo text live (no replay): the slider drives the emitted stretch runtime in
+  // the running document — the user watches the REAL mechanism, not a wizard imitation.
+  useEffect(() => {
+    if (demoText == null) return;
+    const w = win();
+    if (!w || typeof w.update !== 'function') return;
+    w.update(JSON.stringify(pushValues(templateRef.current)));
+  }, [demoText]);
 
   // The view: whole canvas by default; zoomed reframes onto the graphic's box.
   const fitScale = Math.min(stage.w / width, stage.h / height) || 0.2;

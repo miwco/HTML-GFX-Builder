@@ -863,6 +863,103 @@ kbd {
 .wz-drop.compact { padding: 12px 16px; }
 .wz-drop.compact strong { font-size: 12px; font-weight: 500; color: var(--text-dim); }
 
+/* Import graphic, Prepare step: the artwork surface with source-px overlays (erase rect,
+   stretch guides). Checkerboard behind, so a transparent PNG reads as transparent. */
+.wz-prep-surface {
+  position: relative;
+  margin-top: 10px;
+  max-width: 640px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #20262e;
+  background-image:
+    linear-gradient(45deg, #2c333d 25%, transparent 25%),
+    linear-gradient(-45deg, #2c333d 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2c333d 75%),
+    linear-gradient(-45deg, transparent 75%, #2c333d 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  user-select: none;
+  touch-action: none;                /* the pointer drag draws, it never scrolls */
+}
+.wz-prep-surface.drawing { cursor: crosshair; }
+.wz-prep-surface img { display: block; width: 100%; height: auto; pointer-events: none; }
+.wz-prep-rect {
+  position: absolute;
+  border: 1px dashed var(--accent);
+  background: rgba(246, 166, 35, 0.12);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+.wz-prep-verdict {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wz-prep-verdict p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-dim); }
+.wz-prep-verdict.good { border-color: rgba(110, 200, 130, 0.35); }
+.wz-prep-verdict.bad { border-color: rgba(230, 120, 100, 0.45); }
+/* The download link dressed as a button (an <a download> must be a real anchor). */
+.wz-prep-verdict a.btn {
+  border: 1px solid var(--border);
+  background: var(--bg-3);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  text-decoration: none;
+}
+.wz-prep-verdict a.btn:hover { background: #202836; border-color: #37424f; }
+/* The stretch guides: draggable vertical lines over the artwork (design-px overlays). */
+.wz-prep-guide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  margin-left: -6px;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.wz-prep-guide::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+.wz-prep-guide span {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--void);
+  background: var(--accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+.wz-prep-guide[data-testid="stretch-guide-right"] span { left: auto; right: 8px; }
+/* The scaling-mode cards (Fixed / Stretch horizontally). */
+.wz-prep-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 640px; }
+.wz-prep-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+  max-width: 640px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 /* Step 1: categories */
 .wz-cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .wz-cat { text-align: left; padding: 14px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }

@@ -37,12 +37,24 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// The value of `prop` in `selector`'s rule, as design px. Reads both position idioms. The prop
-// boundary is "not an identifier char" rather than `;`/`{`: generated declarations carry
+// The value of `prop` in `selector`'s rule, as design px. Reads the position idioms AND the
+// stretch-mode idiom `calc((Npx + var(--stretch-x, 0px)) * var(--scale))` — the base number
+// comes back with `stretch: true` so a write can mirror the term instead of dropping it. The
+// prop boundary is "not an identifier char" rather than `;`/`{`: generated declarations carry
 // trailing comments, so the previous line often ends in a comment close, not `;`.
-function readPx(css: string, selector: string, prop: string): { value: number; scaled: boolean } | null {
+function readPx(
+  css: string,
+  selector: string,
+  prop: string,
+): { value: number; scaled: boolean; stretch?: boolean } | null {
   const rule = css.match(new RegExp(`${escapeRe(selector)}\\s*\\{([^}]*)\\}`));
   if (!rule) return null;
+  const stretchCalc = rule[1].match(
+    new RegExp(
+      `(?:^|[^-\\w])${prop}\\s*:\\s*calc\\(\\s*\\(\\s*(-?[\\d.]+)px\\s*\\+\\s*var\\(--stretch-x[^)]*\\)\\s*\\)\\s*\\*\\s*var\\(--scale\\)\\s*\\)`,
+    ),
+  );
+  if (stretchCalc) return { value: parseFloat(stretchCalc[1]), scaled: true, stretch: true };
   const calc = rule[1].match(
     new RegExp(`(?:^|[^-\\w])${prop}\\s*:\\s*calc\\(\\s*(-?[\\d.]+)px\\s*\\*\\s*var\\(--scale\\)\\s*\\)`),
   );
@@ -51,8 +63,16 @@ function readPx(css: string, selector: string, prop: string): { value: number; s
   return plain ? { value: parseFloat(plain[1]), scaled: false } : null;
 }
 
-/** The CSS value a placement writes (and the live drag previews) for a design-px coordinate. */
-export function placementCss(value: number, scaled: boolean): string {
+/** The CSS value a placement writes (and the live drag previews) for a design-px coordinate.
+ *  `stretch` mirrors the stretch-mode slot idiom — the value grows with the design's
+ *  --stretch-x — and is only ever true for values readPx reported it on (or a new slot on a
+ *  stretch design), so writes never rewrite the author's idiom. */
+export function placementCss(value: number, scaled: boolean, stretch = false): string {
+  if (stretch) {
+    return scaled
+      ? `calc((${value}px + var(--stretch-x, 0px)) * var(--scale))`
+      : `calc(${value}px + var(--stretch-x, 0px))`;
+  }
   return scaled ? `calc(${value}px * var(--scale))` : `${value}px`;
 }
 
@@ -267,6 +287,10 @@ export interface LineFit {
   /** The slot width in design px, or null when the line is uncapped ('overflow'). */
   maxWidth: number | null;
   scaled: boolean;
+  /** True when the slot carries the stretch-mode `+ var(--stretch-x)` term — it grows with
+   *  the design. Writes must mirror it (placementCss's third argument) or the slot stops
+   *  growing the moment its width is edited. */
+  stretch: boolean;
 }
 
 /** True when the field's element carries `data-fit="shrink"` (the runtime's marker). */
@@ -297,11 +321,12 @@ export function lineFit(html: string, css: string, fieldId: string): LineFit | n
   const place = placedLines(html, css)[`#${fieldId}`];
   if (!place) return null;
   const cap = readPx(css, `#${place.wrapperId}`, 'max-width');
-  if (!cap) return { mode: 'overflow', maxWidth: null, scaled: place.scaled };
+  if (!cap) return { mode: 'overflow', maxWidth: null, scaled: place.scaled, stretch: false };
   return {
     mode: hasShrinkMark(html, fieldId) ? 'shrink' : 'wrap',
     maxWidth: cap.value,
     scaled: cap.scaled,
+    stretch: cap.stretch ?? false,
   };
 }
 
@@ -355,12 +380,18 @@ export function setLineFit(
   const wrap = `#${place.wrapperId}`;
   const sel = `#${fieldId}`;
 
+  // A slot that grew with the design keeps growing (mirror the idiom, as with `scaled`); a
+  // NEW cap on a stretch design's line left of the right cap gets the growing idiom too —
+  // that is a driver's slot by construction.
+  const stretchInfo = designStretchInfo(template.html, template.css);
+  const stretchSlot = current.stretch || (!!stretchInfo && place.x < stretchInfo.right);
+
   if (mode === 'overflow') {
     css = setCssDeclaration(css, wrap, 'max-width', 'none');
     css = setCssDeclaration(css, sel, 'white-space', 'nowrap');
     html = setShrinkMark(html, fieldId, false);
   } else {
-    css = setCssDeclaration(css, wrap, 'max-width', placementCss(maxWidth, scaled));
+    css = setCssDeclaration(css, wrap, 'max-width', placementCss(maxWidth, scaled, stretchSlot));
     if (mode === 'wrap') {
       css = setCssDeclaration(css, sel, 'white-space', 'normal');
       css = setCssDeclaration(css, sel, 'overflow-wrap', 'break-word');
@@ -391,6 +422,30 @@ export function designBoxInfo(html: string, css: string): { prefix: string; boxW
   if (!doc.querySelector(`.${prefix}-art`)) return null;
   const width = readPx(css, `.${boxClass}`, 'width');
   return { prefix, boxWidth: width?.value ?? 1920 };
+}
+
+/** The horizontal 9-slice guides of a stretch-mode design, in design px from the artwork's
+ *  left edge: `left` = where the left cap ends, `right` = where the right cap starts. */
+export interface DesignStretchInfo {
+  left: number;
+  right: number;
+}
+
+/**
+ * A design's stretch mode + guides, derived from the WORKING declarations the assembler
+ * emits (never stored beside them): a `.{prefix}-art` rule carrying a `border-image-slice`
+ * and readable cap widths IS stretch mode; anything else — including every template saved
+ * before the mode existed — reads as fixed (null), and nothing changes under it.
+ */
+export function designStretchInfo(html: string, css: string): DesignStretchInfo | null {
+  const box = designBoxInfo(html, css);
+  if (!box) return null;
+  const art = `.${box.prefix}-art`;
+  if (!readDecl(css, art, 'border-image-slice')) return null;
+  const capLeft = readPx(css, art, 'border-left-width');
+  const capRight = readPx(css, art, 'border-right-width');
+  if (!capLeft || !capRight) return null;
+  return { left: capLeft.value, right: box.boxWidth - capRight.value };
 }
 
 /** The reference line a new one inherits its look from: the LOWEST placed line (the design
@@ -425,6 +480,14 @@ export interface NewPlacedLineSpec {
   /** The initial shown text (markup + DataField value). Absent = the title (the Data
    *  panel's add); '' = born empty (the T tool — the user types the first value). */
   text?: string;
+  /** Explicit design font-size in px (the Prepare step's erased-region field, sized from
+   *  the text the user marked). Absent = inherit from the reference line / the default. */
+  fontSize?: number;
+  /** Explicit slot width in design px. Absent = the room to the artwork's right edge. */
+  maxWidth?: number;
+  /** Explicit text colour (the erased-region field contrasts against its sampled fill).
+   *  Absent = inherit from the reference line / the design default. */
+  color?: string;
 }
 
 /**
@@ -460,7 +523,7 @@ export function addPlacedLine(
   const placed = placedLines(template.html, template.css);
   const ref = referenceLine(placed);
   const refFont = ref ? lineFontSize(template.css, ref.fieldId) : null;
-  const fontSize = refFont?.value ?? Math.max(14, Math.round(boxWidth * 0.016));
+  const fontSize = spec.fontSize ?? refFont?.value ?? Math.max(14, Math.round(boxWidth * 0.016));
   const scaled = ref ? ref.place.scaled : true;
   // An explicit position (the canvas text tools' click / drag point) wins; otherwise the
   // stacking default keeps the Data panel's add reading top-down like the design does.
@@ -471,7 +534,8 @@ export function addPlacedLine(
     ? Math.round(spec.at.y)
     : ref ? Math.round(ref.place.y + fontSize * 1.6) : Math.round(boxWidth * (9 / 16) * 0.74);
   const weight = (ref && readDecl(template.css, `#${ref.fieldId}`, 'font-weight')) ?? '400';
-  const color = (ref && readDecl(template.css, `#${ref.fieldId}`, 'color')) ?? 'var(--text-color)';
+  const color =
+    spec.color ?? (ref && readDecl(template.css, `#${ref.fieldId}`, 'color')) ?? 'var(--text-color)';
 
   const sample = spec.text ?? (spec.ftype === 'number' ? '0' : spec.title);
 
@@ -486,15 +550,27 @@ export function addPlacedLine(
   });
   if (insertAt === -1) return null;
   // The new line FITS by default: it keeps one row and condenses if the operator's value
-  // outgrows the room between it and the artwork's right edge. Without a cap a long name
-  // runs off the design (and off the frame) - the fit contract exists for exactly that.
-  const maxWidth = Math.max(64, Math.round(boxWidth - x - boxWidth * 0.04));
+  // outgrows the room between it and the artwork's right edge (or the explicit slot the
+  // caller measured — the erased region's width). Without a cap a long name runs off the
+  // design (and off the frame) - the fit contract exists for exactly that.
+  //
+  // On a STRETCH design, a line left of the right cap DRIVES the stretch: its wrapper is
+  // marked data-stretch (the runtime measures those), its default slot runs to where the
+  // right cap starts, and the slot carries the growing idiom so the fit runtime sees the
+  // room the stretch opened. Lines in the right cap (and every fixed design) are unchanged.
+  const stretchInfo = designStretchInfo(template.html, template.css);
+  const driver = !!stretchInfo && x < stretchInfo.right;
+  const maxWidth =
+    spec.maxWidth ??
+    (driver && stretchInfo
+      ? Math.max(64, Math.round(stretchInfo.right - x))
+      : Math.max(64, Math.round(boxWidth - x - boxWidth * 0.04)));
 
   lines.splice(
     insertAt + 1,
     0,
     `    <!-- ${spec.title} (${fieldId}) — SPX writes this field's value straight into the element. -->`,
-    `    <div class="${prefix}-mask" id="${wrapperId}"><span id="${fieldId}" data-fit="shrink">${escapeHtml(sample)}</span></div>`,
+    `    <div class="${prefix}-mask" id="${wrapperId}"${driver ? ' data-stretch' : ''}><span id="${fieldId}" data-fit="shrink">${escapeHtml(sample)}</span></div>`,
   );
   const html = lines.join('\n');
 
@@ -507,7 +583,7 @@ export function addPlacedLine(
   position: absolute;
   left: ${placementCss(x, scaled)};   /* measured from the artwork's left edge */
   top: ${placementCss(y, scaled)};    /* …and from its top edge */
-  max-width: ${placementCss(maxWidth, scaled)};  /* the slot: how much room the design gives this line */
+  max-width: ${placementCss(maxWidth, scaled, driver)};  /* the slot: how much room the design gives this line */
   overflow: hidden;                 /* the line's mask — an entrance can slide the text within it */
 }
 #${fieldId} {

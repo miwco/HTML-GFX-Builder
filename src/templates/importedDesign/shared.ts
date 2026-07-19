@@ -44,6 +44,7 @@ import {
 import { convertToDataRegion } from '../shared/standard';
 import type { AnimPreset, PresetConfig } from '../lowerThirds/animPresets';
 import { DESIGN_PRESETS } from './designPresets';
+import { withStretchRuntime } from './stretch';
 
 /** The class prefix — this is what makes the output a standard-contract template. */
 export const PREFIX = 'imported-design';
@@ -106,8 +107,78 @@ function artHtml(art: DesignArt): string {
     return `    <!-- No artwork imported yet — the design's own image belongs here. -->
     <div class="${PREFIX}-art"></div>`;
   }
+  if (art.stretch?.horizontal) {
+    return `    <!-- The imported artwork, as a stretchable 9-slice: the drawn caps stay exact and
+         the plain middle band widens with the text. The whole mechanism lives in the
+         ${PREFIX}-art rule in template.css; the stretch runtime below decides how much. -->
+    <div class="${PREFIX}-art"></div>`;
+  }
   return `    <!-- The imported artwork. It IS the design: the text below sits on top of it. -->
     <img class="${PREFIX}-art" src="${art.path}" alt="" />`;
+}
+
+/**
+ * The design unit's box + artwork rules. Fixed mode (no stretch chosen) emits exactly the
+ * classic shape. Horizontal-stretch mode swaps the artwork for a 9-slice and gives the box
+ * width the `+ var(--stretch-x)` term the stretch runtime drives — the GUIDES live in these
+ * working declarations (and parse back out of them: blocks/designLayout designStretchInfo),
+ * never in side-channel state.
+ */
+function artBoxCss(art: DesignArt): string {
+  const hz = art.path ? art.stretch?.horizontal : undefined;
+  if (!hz) {
+    return `/* ── The design unit: the artwork and its text animate together as one box. ── */
+.${PREFIX}-box {
+  position: relative;              /* the text fields are placed against the artwork */
+  width: calc(${art.width}px * var(--scale));  /* the artwork's own width drives the size */
+  will-change: transform, opacity; /* hint the browser: this element animates */
+}
+.${PREFIX}-art {
+  display: block;
+  width: 100%;                     /* fills the box — so --scale resizes art and text together */
+  height: ${art.path ? 'auto' : `calc(${art.height}px * var(--scale))`};${art.path ? '' : '\n  background: var(--panel-bg);      /* stand-in until the artwork is imported */'}
+}`;
+  }
+
+  // The guides, clamped to sane bounds (the wizard clamps too — this is the last line of
+  // defence, not the UI). Design px for the border widths, the file's own px for the slice.
+  const left = Math.max(1, Math.min(art.width - 2, Math.round(hz.left)));
+  const right = Math.max(left + 1, Math.min(art.width - 1, Math.round(hz.right)));
+  const capRight = art.width - right;
+  const kSrc = (art.sourceWidth ?? art.width) / art.width;
+  const srcLeft = Math.round(left * kSrc);
+  const srcRight = Math.round(capRight * kSrc);
+  return `/* ── The design unit: the artwork and its text animate together as one box. ──────────
+   STRETCH MODE: --stretch-x (design px, set by stretchDesignWidth() in template.js) widens
+   the design so the operator's text fits at full size. It is 0 when everything fits. */
+.${PREFIX}-box {
+  position: relative;              /* the text fields are placed against the artwork */
+  width: calc((${art.width}px + var(--stretch-x, 0px)) * var(--scale));
+  will-change: transform, opacity; /* hint the browser: this element animates */
+}
+
+/* The artwork as a horizontal 9-SLICE: the drawn caps keep their exact shape, the plain
+   band between the guides stretches. The guides live IN these declarations —
+   border-left-width is where the left cap ENDS, border-right-width is the RIGHT CAP's
+   width (both design px) — and border-image-slice carries the same guides in the file's
+   own pixels (a 2× export slices at 2×). Longhands on purpose: the border-image shorthand
+   would reset the parts it doesn't mention. The image ref is a DECLARATION here, never an
+   inline style — the editor's entrance reset clears inline styles, and the design must
+   survive it. */
+.${PREFIX}-art {
+  display: block;
+  width: 100%;                     /* fills the box — extra width lands in the middle band */
+  height: calc(${art.height}px * var(--scale));
+  border-style: solid;
+  border-color: transparent;       /* the border area paints image slices, nothing else */
+  border-top-width: 0;
+  border-bottom-width: 0;
+  border-left-width: calc(${left}px * var(--scale));
+  border-right-width: calc(${capRight}px * var(--scale));
+  border-image-source: url("${art.path}");
+  border-image-slice: 0 ${srcRight} 0 ${srcLeft} fill;  /* top right bottom left, file px */
+  border-image-repeat: stretch;    /* the middle band stretches — it is drawn plain for this */
+}`;
 }
 
 /** One masked text field per line, placed over the artwork by its own CSS rule below.
@@ -215,17 +286,7 @@ ${rootPosition}
   opacity: 0;                      /* hidden until play() runs the entrance */
 }
 
-/* ── The design unit: the artwork and its text animate together as one box. ── */
-.${PREFIX}-box {
-  position: relative;              /* the text fields are placed against the artwork */
-  width: calc(${art.width}px * var(--scale));  /* the artwork's own width drives the size */
-  will-change: transform, opacity; /* hint the browser: this element animates */
-}
-.${PREFIX}-art {
-  display: block;
-  width: 100%;                     /* fills the box — so --scale resizes art and text together */
-  height: ${art.path ? 'auto' : `calc(${art.height}px * var(--scale))`};${art.path ? '' : '\n  background: var(--panel-bg);      /* stand-in until the artwork is imported */'}
-}
+${artBoxCss(art)}
 
 /* ── The text fields ── */
 ${fieldCss(o)}
@@ -243,6 +304,11 @@ ${fieldCss(o)}
     easeOut: ease.easeOut,
   };
 
+  // Stretch mode wires its runtime into the scaffold (the update() hook + the measuring
+  // block, emitted OUTSIDE the marked region so the data conversion below never sees it).
+  const baseJs = runtimeJs(name, preset.emit(cfg));
+  const js = art.path && art.stretch?.horizontal ? withStretchRuntime(baseJs, PREFIX) : baseJs;
+
   const template: SpxTemplate = {
     name,
     type: 'imported-design',
@@ -250,7 +316,7 @@ ${fieldCss(o)}
     fps: o.fps,
     html,
     css,
-    js: runtimeJs(name, preset.emit(cfg)),
+    js,
     fields,
     settings,
     assets: [...o.importedImages, ...(o.customFont ? [o.customFont.asset] : [])],

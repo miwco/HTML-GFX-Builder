@@ -159,8 +159,18 @@ Adding a measured motion to another category = add a builder to its runtime + ha
   placement drag's contract (blocks/designLayout.ts, which also owns addPlacedLine - the Data
   panel's add-field emitting a new line in this exact shape); `.imported-design-art` is its own
   registry part ("Artwork"), so the PNG and each line animate independently after creation
-  (per-layer presets retarget the box motion - blocks/presetApply.ts). Contract + diagnosis:
-  docs/IMPORT_MVP.md; E2E: e2e/import-graphic.spec.ts.
+  (per-layer presets retarget the box motion - blocks/presetApply.ts). SCALING MODE is
+  per-graphic (DesignArt.stretch, chosen in the wizard's Prepare step): fixed (default -
+  byte-identical emit to before the mode existed) or horizontal 9-SLICE stretch, where the art
+  becomes a border-image div - source/slice/cap-widths all in the `.imported-design-art` RULE
+  (the image ref must stay a CSS declaration, never an inline style: the editor's entrance
+  reset clears inline styles) - plus the stretch runtime (importedDesign/stretch.ts,
+  design-owned JS outside the marked region): ONE `--stretch-x` custom property drives the box
+  width, the middle band, and every [data-stretch] slot; the ladder is stretch to 4% inside
+  the frame edge, then textFit shrink, then clip. The packaged SPX css hops bucket urls to ../
+  (spxStarter cssForSubfolder; zip import strips the hop back). Contract + diagnosis:
+  docs/IMPORT_MVP.md; E2E: e2e/import-graphic.spec.ts + e2e/import-prepare.spec.ts +
+  e2e/import-stretch.spec.ts.
 - **quiz/** - qz01 (prefix 'quiz'; f0 question, f1-f4 options, hidden f5 correct-answer dropdown).
   DATA BLOCKS via convertToDataRegion + a refinement (§3c above): the Continue reveal is a real
   middle step that CALLS revealAnswer() (adds .quiz-correct/.quiz-dim + pops the winner;

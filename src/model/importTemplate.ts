@@ -99,7 +99,12 @@ export async function importZipTemplate(fileName: string, data: ArrayBuffer): Pr
   const jsFiles = files.filter(
     (n) => inBase(n) && n.toLowerCase().endsWith('.js') && !/gsap\.min\.js$|spx_interface\.js$/i.test(n),
   );
-  const css = (await Promise.all(cssFiles.map(read))).join('\n\n');
+  // The packaged stylesheet ships one level down (css/template.css), so the exporter gave
+  // its asset refs a ../ hop (export/targets/spxStarter.ts cssForSubfolder). In the editor
+  // the css is root-relative — undo the hop so a round-tripped export is byte-identical.
+  const cssFromSubfolder = (text: string) =>
+    text.replace(/url\(\s*(['"]?)\.\.\/(images|fonts|lottie|assets)\//g, 'url($1$2/');
+  const css = cssFromSubfolder((await Promise.all(cssFiles.map(read))).join('\n\n'));
   const js = (await Promise.all(jsFiles.map(read))).join('\n\n');
 
   // Binary assets keep their relative paths (images/…, fonts/…, assets/…).
