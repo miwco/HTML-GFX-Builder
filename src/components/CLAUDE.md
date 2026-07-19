@@ -58,7 +58,12 @@ in src/blocks/CLAUDE.md.
   arrow (the hover outline + name chip say what a click would select), an active move reads
   `move`, handles keep their resize arrows, an armed tool its own, and the HAND belongs to
   panning alone (PreviewFrame's `.panning` / `.panning-active` on the stage outrank
-  everything while a pan is armed).
+  everything while a pan is armed). The rotate handle therefore carries an inline-SVG rotate
+  cursor - CSS has no keyword for one, and a hand there would say "drag me somewhere" for a
+  control that turns in place. It is percent-encoded with `charset=utf-8` and single-quoted
+  attributes; the raw `;utf8,<svg …>` form does NOT decode in Chromium, and a bad data URI
+  falls back SILENTLY, which is why e2e/import-canvas.spec.ts loads the URI as an image
+  rather than trusting the computed value.
   THE DESIGN UNIT (imported designs): `.{prefix}-art` and `.{prefix}-box` swap the keyframe
   scale/rotate handles for the ROOT's --scale handle. The artwork's size IS the composition's
   size - every placed field is `calc(Npx * var(--scale))` against it - so one --scale patch
@@ -100,12 +105,18 @@ in src/blocks/CLAUDE.md.
   skips the climb, since that click already made its selection). Scoped to placed fields on
   purpose: their drag is a design decision costing one undo, while a keyframe layer's drag
   WRITES MOTION, so selection stays the deliberate step there and catalog templates are
-  untouched. Store `partLocks` + `setPartLock` hold EXPLICIT locks; a locked part takes no
-  drag, handle, or lasso but stays selectable by click and from the timeline. With no explicit
-  entry an imported design's ARTWORK is locked (it is a full-bleed image UNDER every field,
-  so unlocked it swallows every press meant for the text) - a press on BARE artwork then falls
-  through to the root's zone drag, which moves the whole graphic. The selection chip carries
-  the padlock for the artwork; locks are UI state, cleared on a whole-project swap.
+  untouched. **partLocks.ts** owns what "locked" MEANS and which parts start that way, so the
+  overlay and the Inspector can never disagree: store `partLocks` + `setPartLock` hold only
+  EXPLICIT toggles, `partLocked()` falls back to `defaultPartLock()` for everything else. A
+  locked part takes no drag, handle, or lasso but stays selectable by click and from the
+  timeline - locking is about the POINTER, never editability. Exactly one part has a default:
+  an imported design's ARTWORK (a full-bleed image UNDER every field, so unlocked it swallows
+  every press meant for the text) - a press on BARE artwork then falls through to the root's
+  zone drag, which moves the whole graphic. A locked ROOT gives up that zone drag too, so the
+  press marquees over the graphic instead. Two surfaces toggle it: the **Inspector's identity
+  header** (any part - the general home) and the **selection chip's padlock** (the artwork
+  only, where the default is the surprising one). Locks are UI state, cleared on a
+  whole-project swap.
   The SELECTION model (multi, docs/TIMELINE_INTERACTION_MODEL.md): a click selects the
   innermost TemplatePart under the point (registry-driven closest-ancestor hit test,
   rect-containment fallback); clicking the sole selected part again climbs to its container;

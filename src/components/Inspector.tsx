@@ -31,6 +31,7 @@ import { activationStep, animatedProps, resolveValue, stepSeconds } from '../blo
 import type { AnimPresetId } from '../model/wizard';
 import { EASINGS, resolveEasing, type EasingId } from '../model/easings';
 import { phaseIdOf } from './StepTimeline';
+import { partLocked } from './partLocks';
 
 // Timeline v2 Phase 2/4 (docs/TIMELINE_V2_PLAN.md) — the Inspector: the persistent,
 // context-sensitive panel to the right of the preview, and the third consumer of the
@@ -132,6 +133,8 @@ export default function Inspector() {
   const setPlayhead = useTemplateStore((s) => s.setPlayhead);
   const selectedPart = useTemplateStore((s) => s.selectedPart);
   const selectedParts = useTemplateStore((s) => s.selectedParts);
+  const partLocks = useTemplateStore((s) => s.partLocks);
+  const setPartLock = useTemplateStore((s) => s.setPartLock);
   const playhead = useTemplateStore((s) => s.playhead);
   // A label drag-scrub in progress (the familiar drag-the-label-to-change-the-value).
   const scrubDrag = useRef<{ prop: string; startX: number; startValue: number; value: number } | null>(null);
@@ -179,6 +182,13 @@ export default function Inspector() {
     [template.html, template.css],
   );
   const part = parts.find((p) => p.selector === selectedPart) ?? null;
+  // The canvas lock (components/partLocks.ts) — read through the same helper the overlay uses,
+  // so an untouched part reads the same default on both surfaces.
+  const locked = partLocked(
+    part?.selector ?? '',
+    partLocks,
+    designBoxInfo(template.html, template.css)?.prefix ?? null,
+  );
 
   if (!part) {
     return (
@@ -334,6 +344,21 @@ export default function Inspector() {
         <span className="inspector-label" data-testid="inspector-part-label">{part.label}</span>
         <span className="inspector-kind">{KIND_LABEL[part.kind] ?? part.kind}</span>
         <code className="inspector-selector">{part.selector}</code>
+        {/* The canvas lock, for ANY part — the general home for it, since the canvas chip only
+            carries a padlock where the DEFAULT is surprising (an imported design's artwork).
+            Both read and write the same store state (components/partLocks.ts), so they agree. */}
+        <button
+          className={`inspector-lock${locked ? ' locked' : ''}`}
+          onClick={() => setPartLock(part.selector, !locked)}
+          title={
+            locked
+              ? 'Locked on the canvas: it takes no drag, handle, or marquee there. Still selectable and fully editable everywhere. Click to unlock.'
+              : 'Unlocked: it takes canvas drags and handles. Click to lock it out of the way while you work on what sits over it.'
+          }
+          data-testid="inspector-lock"
+        >
+          {locked ? '🔒 Locked' : '🔓 Unlocked'}
+        </button>
         {selectedParts.length > 1 && (
           <span className="inspector-multi" data-testid="inspector-multi">
             +{selectedParts.length - 1} more selected — properties show the primary

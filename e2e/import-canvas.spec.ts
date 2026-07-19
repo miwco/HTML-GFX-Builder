@@ -559,3 +559,63 @@ test('import graphic: the seed recovers the size and position of REAL typeset te
   expect(Math.abs(shown.top - source.ink.top)).toBeLessThan(sourceInkHeight * 0.08);
   expect(Math.abs(shown.bottom - source.ink.bottom)).toBeLessThan(sourceInkHeight * 0.08);
 });
+
+test('canvas: any part can be locked from the Inspector, and the rotate handle is not a hand', async ({ page }) => {
+  await createImported(page);
+
+  // The Inspector's lock is the GENERAL home for the lock; the artwork's chip padlock is the
+  // on-canvas shortcut where the default is surprising. Both read the same state.
+  await page.locator('.tlv2-labels .timeline-label[data-part=".imported-design-art"]').click();
+  await expect(page.getByTestId('inspector-lock')).toContainText('Locked');
+  await expect(page.getByTestId('canvas-lock')).toContainText('Locked');
+  await page.getByTestId('inspector-lock').click();
+  await expect(page.getByTestId('canvas-lock')).toContainText('Unlocked'); // the chip agreed
+
+  // Locking the WHOLE GRAPHIC gives up its zone drag, so a press over it marquees instead of
+  // moving it — which is the point of locking it while placing fields on top. (Selected
+  // through the store: on a full-bleed design the root has no timeline row and a canvas click
+  // just alternates artwork/design unit, so there is no pointer route to it.)
+  await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    useTemplateStore.getState().setSelectedPart('.imported-design');
+  });
+  await expect(page.getByTestId('inspector-part-label')).toHaveText('Whole graphic');
+  await expect(page.getByTestId('inspector-lock')).toContainText('Unlocked');
+  await page.getByTestId('inspector-lock').click();
+  const before = await writes(page);
+  const c = await elementPoint(page, '.imported-design-art', 0.82, 0.2);
+  await page.mouse.move(c.x, c.y);
+  await page.mouse.down();
+  await page.mouse.move(c.x - 70, c.y + 80, { steps: 6 });
+  await expect(page.getByTestId('canvas-lasso')).toBeVisible();
+  await page.mouse.up();
+  expect((await writes(page)).rootRule).toBe(before.rootRule); // the graphic did not move
+
+  // The rotate handle carries a real rotate cursor, not the hand that belongs to panning.
+  await page.locator('.tlv2-labels .timeline-label[data-part="#f0"]').click();
+  await page.getByTestId('inspector-lock').click(); // f0 locked → no handles at all
+  await expect(page.getByTestId('line-size-handle')).toHaveCount(0);
+  await page.getByTestId('inspector-lock').click();
+  const rotate = page.getByTestId('layer-rotate-handle');
+  const cursor = await page.locator('.layer-scale-handle, .canvas-layer').first().evaluate(() => {
+    const probe = document.createElement('div');
+    probe.className = 'layer-rotate-handle';
+    document.body.appendChild(probe);
+    const c = getComputedStyle(probe).cursor;
+    probe.remove();
+    return c;
+  });
+  expect(cursor).not.toContain('grab');
+  expect(cursor).toContain('url(');
+  // …and that cursor image really decodes — a malformed data URI would silently fall back.
+  const decoded = await page.evaluate(async (css: string) => {
+    // The SVG is written without a single parenthesis, so the LAST ')' is url()'s own —
+    // everything after it is the hotspot and the fallback keyword.
+    const url = css.slice(css.indexOf('url(') + 4, css.lastIndexOf(')')).replace(/^["']|["']$/g, '');
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    return img.naturalWidth;
+  }, cursor);
+  expect(decoded).toBeGreaterThan(0);
+  await expect(rotate).toHaveCount(0); // a placed field keeps its design handle, not rotate
+});

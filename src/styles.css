@@ -1534,7 +1534,11 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   height: 14px;
   border-radius: 50%;
   border: 2px solid rgba(10, 12, 16, 0.9);
-  cursor: grab;
+  /* A rotate cursor, drawn here because CSS has no keyword for one — and a hand would be
+     wrong twice over: it says "drag me somewhere" for a control that turns in place, and the
+     hand is the PAN cursor. Inline SVG so it ships with the app like every other asset (no
+     network at playout); the keyword after it is the fallback if the data URI ever fails. */
+  cursor: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M6 12a6 6 0 1 0 6-6' fill='none' stroke='black' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M6 12a6 6 0 1 0 6-6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M12 1l5 5-5 5z' fill='white' stroke='black' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 12 12, crosshair;
 }
 /* A short stem from the rotate handle down to the selection's top edge. */
 .layer-rotate-handle::before {
@@ -1549,7 +1553,6 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .layer-scale-handle.dragging,
 .layer-rotate-handle.dragging { box-shadow: 0 0 14px rgba(246, 166, 35, 0.9); }
-.layer-rotate-handle.dragging { cursor: grabbing; }
 
 /* The inline text editor floated over the text element it edits. */
 .inline-edit { position: absolute; z-index: 6; }
@@ -2152,6 +2155,20 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   font-size: 10.5px;
   color: var(--text-dim);
 }
+/* The canvas lock. Locked is the quiet, resting state (it is a default for the imported
+   artwork); unlocked is the live one, so the amber only appears where a gesture will land. */
+.inspector-lock {
+  align-self: flex-start;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  padding: 1px 6px;
+  border: 1px solid rgba(246, 166, 35, 0.45);
+  border-radius: 3px;
+  background: rgba(27, 34, 48, 0.9);
+  color: var(--text);
+  white-space: nowrap;
+}
+.inspector-lock.locked { border-color: rgba(154, 165, 184, 0.35); color: var(--text-dim); }
 .inspector-empty { font-size: 12px; color: var(--text-dim); line-height: 1.5; }
 .inspector-multi { font-size: 10.5px; color: var(--text-dim); font-style: italic; }
 .inspector-tabs { display: flex; gap: 4px; margin-bottom: 10px; }

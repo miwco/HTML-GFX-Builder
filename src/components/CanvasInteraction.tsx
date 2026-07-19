@@ -16,6 +16,7 @@ import { probeAsset } from '../assets/assetInfo';
 import { fileToDataUrl, isImageAsset, isLottieAsset, uniqueAssetPath } from '../assets/assetUtils';
 import { ASSET_DRAG_TYPE } from './AssetsPanel';
 import CanvasSelection, { type CanvasRect } from './CanvasSelection';
+import { partLocked } from './partLocks';
 import { phaseIdOf } from './StepTimeline';
 import type { SpxWindow } from './PlayoutSimulator';
 import { useIsMobile } from './useIsMobile';
@@ -525,19 +526,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   );
   const designUnitSelected = !!selectedPart && designUnit.includes(selectedPart.selector);
 
-  /**
-   * Is this part LOCKED for canvas gestures? A locked part takes no drag, no handle, and no
-   * lasso, but stays selectable by click and from the timeline — the standard editor meaning.
-   *
-   * An explicit toggle (the selection chip's padlock, store partLocks) always wins. With no
-   * toggle, an imported design's ARTWORK starts locked: it is a full-bleed image UNDER every
-   * field placed on it, so an unlocked artwork would swallow the press meant for the text on
-   * top of it. Locked, the press falls through to the text, and a press on BARE artwork still
-   * reaches the root's zone drag — moving the whole graphic, which is what dragging a design's
-   * background should do.
-   */
+  /** Is this part LOCKED for canvas gestures? (components/partLocks.ts owns the meaning and
+   *  the defaults, so this layer and the Inspector's toggle can never disagree.) */
   const isLocked = useCallback(
-    (selector: string) => partLocks[selector] ?? (!!designInfo && selector === `.${designInfo.prefix}-art`),
+    (selector: string) => partLocked(selector, partLocks, designInfo?.prefix ?? null),
     [partLocks, designInfo],
   );
 
@@ -986,7 +978,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     const el = rootEl();
     if (!el) return;
     const r = el.getBoundingClientRect();
-    if (!inRect(p, r)) {
+    // A LOCKED root keeps its selection and its handles but gives up the zone drag, so the
+    // press draws a marquee straight over the graphic — which is the point of locking it
+    // while placing fields on top.
+    if (!inRect(p, r) || isLocked(rootSelector)) {
       // EMPTY canvas: a drag lassos (shift keeps the existing selection); a plain
       // click still selects/deselects on release (below the threshold → selectAt).
       e.currentTarget.setPointerCapture(e.pointerId);
