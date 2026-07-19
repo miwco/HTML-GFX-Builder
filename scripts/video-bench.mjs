@@ -507,9 +507,36 @@ for (const example of selected) {
         { in: 0, out: 0 },
       );
 
+      // Did the GATE actually measure this composition? The bench's own checks above read the
+      // mounted player directly and are independent of the validator, so they stayed honest
+      // even while the validator was silently passing work it never probed (docs/
+      // HYPERFRAMES_QUALITY.md). That is exactly why a bench run could look clean while the
+      // generation-time gate had skipped: two different measurements. Re-validating the
+      // finished source against the live bridge records which of those two happened, so a
+      // readability figure from this bench can never again rest on a gate nobody checked ran.
+      const gate = await page.evaluate(async ([source, engine]) => {
+        try {
+          const { getActiveHyperframesBridge, getActivePlayerBridge } = await import('/src/video/bridgeRegistry.ts');
+          const { useVideoProjectStore } = await import('/src/store/videoProjectStore.ts');
+          const p = useVideoProjectStore.getState().project;
+          const settings = {
+            width: p.width, height: p.height, fps: p.fps,
+            durationInFrames: p.durationInFrames, transparent: !!p.transparent,
+          };
+          const r = engine === 'hyperframes'
+            ? await (await import('/src/video/hyperframes/validate.ts')).validateHyperframesComposition(
+                source, settings, p.assets ?? [], getActiveHyperframesBridge())
+            : await (await import('/src/video/validate.ts')).validateVideoModule(
+                source, settings, p.assets ?? [], getActivePlayerBridge());
+          return { probed: r.probed, ok: r.ok, rules: r.errors.map((e) => e.rule) };
+        } catch (e) {
+          return { probed: null, ok: null, rules: [], error: String(e?.message || e) };
+        }
+      }, [state.source, ENGINE]);
+
       results.push({
         id, label, run, engine: ENGINE, ok: !rejected, summary, inputs: state.inputs, shots, issues,
-        rejectionErrors, deadSpace, deadVars,
+        rejectionErrors, deadSpace, deadVars, gate,
         repairRounds: repairs.length,
         repairCauses: repairs.flatMap((r) => r.repairFindings),
         calls: diag.calls.length,
@@ -521,12 +548,14 @@ for (const example of selected) {
           (repairs.length ? `  ↻ ${repairs.length} repair round(s)` : '') +
           (issues.length ? `  ⚠ ${issues.length} readability issue(s)` : '') +
           (deadVars.length ? `  ⚠ ${deadVars.length} dead control(s)` : '') +
+          `  gate ${gate.probed === true ? `probed (${gate.ok ? 'clean' : gate.rules.join(',')})` : gate.probed === false ? 'NOT PROBED' : 'unavailable'}` +
           `  dead space ${deadSpace === null ? 'n/a (overlay)' : deadSpace + '%'}  [${tokens.in}in/${tokens.out}out]`,
       );
     } catch (e) {
       results.push({
         id, label, run, engine: ENGINE, ok: false, summary: String(e.message || e), inputs: [], shots: [],
         issues: [], rejectionErrors: [], deadSpace: 0, deadVars: [], repairRounds: 0, repairCauses: [],
+        gate: { probed: null, ok: null, rules: [] },
         calls: 0, tokens: { in: 0, out: 0 }, stages: [],
       });
       console.log('FAILED: ' + (e.message || e));

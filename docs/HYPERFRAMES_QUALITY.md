@@ -192,10 +192,9 @@ no `<video>`/`<audio>` clips, no sub-compositions, image-variable changes reload
 > that was measured against a *parallel* implementation of the gate developed on a branch;
 > `main`'s gate (`src/video/textChecks.js` + `src/video/readability.ts`) is different code
 > with a stricter persistence rule. Those figures are indicative, not a measurement of what
-> ships. **They have since become weaker still**: the gate they were re-measured against
-> reported an unrunnable probe as a clean result, so any run where the preview was not mounted
-> counted as clean without being checked. The defect is fixed; the numbers have not been
-> re-collected (open follow-up 1).
+> ships. **And the 0% end of it did not survive re-measurement**: three samples of the hardest
+> brief against the fixed gate shipped two readability defects (see "The re-measurement against
+> the fixed gate"). Treat the 19% → 0% pair as a historical note, not a result.
 
 ## The varied-brief pass (14 generations, $1.62)
 
@@ -269,31 +268,81 @@ context **with every network request aborted**:
 (A first attempt reported the fonts as unusable; that was a flawed width-comparison probe,
 not a real failure - `fonts.check` is the authoritative test.)
 
+## The re-measurement against the fixed gate (3 samples, ~$0.54)
+
+Three HyperFrames samples of the transparent lower-third - deliberately the *hardest* brief in
+the set, not a cross-brief average, so these are worst-case numbers and are not comparable to a
+defect rate over seven briefs.
+
+| Run | Repair rounds | Shipped? | A sound gate's verdict on what shipped |
+|---|---|---|---|
+| r1 | 2 | yes | **fails** - both text lines 100% clipped |
+| r2 | 0 | yes | clean by the gate; the bench saw the hero **painted behind a panel** |
+| r3 | 0 | yes | clean |
+
+**The gate demonstrably fires now.** r1's two repair rounds were driven by exact `text-clip`
+findings, which is what a working gate looks like: before the fix, a validation that never
+probed produced no findings and therefore no rounds.
+
+**But the 19% → 0% figure does not reproduce.** Two of three samples shipped a readability
+defect, by two different routes:
+
+1. **r1 shipped text that is 100% clipped**, after the model failed to fix it across both
+   repair rounds. This is by design, not a second bug: `SOFT_RULES` in
+   `src/ai/video/claudeVideoProvider.ts` demotes `text-clip` to a warning once the rounds are
+   spent, so the user gets their composition with a caveat rather than nothing. The doctrine is
+   sound for a *marginal* crop; it is wrong for this finding, because "100% of its width is
+   clipped" is not a plausible false positive - it is certainly unreadable. Severity is
+   available in the message and is currently ignored (follow-up 2).
+2. **r2 shipped an occluded hero, and no gate can see it.** `src/video/textChecks.js` exports
+   `occlusion()`, the bench calls it, and **neither engine's validator does** - the HyperFrames
+   driver probes `clip().concat(safeArea())` and the Remotion host the same pair. Text painted
+   behind a panel therefore ships unflagged on both engines. This also qualifies the claim in
+   `src/video/readability.ts` that the engines judge a composition identically: they do, but
+   both are blind in the same place (follow-up 3).
+
+The bench now records a **gate self-check** per run - it re-validates the finished source
+against the live bridge and reports whether the gate `probed`, so no readability figure from
+this bench can ever again rest on a gate nobody confirmed had run. Every run above reports
+`probed: true`.
+
+Not re-measured: Remotion, and the other six briefs. The samples went where the known defect
+was.
+
 ## Open follow-ups
 
-Ordered by value. The first is the most important and, unlike the item it replaces, it does
-cost generations - the token-free half of that thread (finding and fixing the gate) is done.
+Ordered by value. The first two are what the re-measurement above turned up, and neither needs
+further generations to act on.
 
-1. **Re-measure every readability figure against the fixed gate.** The gate is fixed (see
-   "The readability gate reported 'could not check' as 'clean'"), but every number in this
-   document that rests on it was collected *through* the broken version - and the failure
-   mode was a silent pass, so runs where the preview was not mounted were recorded as clean.
-   The direction of the error is known: readability results are biased optimistic. This costs
-   real tokens, which is why it is not already done. Until it is, treat "clean" counts and the
-   19% → 0% defect-rate figure as unverified rather than merely soft.
-2. **The transparent/overlay brief is the weakest case on both engines** - the only
+1. **Widen the re-measurement.** Three samples of one brief established that the 19% → 0%
+   figure does not reproduce, but they cannot replace it with a number. A cross-brief rate
+   needs the seven-brief set on both engines, which is what makes it a spend rather than a
+   free follow-up. Until then this document quotes no defect rate at all, which is the honest
+   position.
+2. **Stop demoting a total crop.** `SOFT_RULES` demotes `text-clip` to a warning after two
+   repair rounds so a false positive cannot discard finished work. That protects a marginal
+   crop, but r1 shipped text that was **100% clipped** - a finding that cannot be a false
+   positive. Gate the demotion on severity (the percentage is already in the message): a
+   partial crop keeps shipping with a warning, a total one is a hard failure.
+3. **Wire occlusion into the gate.** `textChecks.js` exports `occlusion()`; the bench uses it,
+   neither validator does, so text painted behind a panel ships unflagged on both engines
+   (r2). Not a one-liner: occlusion legitimately covers part of a hold, so it needs the
+   bench's MAJORITY persistence rule rather than the all-frames rule `persistentTextIssues`
+   applies to crops, and `ruleFor()` needs a rule name of its own instead of folding it into
+   `text-clip`.
+4. **The transparent/overlay brief is the weakest case on both engines** - the only
    readability finding in the varied pass, the most repairs on each engine, and the one
    design shape neither contract says much about (where a strap sits, safe margins, not
    filling the frame). This is the strongest candidate for a *measured* prompt improvement,
    but it needs more than one sample per engine before anyone writes prose.
-3. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
+5. **Sharpen the repair message when text looks duplicated.** An earlier rejection failed
    because the finding told the model to resize a line whose real problem was that it had
    been rendered twice ("NOACGNOACG"). A finding that notices a repeated substring and says
    so would probably be fixable inside the two rounds.
-4. **The countdown-style minimal reveal** - historically the weakest brief, and the
+6. **The countdown-style minimal reveal** - historically the weakest brief, and the
    "uncommitted default" look it falls into is unmoved by prose. It came through clean in
    this pass, so treat the earlier finding as unconfirmed rather than settled.
-5. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
+7. **`<video>` / `<audio>` clips** - the largest deliberate divergence from real HyperFrames.
    A real feature (validator, driver, compose, and the render worker all have to agree on how
    a media clip seeks deterministically), not a prompt change.
 
@@ -310,13 +359,13 @@ here), the deterministic checks (unbound variables, namespace URLs, asset inlini
 measured font widths, and export self-containment - all verified directly rather than
 inferred.
 
-**What is not.** Any figure resting on the readability gate. The gate itself is now sound - it
-reports `probed` and no longer passes work it never measured - but every readability number
-here was collected before that fix, when a probe that could not run was recorded as a clean
-result. The bias is one-directional (optimistic), so a "clean" run means less than it looks
-until follow-up 1 re-measures. Design-taste conclusions are unreliable at these sample sizes
-and should not be drawn from single runs; the within-brief spread is wide enough to swamp
-anything worth chasing.
+**What is not.** Every readability figure collected before the gate fix, since a probe that
+could not run was recorded as clean and the bias is one-directional (optimistic). The gate is
+sound now - it reports `probed`, and the bench records that per run - but the replacement
+numbers do not exist yet: the re-measurement covered three samples of one brief, enough to
+retire the old 0% and no more. **This document quotes no defect rate**, deliberately.
+Design-taste conclusions are unreliable at these sample sizes and should not be drawn from
+single runs; the within-brief spread is wide enough to swamp anything worth chasing.
 
 **Cost discipline.** A clean generation is ~7-8k in / ~6-7k out (about $0.08). A run with two
 repair rounds costs roughly three times that. Always prove a bench change with `--stub`

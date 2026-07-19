@@ -53,7 +53,14 @@ export function writeLaunchConfig() {
     JSON.stringify(
       {
         version: '0.0.1',
-        configurations: [{ name: 'dev', runtimeExecutable: 'npm', runtimeArgs: ['run', 'dev'], port: devPort() }],
+        configurations: [
+          { name: 'dev', runtimeExecutable: 'npm', runtimeArgs: ['run', 'dev'], port: devPort() },
+          // The video bench needs the SAME port with the backend vars blanked (.env.bench), so
+          // the wizard shows the engine picker instead of a sign-in prompt. Generated here
+          // because the preview tools are the only sanctioned way to start a server in this
+          // repo - without it the bench has no way to get the server it documents needing.
+          { name: 'dev-bench', runtimeExecutable: 'npm', runtimeArgs: ['run', 'dev:bench'], port: devPort() },
+        ],
       },
       null,
       2,

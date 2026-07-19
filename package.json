@@ -7,6 +7,7 @@
   "description": "NoaCG Studio — a modern, premium broadcast graphics builder. Create on-air templates and export SPX / CasparCG / OGraf.",
   "scripts": {
     "dev": "vite",
+    "dev:bench": "vite --mode bench",
     "build": "node scripts/build-player-host.mjs && tsc && tsc -p tsconfig.api.json && eslint . --max-warnings 0 && vite build",
     "build:player-host": "node scripts/build-player-host.mjs --force",
     "lint": "eslint . --max-warnings 0",
