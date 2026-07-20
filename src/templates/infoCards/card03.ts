@@ -82,19 +82,18 @@ ${logo}${cardLineMasks(o)}
 .info-card-box {
   padding: calc(26px * var(--scale)) calc(32px * var(--scale));  /* generous inner air at card scale */
   background: var(--panel-bg);     /* translucent white — the glass tint */
-  backdrop-filter: blur(18px);     /* frosts the video playing behind the card */
-  -webkit-backdrop-filter: blur(18px);  /* Safari spelling of the same effect */
-  border-radius: calc(18px * var(--scale));  /* soft, friendly card corners */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),  /* 1px inner keyline catches the light */
-              0 20px 60px rgba(0, 0, 0, 0.35);            /* one soft wide shadow lifts the card */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  border-radius: var(--panel-radius);  /* the panel's authored radius */
+  box-shadow: var(--panel-keyline), var(--panel-shadow);  /* the family's keyline and lift */
 }
 
 /* Line 1 — the heading leads the card. */
 .info-card-name {
   font-size: calc(42px * var(--scale) * var(--type-scale));  /* headline size */
-  font-weight: 700;                /* bold enough to carry the card */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.1;                /* tight leading — big text needs less */
-  letter-spacing: -0.01em;         /* large text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   color: var(--text-color);        /* primary text color */
 }
 
@@ -117,6 +116,7 @@ ${logo}${cardLineMasks(o)}
 }${logoCss}`,
 
       hasAccent: false,
+      tokens: { panelRadius: 'calc(18px * var(--scale))' },
     };
   },
 );

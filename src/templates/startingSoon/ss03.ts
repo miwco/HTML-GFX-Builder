@@ -51,11 +51,10 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
 .starting-soon-box {
   padding: calc(48px * var(--scale)) calc(76px * var(--scale));  /* front-door air, not strap padding */
   background: var(--panel-bg);     /* translucent white — the glass tint */
-  backdrop-filter: blur(18px);     /* frosts the video playing behind the card */
-  -webkit-backdrop-filter: blur(18px);  /* Safari spelling of the same effect */
-  border-radius: calc(16px * var(--scale));  /* soft glass corners */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),  /* 1px inner keyline catches the light */
-              0 20px 60px rgba(0, 0, 0, 0.35);            /* one soft wide shadow lifts the card */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  border-radius: var(--panel-radius);  /* the family's panel radius */
+  box-shadow: var(--panel-keyline), var(--panel-shadow);  /* the family's keyline and lift */
 }
 
 /* Stack rhythm: a small breath between the kicker and the headline. */
@@ -65,20 +64,21 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
 
 /* Title caps — the quiet accent kicker above the headline. */
 .starting-soon-title {
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(24px * var(--scale) * var(--type-scale));  /* label scale — announces, never competes */
   font-weight: 600;                /* semibold keeps small caps legible */
   line-height: 1.2;                /* compact single-line label */
-  letter-spacing: 0.18em;          /* wide caps set the waiting-room mood */
+  letter-spacing: var(--label-tracking);  /* the title's authored tracking */
   text-transform: uppercase;       /* label voice, whatever the operator types */
-  color: var(--accent);            /* first of the card's two small accent doses */
+  color: var(--label-color);        /* the family's label color */
 }
 
 /* Show name — the headline the audience is waiting for. */
 .starting-soon-show {
   font-size: calc(66px * var(--scale) * var(--type-scale));  /* holding screens carry lower-third headline size and more */
-  font-weight: 700;                /* bold enough to own the screen */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.1;                /* tight leading — big text needs less */
-  letter-spacing: -0.01em;         /* large text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   color: var(--text-color);        /* primary text color */
 }
 
@@ -90,7 +90,7 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
   padding: calc(14px * var(--scale)) calc(46px * var(--scale));  /* generous capsule padding */
   border-radius: 999px;            /* full pill — a cap, not a size, so it is not scaled */
   background: var(--panel-bg);     /* a second layer of the same glass reads slightly denser */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);  /* the family keyline, again */
+  box-shadow: var(--panel-keyline);  /* the family keyline, again */
   position: relative;              /* anchors the ::after accent ring to the capsule */
   will-change: transform;          /* hint the browser: the hold-loop breathes its scale */
 }
@@ -124,5 +124,6 @@ export const ss03: TemplateVariant = defineStartingSoonVariant(
 .starting-soon-done .starting-soon-pill::after {
   opacity: 1;                      /* the halo comes to full strength */
 }`,
+    tokens: { labelTracking: '0.18em' },
   }),
 );

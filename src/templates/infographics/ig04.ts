@@ -79,11 +79,10 @@ export const ig04: TemplateVariant = defineInfographicVariant(
   align-items: center;             /* a centered poll — everything shares one axis */
   padding: calc(36px * var(--scale)) calc(48px * var(--scale));  /* generous inner air */
   background: var(--panel-bg);     /* the palette's glass tint — retints via the :root contract */
-  backdrop-filter: blur(18px);     /* frosts the video playing behind the panel */
-  -webkit-backdrop-filter: blur(18px);  /* Safari spelling of the same effect */
-  border-radius: calc(18px * var(--scale));  /* soft, friendly card corners */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),  /* 1px inner keyline catches the light */
-              0 20px 60px rgba(0, 0, 0, 0.35);            /* one soft wide shadow lifts the panel */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  border-radius: var(--panel-radius);  /* the panel's authored radius */
+  box-shadow: var(--panel-keyline), var(--panel-shadow);  /* the family's keyline and lift */
 }
 
 /* The question — the panel's headline, wrapping to balanced centered rows. */
@@ -91,9 +90,9 @@ export const ig04: TemplateVariant = defineInfographicVariant(
   max-width: calc(480px * var(--scale));  /* wraps at a readable measure, like the bench look */
   margin-bottom: calc(30px * var(--scale));  /* clear air between question and ring — never touching */
   font-size: calc(30px * var(--scale) * var(--type-scale));  /* headline size — the ring's figure still leads */
-  font-weight: 700;                /* bold enough to carry the panel */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.25;               /* a touch of leading for wrapped rows */
-  letter-spacing: -0.01em;         /* large text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   text-align: center;              /* centered poll layout */
   color: var(--text-color);        /* primary text color */
   overflow-wrap: break-word;       /* break very long unbroken words */
@@ -168,14 +167,15 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 /* The answer — quiet tracking-wide caps under the figure. */
 .infographic-answer {
   margin-top: calc(8px * var(--scale));  /* small gap: figure + answer read as one unit */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(18px * var(--scale) * var(--type-scale));  /* small label size */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.2;                /* compact single-line label */
-  letter-spacing: 0.18em;          /* small caps need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the answer's authored tracking */
   margin-right: -0.18em;           /* cancel the trailing tracking so the caps stay centered */
   text-transform: uppercase;       /* label voice, whatever the operator types */
   white-space: nowrap;             /* a short caps label never wraps mid-word */
-  color: var(--text-dim);          /* dimmed — never full white twice */
+  color: var(--label-color);        /* the answer's authored color */
 }`,
 
       fields: [
@@ -185,6 +185,11 @@ export const ig04: TemplateVariant = defineInfographicVariant(
       ],
 
       runtimeExtraJs: '', // stat shape: update() writes fields straight in — no rebuild needed
+      tokens: {
+        panelRadius: 'calc(18px * var(--scale))',
+        labelTracking: '0.18em',
+        labelColor: 'var(--text-dim)',
+      },
     };
   },
 );
