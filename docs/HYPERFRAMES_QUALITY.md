@@ -48,6 +48,45 @@ Custom briefs are `{label, prompt, durationSec?, transparent?, assets?: [paths]}
 really uploaded through the wizard, which is the only way to exercise the `asset:<name>`
 contract end to end.
 
+## The generation corpus - check a validator change for free, before spending
+
+**Most of the questions this document answers with money can now be answered without any.**
+`e2e/fixtures/generations/` holds 57 compositions kept from the 42-generation pass below -
+both engines, seven briefs, the sources that SHIPPED and the ones a repair round rejected -
+with `baseline.json` recording the findings each one produces today.
+`e2e/video-generation-corpus.spec.ts` replays them through both static validators in about a
+second, as part of the ordinary suite.
+
+It exists because of the failure this document keeps recording: **a pattern that matches
+something it was never meant to.** `network-url` hit `xmlns="http://www.w3.org/2000/svg"`;
+`forbidden-api` hit `// deterministic distance, no repeat:-1`. Each looked obviously correct
+in isolation, each made repair rounds unwinnable by construction, and each was found only
+after a paid run. Both would have failed this spec in seconds, because the rules they broke
+fire on documents that are otherwise perfectly legal - which is what the corpus is mostly
+made of.
+
+Read the baseline as two halves:
+
+- **51 files report nothing.** This is the false-positive tripwire and the reason the corpus
+  is worth its keep (under 800 kB): a new or edited rule that misfires on legitimate model
+  output fails here immediately, against real generations rather than against the handful of
+  documents someone writes by hand while holding the new rule in mind.
+- **6 rejected sources still report their real `variables` findings.** The true-positive
+  guard - a rule cannot be "fixed" by quietly ceasing to fire.
+
+`forbidden-api` appears nowhere in the baseline, which is what pins the comment fix against
+the exact generations that exposed it.
+
+Regenerating is a deliberate act, never a convenience: `UPDATE_CORPUS_BASELINE=1 npx
+playwright test video-generation-corpus` rewrites the baseline, and doing so asserts that the
+new findings over 57 real generations are the ones you intended. A diff is not automatically
+a failure - it is the question "did you mean to change what these documents report?".
+
+**What it does not cover:** the runtime half. Clip, safe-area and occlusion findings need a
+mounted player, so they are still measured by the bench and by
+`e2e/video-readability.spec.ts`, not here. The corpus is the static rules - which is where
+every false positive found so far has lived.
+
 ## What the bench measures
 
 Beyond validation:
@@ -648,10 +687,13 @@ what remains of it is the spend.
 
 ## Handoff
 
-**State.** Everything described here is on `main` except the comment-blanking fix, its two
-specs, and the repair-round analysis, which are on `claude/hyperframes-repair-analysis`. The
-one thing the 42-generation pass found and did NOT fix is follow-up 1 - it needs a decision on
-how a composition binds text it also animates. The bench supports both engines
+**State.** Everything described here is on `main`, including the comment-blanking fix, the
+sharpened clip finding, and the generation corpus. Two things the 42-generation pass found
+and did NOT fix: follow-up 1, deferred by decision, and follow-up 2, which needs a contract
+sentence and a measurement rather than more analysis. One caveat worth carrying: the clip
+finding now names the box and hands over the arithmetic, but that change is proven only to
+emit the right string - **not** to reduce repair rounds. Check that on the next paid run
+before treating it as a win. The bench supports both engines
 (`--engine`), runs free against the offline provider (`--stub`), and records tokens, repair
 rounds and their causes, the sources that failed a repair round, dead space, and dead
 controls. Offline coverage is 14/14 clean across both engines and all seven briefs.
@@ -676,3 +718,9 @@ within-brief spread is wide enough to swamp anything worth chasing.
 repair rounds costs roughly three times that. Always prove a bench change with `--stub`
 first; never touch `.env` while a run is in flight; and keep `VITE_SUPABASE_*` unset on the
 dev server the bench drives.
+
+**Spend last, not first.** Every validator or contract change should clear the generation
+corpus (above) before anyone commissions a run: it replays 57 real generations for free, and
+both false positives this document records would have been caught there. Reach for tokens
+only for what the corpus cannot see - the runtime readability half, and whether a prompt
+change actually moved the output.

@@ -20,6 +20,10 @@ export async function validateVideoModule(
   settings: VideoCompSettings,
   assets: AssetFile[],
   bridge: PlayerBridge | null,
+  /** What the emit declared as editable, when the caller knows. Remotion declares its inputs
+   *  in the tool call rather than in the code, so the validator can only check that every
+   *  declared control is actually wired if it is handed them. */
+  declaredInputs: { key: string }[] = [],
 ): Promise<VideoValidationResult> {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
@@ -30,7 +34,7 @@ export async function validateVideoModule(
     return { ok: false, errors, warnings, compiledJs: null, probed: false };
   }
 
-  for (const issue of staticValidate(tsx, describeAssets(assets))) {
+  for (const issue of staticValidate(tsx, describeAssets(assets), declaredInputs)) {
     (WARNING_RULES.has(issue.rule) ? warnings : errors).push(issue);
   }
   if (errors.length > 0) {

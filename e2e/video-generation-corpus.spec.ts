@@ -47,9 +47,13 @@ test('the static validators report the same findings over 57 real generations', 
     file: `hyperframes/${f}`,
     source: readFileSync(join(DIR, 'hyperframes', f), 'utf8'),
   }));
+  // Remotion declares its inputs in the emit tool, not in the code, so the saved .tsx alone
+  // cannot exercise the `inputs` rule - the declared keys travel alongside it.
+  const declared = JSON.parse(readFileSync(join(DIR, 'remotion-inputs.json'), 'utf8')) as Record<string, string[]>;
   const remotion = files('remotion', '.tsx').map((f) => ({
     file: `remotion/${f}`,
     source: readFileSync(join(DIR, 'remotion', f), 'utf8'),
+    inputs: (declared[f] ?? []).map((key) => ({ key })),
   }));
 
   const actual = await page.evaluate(
@@ -74,8 +78,12 @@ test('the static validators report the same findings over 57 real generations', 
           .map((i) => i.rule)
           .sort();
       }
-      for (const { file, source } of rm as { file: string; source: string }[]) {
-        out[file] = staticValidate(source, assetInfo as never)
+      for (const { file, source, inputs } of rm as {
+        file: string;
+        source: string;
+        inputs: { key: string }[];
+      }[]) {
+        out[file] = staticValidate(source, assetInfo as never, inputs)
           .map((i) => i.rule)
           .sort();
       }
