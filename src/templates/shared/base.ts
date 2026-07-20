@@ -9,6 +9,7 @@
 
 import { DEFAULT_SETTINGS, type Resolution, type SpxSettings } from '../../model/types';
 import { customFontFaceCss, customFontStack, fontById, fontFaceCss, fontStack } from '../../model/fonts';
+import { type ThemeTokens, tokenVarsCss } from '../../model/themeTokens';
 import type { ResolvedOptions, Zone9 } from '../../model/wizard';
 
 // ── Fonts ────────────────────────────────────────────────────────────────────
@@ -112,17 +113,24 @@ export function zoneCssText(zone: Zone9, nudge: { x: number; y: number }, res: R
 /** The :root style contract — the variables the Style panel (and the user) retint.
  *  `opts.typeScale: false` omits the text-only knob: an imported design sizes each placed
  *  line from its own rule and reads no `--type-scale`, and the Style panel keys the "Text
- *  size" section on the var's presence — declaring it there would show a dead control. */
+ *  size" section on the var's presence — declaring it there would show a dead control.
+ *
+ *  `opts.tokens` + `opts.consumerCss` add the SHAPE half of the contract (model/themeTokens.ts):
+ *  panel treatment, radius, shadow, accent geometry, the label face. Only the tokens the
+ *  stylesheet actually reads are emitted — same reason as the `--type-scale` exception above,
+ *  so a design that consumes no tokens emits exactly what it always did. */
 export function rootVarsCss(
   o: ResolvedOptions,
   headingStack: string,
   scale: number,
-  opts: { typeScale?: boolean } = {},
+  opts: { typeScale?: boolean; tokens?: ThemeTokens; consumerCss?: string } = {},
 ): string {
   const typeScaleLine =
     opts.typeScale === false
       ? ''
       : `\n  --type-scale: ${o.typeScale};                  /* text-only size multiplier (on top of --scale) */`;
+  const tokenLines =
+    opts.tokens && opts.consumerCss ? tokenVarsCss(opts.tokens, opts.consumerCss) : '';
   return `/* ── Style contract: change these variables to retint the whole graphic. ── */
 :root {
   --accent: ${o.palette.accent};           /* the one accent color */
@@ -130,7 +138,7 @@ export function rootVarsCss(
   --text-dim: ${o.palette.textDim};  /* secondary text (title line) */
   --panel-bg: ${o.palette.panel};  /* the panel behind the text */
   --font-heading: ${headingStack};  /* the graphic's typeface */
-  --scale: ${scale};                  /* whole-graphic size multiplier (also handles resolution) */${typeScaleLine}
+  --scale: ${scale};                  /* whole-graphic size multiplier (also handles resolution) */${typeScaleLine}${tokenLines ? `\n${tokenLines}` : ''}
 }`;
 }
 
