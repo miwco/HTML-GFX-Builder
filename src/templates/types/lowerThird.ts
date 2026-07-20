@@ -8,6 +8,7 @@
 
 import { paletteById } from '../../model/wizard';
 import { lt02 } from '../lowerThirds/lt02';
+import { lt05 } from '../lowerThirds/lt05';
 import { lt11 } from '../lowerThirds/lt11';
 import type { GraphicType } from './graphicType';
 
@@ -60,6 +61,40 @@ export const lowerThirdType: GraphicType = {
       samples: { name: 'Marcus Chen', title: 'Senior Analyst' },
       create: (_type, options) => lt02.create(options),
     },
+    {
+      id: 'lt05',
+      name: 'Angle Slab',
+      description: 'A forward-leaning dark slab with a chunky accent edge - fast, aggressive sport energy.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: { name: 'JAKE MORRISON', title: '24 PTS · 11 AST' },
+      // The lean is painted on a pseudo-layer precisely so the stinger's skew cannot flatten
+      // it; taking the type's line-reveal default would retire the preset it is drawn around.
+      animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      create: (_type, options) => lt05.create(options),
+    },
+    // On the semantics gate, which is the only one that had to be argued here: lt05 names its
+    // fields Player and Stat line where this type names them Name and Title. That is the type
+    // GENERALISING its instances, not redefining them - both graphics answer "who is on screen,
+    // and one thing about them", and lt05's own file opens by calling itself a sport lower
+    // third. It is the mirror of the lt01 mistake rather than a repeat of it: that was a lower
+    // third claimed by a DIFFERENT type whose fields mean something else entirely, while here
+    // the type and the design already agree on what the graphic is.
+    //
+    // NO GLASS LOWER THIRD IS PROMOTABLE, and all three fail differently, which is why the cell
+    // is still empty rather than filled with the closest match:
+    //  - lt08 Frosted Card fails three gates at once - it emits no .lower-third-accent element
+    //    (the accent is its keyline), carries three lines against this type's two, and declares
+    //    logo 'optional' where this type declares none;
+    //  - lt09 Gradient Pill fails parts for the same reason (its accent is an edge ring drawn
+    //    by a pseudo-element, so there is no accent NODE for a timeline to address) and fails
+    //    semantics besides: its second line is an @handle, which is the social bug's subject;
+    //  - lt10 Soft Stack has a real accent but emits three fields against this type's two.
+    // The parts gate is doing genuine work in this family: five of the fourteen lower thirds
+    // paint their accent rather than placing it, and a type that names `accent` as a required
+    // part cannot take any of them however well the rest lines up.
+    //
     // lt07 is NOT promotable here either, for a third reason worth naming: a compiled variant
     // takes the TYPE's capabilities, not the design's. lt07 declares `logo: 'optional'` and
     // three lines; this type declares no logo and two. Promoting it silently stripped the badge
