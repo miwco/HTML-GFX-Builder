@@ -75,22 +75,22 @@ ${kicker}${mask(0)}${subtitle}
 /* The kicker (f1) — the house label voice announcing the show. */
 .info-card-title {
   display: block;                  /* its own row above the title */
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(24px * var(--scale) * var(--type-scale));  /* label scale — clearly subordinate */
   font-weight: 500;                /* medium keeps tracked caps crisp */
   line-height: 1.2;                /* single tight label line */
-  letter-spacing: 0.28em;          /* the widest tracking in the family — a marquee label */
+  letter-spacing: var(--label-tracking);  /* the label's authored tracking */
   text-transform: uppercase;       /* ELECTIONS 2026, whatever the operator types */
-  color: var(--accent);            /* the label carries the accent */
+  color: var(--label-color);       /* the family's label color */
   margin-bottom: calc(22px * var(--scale));  /* clear air before the title lands */
 }
 
 /* The title (f0) — the biggest type in the house family: one huge display statement. */
 .info-card-name {
   font-size: calc(96px * var(--scale) * var(--type-scale));  /* full-frame headline scale */
-  font-weight: 700;                /* full display weight */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.02;               /* huge text sits tight */
-  letter-spacing: -0.02em;         /* display sizes tighten hardest */
+  letter-spacing: var(--display-tracking);  /* the title's authored tracking */
   color: var(--text-color);        /* primary text color */
   text-shadow: 0 4px 24px rgba(0, 0, 0, 0.55);  /* keeps the title crisp over any picture */
 }
@@ -106,6 +106,10 @@ ${kicker}${mask(0)}${subtitle}
 }`,
 
       hasAccent: false, // the accent moments are the kicker and the glow, not a bar element
+      tokens: {
+        labelTracking: '0.28em',
+        displayTracking: '-0.02em',
+      },
     };
   },
 );
