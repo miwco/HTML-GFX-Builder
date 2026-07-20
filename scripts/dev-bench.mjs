@@ -25,6 +25,7 @@
 
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -47,7 +48,22 @@ const log = (text) => {
 
 log(`\n=== ${stamp()} dev:bench starting (pid ${process.pid}) ===\n`);
 
-const child = spawn(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), '--mode', 'bench'], {
+// RESOLVE vite, never assume it sits in this checkout's own node_modules. A linked worktree
+// under .claude/worktrees/ usually has an EMPTY local node_modules and resolves everything by
+// walking up to the primary checkout's - which is why `npm run build` and the e2e suite work
+// there while a hardcoded `<root>/node_modules/vite/bin/vite.js` throws MODULE_NOT_FOUND.
+// That is a bad place to fail: dev:bench is the server the paid video bench drives, so the
+// break surfaces immediately before a run that costs real money.
+//
+// Resolve via `vite/package.json` and read `bin.vite` from it, rather than resolving the bin
+// path directly: Vite 8's "exports" map does not expose ./bin/vite.js, so asking for it throws
+// ERR_PACKAGE_PATH_NOT_EXPORTED. ./package.json IS exported, and the bin field is where the
+// real path lives anyway, so this keeps working if the layout moves again.
+const require = createRequire(import.meta.url);
+const vitePkgPath = require.resolve('vite/package.json');
+const viteBin = join(dirname(vitePkgPath), require(vitePkgPath).bin.vite);
+
+const child = spawn(process.execPath, [viteBin, '--mode', 'bench'], {
   cwd: root,
   stdio: ['inherit', 'pipe', 'pipe'],
 });

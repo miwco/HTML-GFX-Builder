@@ -1,0 +1,195 @@
+// Contrast-aware reference selection, shared by the harnesses.
+//
+// WHY THIS EXISTS. Keyword-matching a reference library returns whatever matched FIRST, so
+// the same cards win repeatedly and every generation drifts toward one look. Asking a model
+// for "three different directions" in one pass has the same failure: it returns three points
+// near one attractor. Diversity has to come from the SELECTION step, deterministically -
+// which also costs zero tokens and zero latency, because nothing here calls a model.
+//
+// It doubles as the legal mitigation: blending several orthogonal references means no single
+// source dominates an output (docs/BROADCAST_DESIGN_SYSTEM_RESEARCH.md §7.4). The variety
+// mechanism and the trade-dress mitigation are the same mechanism.
+
+/**
+ * The axes a reference is scored on. Defined HERE, not with the cards, because this is the
+ * selector's contract - a card library conforms to it.
+ *
+ * `infoLayers` and `graphicImageRelation` are weighted double: they separate design cultures
+ * far more sharply than colour or typography (a 1-2 layer graphic sitting beside the picture
+ * and a 6-layer graphic annotating it are different design worlds, whatever their palettes),
+ * and they are exactly what a model's default prior gets wrong.
+ */
+export interface ReferenceAxes {
+  infoLayers: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  graphicImageRelation: 'beside' | 'is-the-image' | 'overlay-annotated' | 'fused-3d';
+  density: 1 | 2 | 3 | 4 | 5;
+  geometry: 'orthogonal' | 'skewed' | 'chamfered' | 'circular' | 'organic';
+  typeVoice:
+    | 'condensed-caps'
+    | 'geometric-sans'
+    | 'humanist'
+    | 'serif-editorial'
+    | 'mono-technical'
+    | 'display-expressive';
+  colorBehavior: 'restrained' | 'committed' | 'full-palette' | 'drenched';
+  motionLanguage: 'snap' | 'glide' | 'mechanical' | 'organic' | 'cut';
+  surface: 'flat-graphic' | 'lit-material' | 'glass' | 'paper-texture' | 'screen-native';
+  holdCharacter: 'none' | 'brief' | 'dramatised';
+  idleLoop: boolean;
+  reducesVideoWindow: boolean;
+}
+
+/**
+ * A/B switch for the PoC. `false` restores the shipped keyword pick byte for byte, so the
+ * two arms can be benched against each other by flipping one line.
+ * Typed as boolean so both branches stay live for the compiler.
+ */
+export const USE_CONTRAST_SELECTION: boolean = true;
+
+// Ordinal axes: distance is how far apart the steps are, not merely whether they differ.
+const COLOR_ORDER = ['restrained', 'committed', 'full-palette', 'drenched'] as const;
+const HOLD_ORDER = ['none', 'brief', 'dramatised'] as const;
+
+function step(order: readonly string[], value: string): number {
+  const i = order.indexOf(value);
+  return i < 0 ? 0 : i;
+}
+
+/** Weighted axis distance in 0..1. 0 = same design world, 1 = maximally unlike. */
+export function axisDistance(a: ReferenceAxes, b: ReferenceAxes): number {
+  let sum = 0;
+  let total = 0;
+  const add = (weight: number, d: number): void => {
+    sum += weight * d;
+    total += weight;
+  };
+  const differs = (x: string, y: string): number => (x === y ? 0 : 1);
+
+  add(2, Math.abs(a.infoLayers - b.infoLayers) / 6);
+  add(2, differs(a.graphicImageRelation, b.graphicImageRelation));
+  add(1, Math.abs(a.density - b.density) / 4);
+  add(1, differs(a.geometry, b.geometry));
+  add(1, differs(a.typeVoice, b.typeVoice));
+  add(1, Math.abs(step(COLOR_ORDER, a.colorBehavior) - step(COLOR_ORDER, b.colorBehavior)) / 3);
+  add(1, differs(a.motionLanguage, b.motionLanguage));
+  add(1, differs(a.surface, b.surface));
+  add(1, Math.abs(step(HOLD_ORDER, a.holdCharacter) - step(HOLD_ORDER, b.holdCharacter)) / 2);
+  add(0.5, a.idleLoop === b.idleLoop ? 0 : 1);
+  add(0.5, a.reducesVideoWindow === b.reducesVideoWindow ? 0 : 1);
+
+  return sum / total;
+}
+
+/**
+ * Greedy max-min: repeatedly add whichever candidate has the largest MINIMUM distance to
+ * everything already chosen. Maximising the minimum (rather than the average) is what stops
+ * a later pick from hiding next to an earlier one - precisely the "three options that only
+ * change colour" failure.
+ *
+ * `seed` PINS cards that must appear in the result. This matters more than it looks: with no
+ * seed the function returns the most mutually-unlike cards in the pool, which - measured on
+ * real briefs - happily discards the one card that actually matched the brief and returns two
+ * extremes instead. Callers that have a relevance signal should pin it and let contrast
+ * choose only the companions.
+ *
+ * `penalty` is subtracted from a candidate's score, letting a caller discourage a card without
+ * banning it. Plain argmax-distance has no notion of what OTHER calls chose, so whichever card
+ * sits furthest out on the axes wins the companion slot almost every time - measured: the single
+ * card at a unique axis position took 9 of 33 companion slots. A continuous penalty rotates that
+ * winner; a hard exclusion filter cannot, because it still argmaxes over whatever survives it.
+ *
+ * Fully deterministic: ties resolve to the earlier card in the input order.
+ */
+export function pickContrasting<T extends { axes: ReferenceAxes }>(
+  pool: T[],
+  n: number,
+  seed: T[] = [],
+  penalty: (item: T) => number = () => 0,
+): T[] {
+  if (n <= 0) return [];
+  const chosen: T[] = seed.slice(0, n);
+
+  if (chosen.length === 0) {
+    if (pool.length <= n) return pool.slice();
+    if (n === 1) return [pool[0]];
+    let widest = -1;
+    let pair: [T, T] = [pool[0], pool[1]];
+    for (let i = 0; i < pool.length; i++) {
+      for (let j = i + 1; j < pool.length; j++) {
+        const d = axisDistance(pool[i].axes, pool[j].axes);
+        if (d > widest) {
+          widest = d;
+          pair = [pool[i], pool[j]];
+        }
+      }
+    }
+    chosen.push(pair[0], pair[1]);
+  }
+
+  while (chosen.length < n) {
+    let best: T | null = null;
+    let bestScore = -Infinity;
+    for (const candidate of pool) {
+      if (chosen.includes(candidate)) continue;
+      let minD = Infinity;
+      for (const already of chosen) {
+        minD = Math.min(minD, axisDistance(candidate.axes, already.axes));
+      }
+      const score = minD - penalty(candidate);
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+    if (!best) break;
+    chosen.push(best);
+  }
+  return chosen;
+}
+
+// ── Anti-dominance ledger ────────────────────────────────────────────────────
+// Same posture as preferences.ts: localStorage, local only, never a hard dependency.
+
+const RECENCY_KEY = 'spx-gfx-ai-reference-recency';
+const RECENCY_DEPTH = 6;
+
+/**
+ * How hard a recent use counts against a card, in the same units as `axisDistance` (0..1).
+ *
+ * This is the one tuned number in the file, so here is the reasoning rather than just the value.
+ * Among genre-compatible candidates the distance from an anchor typically spans about 0.3 to 0.9,
+ * so 0.25 is large enough to displace the leader when the runner-up is within roughly a quarter
+ * of that range - which is the case that produces the same companion over and over - and too
+ * small to promote a card that is genuinely much closer to the anchor. It discourages; it never
+ * decides on its own.
+ */
+export const RECENCY_WEIGHT = 0.25;
+
+/** Penalty for a card given the current ledger: freshest use hurts most, decaying to nothing. */
+export function recencyPenaltyFor(id: string, recent: string[]): number {
+  const i = recent.indexOf(id);
+  return i < 0 ? 0 : RECENCY_WEIGHT * (1 - i / RECENCY_DEPTH);
+}
+
+export function recentReferenceIds(): string[] {
+  try {
+    if (typeof localStorage === 'undefined') return [];
+    const raw = localStorage.getItem(RECENCY_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function noteReferenceUse(ids: string[]): void {
+  if (ids.length === 0) return;
+  try {
+    if (typeof localStorage === 'undefined') return;
+    const kept = recentReferenceIds().filter((id) => !ids.includes(id));
+    localStorage.setItem(RECENCY_KEY, JSON.stringify([...ids, ...kept].slice(0, RECENCY_DEPTH)));
+  } catch {
+    // Storage unavailable (private mode, quota). Recency is a nicety, never a requirement.
+  }
+}

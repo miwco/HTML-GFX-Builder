@@ -48,10 +48,27 @@ export const MOTION_PRINCIPLES = `## NoaCG motion-design principles (the permane
   strong contrast against what it actually sits on.
 - Professional easing: springs and clamped interpolate curves with intent - decisive
   entrances (fast start, soft landing), sharp exits (accelerate away). NEVER linear for an
-  entrance or exit; linear only for continuous travel.
+  entrance or exit; linear only for continuous travel. When a bezier is the right tool reach
+  for a STRONG curve, never a built-in default: entrances land well on
+  Easing.bezier(0.23, 1, 0.32, 1), on-screen moves on (0.77, 0, 0.175, 1). An exit is the
+  mirror of an entrance, not a repeat of it - it accelerates away rather than easing out.
 - Intentional timing: choreograph on a beat grid; stagger related elements 2-5 frames.
 - Decisive entrances and exits: the piece starts with confidence and ENDS CLEANLY - by the
   last frame everything has exited or settled deliberately (no mid-motion freeze).
+- Nothing appears from nothing: never scale from 0. Start at scale 0.9-0.97 with opacity, or
+  travel in from off-frame - an element that materialises out of nowhere reads as an effect,
+  not an object. Overshoot is EARNED: bounce only where something visibly carried momentum
+  into frame (a slam, a throw, a fast slide). A panel that simply faded up must not overshoot.
+- Motion has an origin and a direction, and both are earned: an element leaves the way it came
+  (in from the right, out to the right - never in-right/out-down), and it grows from the thing
+  it belongs to (a stat from its bar, a title from the edge its accent entered) rather than
+  from a defaulted centre.
+- Frame-level smoothness: keep the per-frame positional change small enough that fast travel
+  reads as movement rather than strobing - a shape crossing the frame in 6 frames stutters.
+  If a move must be that fast, carry it with motion blur or a stretch. Blur also bridges a
+  crossfade: two states dissolving sharply read as two objects swapping, where a few px of
+  blur through the midpoint reads as one thing transforming. The render is offline, so blur
+  costs nothing here in the way it would in a live browser.
 - THE BRIEF PICKS THE PALETTE WORLD: audience, genre, and energy decide whether the piece
   lives in layered darks, daylight warmth, rich saturated colour, or airy light tones - a
   warm morning look executed with depth is exactly as premium as a graphite newsroom.

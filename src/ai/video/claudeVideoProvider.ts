@@ -19,7 +19,8 @@ import type {
   VideoValidator,
 } from './provider';
 import { BASE_SKILL, detectSkillsByKeyword, skillById, type VideoSkill } from './skills';
-import { detectReferenceCards, referenceSection } from './referenceCards';
+import { referenceSection, selectReferenceCards, type ReferenceCard } from './referenceCards';
+import { noteReferenceUse } from '../referenceSelect';
 import { EXAMPLE_COMPOSITION, MOTION_PRINCIPLES, REMOTION_CONTRACT } from './prompts';
 import { EXAMPLE_HYPERFRAMES_COMPOSITION, HYPERFRAMES_CONTRACT } from './hyperframesPrompts';
 import {
@@ -115,10 +116,14 @@ async function detectSkills(prompt: string, model?: string): Promise<VideoSkill[
 
 // ── Stage b: the Motion Director ─────────────────────────────────────────────
 
-function directorSystem(skills: VideoSkill[], engine: VideoEngine, brief: string): string {
+function directorSystem(
+  skills: VideoSkill[],
+  engine: VideoEngine,
+  cards: ReferenceCard[],
+): string {
   const medium =
     engine === 'hyperframes' ? 'HTML/CSS with a GSAP timeline (HyperFrames)' : 'React/Remotion';
-  const references = referenceSection(detectReferenceCards(brief));
+  const references = referenceSection(cards);
   return `You are the Motion Director inside NoaCG Studio - a senior broadcast motion
 designer planning a fixed-duration video composition. You produce a concise, structured,
 TIMED plan another expert will implement in ${medium}. Plan phases that cover the
@@ -156,8 +161,12 @@ async function directMotion(
   model?: string,
 ): Promise<EmittedMotionPlan> {
   const text = `${settingsText(ctx)}\n${assetsText(ctx)}\n\nThe brief:\n${prompt}`;
+  // Selected here rather than inside the prompt builder so the anti-dominance ledger is
+  // written exactly once per generation, and directorSystem stays a pure function.
+  const cards = selectReferenceCards(prompt);
+  noteReferenceUse(cards.map((c) => c.id));
   const plan = (await callClaude({
-    system: directorSystem(skills, ctx.engine, prompt),
+    system: directorSystem(skills, ctx.engine, cards),
     messages: [{ role: 'user', content: [...vision, { type: 'text', text }] }],
     tool: MOTION_PLAN_TOOL,
     maxTokens: 4000,
