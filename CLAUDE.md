@@ -220,6 +220,12 @@ findings properly rather than sprinkling eslint-disable comments.
 - The preview rebuilds on a ~350 ms debounce after `applyTemplate` - never sleep it out. Use
   `awaitPreviewRebuild` (`e2e/_preview.ts`) before clicking Play or asserting inside the iframe,
   wrapping the action when anything slow sits between action and wait.
+- A wizard-created VIDEO project auto-runs its first generation, which lands as its own undoable
+  snapshot ~0.1-2.6 s after `video-shell` appears (unbounded: the validation probe waits on the
+  player host with no timeout). A spec that makes an undoable change before that lands is racing
+  it - the generation becomes the newest undo target, so a later Ctrl+Z rewinds the generation
+  instead, and an assertion that the project did NOT change can pass vacuously. Wait for the
+  assistant reply first (`waitForGeneration`, `.ai-msg.assistant`), never a fixed timeout.
 
 ## Git
 
