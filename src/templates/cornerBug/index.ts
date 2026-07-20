@@ -5,10 +5,14 @@
 import type { TemplateVariant } from '../../model/wizard';
 import { bug01 } from './bug01';
 import { bug02 } from './bug02';
+import { bug03 } from './bug03';
+import { bug04 } from './bug04';
 
 export const CORNER_BUGS: TemplateVariant[] = [
   bug02, // House Clock — noacg logo/three-bar mark + live ticking clock (sibling lt11)
   bug01, // Glass Mark — glass, sibling of lt08 Frosted Card / lt09 Gradient Pill
+  bug03, // Slab Bug — sport, solid slab + fused accent edge (sibling lt05 / lt06)
+  bug04, // Hairline Bug — minimal, panel-free logo + accent underline (sibling lt01 / lt02)
 ];
 
 export function cornerBugById(id: string): TemplateVariant | undefined {

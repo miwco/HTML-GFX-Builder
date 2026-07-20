@@ -5,6 +5,8 @@
 import { paletteById } from '../../model/wizard';
 import { bug01 } from '../cornerBug/bug01';
 import { bug02 } from '../cornerBug/bug02';
+import { bug03 } from '../cornerBug/bug03';
+import { bug04 } from '../cornerBug/bug04';
 import { lt14 } from '../lowerThirds/lt14';
 import type { GraphicType } from './graphicType';
 
@@ -62,6 +64,34 @@ export const sponsorBugType: GraphicType = {
       // Drawn for the top-right safe area; the house bug is the one that sits top-left.
       defaultZone: 'top-right',
       create: (_type, options) => bug01.create(options),
+    },
+    {
+      // Designed FOR this cell, not promoted: no sport corner bug existed. A solid slab with
+      // the accent fused to its left edge — the corner-scale sibling of lt05/lt06.
+      id: 'bug03',
+      name: 'Slab Bug',
+      description: 'A solid slab with a chunky accent edge, holding a logo and a heavy caps caption.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: { caption: 'LIVE' },
+      animationPresets: ['pop-spring', 'slide-up', 'slide-down', 'fade', 'blur-in', 'flip-3d'],
+      defaultZone: 'top-right',
+      create: (_type, options) => bug03.create(options),
+    },
+    {
+      // Designed FOR this cell: the panel-free minimal bug — a logo over a short accent
+      // underline and a tiny caption, the sibling of lt01 Hairline / lt02 Underline.
+      id: 'bug04',
+      name: 'Hairline Bug',
+      description: 'A panel-free logo mark over a short accent underline and a tiny caps caption.',
+      styleTag: 'minimal',
+      palette: paletteById('signal'),
+      fontId: 'inter',
+      samples: { caption: 'LIVE' },
+      animationPresets: ['fade', 'slide-up', 'slide-down', 'blur-in', 'flip-3d'],
+      defaultZone: 'top-right',
+      create: (_type, options) => bug04.create(options),
     },
   ],
 };

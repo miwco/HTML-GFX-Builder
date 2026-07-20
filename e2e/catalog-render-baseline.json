@@ -32,6 +32,33 @@
       "body>script[1]": "c41646ce27b0f36d",
       "body>script[2]": "c41646ce27b0f36d"
     },
+    "bug03": {
+      "#count": "10",
+      "body": "eb7734706eb8ee01",
+      "body>div.corner-bug[1]": "1f017f69e7293bbe",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]": "4b8880f635d32c94",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-media[1]": "d0c4464c32d0e2d4",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-media[1]>div.corner-bug-mark[1]": "d1a7ca3666c41aad",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-media[1]>img.corner-bug-logo[1]": "a09c79f61a84b019",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-mask[1]": "848717a37f357a1d",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-mask[1]>span.corner-bug-name[1]": "e5d3c7c09156ef9c",
+      "body>script[1]": "a09c79f61a84b019",
+      "body>script[2]": "a09c79f61a84b019"
+    },
+    "bug04": {
+      "#count": "11",
+      "body": "8d64b94dad61c592",
+      "body>div.corner-bug[1]": "b1416ede887a13dc",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]": "0da2843d6dde27d8",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-media[1]": "0898c9d92623fa3a",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-media[1]>div.corner-bug-mark[1]": "191376aadfd490fa",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-media[1]>img.corner-bug-logo[1]": "f8ed0a3ac629b7d5",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-rule[1]": "159abe2d9d3a7888",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-mask[1]": "ec29e2ed8c49a0f0",
+      "body>div.corner-bug[1]>div.corner-bug-box[1]>div.corner-bug-mask[1]>span.corner-bug-name[1]": "c9baa63b93a847d2",
+      "body>script[1]": "931a670cd9f9a032",
+      "body>script[2]": "931a670cd9f9a032"
+    },
     "card01": {
       "#count": "12",
       "body": "8d64b94dad61c592",
