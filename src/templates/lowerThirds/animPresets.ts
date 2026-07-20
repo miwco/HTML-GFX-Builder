@@ -65,6 +65,15 @@ export interface AnimPreset {
   autoEase: { easeIn: string; easeOut: string };
   /** Emit the full marked ANIMATION block for template.js. */
   emit(cfg: PresetConfig): string;
+  /**
+   * STRUCTURAL: this preset only works alongside code the assembler writes OUTSIDE the marked
+   * region at create time - runtime knobs, extra CSS, a state machine. Applying a preset after
+   * creation rewrites the DATA and nothing else (blocks/presetApply.ts), so swapping a
+   * structural one in leaves the data and that outside code disagreeing, and the graphic ends
+   * up silently inert. Such a preset is a create-time choice, offered by the wizard (a variant
+   * lists it in `animationPresets`) and withheld from the post-creation picker.
+   */
+  structural?: boolean;
 }
 
 const MARK_OPEN = '/* == ANIMATION (generated — the Animation panel rewrites this block) == */';

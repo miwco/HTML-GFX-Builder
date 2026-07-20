@@ -131,6 +131,19 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     autoOutRef.current = setTimeout(() => playOut(), inDurationMs + Number(out));
   };
 
+  /** An entrance that never ends (a marquee's `repeat: -1`, any measured endless motion) is
+   *  reported by GSAP as a ~1e10 s duration. Passed on as a delay, that is 1e13 ms — past
+   *  setTimeout's 32-bit argument, so it wraps to an arbitrary time (~15 days, measured) and
+   *  the exit never comes: the SPX `out` hold was silently dead on every endless graphic, which
+   *  is exactly the class of setting an operator trusts. A continuous phase costs no fixed
+   *  time, so the hold runs from the entrance's start instead. Same threshold the render
+   *  schedule uses (src/render/runtimeScript.ts CONTINUOUS_S), for the same reason. */
+  const CONTINUOUS_S = 1e7;
+  const holdBaselineMs = (tl: { duration: () => number }) => {
+    const seconds = tl.duration();
+    return seconds >= CONTINUOUS_S ? 0 : seconds * 1000;
+  };
+
   /** Run the entrance (Play): data in, then the in-timeline — simulator-owned. */
   const playIn = () => {
     const w = win();
@@ -143,7 +156,7 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
       w.update?.(latestData());
       const tl = w.buildInTimeline();
       w.__activeTl = { phase: 'in', tl };
-      scheduleAutoOut(tl.duration() * 1000);
+      scheduleAutoOut(holdBaselineMs(tl));
     } else {
       w.update?.(latestData());
       w.play?.(); // no builder contract (blank/imported) — the template's own play()

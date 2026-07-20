@@ -297,6 +297,25 @@ const results = await page.evaluate(async (CATEGORY) => {
         : r6.items >= 3;
       row.checks.autoFit = !r6.fatal && r6.errs.length === 0 && carriesItems && r6.label === 'LIVE';
       if (!row.checks.autoFit) row.issues.push('ticker-track: ' + JSON.stringify(r6));
+      // A marquee that never MOVES fails silently: the builder returns null (or its dynamic is
+      // gone from the data) and the interpreter skips it with no error, leaving a strip that
+      // renders its items perfectly and simply sits there. Content checks cannot see that, so
+      // play it and watch the track actually travel. Only the marquee is asserted here: a
+      // rotator's cycling is timer-driven and a flip animates the items, not the track.
+      const marquee = /"build"\s*:\s*"tickerMarquee"/.test(tpl.js);
+      if (marquee) {
+        const r6b = await runInFrame(tpl, async (w, d) => {
+          w.update(JSON.stringify({ f0: 'Item one\nItem two\nItem three', f1: 'LIVE' }));
+          const track = d.getElementById('ticker-track');
+          w.play();
+          const before = w.getComputedStyle(track).transform;
+          await new Promise((r) => setTimeout(r, 500));
+          const after = w.getComputedStyle(track).transform;
+          return { before, after };
+        });
+        row.checks.marqueeMoves = !r6b.fatal && r6b.errs.length === 0 && r6b.before !== r6b.after;
+        if (!row.checks.marqueeMoves) row.issues.push('marquee never moved: ' + JSON.stringify(r6b));
+      }
       out.push(row);
       continue;
     }

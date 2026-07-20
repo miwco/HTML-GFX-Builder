@@ -26,7 +26,7 @@ import { importAnimData } from '../blocks/animImport';
 import { deleteKeyframe, setFilterComponent, setKeyframe } from '../blocks/animEdit';
 import { filterComponent } from '../blocks/filterTrack';
 import { applyPresetData, presetDonor } from '../blocks/presetApply';
-import { presetsForType, anyPresetById } from '../blocks/presetRegistry';
+import { swappablePresetsForType, anyPresetById } from '../blocks/presetRegistry';
 import { isSlidePreset } from '../templates/lowerThirds/animPresets';
 import { activationStep, animatedProps, resolveValue, stepSeconds } from '../blocks/animEval';
 import type { AnimPresetId } from '../model/wizard';
@@ -589,7 +589,7 @@ export default function Inspector() {
                 </option>
                 {/* The slide family groups under one label; everything else lists flat. */}
                 {(() => {
-                  const all = presetsForType(template.type);
+                  const all = swappablePresetsForType(template.type);
                   const slides = all.filter((p) => isSlidePreset(p.id));
                   const rest = all.filter((p) => !isSlidePreset(p.id));
                   return (

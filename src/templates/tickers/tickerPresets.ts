@@ -87,6 +87,12 @@ ${MARK_CLOSE}`,
     name: 'Timed rotate',
     description: 'One item at a time, advanced by the graphic’s own timer — pausable on air.',
     autoEase: { easeIn: 'power2.out', easeOut: 'power2.in' },
+    // Rotating is a create-time decision, not a motion swap: the assembler emits
+    // TICKER_ROTATE / TICKER_DOUBLE_ITEMS and the rotate CSS outside the marked region, and
+    // the cycling itself comes from the state machine. Applying this to a marquee template
+    // after creation would drop the marquee's dynamic while those knobs stayed marquee-shaped,
+    // leaving a ticker that renders a doubled row and never moves again.
+    structural: true,
     // The entrance FINISHES. That is the whole point of this preset: the cycling comes from
     // the graphic's state machine, and a machine timer arms only when its state's timeline
     // ends. The two endless presets above can never carry one (a call scheduled at an endless

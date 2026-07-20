@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { parseTimeline, buildOverview, type TimelineTween } from '../blocks/timelineModel';
 import { detectPrefix, getTemplateParts } from '../model/structure';
-import { emitPresetRegion, presetsForType } from '../blocks/presetRegistry';
+import { emitPresetRegion, swappablePresetsForType } from '../blocks/presetRegistry';
 import { importAnimData } from '../blocks/animImport';
 import { replaceRegionWithAnimData } from '../templates/shared/animRuntime';
 import type { AnimPresetId } from '../model/wizard';
@@ -144,7 +144,7 @@ export default function LegacyTimeline({ iframeRef }: Props) {
     setActiveTab('js'); // the new region is real, highlighted code
   };
 
-  const presetOptions = presetsForType(template.type);
+  const presetOptions = swappablePresetsForType(template.type);
   const hasRegion = template.js.includes('== ANIMATION');
 
   if (!model) {

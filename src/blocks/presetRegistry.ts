@@ -25,7 +25,19 @@ import type { AnimPresetId } from '../model/wizard';
 import type { SpxTemplate } from '../model/types';
 import { countLines, detectPrefix } from '../model/structure';
 
-/** The presets that apply to a template, by its category. */
+/**
+ * The presets a template can be RE-POINTED at after creation - the post-creation pickers'
+ * list. Applying a preset rewrites the animation DATA and nothing else, so a STRUCTURAL preset
+ * (one whose behaviour also lives in create-time code outside the marked region) is withheld:
+ * swapping it in would leave the data and that code disagreeing and the graphic silently inert.
+ * The wizard picks from the variant's own `animationPresets` at create time, where the
+ * assembler emits the matching runtime, so a structural preset is still fully reachable there.
+ */
+export function swappablePresetsForType(type: SpxTemplate['type']): AnimPreset[] {
+  return presetsForType(type).filter((p) => !p.structural);
+}
+
+/** Every preset that applies to a template, by its category - the complete list. */
 export function presetsForType(type: SpxTemplate['type']): AnimPreset[] {
   if (type === 'end-credits') return CREDITS_PRESETS;
   if (type === 'ticker') return TICKER_PRESETS;
