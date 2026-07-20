@@ -7,6 +7,10 @@ import { card01 } from '../infoCards/card01';
 import { card02 } from '../infoCards/card02';
 import { card03 } from '../infoCards/card03';
 import { card05 } from '../infoCards/card05';
+import { card06 } from '../infoCards/card06';
+import { card07 } from '../infoCards/card07';
+import { card08 } from '../infoCards/card08';
+import { card09 } from '../infoCards/card09';
 import type { GraphicType } from './graphicType';
 
 /** TITLE / OPENER CARD — 23 of the 60 formats open with one (episode title, session title,
@@ -48,6 +52,48 @@ export const titleCardType: GraphicType = {
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
       create: (_type, options) => card05.create(options),
+    },
+    {
+      // Designed FOR this cell: no minimal title card existed. Pure type, no panel — sibling
+      // of lt01 Hairline / lt02 Underline, with the underline motif at opener scale.
+      id: 'card07',
+      name: 'Clean Title',
+      description: 'A panel-free opener: a caps kicker over a large title and a quiet subtitle.',
+      styleTag: 'minimal',
+      palette: paletteById('ivory'),
+      fontId: 'inter',
+      samples: { title: 'The Long Road Back', kicker: 'Episode 4', subtitle: 'A documentary in three parts' },
+      animationPresets: ['line-reveal', 'mask-wipe', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-left',
+      create: (_type, options) => card07.create(options),
+    },
+    {
+      // Designed FOR this cell: no sport title card existed. The leaning slab as an opener —
+      // sibling of lt05 Angle Slab / card02 Slab Card.
+      id: 'card08',
+      name: 'Slab Title',
+      description: 'A leaning sport slab: an accent kicker over one huge condensed title and a subtitle.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: { title: 'GRAND FINAL', kicker: 'MATCHDAY 12', subtitle: 'KICK-OFF 20:00 · ARENA' },
+      animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-left',
+      create: (_type, options) => card08.create(options),
+    },
+    {
+      // Designed FOR this cell: no glass title card existed. A frosted opener panel — sibling
+      // of lt08 Frosted Card / card03 Frosted Panel.
+      id: 'card09',
+      name: 'Frost Title',
+      description: 'A frosted panel opener: a soft accent kicker over a large title and a subtitle.',
+      styleTag: 'glass',
+      palette: paletteById('frost'),
+      fontId: 'manrope',
+      samples: { title: 'Midnight Sessions', kicker: 'Tonight', subtitle: 'Live music until late' },
+      animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-center',
+      create: (_type, options) => card09.create(options),
     },
     // card04 is NOT promotable here: it supports three lines and this type declares five, and a
     // compiled variant takes the TYPE's capabilities. Promotion would offer two more lines than
@@ -125,6 +171,18 @@ export const topicCardType: GraphicType = {
       // Glass springs and resolves out of blur; the type's line reveal is a news motion.
       animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
       create: (_type, options) => card03.create(options),
+    },
+    {
+      // Designed FOR this cell: no noacg topic card existed. card05 House Title is the house
+      // OPENER (kicker/title/subtitle); this is the house card that stays up DURING the
+      // discussion — a heading and its points in the void panel. Sibling of lt11 House Strap.
+      id: 'card06',
+      name: 'House Topic',
+      description: 'The house topic card: an amber bar and void panel, a heading over quiet body lines.',
+      styleTag: 'noacg',
+      palette: paletteById('noacg'),
+      fontId: 'space-grotesk',
+      create: (_type, options) => card06.create(options),
     },
   ],
 };
