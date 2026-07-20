@@ -7,6 +7,13 @@ import { expect, type Page } from '@playwright/test';
 
 const FRAME = 'iframe.preview-frame';
 
+// A rebuild is a 350 ms debounce plus composing the document and loading the iframe, so it is
+// normally well under a second - but under heavy worker contention it has been measured past
+// the suite's 7 s default expect budget, which turned this "wait exactly as long as it takes"
+// primitive into the flake it exists to prevent. A rebuild that never lands is still caught,
+// just by the test timeout instead; the only cost of the wider budget is slower reporting.
+const REBUILT = { timeout: 20_000 };
+
 /**
  * Wait for the debounced preview rebuild to finish loading. Two shapes:
  *
@@ -24,16 +31,16 @@ export async function awaitPreviewRebuild(
   if (action) {
     // Settle any in-flight initial build first, so "the revision changed" can only mean
     // the ACTION's rebuild — never the initial document stamping late.
-    await expect(frame).toHaveAttribute('data-doc-rev', /\d/);
+    await expect(frame).toHaveAttribute('data-doc-rev', /\d/, REBUILT);
     const before = await frame.getAttribute('data-doc-rev');
     await action();
-    await expect(frame).not.toHaveAttribute('data-doc-rev', before!);
+    await expect(frame).not.toHaveAttribute('data-doc-rev', before!, REBUILT);
     return;
   }
   const before = await frame.getAttribute('data-doc-rev');
   if (before === null) {
-    await expect(frame).toHaveAttribute('data-doc-rev', /\d/);
+    await expect(frame).toHaveAttribute('data-doc-rev', /\d/, REBUILT);
   } else {
-    await expect(frame).not.toHaveAttribute('data-doc-rev', before);
+    await expect(frame).not.toHaveAttribute('data-doc-rev', before, REBUILT);
   }
 }

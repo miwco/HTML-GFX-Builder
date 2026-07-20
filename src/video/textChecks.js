@@ -281,14 +281,30 @@
       // and the arithmetic alone would have sent the model to shrink type that already fits.
       // The occlusion message learned the same lesson (docs/HYPERFRAMES_QUALITY.md): say
       // what to DO, because a finding that implies the wrong fix is worse than a vague one.
-      var tooWide = roomPx > 0 && roomPx < needPx;
-      var sizing = tooWide
-        ? ' The line needs ' + needPx + 'px but ' +
+      // …and a THIRD defect wears it too: a binding box measured at zero width. It takes yet
+      // another fix - neither shrinking the type nor moving it, because the box itself never
+      // opened - and folding it into either message above states a plain falsehood ("at
+      // 1181px it FITS that 0px box"). Measured reachable at a hold frame two ways - a
+      // width:0 overflow:hidden reveal mask, and a flex item collapsed to nothing - which
+      // are one code path (the narrowest clipper measures 0), so the mask case is the one
+      // pinned in e2e/video-readability.spec.ts. A `roomPx > 0` guard on the too-wide test
+      // used to send exactly these into the parked-offscreen branch, prescribing the
+      // opposite repair.
+      var sizing;
+      if (roomPx <= 0) {
+        sizing = (binding ? ' That box measures 0px wide' : ' The visible region measures 0px wide') +
+          ', so no part of the ' + needPx + 'px line can paint. Fix the BOX, not the text:' +
+          ' give it a width, or check that its reveal mask has finished opening by the hold' +
+          ' - resizing or moving the text cannot help;';
+      } else if (roomPx < needPx) {
+        sizing = ' The line needs ' + needPx + 'px but ' +
           (binding ? 'that box gives it ' : 'the frame leaves ') + roomPx + 'px.' +
-          ' Give the text room (or fit the type to the box);'
-        : ' At ' + needPx + 'px it FITS that ' + roomPx +
+          ' Give the text room (or fit the type to the box);';
+      } else {
+        sizing = ' At ' + needPx + 'px it FITS that ' + roomPx +
           'px box - it is positioned outside the visible area, so move it into view rather than' +
           ' shrinking it;';
+      }
       issues.push({
         kind: 'clip',
         // How much of the glyph run is gone, so a caller can tell a near-miss from text that

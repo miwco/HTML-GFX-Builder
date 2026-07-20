@@ -16,6 +16,20 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   step's filter chips, so a new family inherits both automatically. Sizing is two knobs:
   `sizeScale` (--scale, whole graphic) and `typeScale` (--type-scale, text only).
 - **fonts.ts** - bundled OFL fonts registry + CustomFont import helpers.
+- **themeTokens.ts** - the SHAPE half of the `:root` style contract, and DESIGN_LANGUAGE §8's
+  family table in code: panel blur/radius/shadow/keyline, accent weight/glow/ink, the label
+  face + tracking + colour, display weight + tracking, with values for all four `StyleTag`
+  families. `resolveTokens(family, ...overrides)` layers a design's disagreements over its
+  family; **that override map is conformance debt, and its size is the metric** (§8's own rule
+  is "reuse the exact token values, don't improvise per category"). `tokenVarsCss` emits ONLY
+  the tokens the consuming stylesheet actually reads - same no-dead-knobs doctrine as the
+  imported design's missing `--type-scale`. Values are complete CSS values (`calc(18px *
+  var(--scale))`, `none`, `50%`), never bare numbers, so one token covers a scaled length, a
+  keyword and a percentage without the consuming rule knowing which it got. Shadow-slot
+  neutral is `NO_SHADOW` (`0 0 0 0 transparent`), because these compose into comma-separated
+  `box-shadow` lists and `none, none` is invalid CSS. Deliberately absent: density (unmeasured,
+  genuinely per-design), the sport skew (`skewX(0deg)` is not inert - it makes a stacking
+  context), and motion feel (it lives in the NOACG_ANIM block, not in CSS).
 - **brand.ts** - ProjectBrand save/load (localStorage 'spx-gfx-brand'), captured on every wizard
   Create.
 - **packets.ts** - packet manager data layer: graphics collections 'spx-gfx-packets' + brand

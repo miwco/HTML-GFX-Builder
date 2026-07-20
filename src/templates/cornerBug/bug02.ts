@@ -151,13 +151,13 @@ ${bugLineMasks(o)}
 
 /* The caption (f0) — the house label voice at bug scale. */
 .corner-bug-name {
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(15px * var(--scale) * var(--type-scale));   /* tiny label size */
   font-weight: 500;                /* medium keeps tracked caps crisp */
   line-height: 1.2;                /* compact label leading */
-  letter-spacing: 0.2em;           /* small caps need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
   text-transform: uppercase;       /* label voice */
-  color: var(--text-dim);          /* quiet — the clock is the bright element */
+  color: var(--label-color);       /* the label's quiet color */
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);  /* readable over bright footage */
 }
 
@@ -179,6 +179,7 @@ ${bugLineMasks(o)}
 }`,
 
       hasAccent: false, // the accent moments are the top bar and the seconds, not a bar element
+      tokens: { labelColor: 'var(--text-dim)' },
     };
   },
 );

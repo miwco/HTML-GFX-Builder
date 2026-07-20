@@ -42,7 +42,11 @@ export function mergeResults(...results: ValidationResult[]): ValidationResult {
 // and show up as a phantom preview error in the editor.
 const BENCH_ERROR_TYPE = 'noacg-bench-error';
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+/** The whole-run cap. It has to clear the SUM of the phase budgets a thoroughly broken
+ *  template can burn (fonts 1.5 s + entrance 2 s + exit 2 s + replay 2 s + the settles), or
+ *  the run dies with one vague 'bench-timeout' instead of the three precise findings that
+ *  were about to be reported - the diagnosis a repair round actually needs. */
+const DEFAULT_TIMEOUT_MS = 15_000;
 /** GSAP acceleration while benching: a 0.8 s entrance settles in ~40 ms of real time. */
 const TIME_SCALE = 20;
 /** Real-time wait that equals TIME_SCALE× that much animation time. */
@@ -51,6 +55,14 @@ const SETTLE_MS = 300;
  *  purpose: it costs nothing when the graphic is already up (the poll returns immediately),
  *  and it is what keeps a starved rAF from being reported as a broken entrance. */
 const ON_AIR_BUDGET_MS = 2_000;
+/** The mirror budget for the graphic LEAVING. Sampling once after a fixed settle looks safe
+ *  here - 300 ms of real time is ~6 s of animation time at TIME_SCALE - but that margin is
+ *  measured in animation time, and animation time only advances when rAF actually ticks. A
+ *  hidden iframe on a loaded machine can be starved for the whole window, and then the fade
+ *  has barely moved and a perfectly good catalog template is reported as "still visible after
+ *  stop()". Poll instead, symmetrically with the entrance: leaving promptly costs nothing,
+ *  and only a graphic that NEVER leaves inside the budget is a real finding. */
+const OFF_AIR_BUDGET_MS = 2_000;
 /** How many of a machine's operator events the bench renders. Each costs a settle wait, and
  *  a graphic with more distinct events than this is past the point where one more pose check
  *  earns its time. */
@@ -545,8 +557,7 @@ export async function benchTemplateRuntime(
     // ── Exit: the graphic must actually leave ────────────────────────────────────────
     phase = 'stop';
     call('stop');
-    await wait(SETTLE_MS);
-    if (onAir()) {
+    if (!(await waitFor(() => !onAir(), OFF_AIR_BUDGET_MS))) {
       errors.push(
         issue(
           'bench-hidden',
@@ -560,8 +571,7 @@ export async function benchTemplateRuntime(
     //    replay-safety promise, enforced) ───────────────────────────────────────────────
     phase = 'replay';
     call('play');
-    await wait(SETTLE_MS);
-    if (!onAir()) {
+    if (!(await waitFor(onAir, ON_AIR_BUDGET_MS))) {
       errors.push(
         issue(
           'bench-replay',
