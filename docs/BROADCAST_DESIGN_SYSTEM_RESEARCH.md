@@ -872,6 +872,99 @@ axis distance, or it will confirm the mechanism by construction.
 The 14 cards and the seven motion additions in §2.3 are untouched by all of this, exactly as
 §8.3d anticipated: coverage and motion principles never depended on how the companion is chosen.
 
+### 8.3g The pre-registration that can falsify §8.3f
+
+§8.3d was written to stop the author manufacturing a win. §8.3f needs the opposite guard, and
+this section is it. §8.3f was written by someone assembling a case that contrast selection is a
+measurement artifact - and it assembled that case well enough to be the reason not to spend. A
+document that only pre-registers in the direction of its current belief is not pre-registering.
+So the condition that would show §8.3f WRONG is fixed here, in advance, before a frame exists.
+
+**Scope, stated first because it is small.** 7 briefs (the varied bank), run 1 only, `contrast`
+vs `padded`, 14 generations, roughly $2. This is **qualitative and deliberately unpowered**: at
+N=7 a count of visually-distinct designs cannot reach significance, and no arithmetic performed
+on these 14 videos will make it significant. It is a gallery read against one concrete,
+falsifiable assertion - not a verdict on the feature, and not the paid A/B of §8.3d.
+
+**The claim under test.** §8.3f's Finding 2 does not stop at "the mechanism concentrates", which
+is measured and not in dispute. It escalates to a claim about OUTPUT: that the concentration
+"hands out guidance that is wrong on its face", instanced by a warm Sunday-morning cooking title
+being given the dense variety-telop card, and a channel ident being given the financial
+trading-terminal card. That escalation is an argument from the card TEXT. Nothing was generated.
+It is a prediction about output inferred entirely from input, and it is currently strong enough
+to kill a feature - which is exactly the kind of claim that should be checked before it does.
+
+The two briefs that decide it, and the picks each arm is expected to hand over:
+
+| brief | `contrast` (predicted) | `padded` (predicted) |
+|---|---|---|
+| `Cooking title` - "relaxed Sunday-morning cooking series … warm and inviting" | `editorial-warm` + `dense-telop` | `editorial-warm` + genre-compatible top-up |
+| `Logo sting with asset` - "short channel ident that resolves onto the supplied logo" | `brand-ident` + `data-terminal` | `brand-ident` + genre-compatible top-up |
+
+Predicted from §8.3f's companion histogram, not yet observed on this exact pass. Run
+`reference-select-simulate.mjs` on the bank first and **record the actual picks here before
+spending**; if they diverge from the table, the divergence is itself a finding about §8.3f and
+goes in the write-up rather than being silently corrected.
+
+**What REFUTES §8.3f.** If those two `contrast` videos are not visibly worse than their `padded`
+counterparts - concretely, if a reviewer shown the four hold-phase frames without arm labels
+cannot pick out the contrast pair as the mis-guided ones - then Finding 2's substantive half is
+not supported. The concentration stays true; the inference from concentration to bad guidance
+does not. In that case **§8.3f is corrected in place**, by an amendment naming exactly what was
+over-claimed, in the same shape as the amendment §8.3d carries. It does not get quietly dropped,
+and it does not get left standing while the paid pass is reported around it.
+
+**What CONFIRMS it.** Named in advance so neither outcome can be argued into afterwards, judged
+on hold-phase frames:
+
+- `Cooking title` - **telop density or screen-native furniture**: stacked strap/banner shapes,
+  multiple simultaneous information layers, ticker-like edge furniture, broadcast chrome around
+  what the brief asks to be a warm domestic title card. A warm palette does not acquit the
+  contrast arm; dense furniture on a single-line warm title is what convicts it.
+- `Logo sting with asset` - **mono-technical data styling**: monospace or technical type,
+  readout/terminal treatments, numeric or grid furniture framing the ident. A restrained dark
+  ident is not a conviction; a trading-terminal one is.
+
+**Unchanged from §8.3d, and this section does not relax it.** The primary metric is still
+distinctiveness across briefs (§5 axis 3), judged on run 1 only. `isClean` is still a guardrail
+that must not regress at all. §8.3g adds a falsification test for §8.3f; it does not lower the
+bar §8.3d set, and refuting §8.3f would not by itself reinstate contrast selection - the
+concentration finding and the proxy's invalidity for the primary metric both stand on their own.
+
+**The confound that makes a null weak - state it before the result, not after.** Reference cards
+reach exactly ONE prompt: the Motion Director system prompt (`claudeVideoProvider.ts:126,137`).
+The coder never sees card prose. It receives the plan's eight fields (`planText`,
+`claudeVideoProvider.ts:398-410`), the settings, the asset list, any uploaded images, and the
+verbatim brief - and the repair rounds re-send that same card-free system prompt. Only the
+`card` field is ever sent to a model at all; `axes`, `genres` and `provenance` are selection
+metadata. So the real chain is **cards -> Director -> eight plan strings -> code -> frames**, and
+the mechanism under test is separated from the thing being scored by a lossy compression step
+that the Director, not the selector, controls.
+
+The consequence cuts against the refutation, so it belongs here rather than in the write-up: **a
+null is weaker evidence than it looks.** "No visible difference" is equally consistent with "the
+companion card does not matter" and with "the Director noticed the mismatch and normalised it
+away" - and the second is genuinely likely, because the Director is prompted to make the plan
+concrete and buildable, and *warm cooking brief + telop card* is precisely the conflict a
+competent director resolves in favour of the brief. A null therefore refutes §8.3f only in the
+narrow sense that matters commercially - the guidance is not visibly wrong in the OUTPUT - and
+not in the broader sense that the guidance was sound.
+
+That distinction is recoverable for free and should be settled before the frames are judged: the
+bench writes `<id>.plan.json` beside every generation, so for the two deciding briefs, read
+whether the Director relayed the companion's design DNA or suppressed it. A null with the
+companion visibly relayed into the plan is a real refutation of §8.3f. A null with the companion
+absent from the plan refutes nothing about the cards - it measures the Director's filtering, and
+should be reported as that.
+
+**Operational guard against a manufactured null.** `SELECTION_MODE` is an `export const`
+(`referenceSelect.ts:63`) with no environment override, and `video-bench.mjs` has no arm flag -
+the arms flip only by editing that line between runs. A stale dev-server module would then run
+the same arm twice and produce a null by construction, which would look exactly like the
+refutation this section is set up to accept. So before each paid arm, run the free simulator and
+confirm its arm A (`selectReferenceCards`, the only path that reads `SELECTION_MODE`) matches the
+intended mode's column. An unverified arm invalidates the pass.
+
 ### 8.4 Explicitly out of scope for the PoC
 
 Generating a library of graphics. Touching the SPX harness. Adding a critique model call.
