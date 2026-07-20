@@ -103,16 +103,35 @@ export const TOKEN_COMMENTS: Record<keyof ThemeTokens, string> = {
 const MONO_LABEL = '"JetBrains Mono", Consolas, "Courier New", monospace';
 
 /**
- * The four families, from DESIGN_LANGUAGE §8 — cross-checked against what the catalog's CSS
- * actually ships, because the doc and the code had drifted apart in three places:
+ * The four families. Values are DESIGN_LANGUAGE §8's, cross-checked against a census of what
+ * the 52 catalog stylesheets actually ship — per family AND per element role, because a
+ * tracking or a glow means nothing until you know whether it is on the heading, the label or
+ * the accent bar. Where the doc and the code disagreed, the note says which won and why.
  *
+ * Confidence, from that census — it predicts where the override maps will fill up:
+ *
+ * - **Strong** (a clear majority ships one value): panelBlur (noacg 6/6 `blur(8px)`, glass
+ *   9/10 `blur(18px)`), fontLabel (noacg 8/8 JetBrains Mono), labelColor (minimal 7/11
+ *   `--text-dim`, noacg 3/3 `--accent`), displayTracking (minimal 6/19, glass 5/10, sport
+ *   5/15 all clear modes), panelRadius for minimal/sport/noacg.
+ * - **Weak — expect overrides**: panelShadow is per-design far more than per-family (sport
+ *   ships five shadows across five variants, no two alike); glass panelRadius genuinely
+ *   ranges 12–18 px, as §8 itself says.
+ *
+ * Where doc and code diverged:
  * - §8 gives the house chip radius as 6 px. NOTHING in the catalog ships 6 px (bug02's mark
  *   bars are 3 px, lt14 cites the token while shipping neither). Not encoded — a fiction in
  *   the doc should not become a fiction in the code.
- * - §8 gives sport a "hard offset (sticker-slab)" shadow. Neither sb01 nor qz01 has any
- *   box-shadow. Encoded as the shipped value (none); the doc is what needs correcting.
+ * - §8 gives sport a "hard offset (sticker-slab)" shadow. The flagship slabs (sb01, qz01)
+ *   have no box-shadow at all. Encoded as shipped; the doc is what needs correcting.
  * - The minimal keyline is 0.14 in §8, 0.15 in §3, and 0.10/0.18/0.12 in ig06. §8 wins as the
  *   named authority; ig06 carries the difference as a variant override until it is reviewed.
+ *
+ * And where the census corrected a value read off a single example:
+ * - noacg labelTracking is 0.2em (the mode, lt13+lt14), not lt11's 0.22em.
+ * - sport labelTracking is 0.08em. The 0.02em first taken from §8 is a DISPLAY tracking and
+ *   appears zero times on a sport label.
+ * - glass displayTracking is -0.01em (5 of 10 uses), not 0.
  */
 export const FAMILY_TOKENS: Record<StyleTag, ThemeTokens> = {
   minimal: {
@@ -138,7 +157,7 @@ export const FAMILY_TOKENS: Record<StyleTag, ThemeTokens> = {
     accentGlow: NO_SHADOW,
     accentInk: 'var(--panel-bg)',
     fontLabel: 'var(--font-heading)',
-    labelTracking: '0.02em',
+    labelTracking: '0.08em',
     labelColor: 'var(--text-color)',
     displayWeight: '700',
     displayTracking: '0.02em',
@@ -155,7 +174,7 @@ export const FAMILY_TOKENS: Record<StyleTag, ThemeTokens> = {
     labelTracking: '0.14em',
     labelColor: 'var(--accent)',
     displayWeight: '700',
-    displayTracking: '0',
+    displayTracking: '-0.01em',
   },
   noacg: {
     panelBlur: 'blur(8px)',
@@ -166,7 +185,7 @@ export const FAMILY_TOKENS: Record<StyleTag, ThemeTokens> = {
     accentGlow: '0 0 calc(22px * var(--scale)) color-mix(in srgb, var(--accent) 60%, transparent)',
     accentInk: 'var(--panel-bg)',
     fontLabel: MONO_LABEL,
-    labelTracking: '0.22em',
+    labelTracking: '0.2em',
     labelColor: 'var(--accent)',
     displayWeight: '700',
     displayTracking: '-0.01em',
