@@ -772,6 +772,20 @@ remotion, so one engine unless stated). Flip `USE_CONTRAST_SELECTION` between ar
 nothing else. Run `reference-select-simulate.mjs` on the bank first and paste its output into the
 result write-up, so the references each arm was handed are on the record beside the videos.
 
+> **AMENDED 2026-07-20, before any spend - see §8.3f.** Two of the sentences above are now known
+> to be wrong, and they are corrected rather than quietly dropped because the point of writing a
+> verdict down early is that it can be caught being wrong.
+>
+> 1. **"Flip `USE_CONTRAST_SELECTION` and change nothing else" is not a controlled comparison.**
+>    The keyword path is `filter(...).slice(0, 2)`, so a brief matching one card is handed ONE
+>    card, while contrast anchors one and always widens to two. The arms differed in HOW MUCH
+>    reference prose was injected, not only in which cards. The control arm is therefore the
+>    **dosage-matched padded-legacy** arm added to `reference-select-simulate.mjs`, never raw
+>    legacy.
+> 2. **The free gate's headline number does not stand in for the primary metric, and on this
+>    mechanism the two move in opposite directions.** See §8.3f. The gate now reports spread and
+>    collisions beside the mean, and vetoes on them independently.
+
 **Primary metric - distinctiveness across briefs (§5 axis 3).** Judged on hold-phase frames,
 comparing briefs against each other. Contrast wins only if a reviewer can identify MORE briefs as
 visually distinct designs than in the legacy arm. A tie is not a win: the feature costs
@@ -793,6 +807,70 @@ effect rather than the selection mechanism's - check the histogram before credit
 **What ends it.** If the primary is a tie or a loss, contrast selection reverts. The 14 cards and
 the seven motion additions in §2.3 stay either way: coverage and motion principles earned their
 place independently, and neither depends on how the companion is chosen.
+
+### 8.3f The proxy rewards the mechanism's worst behaviour
+
+Written before the paid pass, which has still not been run. Two findings, both free, both
+measured on the 7-brief bench bank at 3 runs with the bench's real order and warming ledger.
+
+**Finding 1 - the arms differed in dosage, not only in choice.** `detectReferenceCards` is
+`filter(...).slice(0, 2)`; `selectReferenceCards` anchors one and always widens to two. So on the
+3 of 7 briefs matching a single card - 9 of 21 generations - legacy injected one reference and
+contrast injected two. A gallery win under that design could not be attributed to the selection
+mechanism, because "two cards of design DNA beat one" explains it just as well and costs a
+one-line change to the keyword path. `reference-select-simulate.mjs` now runs a third arm,
+**padded-legacy**: the keyword choice rule, in declaration order, topped up to two from the same
+genre-compatible field contrast draws from. Dosage held constant, only the companion varying.
+
+Measured, the confound turns out to be modest - the run-1 gain falls from **+0.054** against raw
+legacy to **+0.048** against the dosage-matched control, so 11% of the headline was dosage. The
+comparison was still uncontrolled, and the fix is cheap, so the control stays.
+
+**Finding 2 - and this is the one that matters.** The mechanism concentrates. `data-terminal`
+takes 8 of 21 companion slots and `dense-telop` 5: **62% of every companion comes from two cards
+that no brief in the bank ever matches.** They win because they sit at the axis extremes, so they
+are the furthest card from *any* anchor, and the recency ledger only rotates which of the two it
+is. The spread of reference sets collapses with it - run-1 sd **0.052** against the control's
+0.135 - and only a third of companions share even two genres with the card they accompany.
+
+It is not merely a statistical artifact. It hands out guidance that is wrong on its face: a warm
+Sunday-morning cooking title is given the dense variety-telop card, and a channel ident is given
+the financial trading-terminal card.
+
+So the obvious next move was to fix the companion rule and re-measure. `scripts/reference-companion-sweep.mjs`
+sweeps the candidates against the dosage-matched control, holding the anchor rule fixed:
+
+| companion rule | run-1 mean | run-1 sd | top-2 share | distinct companions | genre fit |
+|---|---|---|---|---|---|
+| argmax (shipped) | 0.581 | 0.052 | 62% | 7 | 0.33 |
+| band 0.55 | **0.503** | 0.127 | **38%** | 8 | 0.43 |
+| band 0.65 | 0.507 | 0.104 | 43% | 9 | 0.43 |
+| band 0.75 | 0.556 | 0.071 | 43% | 10 | 0.33 |
+| argmax, 2+ shared genre | 0.573 | 0.083 | 57% | 7 | 1.00 |
+| argmax, recency x3 | 0.552 | 0.061 | 38% | 10 | 0.33 |
+| padded-legacy (control) | 0.533 | 0.135 | 71% | 4 | 0.86 |
+
+**Every rule that de-concentrates moves the proxy toward or below the control.** Targeting a
+contrast BAND instead of the maximum gives visibly better companions - the esports opener gets
+`sport`, the ident gets `noacg-house` - and scores 0.503, *below* the keyword control it is
+supposed to beat.
+
+That is not a tuning problem. `setDistance` is the mean cross-distance between two picks, so it is
+maximised by handing every brief the most mutually-alien card available, which IS the
+concentration. **The proxy's reward and the mechanism's worst behaviour are the same quantity.**
+The +0.043 that this document has been treating as the expected effect size is therefore largely a
+measurement of how reliably the selector reaches for an extreme, not of how distinct the resulting
+designs would be - and the pre-registered primary metric, a COUNT of visually distinct designs,
+is exactly what concentration and a collapsed spread would push DOWN.
+
+**What this does and does not settle.** It does not show contrast selection produces worse videos;
+nothing here has generated a frame. What it settles is narrower and enough to act on: the free
+gate cannot green-light the paid pass, because the number it would green-light on is measuring the
+artifact. Any paid A/B run from here needs a primary metric that is not a monotone function of
+axis distance, or it will confirm the mechanism by construction.
+
+The 14 cards and the seven motion additions in §2.3 are untouched by all of this, exactly as
+§8.3d anticipated: coverage and motion principles never depended on how the companion is chosen.
 
 ### 8.4 Explicitly out of scope for the PoC
 
