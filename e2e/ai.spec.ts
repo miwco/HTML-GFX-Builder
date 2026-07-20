@@ -110,6 +110,15 @@ function toolResponse(route: Route, template: unknown) {
   return toolUse('emit_template', template);
 }
 
+// Every generation here runs the REAL quality gate: static validation plus a live runtime
+// bench per result - and the bench spends genuine wall-clock (font readiness, settle waits,
+// the doubled-text stress pass). One result costs ~2 s; the alternatives path benches three
+// of them serially and lands at 5.5-7.5 s on an idle box, more under four parallel workers.
+// The suite's default 7 s expect budget therefore has no margin at all, which showed up as
+// whichever generation test lost the CPU race failing with "element(s) not found". These
+// waits get an explicit, honest budget instead - needing longer than this IS a real bug.
+const GENERATED = { timeout: 25_000 };
+
 async function openAiStep(page: Page) {
   await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
@@ -117,6 +126,10 @@ async function openAiStep(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  // A generation plus its benches, then a project create with a preview rebuild, sits at
+  // 10-15 s per test and was observed over 30 s under worker contention - the suite-wide
+  // 30 s cap is the wrong ceiling for this file.
+  test.setTimeout(60_000);
   // A fake key so aiConfigured() is true (requests never leave: the route below answers).
   // The harness is ON by default; specs that want it set it explicitly anyway so intent is
   // legible and a default flip can't silently change what a test exercises.
@@ -138,7 +151,7 @@ test('harness off (the toggle): one raw model call, no design stage', async ({ p
   await expect(page.getByLabel(/Use NoaCG harness/)).not.toBeChecked();
   await page.locator('.wz-step textarea').fill('A simple test slate');
   await page.getByRole('button', { name: '✦ Generate' }).click();
-  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation', GENERATED);
   expect(tools).toEqual(['emit_template']); // one call, straight to the coder tool
   await page.getByRole('button', { name: 'Create project' }).click();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Test Slate');
@@ -158,7 +171,7 @@ test('describe-it: prompt → validated template → create project', async ({ p
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A simple test slate');
   await page.getByRole('button', { name: '✦ Generate' }).click();
-  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation', GENERATED);
   // The result renders live in the wizard preview.
   await expect(page.locator('.wz-side iframe')).toBeVisible();
   await awaitPreviewRebuild(page, async () => {
@@ -185,7 +198,7 @@ test('harness on: three grounded alternatives, zero coder calls, the pick is rem
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A clean news lower third');
   await page.getByRole('button', { name: '✦ Generate' }).click();
-  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation', GENERATED);
   expect(templateCalls).toBe(0); // grounded: the platform assembled all three, the model wrote no code
   await expect(page.locator('[data-alt]')).toHaveCount(3);
 
@@ -220,7 +233,7 @@ test('describe-it: a flourish runs the polish pass and lands as a marked overrid
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A lower third with a hairline edge');
   await page.getByRole('button', { name: '✦ Generate' }).click();
-  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation', GENERATED);
   await page.getByRole('button', { name: 'Create project' }).click();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Grounded Strap');
   const css = await page.evaluate(async () => {
@@ -249,7 +262,7 @@ test('describe-it: a contract-breaking polish patch reverts to the assembled tem
   await page.locator('.wz-step textarea').fill('A purple lower third');
   await page.getByRole('button', { name: '✦ Generate' }).click();
   // The bad patch is rejected and the assembled template stands — still fully valid.
-  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation', GENERATED);
   await page.getByRole('button', { name: 'Create project' }).click();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Grounded Strap');
   const css = await page.evaluate(async () => {
@@ -270,7 +283,7 @@ test('describe-it: an invalid first answer triggers the automatic repair round',
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A slate that needs a repair round');
   await page.getByRole('button', { name: '✦ Generate' }).click();
-  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation');
+  await expect(page.locator('.wz-step .status-ok')).toContainText('Passes SPX validation', GENERATED);
   expect(templateCalls).toBe(2); // the coder emit + one validated repair
 });
 
@@ -286,10 +299,10 @@ test('describe-it: refine sends the current code back through modify', async ({ 
   await openAiStep(page);
   await page.locator('.wz-step textarea').fill('A simple test slate');
   await page.getByRole('button', { name: '✦ Generate' }).click();
-  await expect(page.locator('.wz-step .status-ok')).toBeVisible();
+  await expect(page.locator('.wz-step .status-ok')).toBeVisible(GENERATED);
   await page.getByPlaceholder(/Refine it/).fill('make the name bigger');
   await page.getByRole('button', { name: 'Refine', exact: true }).click();
-  await expect(page.locator('.change-preview strong')).toHaveText('Test Slate v2');
+  await expect(page.locator('.change-preview strong')).toHaveText('Test Slate v2', GENERATED);
   // The refine request carried both the instruction and the current code.
   expect(prompts[1]).toContain('make the name bigger');
   expect(prompts[1]).toContain('Test Slate');

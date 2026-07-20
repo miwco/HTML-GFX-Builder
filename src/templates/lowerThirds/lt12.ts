@@ -61,12 +61,12 @@ ${chip}${mask(0)}
   display: inline-block;           /* a chip, not a full-width bar */
   padding: calc(9px * var(--scale)) calc(26px * var(--scale));  /* compact plate around the label */
   background: var(--accent);       /* the one solid accent surface */
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(18px * var(--scale) * var(--type-scale));  /* small — urgency comes from contrast, not size */
   font-weight: 700;                /* bold mono caps read as a stamp */
-  letter-spacing: 0.24em;          /* wide tracking — the label breathes */
+  letter-spacing: var(--label-tracking);  /* the label's authored tracking */
   text-transform: uppercase;       /* BREAKING, whatever the operator types */
-  color: rgba(10, 12, 16, 0.95);   /* dark ink on the accent plate (house void) */
+  color: var(--accent-ink);        /* dark ink on the accent plate */
   box-shadow: 0 0 calc(26px * var(--scale)) color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
@@ -77,13 +77,17 @@ ${chip}${mask(0)}
   background: var(--panel-bg);     /* void rgba(10,12,16,.86) by default */
   backdrop-filter: blur(8px);      /* the house blur */
   -webkit-backdrop-filter: blur(8px);  /* Safari spelling of the same effect */
-  border-left: calc(8px * var(--scale)) solid var(--accent);  /* the house bar, fused to the panel */
+  border-left: var(--accent-weight) solid var(--accent);  /* the family's accent edge weight */
   font-size: calc(46px * var(--scale) * var(--type-scale));  /* headline size — one strong statement */
-  font-weight: 700;                /* full display weight */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.12;               /* wrapped headlines stay compact */
   color: var(--text-color);        /* primary text color */
 }`,
       hasAccent: false, // the accent moments are the chip and the panel border, not a bar element
+      tokens: {
+        labelTracking: '0.24em',
+        accentInk: 'rgba(10, 12, 16, 0.95)',
+      },
     };
   },
 );

@@ -51,7 +51,7 @@ ${lineMasks(o)}
   left: 0;                          /* the panel's leading edge */
   top: 0;                           /* full height… */
   bottom: 0;                        /* …top to bottom */
-  width: calc(8px * var(--scale));  /* the house bar weight */
+  width: var(--accent-weight);      /* the family's bar weight */
   background: var(--accent);        /* the one accent surface */
   will-change: transform;           /* hint: presets grow this bar in */
 }
@@ -61,32 +61,36 @@ ${lineMasks(o)}
   margin-left: calc(8px * var(--scale));  /* starts where the bar ends */
   padding: calc(14px * var(--scale)) calc(26px * var(--scale)) calc(14px * var(--scale)) calc(20px * var(--scale));
   background: var(--panel-bg);      /* void rgba(10,12,16,.86) */
-  backdrop-filter: blur(8px);       /* the house blur */
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.45);  /* a shallower lift than the strap's */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  box-shadow: var(--panel-shadow);  /* the panel's authored lift */
 }
 
 /* The handle — the line the viewer is meant to read and remember. */
 .lower-third-name {
   font-size: calc(30px * var(--scale) * var(--type-scale));  /* well under the strap's 54px */
-  font-weight: 700;                 /* display weight keeps it legible at this size */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.1;                 /* tight */
-  letter-spacing: -0.005em;         /* a hair tighter, as the house display type does */
+  letter-spacing: var(--display-tracking);  /* the handle's authored tracking */
   color: var(--text-color);         /* primary text */
 }
 
 /* The platform — the house label voice, one step smaller than the strap's title. */
 .lower-third-title,
 .lower-third-extra {
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);   /* the family's label face */
   font-size: calc(15px * var(--scale) * var(--type-scale));  /* clearly subordinate */
   font-weight: 500;                 /* medium keeps tracked caps crisp */
   line-height: 1.3;                 /* air if it wraps */
-  letter-spacing: 0.2em;            /* the house's wide label tracking */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
   text-transform: uppercase;        /* a technical label, not a sentence */
-  color: var(--accent);             /* the label carries the accent */
+  color: var(--label-color);        /* the family's label color */
   margin-top: calc(7px * var(--scale));  /* handle + platform read as one unit */
 }`,
     hasAccent: true,
+    tokens: {
+      panelShadow: '0 12px 34px rgba(0, 0, 0, 0.45)',
+      displayTracking: '-0.005em',
+    },
   }),
 );

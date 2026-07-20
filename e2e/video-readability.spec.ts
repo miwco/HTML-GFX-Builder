@@ -110,23 +110,31 @@ test('the HyperFrames runtime runs the same checks as the Remotion host', async 
       const { useVideoProjectStore } = await import('/src/store/videoProjectStore.ts');
       useVideoProjectStore.getState().setSource(doc);
     }, documentWith(boxWidth, shiftX));
-    // The preview reloads on a debounce, and BOTH documents show the same headline - so
-    // waiting on the text would read the PREVIOUS composition. Wait for this document's
-    // own card width to reach the composed srcdoc instead.
+    // The preview reloads on a debounce and every one of these documents shows the same
+    // headline, so wait on THIS document's own geometry before reading any finding. Both
+    // numbers, because two calls share a box width and matching on width alone would read
+    // the PREVIOUS composition and measure it instead of this one.
+    //
+    // Measured INSIDE the frame rather than off the srcdoc string: that proves the document
+    // reached the player and laid out, not merely that the attribute was set. It also has to
+    // survive a zero-width box, which is what rules out waiting on the headline's visibility
+    // - Playwright calls a 0-wide element invisible, and a 0-wide box is exactly what the
+    // collapsed case below mounts.
     await expect
       .poll(
         () =>
           page
-            .locator('.video-player-frame')
-            .evaluate((el: HTMLIFrameElement) => el.getAttribute('srcdoc') ?? ''),
+            .frameLocator('.video-player-frame')
+            .locator('#hero-mask')
+            .evaluate((el: HTMLElement) => {
+              const line = el.firstElementChild as HTMLElement | null;
+              return el.offsetWidth + '/' + (line ? getComputedStyle(line).marginLeft : '?');
+            })
+            // A frame swapped out mid-evaluate throws; that is just "not this document yet".
+            .catch(() => null),
         { timeout: 10_000 },
       )
-      // BOTH the width and the shift, or a second call reusing a width already on screen
-      // would match the PREVIOUS document and measure it instead of this one.
-      .toContain(`width: ${boxWidth}px; overflow: hidden; }\n  .headline { color: #fff; font: 800 96px Arial; white-space: nowrap; margin-left: ${shiftX}px;`);
-    await expect(page.frameLocator('.video-player-frame').getByText('BROADCAST KITCHEN')).toBeVisible({
-      timeout: 10_000,
-    });
+      .toBe(`${boxWidth}/${shiftX}px`);
     return page
       .frameLocator('.video-player-frame')
       .locator('body')
@@ -164,6 +172,21 @@ test('the HyperFrames runtime runs the same checks as the Remotion host', async 
   expect(shifted![0].message).toMatch(/FITS that \d+px box/);
   expect(shifted![0].message).toContain('move it into view rather than shrinking it');
   expect(shifted![0].message).not.toContain('Give the text room');
+
+  // A box COLLAPSED to zero width is the third defect wearing that same percentage, and it
+  // takes a third fix - the box never opened, so neither resizing nor moving the text can
+  // help. It is reachable at a hold frame whenever the narrowest clipper measures 0: a
+  // reveal mask that never opened, or a flex item collapsed to nothing. Folding it into
+  // either message above printed a contradiction - "at 1181px it FITS that 0px box" - and
+  // then prescribed the opposite repair, the exact failure those two messages exist to avoid.
+  const collapsed = await clipFindings(0);
+  expect(collapsed).not.toBeNull();
+  expect(collapsed!.length).toBeGreaterThan(0);
+  expect(collapsed![0].message).toContain('That box measures 0px wide');
+  expect(collapsed![0].message).toContain('Fix the BOX, not the text');
+  // Neither other prescription may appear here - both are the wrong repair.
+  expect(collapsed![0].message).not.toContain('FITS');
+  expect(collapsed![0].message).not.toContain('Give the text room');
 });
 
 // Both cases hang on the LIVE probe, so the emits are delayed: an instant answer would beat

@@ -71,8 +71,8 @@ export function houseWire(o: ResolvedOptions): TickerDesign {
   width: calc(1680px * var(--scale));  /* near full-width, inside the safe areas */
   height: calc(96px * var(--scale));   /* the strip's fixed height */
   background: var(--panel-bg);     /* void rgba(10,12,16,.86) by default */
-  backdrop-filter: blur(8px);      /* the house blur */
-  -webkit-backdrop-filter: blur(8px);  /* Safari spelling of the same effect */
+  backdrop-filter: var(--panel-blur);      /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
   border-top: calc(3px * var(--scale)) solid color-mix(in srgb, var(--accent) 50%, transparent);
   will-change: opacity;            /* hint the browser: the preset fades this */
 }
@@ -85,12 +85,12 @@ export function houseWire(o: ResolvedOptions): TickerDesign {
   padding: 0 calc(36px * var(--scale));  /* generous horizontal breathing room */
   background: var(--accent);       /* the one solid accent surface */
   box-shadow: 0 0 calc(26px * var(--scale)) color-mix(in srgb, var(--accent) 40%, transparent);
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(22px * var(--scale) * var(--type-scale)); /* label scale */
   font-weight: 700;                /* bold mono caps read as a stamp */
-  letter-spacing: 0.18em;          /* tracked caps breathe */
+  letter-spacing: var(--label-tracking);  /* tracked caps breathe */
   text-transform: uppercase;       /* reads as a tag, whatever the operator types */
-  color: rgba(10, 12, 16, 0.95);   /* dark ink on the accent block (house void) */
+  color: var(--accent-ink);        /* dark ink on the accent block */
 }
 
 /* The scrolling window — items travel through it and clip at its edges. */
@@ -130,7 +130,7 @@ export function houseWire(o: ResolvedOptions): TickerDesign {
   align-items: center;             /* vertical centering */
   flex-shrink: 0;                  /* never squeezed by the scrolling viewport */
   padding: 0 calc(36px * var(--scale));  /* mirrors the label block's breathing room */
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face — the clock shares the label voice */
   font-size: calc(26px * var(--scale) * var(--type-scale)); /* quiet — present, not competing with stories */
   font-variant-numeric: tabular-nums;   /* every digit same width — no tick wobble */
   color: var(--text-color);        /* primary text color */
@@ -161,5 +161,9 @@ if (document.readyState === 'loading') {
     // Marquee design: the items render twice so sliding one set length loops seamlessly.
     // (A rotating strip shows one item at a time; assembleTicker turns this off for it.)
     doubleItems: true,
+    // The strip tracks its label tighter than the family's 0.2em, and its dark-on-accent ink
+    // is a notch more opaque than the panel colour the family points at. Both kept as
+    // authored — this pass moves no pixels.
+    tokens: { labelTracking: '0.18em', accentInk: 'rgba(10, 12, 16, 0.95)' },
   };
 }

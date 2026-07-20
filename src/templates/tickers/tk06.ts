@@ -64,8 +64,8 @@ export const tk06: TemplateVariant = defineTickerVariant(
   width: calc(1680px * var(--scale));  /* near full-width, inside the safe areas */
   height: calc(88px * var(--scale));   /* slightly slimmer than the news wire */
   background: var(--panel-bg);     /* void rgba(10,12,16,.86) by default */
-  backdrop-filter: blur(8px);      /* the house blur */
-  -webkit-backdrop-filter: blur(8px);  /* Safari spelling of the same effect */
+  backdrop-filter: var(--panel-blur);      /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
   border-top: calc(3px * var(--scale)) solid color-mix(in srgb, var(--accent) 50%, transparent);
   will-change: opacity;            /* hint the browser: the preset fades this */
 }
@@ -78,12 +78,12 @@ export const tk06: TemplateVariant = defineTickerVariant(
   padding: 0 calc(32px * var(--scale));  /* generous horizontal breathing room */
   background: var(--accent);       /* the one solid accent surface */
   box-shadow: 0 0 calc(24px * var(--scale)) color-mix(in srgb, var(--accent) 40%, transparent);
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(20px * var(--scale) * var(--type-scale)); /* label scale */
   font-weight: 700;                /* bold mono caps read as a stamp */
-  letter-spacing: 0.16em;          /* tracked caps breathe */
+  letter-spacing: var(--label-tracking);  /* tracked caps breathe */
   text-transform: uppercase;       /* reads as a tag, whatever the operator types */
-  color: rgba(10, 12, 16, 0.95);   /* dark ink on the accent block (house void) */
+  color: var(--accent-ink);        /* dark ink on the accent block */
 }
 
 /* The scrolling window — items travel through it and clip at its edges. */
@@ -105,7 +105,7 @@ export const tk06: TemplateVariant = defineTickerVariant(
 
 /* One market item — mono, tabular: numbers deserve even digits. */
 .ticker-item {
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(26px * var(--scale) * var(--type-scale)); /* the strip's main voice */
   font-weight: 400;                /* regular mono — the deltas carry the color */
   font-variant-numeric: tabular-nums;   /* even digits across every item */
@@ -124,7 +124,7 @@ export const tk06: TemplateVariant = defineTickerVariant(
   align-items: center;             /* vertical centering */
   flex-shrink: 0;                  /* never squeezed by the scrolling viewport */
   padding: 0 calc(32px * var(--scale));  /* mirrors the label block's breathing room */
-  font-family: "JetBrains Mono", Consolas, "Courier New", monospace;  /* the house label face */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(24px * var(--scale) * var(--type-scale)); /* the quietest voice on the strip */
   font-variant-numeric: tabular-nums;   /* every digit same width — no tick wobble */
   color: var(--text-dim);          /* dimmed — the markets are the point, not the time */
@@ -160,5 +160,8 @@ if (document.readyState === 'loading') {
 }`,
     // Marquee design: the items render twice so sliding one set length loops seamlessly.
     doubleItems: true,
+    // Tracked a touch tighter than the family's 0.2em, and the dark-on-accent ink is more
+    // opaque than the panel colour the family points at. Both kept as authored.
+    tokens: { labelTracking: '0.16em', accentInk: 'rgba(10, 12, 16, 0.95)' },
   }),
 );

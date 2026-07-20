@@ -302,6 +302,22 @@ test('reload restores the project; save/reopen and the SPX switch work', async (
   await page.getByTestId('video-save').click();
   await page.getByRole('button', { name: '+ New project' }).click();
   await page.getByRole('button', { name: 'Blank project' }).click();
+  // Blank creation is ASYNC and the click does not wait for it: startBlank fires applyGenerated
+  // without awaiting, and that formats the new template through Prettier - five lazy dynamic
+  // imports (standalone + the html/postcss/babel/estree plugins) - BEFORE it flips the doc-kind
+  // switch that unmounts the video shell. On a busy dev server those cold module graphs take
+  // longer than the default expect timeout, so asserting that the video shell has VANISHED is
+  // waiting on a clock rather than on a signal, and it loses whenever the box is loaded.
+  // The SPX preview being stamped is the signal: PreviewFrame only sets data-doc-rev once its
+  // rebuild has LOADED, and the frame itself cannot exist until the whole chain above has run.
+  // `:not(.video-player-frame)` is load-bearing - the video player iframe carries the same
+  // `preview-frame` class, so a bare `iframe.preview-frame` matches it too and would resolve
+  // against the shell we are waiting to leave.
+  await expect(page.locator('iframe.preview-frame:not(.video-player-frame)')).toHaveAttribute(
+    'data-doc-rev',
+    /\d/,
+    { timeout: 30_000 },
+  );
   await expect(page.getByTestId('video-shell')).toHaveCount(0);
   await expect(page.locator('.tpl-name')).toHaveText('Blank');
 
