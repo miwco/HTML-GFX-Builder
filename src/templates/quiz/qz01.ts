@@ -70,7 +70,7 @@ export const qz01: TemplateVariant = defineQuizVariant(
   inset: 0;                        /* ... edge to edge */
   z-index: -1;                     /* paints behind the question and the rows */
   background: var(--panel-bg);     /* near-black slab behind everything */
-  border-radius: 0;                /* hard corners - sport shape language */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
   transform: skewX(-8deg);         /* SKEW: the whole card leans forward, mid-sprint */
 }
 
@@ -83,7 +83,7 @@ export const qz01: TemplateVariant = defineQuizVariant(
   top: 0;                          /* full height, top ... */
   bottom: 0;                       /* ... to bottom */
   z-index: -1;                     /* behind the text, above ::before (later layer wins) */
-  width: calc(10px * var(--scale));  /* chunky 10px edge, not a hairline */
+  width: var(--accent-weight);     /* the family's accent edge weight */
   background: var(--accent);       /* the family's loud color moment */
   transform: skewX(-8deg);         /* leans with the slab so the two fuse into one shape */
 }
@@ -91,9 +91,9 @@ export const qz01: TemplateVariant = defineQuizVariant(
 /* The question: condensed heavy caps - the loudest thing on the card. */
 .quiz-mask > span {
   font-size: calc(40px * var(--scale) * var(--type-scale));  /* headline scale for a multi-row card */
-  font-weight: 800;                /* maximum punch */
+  font-weight: var(--display-weight);  /* the question's authored display weight */
   line-height: 1.15;               /* tight - big text needs little leading */
-  letter-spacing: 0.01em;          /* a touch of air between the caps */
+  letter-spacing: var(--display-tracking);  /* the question's authored display tracking */
   text-transform: uppercase;       /* quiz questions are shouted, not spoken */
   color: var(--text-color);        /* primary text on the dark slab */
 }
@@ -140,7 +140,7 @@ export const qz01: TemplateVariant = defineQuizVariant(
   margin-right: calc(18px * var(--scale));  /* air between the block and the answer text */
   font-size: calc(22px * var(--scale) * var(--type-scale));  /* the letter - loud but under the answers */
   font-weight: 800;                /* block letters hit hard */
-  color: var(--panel-bg);          /* dark ink on the bright accent block */
+  color: var(--accent-ink);        /* the family's ink on an accent-filled block */
 }
 
 /* The letter block's paint: solid accent, leaning with the rest of the family. */
@@ -173,7 +173,7 @@ export const qz01: TemplateVariant = defineQuizVariant(
 
 /* Correct: dark ink on the flooded chip (the panel hue doubles as text, like lt06's bar). */
 .quiz-correct .quiz-text {
-  color: var(--panel-bg);          /* highest contrast on the bright accent flood */
+  color: var(--accent-ink);        /* the family's ink on an accent-filled row */
   font-weight: 800;                /* the winner steps up a weight */
 }
 
@@ -217,5 +217,9 @@ export const qz01: TemplateVariant = defineQuizVariant(
   color: #e57a7d;                  /* the losing row's leading edge carries the colour */
 }`,
     hasAccent: false, // the accent edge is a painted ::after layer, not a .quiz-accent element
+    tokens: {
+      displayWeight: '800',
+      displayTracking: '0.01em',
+    },
   }),
 );

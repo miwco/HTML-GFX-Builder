@@ -52,7 +52,7 @@ ${lineMasks(o)}
 .lower-third-accent {
   order: 1;                        /* after the name (order 0), before the title (order 2) */
   width: calc(72px * var(--scale));  /* a short stroke — never stretched to the text width */
-  height: calc(3px * var(--scale));  /* hairline weight */
+  height: var(--accent-weight);     /* the family's accent-line weight */
   background: var(--accent);       /* the one accent color */
   will-change: transform;          /* hint the browser: line-reveal scales this */
 }
@@ -65,9 +65,9 @@ ${lineMasks(o)}
 /* Name line — the big moment. */
 .lower-third-name {
   font-size: calc(56px * var(--scale) * var(--type-scale));  /* headline size */
-  font-weight: 600;                /* strong without shouting */
+  font-weight: var(--display-weight);  /* the name's authored display weight */
   line-height: 1.08;               /* tight leading for big text */
-  letter-spacing: -0.01em;         /* big text tightens */
+  letter-spacing: var(--display-tracking);  /* big display type tightens */
   color: var(--text-color);        /* primary text color */
 }
 
@@ -76,10 +76,14 @@ ${lineMasks(o)}
   font-size: calc(23px * var(--scale) * var(--type-scale));  /* clearly subordinate to the name */
   font-weight: 400;                /* light against the semibold name */
   line-height: 1.3;                /* relaxed leading at small sizes */
-  letter-spacing: 0.04em;          /* uppercase letters need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the title's authored label tracking */
   text-transform: uppercase;       /* reads as a label, not a sentence */
-  color: var(--text-dim);          /* dimmed — never pure white for both lines */
+  color: var(--label-color);       /* the family's label color */
 }`,
     hasAccent: true,
+    tokens: {
+      labelTracking: '0.04em',
+      displayWeight: '600',
+    },
   }),
 );

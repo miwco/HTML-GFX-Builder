@@ -99,11 +99,7 @@ export const gt04: TemplateVariant = defineGameTimerVariant(
   background:
     radial-gradient(circle at 35% 28%, rgba(255,255,255,0.10), rgba(255,255,255,0) 58%),
     var(--panel-bg);               /* the deep stage panel behind the digits */
-  box-shadow:
-    0 calc(14px * var(--scale)) 0 rgba(0,0,0,0.35),      /* hard slab offset (sport DNA) */
-    0 calc(28px * var(--scale)) calc(52px * var(--scale)) rgba(0,0,0,0.5),  /* one soft lift */
-    inset 0 calc(-14px * var(--scale)) calc(30px * var(--scale)) rgba(0,0,0,0.4),         /* shade below */
-    inset 0 calc(14px * var(--scale)) calc(26px * var(--scale)) rgba(255,255,255,0.07);   /* light above */
+  box-shadow: var(--panel-shadow);  /* the face's authored panel depth */
 }
 
 /* The rings: a faint full track underneath, and the glowing accent ring the runtime
@@ -188,9 +184,9 @@ export const gt04: TemplateVariant = defineGameTimerVariant(
   font-size: calc(26px * var(--scale));  /* kicker scale inside the pill */
   font-weight: 800;                /* enough weight for wide-tracked caps to carry */
   line-height: 1.3;                /* relaxed rows if a long label wraps */
-  letter-spacing: 0.15em;          /* spaced-out caps read as a game-show tag */
+  letter-spacing: var(--label-tracking);  /* the label's authored tracking */
   text-transform: uppercase;       /* whatever the operator types reads as a label */
-  color: var(--text-color);        /* bright on the dark pill */
+  color: var(--label-color);       /* the family's label colour */
 }
 
 /* ── The last three seconds: the runtime adds .game-timer-ending on the root. ── */
@@ -220,6 +216,11 @@ export const gt04: TemplateVariant = defineGameTimerVariant(
 @keyframes game-timer-burst {
   to { transform: scale(2.4); opacity: 0; }  /* swell and vanish — the payoff */
 }`,
+    tokens: {
+      panelShadow:
+        '0 calc(14px * var(--scale)) 0 rgba(0,0,0,0.35), 0 calc(28px * var(--scale)) calc(52px * var(--scale)) rgba(0,0,0,0.5), inset 0 calc(-14px * var(--scale)) calc(30px * var(--scale)) rgba(0,0,0,0.4), inset 0 calc(14px * var(--scale)) calc(26px * var(--scale)) rgba(255,255,255,0.07)',
+      labelTracking: '0.15em',
+    },
     // No autoEase override: timer-run's stock back.out(1.4) IS this source's entrance.
     // Drain ring + crisp per-tick snap + the last-three-seconds state.
     runtimeExtraJs: badgeRingRuntimeJs('snap'),

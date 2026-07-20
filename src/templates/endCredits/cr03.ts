@@ -94,7 +94,7 @@ export const cr03: TemplateVariant = defineCreditsVariant(
   font-size: calc(30px * var(--scale) * var(--type-scale));  /* just under the 32px names - the slab chip, not size, marks it as a heading */
   font-weight: 700;                /* headings are shouted */
   line-height: 1.1;                /* tight - chip hugs the caps */
-  letter-spacing: 0.08em;          /* condensed caps breathe a little */
+  letter-spacing: var(--label-tracking);  /* the section label's authored tracking */
   text-transform: uppercase;       /* sport labels are always caps */
   color: var(--text-color);        /* primary text on the dark slab */
   margin-bottom: calc(8px * var(--scale));  /* extra air: chip separates from the rows below */
@@ -108,7 +108,7 @@ export const cr03: TemplateVariant = defineCreditsVariant(
   inset: 0;                        /* ... edge to edge */
   z-index: -1;                     /* paints behind the heading text */
   background: var(--panel-bg);     /* near-black slab - same family as lt05 */
-  border-left: calc(10px * var(--scale)) solid var(--accent);  /* volt edge fused to the slab - the family's 10px, same as lt05 */
+  border-left: var(--accent-weight) solid var(--accent);  /* the family's accent edge weight */
   border-radius: 0;                /* hard corners - sport shape language */
   transform: skewX(-8deg);         /* SKEW: the whole chip leans forward (family token) */
 }
@@ -123,17 +123,17 @@ export const cr03: TemplateVariant = defineCreditsVariant(
   font-size: calc(16px * var(--scale) * var(--type-scale));  /* half the 32px name - the loud/quiet pair reads decisive */
   font-weight: 500;                /* medium - legible without competing */
   line-height: 1.3;                /* normal leading for the small line */
-  letter-spacing: 0.08em;          /* top of the sport family's 0.02-0.1em label tracking */
+  letter-spacing: var(--label-tracking);  /* the role label's authored tracking */
   text-transform: uppercase;       /* labels are caps */
-  color: var(--text-dim);          /* dimmed - one accent dose per element */
+  color: var(--label-color);       /* the role label's authored colour */
 }
 
 /* The name: big condensed caps, the loud line of every row. */
 .credits-name {
   font-size: calc(32px * var(--scale) * var(--type-scale));  /* headline of the row - 2:1 over the 16px role */
-  font-weight: 700;                /* maximum punch */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.15;               /* tight - big text needs little leading */
-  letter-spacing: 0.02em;          /* a touch of air between the caps */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   text-transform: uppercase;       /* names are shouted, not spoken */
   color: var(--text-color);        /* primary text */
   overflow-wrap: break-word;       /* break very long unbroken words */
@@ -199,6 +199,9 @@ export const cr03: TemplateVariant = defineCreditsVariant(
   text-transform: uppercase;       /* matches the label language */
   color: var(--text-color);        /* primary text - it is the final word */
 }`,
+    tokens: {
+      labelColor: 'var(--text-dim)',
+    },
     // Row markup for the shared runtime: renderCreditRow() shapes every parsed entry,
     // renderEndBlock() shapes the final logo + year page. Plain ES5 strings.
     rowBuilderJs: `// Pagination guard: the stage is a fixed height, so a section with too many rows would

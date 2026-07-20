@@ -69,7 +69,7 @@ export const ig01: TemplateVariant = defineInfographicVariant(
 /* The rule — a short 3px accent hairline: a mark under the figure, never a full-width bar. */
 .infographic-rule {
   width: calc(84px * var(--scale));   /* short on purpose — echoes lt02's underline */
-  height: calc(3px * var(--scale));   /* hairline weight (family token: 2-4px) */
+  height: var(--accent-weight);       /* the family's accent-rule weight */
   margin: calc(20px * var(--scale)) 0 calc(14px * var(--scale)); /* air above and below */
   background: var(--accent);       /* the one small, sharp dose of accent color */
 }
@@ -79,10 +79,10 @@ export const ig01: TemplateVariant = defineInfographicVariant(
   font-size: calc(21px * var(--scale) * var(--type-scale)); /* kicker scale — a caption, not a headline */
   font-weight: 400;                /* light; the figure carries all the weight */
   line-height: 1.35;               /* relaxed leading in case it wraps */
-  letter-spacing: 0.16em;          /* wide tracking — small caps breathe */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
   margin-right: -0.16em;           /* cancel the trailing tracking so caps end flush right */
   text-transform: uppercase;       /* reads as a label, whatever the operator types */
-  color: var(--text-dim);          /* dimmed — never full white twice */
+  color: var(--label-color);       /* the family's label color */
   overflow-wrap: break-word;       /* break very long unbroken words */
   text-wrap: balance;              /* wrapped rows get even lengths */
 }`,

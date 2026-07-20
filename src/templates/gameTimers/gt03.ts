@@ -98,11 +98,7 @@ export const gt03: TemplateVariant = defineGameTimerVariant(
   background:
     radial-gradient(circle at 35% 28%, rgba(255,255,255,0.4), rgba(255,255,255,0) 62%),
     var(--accent);                 /* one accent, worn boldly — the sunny toy face */
-  box-shadow:
-    0 calc(14px * var(--scale)) 0 rgba(0,0,0,0.18),      /* hard sticker offset (sport DNA) */
-    0 calc(26px * var(--scale)) calc(50px * var(--scale)) rgba(0,0,0,0.35),  /* one soft lift */
-    inset 0 calc(-16px * var(--scale)) calc(34px * var(--scale)) rgba(0,0,0,0.16),        /* shade below */
-    inset 0 calc(16px * var(--scale)) calc(34px * var(--scale)) rgba(255,255,255,0.28);   /* light above */
+  box-shadow: var(--panel-shadow);  /* the face's authored panel depth */
 }
 
 /* The drain ring: rides the badge edge. The runtime moves stroke-dashoffset once a
@@ -173,9 +169,9 @@ export const gt03: TemplateVariant = defineGameTimerVariant(
 /* The heading: heavy sticker type — bright fill, accent outline, hard offset shadow. */
 .game-timer-mask > span {
   font-size: calc(58px * var(--scale));  /* big and friendly, still below the clock */
-  font-weight: 800;                /* the sticker weight */
+  font-weight: var(--display-weight);  /* the heading's authored display weight */
   line-height: 1.12;               /* tight rows when a long heading wraps */
-  letter-spacing: 0.02em;          /* heavy caps get a touch of air */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   text-transform: uppercase;       /* game-show energy, whatever the operator types */
   color: var(--text-color);        /* bright fill… */
   -webkit-text-stroke: calc(2.5px * var(--scale)) var(--accent);  /* …with the accent outline */
@@ -214,6 +210,11 @@ export const gt03: TemplateVariant = defineGameTimerVariant(
     // The kids-show default: the whole badge springs in on an elastic curve. An explicit
     // easing pick in the wizard still overrides this pair.
     autoEase: { easeIn: 'elastic.out(1, 0.55)', easeOut: 'power2.in' },
+    tokens: {
+      panelShadow:
+        '0 calc(14px * var(--scale)) 0 rgba(0,0,0,0.18), 0 calc(26px * var(--scale)) calc(50px * var(--scale)) rgba(0,0,0,0.35), inset 0 calc(-16px * var(--scale)) calc(34px * var(--scale)) rgba(0,0,0,0.16), inset 0 calc(16px * var(--scale)) calc(34px * var(--scale)) rgba(255,255,255,0.28)',
+      displayWeight: '800',
+    },
     // Drain ring + exuberant per-tick clock bounce + the last-three-seconds state.
     runtimeExtraJs: badgeRingRuntimeJs('bounce'),
   }),

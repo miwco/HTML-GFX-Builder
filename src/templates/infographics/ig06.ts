@@ -62,9 +62,8 @@ export const ig06: TemplateVariant = defineInfographicVariant(
   box-sizing: border-box;          /* padding stays inside the measured width */
   padding: calc(30px * var(--scale)) calc(38px * var(--scale)) calc(14px * var(--scale));  /* generous air; rows carry their own bottom padding */
   background: var(--panel-bg);     /* the palette's near-black panel — retints via the :root contract */
-  border-radius: calc(2px * var(--scale));  /* minimal family: 0-2px, barely-there corners */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10),  /* faint 1px keyline defines the edge */
-              0 14px 40px rgba(0, 0, 0, 0.30);            /* one subtle shadow lifts the board */
+  border-radius: var(--panel-radius);  /* the family's panel radius */
+  box-shadow: var(--panel-keyline), var(--panel-shadow);  /* the authored edge and family lift */
 }
 
 /* Heading — the accent tracking-wide caps kicker, the panel's loudest color moment. */
@@ -72,9 +71,9 @@ export const ig06: TemplateVariant = defineInfographicVariant(
   font-size: calc(20px * var(--scale) * var(--type-scale));  /* kicker scale — a label, not a headline */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.25;               /* compact label leading */
-  letter-spacing: 0.16em;          /* wide tracking — small caps breathe (minimal voice) */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
   text-transform: uppercase;       /* reads as a label, whatever the operator types */
-  color: var(--accent);            /* the accent kicker — same move as its lt02 sibling */
+  color: var(--label-color);       /* the heading's authored label color */
   text-wrap: balance;              /* a long heading wraps at spaces into even rows (never mid-word) */
 }
 
@@ -139,6 +138,10 @@ export const ig06: TemplateVariant = defineInfographicVariant(
   text-wrap: balance;              /* wrapped rows get even lengths */
 }`,
 
+      tokens: {
+        panelKeyline: 'inset 0 0 0 1px rgba(255, 255, 255, 0.10)',
+        labelColor: 'var(--accent)',
+      },
       fields: [
         { field: 'f0', ftype: 'textarea', title: o.lines[0]?.title || 'Schedule', value: rowsText },
         { field: 'f1', ftype: 'textfield', title: o.lines[1]?.title || 'Heading', value: headingText },

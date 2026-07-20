@@ -120,7 +120,7 @@ ${row(2)}
   padding: calc(32px * var(--scale)) calc(44px * var(--scale)) calc(36px * var(--scale));  /* generous inner air */
   background: var(--panel-bg);     /* the near-black panel — retints via the :root contract */
   border: 1px solid rgba(255, 255, 255, 0.10);  /* faint keyline lifts the board off video */
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);   /* one soft wide shadow — a serious board, lifted */
+  box-shadow: var(--panel-shadow);  /* the board's authored lift */
 }
 
 /* The header — title and flag share one baseline; the accent rule closes the block. */
@@ -131,16 +131,16 @@ ${row(2)}
   gap: calc(32px * var(--scale));  /* title and flag never touch */
   padding-bottom: calc(14px * var(--scale));  /* air between the caps and the rule */
   margin-bottom: calc(24px * var(--scale));   /* air before the first candidate row */
-  border-bottom: calc(2px * var(--scale)) solid var(--accent);  /* the accent rule (minimal token: 2-4px) */
+  border-bottom: var(--accent-weight) solid var(--accent);  /* the header's authored accent weight */
 }
 
 /* The title — heavy tracked caps, the board's masthead. */
 .infographic-title {
   min-width: 0;                    /* allow a long title to shrink and wrap inside flex */
   font-size: calc(34px * var(--scale));  /* masthead size — the names still lead the rows */
-  font-weight: 800;                /* maximum newsroom weight */
+  font-weight: var(--display-weight);  /* the masthead's authored display weight */
   line-height: 1.15;               /* tight — caps need little leading */
-  letter-spacing: 0.12em;          /* wide tracking (the source's 4px at 34px) */
+  letter-spacing: var(--display-tracking);  /* the masthead's authored display tracking */
   text-transform: uppercase;       /* a masthead is shouted */
   color: var(--text-color);        /* primary text color */
   overflow-wrap: break-word;       /* break very long unbroken words */
@@ -153,10 +153,10 @@ ${row(2)}
   font-size: calc(20px * var(--scale));  /* clearly subordinate to the title */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.2;                /* compact label leading */
-  letter-spacing: 0.15em;          /* small caps need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the flag's authored label tracking */
   text-transform: uppercase;       /* label voice */
   white-space: nowrap;             /* a short caps flag never wraps mid-word */
-  color: var(--accent);            /* the accent flag — echoes the rule below it */
+  color: var(--label-color);       /* the flag's authored label color */
 }
 
 /* The rows — candidate rows stacked with even air between them. */
@@ -274,6 +274,14 @@ ${row(2)}
   background: var(--accent);       /* the accent closes the board like the rule opened it */
 }`,
 
+      tokens: {
+        panelShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
+        accentWeight: 'calc(2px * var(--scale))',
+        labelTracking: '0.15em',
+        labelColor: 'var(--accent)',
+        displayWeight: '800',
+        displayTracking: '0.12em',
+      },
       fields: [
         { field: 'f0', ftype: 'textfield', title: `${o.lines[0]?.title || 'Candidate 1'} name`, value: cands[0].name },
         { field: 'f1', ftype: 'textfield', title: `${o.lines[0]?.title || 'Candidate 1'} party`, value: cands[0].party },

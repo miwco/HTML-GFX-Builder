@@ -61,7 +61,7 @@ export const tk02: TemplateVariant = defineTickerVariant(
   width: calc(1680px * var(--scale));   /* wide strip - most of a 1920 frame */
   height: calc(78px * var(--scale));    /* the rail's fixed thickness */
   background: var(--panel-bg);     /* near-black slab behind everything */
-  border-radius: 0;                /* hard corners - sport shape language */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
 }
 
 /* The label chip: solid accent, leaning -8deg like lt05's slab. Safe to skew directly -
@@ -83,8 +83,8 @@ export const tk02: TemplateVariant = defineTickerVariant(
   font-size: calc(26px * var(--scale) * var(--type-scale));  /* chip scale - louder than the items */
   font-weight: 700;                /* maximum punch */
   text-transform: uppercase;       /* labels are shouted, not spoken */
-  letter-spacing: 0.08em;          /* wide tracking - sport label convention */
-  color: var(--panel-bg);          /* dark text on the volt chip - highest contrast */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
+  color: var(--accent-ink);        /* the family's ink on an accent-filled chip */
 }
 
 /* The viewport: the clipping window the items travel through. */

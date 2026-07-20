@@ -48,8 +48,8 @@ ${lineMasks(o)}
   gap: calc(10px * var(--scale));  /* breathing room between kicker and name */
   padding: calc(20px * var(--scale)) calc(32px * var(--scale));  /* generous inner space */
   background: var(--panel-bg);     /* the near-white porcelain panel */
-  border-radius: calc(3px * var(--scale));  /* barely-rounded corners (minimal style) */
-  box-shadow: 0 calc(14px * var(--scale)) calc(44px * var(--scale)) rgba(0, 0, 0, 0.18);  /* one soft shadow lifts the card off the video */
+  border-radius: var(--panel-radius);  /* the card's authored panel radius */
+  box-shadow: var(--panel-shadow);     /* the card's authored lift */
 }
 
 /* The order trick: the SECOND field (f1, the kicker) renders FIRST. :nth-child(2) is the
@@ -63,9 +63,9 @@ ${lineMasks(o)}
 /* The name (f0): the big line the graphic exists for. */
 .lower-third-name {
   font-size: calc(52px * var(--scale) * var(--type-scale));  /* headline scale */
-  font-weight: 800;                /* maximum contrast against the small kicker */
+  font-weight: var(--display-weight);  /* the name's authored display weight */
   line-height: 1.1;                /* tight leading — big text needs less air */
-  letter-spacing: -0.01em;         /* big text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* big display type tightens slightly */
   color: var(--text-color);        /* near-black on the light panel */
 }
 
@@ -75,10 +75,16 @@ ${lineMasks(o)}
   font-weight: 700;                /* bold enough to read at this size */
   line-height: 1.2;                /* a touch of air inside its reveal mask */
   text-transform: uppercase;       /* all caps read as a category tag */
-  letter-spacing: 0.16em;          /* wide tracking — small caps breathe */
-  color: var(--accent);            /* the design's one accent moment */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
+  color: var(--label-color);       /* the kicker's authored label color */
 }`,
 
     hasAccent: false, // no accent shape — presets fall back to their box-only choreography
+    tokens: {
+      panelRadius: 'calc(3px * var(--scale))',
+      panelShadow: '0 calc(14px * var(--scale)) calc(44px * var(--scale)) rgba(0, 0, 0, 0.18)',
+      labelColor: 'var(--accent)',
+      displayWeight: '800',
+    },
   }),
 );

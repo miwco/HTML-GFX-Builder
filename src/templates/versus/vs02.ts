@@ -149,7 +149,7 @@ export const vs02: TemplateVariant = defineVersusVariant(
   align-items: center;             /* …vertically… */
   justify-content: center;         /* …and horizontally */
   overflow: hidden;                /* the badge stays inside the circle */
-  box-shadow: 0 calc(10px * var(--scale)) calc(30px * var(--scale)) rgba(0, 0, 0, 0.5);  /* one soft lift */
+  box-shadow: var(--panel-shadow);  /* the logo dish's authored panel lift */
   flex-shrink: 0;                  /* the slot never squeezes — names wrap instead */
 }
 
@@ -174,9 +174,9 @@ export const vs02: TemplateVariant = defineVersusVariant(
 /* The team names: tight display caps with a dark drop — they must read over footage. */
 .versus-name {
   font-size: calc(58px * var(--scale));  /* headline scale, a step under the VS */
-  font-weight: 700;                /* display weight */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.05;               /* tight — big caps need little leading */
-  letter-spacing: -0.01em;         /* big text tightens */
+  letter-spacing: var(--display-tracking);  /* the names' authored display tracking */
   text-transform: uppercase;       /* team names are shouted, not spoken */
   color: var(--text-color);        /* primary text over the vignette */
   text-shadow: 0 calc(4px * var(--scale)) calc(20px * var(--scale)) rgba(0, 0, 0, 0.6);  /* legibility drop */
@@ -208,13 +208,19 @@ export const vs02: TemplateVariant = defineVersusVariant(
   font-size: calc(32px * var(--scale));  /* clearly beneath the names in the hierarchy */
   font-weight: 500;                /* light against the heavy names */
   line-height: 1.35;               /* room for a wrapped second row */
-  letter-spacing: 0.14em;          /* spaced caps breathe */
+  letter-spacing: var(--label-tracking);  /* the event label's authored tracking */
   text-transform: uppercase;       /* the label voice */
-  color: var(--text-dim);          /* secondary text — it defers to the match-up */
+  color: var(--label-color);       /* the event label's authored colour */
   text-shadow: 0 calc(2px * var(--scale)) calc(12px * var(--scale)) rgba(0, 0, 0, 0.6);  /* legibility drop */
 }`,
 
       hasAccent: true,
+      tokens: {
+        panelShadow: '0 calc(10px * var(--scale)) calc(30px * var(--scale)) rgba(0, 0, 0, 0.5)',
+        labelTracking: '0.14em',
+        labelColor: 'var(--text-dim)',
+        displayTracking: '-0.01em',
+      },
     };
   },
 );

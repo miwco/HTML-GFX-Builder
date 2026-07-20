@@ -66,7 +66,7 @@ export const tk04: TemplateVariant = defineTickerVariant(
   width: calc(1680px * var(--scale));  /* near full-width, inside the safe areas */
   height: calc(64px * var(--scale));   /* the strip's fixed height — slim and precise */
   background: var(--panel-bg);     /* the palette panel — porcelain-light by default */
-  border-bottom: calc(2px * var(--scale)) solid var(--accent);  /* the single accent hairline */
+  border-bottom: var(--accent-weight) solid var(--accent);  /* the strip's authored accent weight */
   will-change: opacity;            /* hint the browser: the presets fade this */
 }
 
@@ -81,10 +81,10 @@ export const tk04: TemplateVariant = defineTickerVariant(
                                                 travelling text never touches the hairline */
   font-size: calc(15px * var(--scale) * var(--type-scale));  /* kicker scale — clearly a tag, not a quote */
   font-weight: 700;                /* bold so the small caps carry */
-  letter-spacing: 0.18em;          /* small caps breathe — minimal family tracking */
+  letter-spacing: var(--label-tracking);  /* the strip label's authored tracking */
   text-transform: uppercase;       /* reads as a tag, whatever the operator types */
   white-space: nowrap;             /* a label never wraps mid-word */
-  color: var(--accent);            /* the accent's one text moment (ink on porcelain) */
+  color: var(--label-color);       /* the strip label's authored color */
 }
 
 /* The divider after the label — a dim vertical hairline, not a second accent. */
@@ -188,6 +188,11 @@ ${flip
 .tk-down { color: rgba(206, 66, 66, 0.95); }   /* calm red — index is down */`,
       // renderTickerItem(text): parse "NAME 12345 +0.4" — everything before the last two
       // words is the name (so "FTSE 100" survives), then the value, then the signed change.
+      tokens: {
+        accentWeight: 'calc(2px * var(--scale))',
+        labelTracking: '0.18em',
+        labelColor: 'var(--accent)',
+      },
       rowBuilderJs: `// renderTickerItem(text): one parsed market quote — dim caps name, bold tabular value,
 // and a green/red change with a direction arrow. Lines that don't parse render as a
 // plain dim item, so a stray headline never breaks the strip.

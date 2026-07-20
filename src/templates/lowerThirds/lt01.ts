@@ -42,7 +42,7 @@ ${lineMasks(o)}
   left: 0;                          /* sits at the block's left edge */
   top: 0;                           /* stretches from the very top… */
   bottom: 0;                        /* …to the very bottom of the text block */
-  width: calc(3px * var(--scale));  /* a true hairline — just visible at 1080p */
+  width: var(--accent-weight);      /* the family's accent-line weight */
   background: var(--accent);        /* the one small, sharp dose of accent color */
   will-change: transform;           /* hint the browser: presets animate this line */
 }
@@ -55,9 +55,9 @@ ${lineMasks(o)}
 /* Name line — big and confident; the only heavy element in the design. */
 .lower-third-name {
   font-size: calc(54px * var(--scale) * var(--type-scale));  /* headline size (values are 1080p reference) */
-  font-weight: 700;                 /* bold enough to carry the design on its own */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.08;                /* big text sits tight */
-  letter-spacing: -0.01em;          /* large sizes tighten slightly */
+  letter-spacing: var(--display-tracking);  /* large display type tightens slightly */
   color: var(--text-color);         /* primary text color */
 }
 

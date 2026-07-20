@@ -66,9 +66,9 @@ export const ig03: TemplateVariant = defineInfographicVariant(
   font-size: calc(19px * var(--scale) * var(--type-scale));  /* small label size */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.2;                /* compact label leading */
-  letter-spacing: 0.14em;          /* small caps need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the title label's authored tracking */
   text-transform: uppercase;       /* label voice, whatever the operator types */
-  color: var(--text-color);        /* primary text — the accent stays in the dash and chips */
+  color: var(--label-color);       /* the title label's authored colour */
   white-space: nowrap;             /* a short caps label never wraps mid-word */
 }
 
@@ -77,7 +77,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
   content: '';                     /* pseudo-elements render only with content set */
   flex-shrink: 0;                  /* a long title never squeezes the dash */
   width: calc(30px * var(--scale));  /* short on purpose — a mark, not a rule */
-  height: calc(8px * var(--scale));  /* slab weight (sport family token: 8-12px) */
+  height: var(--accent-weight);    /* the title dash's authored accent weight */
   background: var(--accent);       /* the accent announces the tower */
   transform: skewX(-8deg);         /* SKEW: leans with the rows below */
 }
@@ -109,7 +109,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
   inset: 0;                        /* ... edge to edge */
   z-index: -2;                     /* paints behind the text AND behind the accent chip */
   background: var(--panel-bg);     /* near-black slab behind the row */
-  border-radius: 0;                /* hard corners - sport shape language */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
   transform: skewX(-8deg);         /* SKEW: the whole row leans forward */
 }
 
@@ -124,7 +124,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
   font-size: calc(19px * var(--scale) * var(--type-scale));  /* small and heavy — a rank, not a headline */
   font-weight: 800;                /* maximum punch at chip size */
   font-variant-numeric: tabular-nums;  /* ranks share one width down the tower */
-  color: var(--panel-bg);          /* the slab hue doubles as ink on the bright chip (lt06's move) */
+  color: var(--accent-ink);        /* the family's ink on an accent-filled chip */
 }
 
 /* The chip's accent: same -8deg as the slab, so its left edge fuses with the row's. */
@@ -169,6 +169,11 @@ export const ig03: TemplateVariant = defineInfographicVariant(
   color: var(--accent);            /* "LEADER" reads in the accent color */
   font-weight: 700;                /* one step heavier to match its color voice */
 }`,
+
+      tokens: {
+        accentWeight: 'calc(8px * var(--scale))',
+        labelTracking: '0.14em',
+      },
 
       fields: [
         { field: 'f0', ftype: 'textarea', title: o.lines[0]?.title || 'Standings', value: towerText },

@@ -63,7 +63,7 @@ export const cr04: TemplateVariant = defineCreditsVariant(
   height: calc(84px * var(--scale));             /* slim ticker height */
   overflow: hidden;                              /* the viewport - track slides through it */
   background: var(--panel-bg);                   /* subtle near-black panel, never pure #000 */
-  border-top: calc(2px * var(--scale)) solid var(--accent);  /* the underline motif, flipped up */
+  border-top: var(--accent-weight) solid var(--accent);  /* the strip's authored accent weight */
 }
 
 /* The moving line - every row sits inline; the crawl preset translates this on x. */
@@ -95,7 +95,7 @@ export const cr04: TemplateVariant = defineCreditsVariant(
 
 /* Thin rule after each heading - a vertical echo of the lt02 underline stroke. */
 .credits-rule {
-  width: calc(2px * var(--scale));               /* hairline weight */
+  width: var(--accent-weight);                   /* the same authored accent weight */
   height: calc(18px * var(--scale));             /* matches the heading's cap height */
   background: var(--accent);                     /* same accent as the strip's top border */
 }
@@ -111,15 +111,15 @@ export const cr04: TemplateVariant = defineCreditsVariant(
 .credits-role {
   font-size: calc(16px * var(--scale) * var(--type-scale));          /* clearly subordinate to the name */
   font-weight: 400;                              /* light against the semibold name */
-  letter-spacing: 0.08em;                        /* uppercase letters need room */
+  letter-spacing: var(--label-tracking);         /* the role label's authored tracking */
   text-transform: uppercase;                     /* label voice, not a sentence */
-  color: var(--text-dim);                        /* dimmed - the name carries the weight */
+  color: var(--label-color);                     /* the family's label color */
 }
 
 /* Name - the strong element of each pair. */
 .credits-name {
   font-size: calc(22px * var(--scale) * var(--type-scale));          /* the crawl's headline size */
-  font-weight: 600;                              /* strong without shouting */
+  font-weight: var(--display-weight);            /* the names' authored display weight */
   color: var(--text-color);                      /* primary text color */
 }
 
@@ -160,6 +160,11 @@ export const cr04: TemplateVariant = defineCreditsVariant(
   color: var(--text-dim);                        /* dimmed - the show is over */
 }`,
 
+    tokens: {
+      accentWeight: 'calc(2px * var(--scale))',
+      labelTracking: '0.08em',
+      displayWeight: '600',
+    },
     rowBuilderJs: `// ── Row builders - the Crawl variant's markup vocabulary ─────────────────────
 
 // renderCreditRow(entry): one inline item on the crawl line.

@@ -89,17 +89,17 @@ export const cr01: TemplateVariant = defineCreditsVariant(
   font-size: calc(20px * var(--scale) * var(--type-scale));  /* clearly subordinate to the name below */
   font-weight: 400;                    /* regular weight — contrast comes from the name */
   text-transform: uppercase;           /* caps mark it as a label */
-  letter-spacing: 0.14em;              /* open tracking for small uppercase text */
-  color: var(--text-dim);              /* dimmed — never pure white twice */
+  letter-spacing: var(--label-tracking);  /* the role label's authored tracking */
+  color: var(--label-color);           /* the family's label color */
   margin-bottom: calc(6px * var(--scale));   /* tiny gap: role + name read as one unit */
 }
 
 /* Name line — the star of each stack; the only weighty element in the design. */
 .credits-name {
   font-size: calc(34px * var(--scale) * var(--type-scale));  /* ~1.7:1 over the role — clear hierarchy */
-  font-weight: 600;                    /* semibold carries the design without a panel */
+  font-weight: var(--display-weight);  /* the names' authored display weight */
   line-height: 1.15;                   /* big text sits tight */
-  letter-spacing: -0.01em;             /* large sizes tighten slightly */
+  letter-spacing: var(--display-tracking);  /* large display type tightens slightly */
   color: var(--text-color);            /* primary text color */
 }
 
@@ -112,7 +112,7 @@ export const cr01: TemplateVariant = defineCreditsVariant(
 /* The hairline — lt01's 3px accent motif, laid horizontal and kept short. */
 .credits-rule {
   width: calc(72px * var(--scale));    /* short on purpose — a mark, not a divider */
-  height: calc(3px * var(--scale));    /* the family hairline weight (minimal: 2-4px) */
+  height: var(--accent-weight);        /* the family's accent-rule weight */
   background: var(--accent);           /* same sharp accent dose as the headings */
   margin: 0 auto calc(32px * var(--scale));  /* centered, with air before the logo */
 }
@@ -147,6 +147,10 @@ export const cr01: TemplateVariant = defineCreditsVariant(
   letter-spacing: 0.04em;              /* a touch of air for the short closing line */
   color: var(--text-dim);              /* dimmed sign-off */
 }`,
+    tokens: {
+      labelTracking: '0.14em',
+      displayWeight: '600',
+    },
     rowBuilderJs: `// ── Classic Roll row builders — rebuildCredits() calls these for every parsed entry ──
 
 // renderCreditRow(entry): one heading line or one role-above-name stack.

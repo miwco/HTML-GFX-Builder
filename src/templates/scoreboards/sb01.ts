@@ -79,7 +79,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
   inset: 0;                        /* ... edge to edge */
   z-index: -1;                     /* paints behind the text and the chips */
   background: var(--panel-bg);     /* near-black slab behind everything */
-  border-radius: 0;                /* hard corners - sport shape language */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
   transform: skewX(-8deg);         /* SKEW: the whole slab leans forward */
 }
 
@@ -91,7 +91,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
   left: 0;                         /* ... flush with the box's left side */
   top: 0;                          /* full height, top ... */
   bottom: 0;                       /* ... to bottom */
-  width: calc(10px * var(--scale));  /* chunky 10px slab, not a hairline */
+  width: var(--accent-weight);     /* the family's accent edge weight */
 }
 
 /* The accent's paint: color and lean live on the pseudo-layer no preset ever tweens. */
@@ -125,9 +125,9 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
 /* The team name: condensed heavy caps - the family voice. */
 .scoreboard-team {
   font-size: calc(40px * var(--scale) * var(--type-scale));  /* headline scale, a step under the scores */
-  font-weight: 700;                /* maximum punch */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.1;                /* tight - big caps need little leading */
-  letter-spacing: 0.02em;          /* a touch of air between the caps */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   text-transform: uppercase;       /* team names are shouted, not spoken */
   color: var(--text-color);        /* primary text on the dark slab */
 }
@@ -159,7 +159,7 @@ export const sb01: TemplateVariant = defineScoreboardVariant(
   font-size: calc(50px * var(--scale) * var(--type-scale));  /* the loudest scale - scores lead a scoreboard */
   font-weight: 700;                /* heavy condensed figures */
   line-height: 1;                  /* the figure fills its chip, no dead leading */
-  color: var(--panel-bg);          /* the slab hue doubles as ink - highest contrast on accent */
+  color: var(--accent-ink);        /* the family's ink on an accent-filled chip */
   font-variant-numeric: tabular-nums;  /* digits share one width - no jitter as scores tick */
 }
 

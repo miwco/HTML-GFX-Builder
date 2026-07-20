@@ -62,7 +62,7 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
   left: 0;                         /* sits on the leading edge */
   top: 0;                          /* spans the full stack height… */
   bottom: 0;                       /* …edge to edge */
-  width: calc(3px * var(--scale)); /* a true hairline — just visible at 1080p */
+  width: var(--accent-weight);     /* the family's accent-line weight */
   background: var(--accent);       /* the one small, sharp dose of accent color */
   will-change: transform;          /* hint the browser: line-reveal scales this */
 }
@@ -98,9 +98,9 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
   font-size: calc(24px * var(--scale) * var(--type-scale));  /* label scale (values are 1080p reference) */
   font-weight: 600;                /* firm without shouting */
   line-height: 1.15;               /* tight, but safe if a long name wraps */
-  letter-spacing: 0.1em;           /* small caps breathe */
+  letter-spacing: var(--label-tracking);  /* the team label's authored tracking */
   text-transform: uppercase;       /* reads as a team tag, whatever the operator types */
-  color: var(--text-dim);          /* dimmed like lt01's title — the score is the anchor */
+  color: var(--label-color);       /* the family's label color */
 }
 
 /* Score — the row's anchor: bigger, heavier, and in tabular figures. */
@@ -112,5 +112,6 @@ export const sb02: TemplateVariant = defineScoreboardVariant(
   color: var(--text-color);        /* primary text color */
 }`,
     hasAccent: true,
+    tokens: { labelTracking: '0.1em' },
   }),
 );
