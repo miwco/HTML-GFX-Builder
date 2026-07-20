@@ -289,7 +289,7 @@ async function generateValidated(
   if (!validate) return { emitted, validation: null };
 
   onProgress?.('Checking the result in the player…');
-  let validation = await validate(emitted.source);
+  let validation = await validate(emitted.source, emitted.inputs);
   for (let round = 0; round < MAX_REPAIR_ROUNDS && !validation.ok; round++) {
     onProgress?.(`Fixing issues the checks found (round ${round + 1} of ${MAX_REPAIR_ROUNDS})…`);
     // Hand the EXACT validator findings back with the full source - same doctrine as the
@@ -315,7 +315,7 @@ async function generateValidated(
         cacheSystem: true,
       }),
     );
-    validation = await validate(emitted.source);
+    validation = await validate(emitted.source, emitted.inputs);
   }
   return { emitted, validation: noteUnprobed(demoteSoftFindings(validation)) };
 }

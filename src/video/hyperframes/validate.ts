@@ -76,7 +76,13 @@ function isVariableBound(html: string, id: string): boolean {
   const safe = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return (
     new RegExp(`data-var-(?:text|src)\\s*=\\s*["']${safe}["']`).test(html) ||
-    new RegExp(`var\\(\\s*--${safe}\\b`).test(html)
+    new RegExp(`var\\(\\s*--${safe}\\b`).test(html) ||
+    // A container STYLE QUERY - `@container style(--flag: true)` - reads the same custom
+    // property without ever writing var(--flag), and it is the only route by which a boolean
+    // or an enum can change anything a viewer sees. The generation contract now steers models
+    // away from those two types for exactly that reason, but a hand-written composition may
+    // legitimately use one, and rejecting a binding that works is the expensive kind of wrong.
+    new RegExp(`style\\(\\s*--${safe}\\b`).test(html)
   );
 }
 

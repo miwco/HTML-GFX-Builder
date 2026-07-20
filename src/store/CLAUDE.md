@@ -73,6 +73,12 @@ templateStore.ts (zustand) holds the template plus editor UI state.
   (first) and every setter keeps the two in sync. setSelectedPart replaces, setSelectedParts
   replaces wholesale (the lasso), toggleSelectedPart is shift-click. UI state only - no
   history, never written into the template.
+- **partLocks / setPartLock** - EXPLICIT canvas locks by part selector. A locked part takes no
+  direct-manipulation gesture (drag, handle, lasso) but stays selectable by click and from the
+  timeline. Only user toggles live here; a part with no entry follows the canvas's own default
+  (an imported design's artwork starts locked - see src/components/CLAUDE.md). UI state, no
+  history, never in the template; CLEARED on a whole-project swap, because part selectors
+  repeat across projects.
 - **playhead / setPlayhead** - the step timeline's parked playhead `{ step, t }` (step index +
   local time in effective seconds). UI state only - no history; the Inspector stamps
   keyframes at it.

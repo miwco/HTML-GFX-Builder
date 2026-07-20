@@ -134,21 +134,28 @@ test('erase: a non-flat background is refused honestly, with continue-anyway ava
   expect(px.r).toBeGreaterThan(150); // the dark bar was filled (with the sampled mean)
 });
 
-test('erase: re-running starts from the original — fills never compound', async ({ page }) => {
+test('erase: dropping one mark replays the rest from the original — fills never compound', async ({ page }) => {
   await dropCard(page, framedCardPng(1000, 600));
   await toEraseSurface(page);
 
-  // First erase the text bar, then redraw the box over an empty area instead.
+  // Two marks: the text bar, and the blob standing in for cap-side artwork. Marks ACCUMULATE
+  // — a design usually has more than one piece of baked-in text.
   await drawRect(page, MARK.x0, MARK.y0, MARK.x1, MARK.y1);
-  await expect(page.getByTestId('erase-done')).toBeVisible();
-  await drawRect(page, 0.58, 0.6, 0.68, 0.7);
-  await expect(page.getByTestId('erase-done')).toBeVisible();
+  await expect(page.getByTestId('erase-marks').locator('li')).toHaveCount(1);
+  await drawRect(page, 0.7, 0.28, 0.88, 0.7);
+  await expect(page.getByTestId('erase-marks').locator('li')).toHaveCount(2);
 
+  // Dropping the FIRST one cannot un-fill pixels in place — the artwork is rebuilt from the
+  // untouched upload with only the survivor applied. So the bar comes back dark while the
+  // blob stays erased, which is exactly what "fills never compound" means.
+  await page.getByTestId('erase-remove-0').click();
+  await expect(page.getByTestId('erase-marks').locator('li')).toHaveCount(1);
   await createProject(page);
 
-  // The second run replaced the first: the text bar is BACK (dark), not still erased.
-  const px = await assetPixel(page, TEXT_CENTER.x, TEXT_CENTER.y);
-  expect(px.r).toBeLessThan(60);
+  const bar = await assetPixel(page, TEXT_CENTER.x, TEXT_CENTER.y);
+  expect(bar.r).toBeLessThan(60); // back
+  const blob = await assetPixel(page, 0.79, 0.49);
+  expect(blob.r).toBeGreaterThan(150); // still erased
 });
 
 test('erase: the erased region seeds the first text field, placed and sized from the mark', async ({ page }) => {
@@ -162,9 +169,10 @@ test('erase: the erased region seeds the first text field, placed and sized from
   const frame = page.frameLocator('iframe.preview-frame');
   await expect(frame.locator('#f0')).toHaveText('Name');
 
-  // …as a real placed line: position ≈ the marked rect (design px = source px here, the
-  // artwork is smaller than the frame), a shrink slot ≈ the rect's width, and a font size
-  // ≈ 72% of the rect's height. Everything through the same reader modules the app uses.
+  // …as a real placed line built from the INK the erase measured — the bar at
+  // CARD_TEXT_RECT — not from the looser rectangle the pointer drew around it. Design px =
+  // source px here (the artwork is smaller than the frame). Everything through the same
+  // reader modules the app uses.
   const state = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     const { placedLines, lineFit, lineFontSize, lineTextStyle } = await import('/src/blocks/designLayout.ts');
@@ -174,6 +182,7 @@ test('erase: the erased region seeds the first text field, placed and sized from
       fit: lineFit(s.template.html, s.template.css, 'f0'),
       font: lineFontSize(s.template.css, 'f0'),
       color: lineTextStyle(s.template.html, s.template.css, 'f0')?.color,
+      style: lineTextStyle(s.template.html, s.template.css, 'f0'),
       titles: s.template.fields.map((f) => f.title),
     };
   });
@@ -181,13 +190,26 @@ test('erase: the erased region seeds the first text field, placed and sized from
   // The field contrasts against its own sampled fill: dark ink on this light card (the
   // palette's white default would be invisible on it).
   expect(state.color).toBe('#16181c');
-  // The drawn rect: x 160..570, y 240..342 (fractions of the 1000×600 fixture) ± pointer rounding.
-  expect(Math.abs(state.placed!.x - 160)).toBeLessThan(10);
-  expect(Math.abs(state.placed!.y - 240)).toBeLessThan(10);
+  // The bar the fixture drew, in the 1000×600 image's own pixels: x 180..550, y 252..330.
+  const bar = {
+    x: Math.round(1000 * CARD_TEXT_RECT.x),
+    y: Math.round(600 * CARD_TEXT_RECT.y),
+    width: Math.round(1000 * CARD_TEXT_RECT.width),
+    height: Math.round(600 * CARD_TEXT_RECT.height),
+  };
+  // Left-set text (its middle is well left of the artwork's), anchored on its own left edge.
+  expect(state.style!.align).toBe('left');
+  expect(Math.abs(state.placed!.x - bar.x)).toBeLessThan(6);
   expect(state.fit!.mode).toBe('shrink');
-  expect(Math.abs((state.fit!.maxWidth ?? 0) - 410)).toBeLessThan(20);
-  // The seed size: min(72% of the rect height, rect width / 7) — here width/7 binds.
-  expect(Math.abs((state.font!.value ?? 0) - Math.round(410 / 7))).toBeLessThan(10);
+  // Its size: cap-top to baseline is about 72% of an em, so the em is that over 0.72. (A
+  // solid bar has no descenders to find, so its whole height reads as the cap.)
+  const font = Math.round(bar.height / 0.72);
+  // The slot is the room the ORIGINAL text had — its ink plus the side bearings type
+  // occupies beyond what it paints — so a long value shrinks where it did.
+  expect(Math.abs((state.fit!.maxWidth ?? 0) - (bar.width + font * 0.12))).toBeLessThan(10);
+  expect(Math.abs((state.font!.value ?? 0) - font)).toBeLessThan(8);
+  // …and the box starts a tenth of an em above the ink, so the glyphs land back on it.
+  expect(Math.abs(state.placed!.y - (bar.y - font * 0.1))).toBeLessThan(8);
 });
 
 test('erase: on a 2x export the seeded field maps to design pixels', async ({ page }) => {
@@ -197,16 +219,28 @@ test('erase: on a 2x export the seeded field maps to design pixels', async ({ pa
   await expect(page.getByTestId('erase-done')).toBeVisible();
   await createProject(page);
 
-  // Source rect x starts at 0.16 × 3840 ≈ 614; the design shows the art frame-sized at
-  // 1920, so the placement is HALVED — the erase stayed in source px, the field in design px.
-  const placed = await page.evaluate(async () => {
+  // The measured ink starts at 0.18 × 3840 ≈ 691 SOURCE px; the design shows the art
+  // frame-sized at 1920, so every placed number is HALVED — the erase and its measurement
+  // stay in source px, the field lands in design px.
+  const state = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
-    const { placedLines } = await import('/src/blocks/designLayout.ts');
+    const { placedLines, lineFontSize } = await import('/src/blocks/designLayout.ts');
     const s = useTemplateStore.getState();
-    return placedLines(s.template.html, s.template.css)['#f0'];
+    return {
+      placed: placedLines(s.template.html, s.template.css)['#f0'],
+      font: lineFontSize(s.template.css, 'f0'),
+    };
   });
-  expect(Math.abs(placed!.x - 307)).toBeLessThan(10);
-  expect(Math.abs(placed!.y - 432)).toBeLessThan(10);
+  const k = 1920 / 3840;
+  const bar = {
+    x: Math.round(3840 * CARD_TEXT_RECT.x) * k,
+    y: Math.round(2160 * CARD_TEXT_RECT.y) * k,
+    height: Math.round(2160 * CARD_TEXT_RECT.height) * k,
+  };
+  const font = Math.round(bar.height / 0.72);
+  expect(Math.abs(state.placed!.x - bar.x)).toBeLessThan(8);
+  expect(Math.abs(state.placed!.y - (bar.y - font * 0.1))).toBeLessThan(10);
+  expect(Math.abs((state.font!.value ?? 0) - font)).toBeLessThan(10);
 });
 
 test('erase: the cleaned PNG is downloadable', async ({ page }) => {

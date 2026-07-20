@@ -141,7 +141,12 @@ export function compileTsx(tsx: string): CompileResult {
 }
 
 /** Static contract checks on the SOURCE (before/independent of the live probe). */
-export function staticValidate(tsxRaw: string, assets: VideoAssetInfo[]): ValidationIssue[] {
+export function staticValidate(
+  tsxRaw: string,
+  assets: VideoAssetInfo[],
+  /** The inputs the emit declared, when the caller has them - see deadInputIssues. */
+  declaredInputs: { key: string }[] = [],
+): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   // Every pattern check below asks what the module DOES, so none of them may read comments.
   const tsx = blankComments(tsxRaw);
@@ -190,8 +195,51 @@ export function staticValidate(tsxRaw: string, assets: VideoAssetInfo[]): Valida
     });
   }
 
-  // Unknown asset references (warning-level; surfaced separately by the caller).
-  return issues.concat(assetNameWarnings(tsx, assets));
+  // Dead controls, then unknown asset references (the latter warning-level; the caller splits).
+  return issues.concat(deadInputIssues(tsx, declaredInputs), assetNameWarnings(tsx, assets));
+}
+
+/**
+ * A declared input the module never reads renders a control in the Content panel that does
+ * nothing when the operator changes it - a promise the composition does not keep. The
+ * HyperFrames side has enforced the same contract since a benchmark caught it shipping
+ * (validate.ts, rule `variables`); nothing checked it here, because Remotion declares its
+ * inputs in the emit tool rather than in the code, so the validator was never handed them.
+ *
+ * Measured at 0 occurrences across 21 real generations, which is the argument FOR adding it
+ * rather than against: the rule costs nothing today and stops the defect the moment model
+ * behaviour drifts. It is also why it is safe to make an error rather than a warning.
+ */
+function deadInputIssues(tsx: string, declared: { key: string }[]): ValidationIssue[] {
+  // A module that hands `fields` on wholesale - spread into a subcomponent, passed to a
+  // helper, walked with Object.entries - may never name a key literally, and every finding
+  // here would then be invented. A false positive costs a repair round, so say nothing.
+  if (/\.\.\.\s*fields\b|[({,]\s*fields\s*[),]/.test(tsx)) return [];
+
+  // Every real read route counts: `fields.key`, `fields['key']`, and destructuring.
+  const destructured = [...tsx.matchAll(/\{([^{}]*)\}\s*=\s*(?:props\s*\.\s*)?fields\b/g)]
+    .map((m) => m[1])
+    .join(',');
+
+  const issues: ValidationIssue[] = [];
+  for (const { key } of declared) {
+    if (!key) continue;
+    const k = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const read =
+      new RegExp(`\\bfields\\s*\\??\\s*\\.\\s*${k}\\b`).test(tsx) ||
+      new RegExp(`\\bfields\\s*\\??\\.?\\s*\\[\\s*['"]${k}['"]\\s*\\]`).test(tsx) ||
+      new RegExp(`(^|[,{\\s])${k}\\s*(?=[,:=}]|$)`).test(destructured);
+    if (!read) {
+      issues.push({
+        rule: 'inputs',
+        message:
+          `Input "${key}" is declared but the module never reads fields.${key}, so its control ` +
+          `would do nothing. Read it with a fallback equal to its declared default ` +
+          `(e.g. \`const ${key} = String(fields.${key} ?? '…');\`) - or drop it from the inputs array.`,
+      });
+    }
+  }
+  return issues;
 }
 
 function assetNameWarnings(tsx: string, assets: VideoAssetInfo[]): ValidationIssue[] {

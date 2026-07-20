@@ -488,6 +488,13 @@ export interface NewPlacedLineSpec {
   /** Explicit text colour (the erased-region field contrasts against its sampled fill).
    *  Absent = inherit from the reference line / the design default. */
   color?: string;
+  /** Which edge of the text sits at `at.x` — the assembler's anchor idiom (a translateX
+   *  shift of the shrink-to-fit box). Absent = 'left', the stacking default. */
+  align?: 'left' | 'center' | 'right';
+  /** A unitless line-height on the span. Absent = the browser's normal. The Prepare step's
+   *  seeded field pins it to 1 so its box is exactly one em tall, which is what lets the
+   *  placement put the new text where the erased text actually sat. */
+  lineHeight?: number;
 }
 
 /**
@@ -538,6 +545,11 @@ export function addPlacedLine(
     spec.color ?? (ref && readDecl(template.css, `#${ref.fieldId}`, 'color')) ?? 'var(--text-color)';
 
   const sample = spec.text ?? (spec.ftype === 'number' ? '0' : spec.title);
+  // Alignment is a SHIFT of the shrink-to-fit box, not a text-align (which would do nothing
+  // on a box that hugs its content) — the assembler's own idiom, and what lineTextStyle's
+  // `align` reads back for the Inspector.
+  const anchorShift =
+    spec.align === 'center' ? 'translateX(-50%)' : spec.align === 'right' ? 'translateX(-100%)' : null;
 
   // The markup, in the assembler's exact shape: the wrapper carries the POSITION (and the
   // mask an entrance can slide the text inside); the span carries the TYPE. Inserted after
@@ -560,11 +572,19 @@ export function addPlacedLine(
   // room the stretch opened. Lines in the right cap (and every fixed design) are unchanged.
   const stretchInfo = designStretchInfo(template.html, template.css);
   const driver = !!stretchInfo && x < stretchInfo.right;
+  // The room the design gives this line, measured from its ANCHOR outwards: to the right for
+  // a left-anchored line, both ways for a centred one, leftwards for a right-anchored one.
+  const roomRight = driver && stretchInfo ? stretchInfo.right - x : boxWidth - x - boxWidth * 0.04;
   const maxWidth =
     spec.maxWidth ??
-    (driver && stretchInfo
-      ? Math.max(64, Math.round(stretchInfo.right - x))
-      : Math.max(64, Math.round(boxWidth - x - boxWidth * 0.04)));
+    Math.max(
+      64,
+      Math.round(
+        spec.align === 'center' ? 2 * Math.min(x - boxWidth * 0.04, roomRight)
+        : spec.align === 'right' ? x - boxWidth * 0.04
+        : roomRight,
+      ),
+    );
 
   lines.splice(
     insertAt + 1,
@@ -582,7 +602,11 @@ export function addPlacedLine(
     `#${wrapperId} {
   position: absolute;
   left: ${placementCss(x, scaled)};   /* measured from the artwork's left edge */
-  top: ${placementCss(y, scaled)};    /* …and from its top edge */
+  top: ${placementCss(y, scaled)};    /* …and from its top edge */${
+    anchorShift
+      ? `\n  transform: ${anchorShift};  /* ${spec.align === 'center' ? 'centred' : 'right-aligned'} on that point — the box hugs its text, so the shift is the alignment */`
+      : ''
+  }
   max-width: ${placementCss(maxWidth, scaled, driver)};  /* the slot: how much room the design gives this line */
   overflow: hidden;                 /* the line's mask — an entrance can slide the text within it */
 }
@@ -591,7 +615,7 @@ export function addPlacedLine(
   white-space: nowrap;              /* one row — data-fit="shrink" condenses a long value instead of reflowing */
   font-family: var(--font-heading);
   font-size: ${placementCss(fontSize, scaled)};
-  font-weight: ${weight};
+  font-weight: ${weight};${spec.lineHeight != null ? `\n  line-height: ${spec.lineHeight};` : ''}
   color: ${color};
 }`,
   );

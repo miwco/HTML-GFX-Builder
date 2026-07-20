@@ -365,3 +365,35 @@ test('the Remotion static rules read code, not comments', async ({ page }) => {
   expect(results.realRandom).toContain('forbidden-api');
   expect(results.realUrl).toContain('network-url');
 });
+
+test('a declared input the module never reads is rejected as a control that would do nothing', async ({ page }) => {
+  // The HyperFrames half has enforced this since a benchmark caught it shipping; Remotion
+  // declares its inputs in the emit tool rather than in the code, so nothing was handed them
+  // and nothing checked. Measured at 0 occurrences across 21 real generations - which is the
+  // argument for adding it, not against: it costs nothing today and catches the defect the
+  // moment model behaviour drifts. The corpus spec guards the false-positive side.
+  await page.goto('/app');
+  const results = await page.evaluate(async () => {
+    const { staticValidate } = await import('/src/video/compile.ts');
+    const mod = (body: string) =>
+      `export default function C({ fields = {} }: { fields?: Record<string, string | number> }) {\n  ${body}\n  return null;\n}`;
+    const rules = (tsx: string, keys: string[]) =>
+      staticValidate(tsx, [], keys.map((key) => ({ key }))).map((i) => i.rule);
+    return {
+      unread: rules(mod("const t = 'hard-coded';"), ['headline']),
+      dotted: rules(mod("const t = String(fields.headline ?? 'x');"), ['headline']),
+      bracket: rules(mod("const t = fields['headline'] ?? 'x';"), ['headline']),
+      destructured: rules(mod('const { headline } = fields;'), ['headline']),
+      // Handing `fields` on wholesale means a key may never appear literally - flagging then
+      // would invent a defect, and a false positive costs a repair round.
+      spread: rules(mod('const el = <Inner {...fields} />;'), ['headline']),
+      none: rules(mod("const t = 'x';"), []),
+    };
+  });
+  expect(results.unread).toContain('inputs');
+  expect(results.dotted).not.toContain('inputs');
+  expect(results.bracket).not.toContain('inputs');
+  expect(results.destructured).not.toContain('inputs');
+  expect(results.spread).not.toContain('inputs');
+  expect(results.none).toEqual([]);
+});

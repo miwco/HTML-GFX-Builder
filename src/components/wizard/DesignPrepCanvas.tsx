@@ -73,8 +73,8 @@ interface Props {
   /** The artwork's SOURCE pixel size — every rect this surface reports is in these units. */
   sourceWidth: number;
   sourceHeight: number;
-  /** The committed erase rectangle (source px), shown as a marked region. */
-  rect: EraseRect | null;
+  /** The committed erase rectangles (source px), each shown as a marked region. */
+  rects: EraseRect[];
   /** Fired when a drag commits a rectangle of at least MIN_RECT source px. */
   onRect: (rect: EraseRect) => void;
   /** When false the surface only displays — no rectangle drawing (mode overlays only). */
@@ -100,7 +100,7 @@ export default function DesignPrepCanvas({
   src,
   sourceWidth,
   sourceHeight,
-  rect,
+  rects,
   onRect,
   drawEnabled,
   children,
@@ -156,7 +156,8 @@ export default function DesignPrepCanvas({
     height: `${(r.height / sourceHeight) * 100}%`,
   });
 
-  const shown = draft ?? rect;
+  // The marks already applied, plus whichever rectangle is being dragged right now.
+  const shown = draft ? [...rects, draft] : rects;
 
   return (
     <div
@@ -168,7 +169,9 @@ export default function DesignPrepCanvas({
       onPointerUp={onPointerUp}
     >
       <img src={src} alt="" draggable={false} />
-      {shown && <div className="wz-prep-rect" data-testid="erase-rect" style={pct(shown)} />}
+      {shown.map((r, i) => (
+        <div key={i} className="wz-prep-rect" data-testid="erase-rect" style={pct(r)} />
+      ))}
       {children}
     </div>
   );

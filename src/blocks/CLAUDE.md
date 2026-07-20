@@ -84,7 +84,12 @@ fontSize/maxWidth/color overrides (the Prepare step's erased-region seed field).
 `addPlacedLine(template, {title, ftype})` is the Data panel's add-field on an imported design:
 ONE pure transform emitting the mask wrapper + span (a registry `line` part), the placement +
 type rules in the assembler's exact idiom, and the SPX DataField (update() binds by id - no JS
-change). New lines stack under the lowest existing line and inherit its look.
+change). New lines stack under the lowest existing line and inherit its look. Optional `align`
+writes the anchor (the wrapper's translateX shift, the assembler's idiom that lineTextStyle
+reads back) and sizes the default slot from that anchor outwards; optional `lineHeight` pins
+the span's line-height. Both exist for the Prepare step's seeded field, which is built from
+the erased text's MEASURED ink (assets/eraseRegion `RegionInk`) so it lands where that text
+was - bounds, one line's height, its top, and which edge it was set from.
 `addPlacedImageSlot(template, {title})` is its image twin: `<img id="fN">` in the mask (a
 registry `image` part), a sized slot box with a dashed empty-slot mark (`.has-image` keyed -
 setFieldValue already toggles it), and a filelist DataField; `slotSize`/`setSlotSize` are the

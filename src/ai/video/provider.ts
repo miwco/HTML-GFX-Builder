@@ -21,7 +21,13 @@ export interface VideoGenerateContext {
 
 /** The injected validate pipeline (bound to the live preview bridge by the chat panel;
  *  the caller matches it to the engine the context names). */
-export type VideoValidator = (source: string) => Promise<VideoValidationResult>;
+export type VideoValidator = (
+  source: string,
+  /** The inputs the emit declared, so the validator can check every control is actually
+   *  wired. HyperFrames declares them IN the document and needs nothing here; Remotion
+   *  declares them in the tool call, which is why they have to travel separately. */
+  declaredInputs?: { key: string }[],
+) => Promise<VideoValidationResult>;
 
 /** Stage reporting for the UI busy line ("Designing the motion plan…"). Generation is a
  *  staged pipeline that can take a minute - the caller shows each stage as it starts so

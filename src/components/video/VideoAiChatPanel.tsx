@@ -52,11 +52,11 @@ function contextFor(project: VideoProject) {
 
 /** The live validate pipeline for candidate sources, bound to the mounted preview -
  *  engine-matched, so each provider result runs its own engine's checks and probe. */
-const validate: VideoValidator = (source) => {
+const validate: VideoValidator = (source, declaredInputs = []) => {
   const p = useVideoProjectStore.getState().project;
   return p.engine === 'hyperframes'
     ? validateHyperframesComposition(source, settingsOf(p), p.assets, getActiveHyperframesBridge())
-    : validateVideoModule(source, settingsOf(p), p.assets, getActivePlayerBridge());
+    : validateVideoModule(source, settingsOf(p), p.assets, getActivePlayerBridge(), declaredInputs);
 };
 
 export default function VideoAiChatPanel() {

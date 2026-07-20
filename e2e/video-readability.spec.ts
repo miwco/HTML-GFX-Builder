@@ -77,19 +77,23 @@ test('the HyperFrames runtime runs the same checks as the Remotion host', async 
     return p.durationInFrames / p.fps;
   });
 
-  const documentWith = (boxWidth: number) => `<!doctype html>
+  // `shiftX` slides the line inside a box that is wide enough for it - the "positioned
+  // outside the visible area" case, which reads as the same percentage as being oversized.
+  const documentWith = (boxWidth: number, shiftX = 0) => `<!doctype html>
 <html lang="en">
 <head><meta charset="UTF-8" /><title>t</title>
 <style>
   body { margin: 0; }
   #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #101319; }
   .card { position: absolute; left: 200px; top: 480px; width: ${boxWidth}px; overflow: hidden; }
-  .headline { color: #fff; font: 800 96px Arial; white-space: nowrap; }
+  .headline { color: #fff; font: 800 96px Arial; white-space: nowrap; margin-left: ${shiftX}px; }
 </style></head>
 <body>
 <div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="${secs}">
   <section class="clip" data-start="0" data-duration="${secs}" data-track-index="1">
-    <div class="card"><div class="headline">BROADCAST KITCHEN</div></div>
+    <!-- id AND class: generated compositions overwhelmingly select structure by id, so the
+         finding must name the id even when a class is also present. -->
+    <div id="hero-mask" class="card"><div class="headline">BROADCAST KITCHEN</div></div>
   </section>
 </div>
 <script>
@@ -101,11 +105,11 @@ test('the HyperFrames runtime runs the same checks as the Remotion host', async 
 </body>
 </html>`;
 
-  const clipFindings = async (boxWidth: number) => {
+  const clipFindings = async (boxWidth: number, shiftX = 0) => {
     await page.evaluate(async (doc) => {
       const { useVideoProjectStore } = await import('/src/store/videoProjectStore.ts');
       useVideoProjectStore.getState().setSource(doc);
-    }, documentWith(boxWidth));
+    }, documentWith(boxWidth, shiftX));
     // The preview reloads on a debounce, and BOTH documents show the same headline - so
     // waiting on the text would read the PREVIOUS composition. Wait for this document's
     // own card width to reach the composed srcdoc instead.
@@ -117,7 +121,9 @@ test('the HyperFrames runtime runs the same checks as the Remotion host', async 
             .evaluate((el: HTMLIFrameElement) => el.getAttribute('srcdoc') ?? ''),
         { timeout: 10_000 },
       )
-      .toContain(`width: ${boxWidth}px`);
+      // BOTH the width and the shift, or a second call reusing a width already on screen
+      // would match the PREVIOUS document and measure it instead of this one.
+      .toContain(`width: ${boxWidth}px; overflow: hidden; }\n  .headline { color: #fff; font: 800 96px Arial; white-space: nowrap; margin-left: ${shiftX}px;`);
     await expect(page.frameLocator('.video-player-frame').getByText('BROADCAST KITCHEN')).toBeVisible({
       timeout: 10_000,
     });
@@ -137,7 +143,27 @@ test('the HyperFrames runtime runs the same checks as the Remotion host', async 
   expect(cropped![0].message).toContain('BROADCAST KITCHEN');
   expect(cropped![0].message).toContain('CUT OFF');
 
+  // The finding has to be ACTIONABLE, not merely correct - it is fed to the model verbatim
+  // and is the only thing a repair round has to work from. Two things make it so, and both
+  // were missing: the box is named by its id (measured: nine of eleven real clip findings
+  // said only "<div>", in documents holding thirty of them), and the arithmetic is handed
+  // over, because "fit the type to the box" is unanswerable without the box's width.
+  expect(cropped![0].message).toContain('id="hero-mask"');
+  expect(cropped![0].message).toMatch(/needs \d+px but that box gives it 420px/);
+  expect(cropped![0].message).toContain('Give the text room');
+
   expect(await clipFindings(1600)).toEqual([]);
+
+  // Text that FITS its box and is cut anyway is a different defect taking the OPPOSITE fix:
+  // it is parked outside the visible area, and shrinking it is the one repair that cannot
+  // work. Measured on a real generation - 1183px of line inside a 1920px box, half of it
+  // cropped - where quoting widths alone would have sent the model to shrink type that fits.
+  const shifted = await clipFindings(1600, -1400);
+  expect(shifted).not.toBeNull();
+  expect(shifted!.length).toBeGreaterThan(0);
+  expect(shifted![0].message).toMatch(/FITS that \d+px box/);
+  expect(shifted![0].message).toContain('move it into view rather than shrinking it');
+  expect(shifted![0].message).not.toContain('Give the text room');
 });
 
 // Both cases hang on the LIVE probe, so the emits are delayed: an instant answer would beat

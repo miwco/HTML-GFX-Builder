@@ -322,11 +322,24 @@ test('a declared variable nothing reads is rejected as a control that would do n
         doc('[{"id":"logo","type":"image","label":"L","default":"logo"}]', '<img data-var-src="logo" src="asset:logo" alt="">'),
       ),
       hardcoded: unbound(doc(ACCENT, '<h1>HELLO</h1>', '#root h1 { color: #f6a623; }')),
+      // A container style query reads the custom property without ever writing var(--id),
+      // and it is the only route by which a boolean or an enum can change what a viewer
+      // sees. The generation contract steers models away from those types for that reason,
+      // but a hand-written composition may use one, and rejecting a binding that WORKS is
+      // the expensive kind of wrong - it is unfixable, so it burns every repair round.
+      styleQuery: unbound(
+        doc(
+          '[{"id":"compact","type":"boolean","label":"C","default":true}]',
+          '<h1>HELLO</h1>',
+          '@container style(--compact: true) { #root h1 { font-size: 40px; } }',
+        ),
+      ),
     };
   });
   expect(results.boundText, 'data-var-text counts as bound').toEqual([]);
   expect(results.boundCss, 'var(--id) in CSS counts as bound').toEqual([]);
   expect(results.boundImage, 'data-var-src counts as bound').toEqual([]);
   expect(results.hardcoded, 'a hex literal instead of var(--accent) is a dead control').toEqual(['accent']);
+  expect(results.styleQuery, 'a container style query is a real binding').toEqual([]);
 });
 

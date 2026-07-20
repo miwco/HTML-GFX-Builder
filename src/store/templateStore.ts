@@ -127,6 +127,13 @@ interface TemplateState {
    *  interaction-model contract (docs/TIMELINE_INTERACTION_MODEL.md): plain click
    *  replaces, shift-click toggles, empty-canvas drag lassos. UI state only. */
   selectedParts: string[];
+  /** EXPLICIT canvas locks, by TemplatePart selector. A locked part takes no direct-
+   *  manipulation gesture — it can't be dragged, resized, or lassoed — but stays selectable
+   *  by click, from the timeline, and fully editable everywhere else. Only entries the user
+   *  toggled live here; a part with no entry follows the canvas's own default (an imported
+   *  design's artwork starts locked, so dragging the text on top of it moves the TEXT).
+   *  Editor UI state only — no history, never written into the template. */
+  partLocks: Record<string, boolean>;
   /** The step timeline's parked playhead (step index + local time in effective seconds).
    *  The Inspector stamps keyframes here. UI state only — no history, never in code. */
   playhead: { step: number; t: number } | null;
@@ -173,6 +180,8 @@ interface TemplateState {
   setSelectedParts: (selectors: string[]) => void;
   /** Shift-click: add the selector to the selection, or remove it when present. */
   toggleSelectedPart: (selector: string) => void;
+  /** Lock or unlock a part for canvas gestures (see partLocks). */
+  setPartLock: (selector: string, locked: boolean) => void;
   /** Park the step timeline's playhead (see playhead). */
   setPlayhead: (playhead: { step: number; t: number } | null) => void;
   /** Mark a canvas gesture as started/ended (see canvasGestureActive). */
@@ -251,6 +260,7 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   scrubCommand: null,
   selectedPart: null,
   selectedParts: [],
+  partLocks: {},
   playhead: null,
   canvasGestureActive: false,
   canvasTool: 'select',
@@ -293,6 +303,10 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
         // In-place edits (panels, AI) keep typed sample values; creating a NEW project
         // must not leak the previous template's values into matching field ids.
         sampleData: syncSampleData(synced, opts?.resetSampleData ? {} : s.sampleData),
+        // Canvas locks belong to the project being edited: part selectors repeat across
+        // projects (every imported design has an `.imported-design-art`), so a whole-project
+        // swap must not carry the last graphic's unlocked artwork into the new one.
+        partLocks: opts?.resetSampleData ? {} : s.partLocks,
         validation: null,
         galleryOpen: false,
         // Snapshot the pre-apply template so the action can be undone; a fresh edit
@@ -360,6 +374,9 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
         : [...s.selectedParts, selector];
       return { selectedParts, selectedPart: selectedParts[0] ?? null };
     }),
+
+  setPartLock: (selector, locked) =>
+    set((s) => ({ partLocks: { ...s.partLocks, [selector]: locked } })),
 
   setPlayhead: (playhead) => set({ playhead }),
 

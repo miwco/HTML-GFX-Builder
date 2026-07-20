@@ -6,6 +6,29 @@ against evidence rather than memory.
 
 Model throughout: `claude-sonnet-5` (the bench pins it; director and coder both use it).
 
+## How to read this document, and how to leave it
+
+Most of it is a **record of measurements at a moment in time**, not a description of how the
+code behaves today. That distinction has already cost a session: a pass observed clip findings
+reading `clipped by <div>`, a later change fixed exactly that, and the observation sat here
+looking like current behaviour. The same trap caught the routes a composition variable can
+bind by, described here as a closed set that later grew, and a follow-up that stayed on the
+open list after it was done.
+
+So, when you change something this document describes:
+
+- **Correct the claim where it is made, don't only append.** A reader hitting the old
+  paragraph first will believe it. Marking a passage *Superseded* with a pointer is enough -
+  the history is worth keeping, the ambiguity is not.
+- **Close the follow-up in the same commit as the fix.** An open item that is secretly done
+  invites the next session to redo it.
+- **Distrust the absolutes you find here** - "the complete set", "the only route", "cannot
+  miss one". Every one of them was true when written and is a hostage to the next change.
+  Prefer "as measured", and date it.
+- **A measurement is not a promise about the future.** Say what ran, on what, and when; if a
+  change is verified in unit terms but never seen on a live generation, say that too rather
+  than letting it read as proven.
+
 ## Running the bench
 
 ```bash
@@ -48,6 +71,45 @@ Custom briefs are `{label, prompt, durationSec?, transparent?, assets?: [paths]}
 really uploaded through the wizard, which is the only way to exercise the `asset:<name>`
 contract end to end.
 
+## The generation corpus - check a validator change for free, before spending
+
+**Most of the questions this document answers with money can now be answered without any.**
+`e2e/fixtures/generations/` holds 57 compositions kept from the 42-generation pass below -
+both engines, seven briefs, the sources that SHIPPED and the ones a repair round rejected -
+with `baseline.json` recording the findings each one produces today.
+`e2e/video-generation-corpus.spec.ts` replays them through both static validators in about a
+second, as part of the ordinary suite.
+
+It exists because of the failure this document keeps recording: **a pattern that matches
+something it was never meant to.** `network-url` hit `xmlns="http://www.w3.org/2000/svg"`;
+`forbidden-api` hit `// deterministic distance, no repeat:-1`. Each looked obviously correct
+in isolation, each made repair rounds unwinnable by construction, and each was found only
+after a paid run. Both would have failed this spec in seconds, because the rules they broke
+fire on documents that are otherwise perfectly legal - which is what the corpus is mostly
+made of.
+
+Read the baseline as two halves:
+
+- **51 files report nothing.** This is the false-positive tripwire and the reason the corpus
+  is worth its keep (under 800 kB): a new or edited rule that misfires on legitimate model
+  output fails here immediately, against real generations rather than against the handful of
+  documents someone writes by hand while holding the new rule in mind.
+- **6 rejected sources still report their real `variables` findings.** The true-positive
+  guard - a rule cannot be "fixed" by quietly ceasing to fire.
+
+`forbidden-api` appears nowhere in the baseline, which is what pins the comment fix against
+the exact generations that exposed it.
+
+Regenerating is a deliberate act, never a convenience: `UPDATE_CORPUS_BASELINE=1 npx
+playwright test video-generation-corpus` rewrites the baseline, and doing so asserts that the
+new findings over 57 real generations are the ones you intended. A diff is not automatically
+a failure - it is the question "did you mean to change what these documents report?".
+
+**What it does not cover:** the runtime half. Clip, safe-area and occlusion findings need a
+mounted player, so they are still measured by the bench and by
+`e2e/video-readability.spec.ts`, not here. The corpus is the static rules - which is where
+every false positive found so far has lived.
+
 ## What the bench measures
 
 Beyond validation:
@@ -66,12 +128,13 @@ Beyond validation:
   hold, backdrops excluded. A metric and an outlier detector, **not** a pass/fail gate and
   not something to tune against; see the variance finding below.
 - **Dead controls**, on BOTH engines - a declared control nothing reads. HyperFrames: a
-  composition variable nothing binds (the validator enforces this, so the bench is an
-  independent audit of the rule). Remotion: a declared input the module never reads off
-  `fields`, counting all three read routes - nothing in the product enforces that one, so here
-  the bench is the only thing looking. Auditing both is what makes a cross-engine repair-round
-  comparison honest: a rule only one engine enforces shows up as repair rounds there and as
-  silence on the other, which looks like a quality gap and is not one.
+  composition variable nothing binds. Remotion: a declared input the module never reads off
+  `fields`. **Both are now enforced by the validators**, so the bench is an independent audit
+  of each rule rather than the only thing looking - the Remotion half was added after this
+  audit found the gap, and the audit is what proved the new rule does not misfire. Auditing
+  both is also what made the cross-engine repair-round comparison honest: a rule only one
+  engine enforces shows up as repair rounds there and as silence on the other, which looks
+  like a quality gap and is not one.
 
 ## Findings that changed the code
 
@@ -125,8 +188,22 @@ that does nothing when dragged - a promise the document does not keep, and one n
 rule caught because the document is otherwise perfectly legal. Prompt guidance held for six
 generations and then missed one (an accent declared, then written as a hex literal); across
 36 it missed three. Binding is deterministic and checkable, so the validator now enforces it,
-naming all three binding routes (`data-var-text`, `data-var-src`, `var(--id)`). Those are the
-complete set of routes a value can take into a composition, so the check cannot miss one.
+naming the binding routes: `data-var-text`, `data-var-src`, `var(--id)`, and a container style
+query, `@container style(--id: …)`. The first three were once described here as the complete
+set; the style query was added later, when removing `boolean`/`enum` from the contract
+(follow-up 4) surfaced it as the only route by which those types can change what a viewer
+sees. Treat the list as current, not closed - a value route this check does not know about
+reads as a dead control, and a rule that rejects working code cannot be repaired around.
+
+**The Remotion side now has the same rule** (`inputs`). It went unchecked far longer for a
+structural reason: Remotion declares its inputs in the emit tool rather than in the code, so
+the validator was never handed them, and a declared-but-unread input shipped a dead control
+with nothing to catch it. They now travel with the source. Measured at 0 occurrences across
+21 real generations - which is the argument for the rule rather than against it: it costs
+nothing today and catches the defect the moment model behaviour drifts. It counts three read
+routes (`fields.key`, `fields['key']`, destructuring) and stands down entirely when a module
+hands `fields` on wholesale, because a key may then never appear literally and an invented
+finding costs a repair round.
 
 ### The exported standalone HTML shipped a broken image
 
@@ -283,6 +360,11 @@ adding.
 The **transparent overlay was the hardest brief on both engines** - the only readability
 finding in the set (HyperFrames) and the most repair rounds on each. Everything else,
 including the long title and the single-word hero, came through clean on both.
+
+> **Superseded.** That "on both engines" was one sample per engine. At three it did not hold:
+> Remotion is 3/3 clean on the overlay with no repair rounds, HyperFrames 1/3. See "Correcting
+> an earlier claim about the overlay brief" below - the brief is hard on ONE engine, for a
+> reason that is now measured.
 
 ### The one real defect, and what it revealed
 
@@ -499,9 +581,10 @@ leaf. Animated headline text is the one thing that is never a leaf: the model sp
 per-word or per-half spans, exactly as the motion skills teach. The binding and the motion want
 the same element, so on every text-hero brief the model must pick one.
 
-All nine findings were plain `string` (×6) and `color` (×3) variables - not the `boolean`/`enum`
-types the contract advertises without giving them a working route, which is a separate latent
-trap that did not fire here. The colours were cheap to fix (`var(--accent)` in CSS, one round).
+All nine findings were plain `string` (×6) and `color` (×3) variables - not `boolean`/`enum`,
+which the contract advertised at the time without giving them a working route. That was a
+separate latent trap, it did not fire here, and it has since been closed (follow-up 4 below).
+The colours were cheap to fix (`var(--accent)` in CSS, one round).
 The three text cases each resolved badly, in a different way:
 
 - **`long-title-r1` satisfied the rule with a hidden mirror.** It kept its eight per-word spans
@@ -553,6 +636,12 @@ single mechanical cause, and it is visible in the findings before opening a sing
 
 - every HyperFrames clip is **`clipped by <div>`** - an inner element;
 - every Remotion clip is **`clipped by <div.__remotion-player>`** - the frame itself.
+
+(Those are the messages **as they read during that pass**. The bare `<div>` was itself a
+defect - the finding described elements by class and never by id, while generated
+compositions select structure by id - and has since been fixed; a clip finding now names the
+box that binds the width and states its size. The observation below still stands: what
+differs between the engines is *which* element does the cutting.)
 
 Remotion's text is only ever cut by the edge of the world. HyperFrames' text is cut by a box the
 composition built around it. The determinant is narrow: **an explicit width on an ancestor of
@@ -635,10 +724,14 @@ what remains of it is the spend.
    shares its `data-var-text` id - what the model does when it splits animated text and binds
    each fragment. Reproduced live (`HURRICANEHURRICANE`). Subsumed by item 1; no wording change
    would have helped.
-4. **`boolean` and `enum` variables have no working binding route.** The contract advertises six
-   types; the driver has two scalar routes (`--<id>` in CSS, `data-var-text`), and neither makes
-   a boolean or an enum do anything useful. Latent rather than measured - all nine `variables`
-   findings were `string`/`color` - so either give them a route or stop offering them.
+4. ~~**`boolean` and `enum` variables have no working binding route.**~~ **Done** - the contract
+   stopped offering them. It advertised six types while the driver carried a scalar by two
+   routes (`--<id>` in CSS, `data-var-text`), neither of which makes a boolean or a named
+   choice do anything a viewer sees, so a model taking the offer earned a rejection for a
+   control that does nothing. It now advertises `string`, `number`, `color`, `image`. Both
+   types stay accepted by the parser for hand-written work, and a container style query -
+   `@container style(--flag: true)`, the one route by which they CAN work - now counts as a
+   binding, because rejecting a binding that works is unfixable and burns every repair round.
 5. **The countdown-style minimal reveal** - historically the weakest brief, and the
    "uncommitted default" look it falls into is unmoved by prose. It came through clean in
    this pass, so treat the earlier finding as unconfirmed rather than settled.
@@ -648,10 +741,18 @@ what remains of it is the spend.
 
 ## Handoff
 
-**State.** Everything described here is on `main` except the comment-blanking fix, its two
-specs, and the repair-round analysis, which are on `claude/hyperframes-repair-analysis`. The
-one thing the 42-generation pass found and did NOT fix is follow-up 1 - it needs a decision on
-how a composition binds text it also animates. The bench supports both engines
+**State.** Everything described here is on `main`: the comment-blanking fix, the sharpened
+clip finding, the generation corpus, the Remotion `inputs` rule, and the removal of
+`boolean`/`enum` from the contract. Two things the 42-generation pass found and did NOT fix:
+follow-up 1, deferred by decision, and follow-up 2, which needs a contract sentence and a
+measurement rather than more analysis.
+
+**Two caveats worth carrying, because both look finished and are not.** The clip finding is
+verified to produce correct, actionable messages on the real generations that motivated it -
+replaying them there caught two bugs in it - but it is **not** proven to reduce repair rounds.
+The `inputs` rule has never fired on a live generation by construction, since it was measured
+at 0 occurrences. Neither is a win until a paid run says so; both are cheap to fold into
+follow-up 2's measurement. The bench supports both engines
 (`--engine`), runs free against the offline provider (`--stub`), and records tokens, repair
 rounds and their causes, the sources that failed a repair round, dead space, and dead
 controls. Offline coverage is 14/14 clean across both engines and all seven briefs.
@@ -676,3 +777,9 @@ within-brief spread is wide enough to swamp anything worth chasing.
 repair rounds costs roughly three times that. Always prove a bench change with `--stub`
 first; never touch `.env` while a run is in flight; and keep `VITE_SUPABASE_*` unset on the
 dev server the bench drives.
+
+**Spend last, not first.** Every validator or contract change should clear the generation
+corpus (above) before anyone commissions a run: it replays 57 real generations for free, and
+both false positives this document records would have been caught there. Reach for tokens
+only for what the corpus cannot see - the runtime readability half, and whether a prompt
+change actually moved the output.

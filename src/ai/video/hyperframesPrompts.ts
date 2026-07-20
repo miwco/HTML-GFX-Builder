@@ -43,9 +43,12 @@ export const HYPERFRAMES_CONTRACT = `## The composition contract (hard requireme
       {"id":"title","type":"string","label":"Title","default":"PRIME TIME"},
       {"id":"accent","type":"color","label":"Accent","default":"#f6a623"}
     ]'>
-  Types: string, number, color, boolean, enum (with "options":[{"value":"...","label":"..."}]),
-  and image (below). Expose the content a non-technical user would change - the headline,
-  a kicker, an accent colour, a score (typically 2-5 variables); keep timing/layout in code.
+  Types: string, number, color, and image (below). Expose the content a non-technical user
+  would change - the headline, a kicker, an accent colour, a score (typically 2-5 variables);
+  keep timing/layout in code. Do NOT declare boolean or enum variables: the runtime carries a
+  scalar into the document by exactly two routes, text substitution and a CSS custom property,
+  and neither makes a boolean or a named choice do anything a viewer would see - the control
+  would be rejected as one that does nothing.
   Bind them declaratively:
   - text: <h1 data-var-text="title">PRIME TIME</h1> (the authored text = the default; keep
     such elements leaf-only - text content, no element children).

@@ -24,6 +24,10 @@ export default defineConfig({
   workers: 4,
   retries: 0,
   reporter: [['list']],
+  // Refuses to run against an already-running dev server that is not offline-pinned. The
+  // webServer.env below only applies when Playwright STARTS the server; reuseExistingServer
+  // adopts an existing one as-is, silently skipping every pin. See e2e/_offline-guard.ts.
+  globalSetup: './e2e/_offline-guard.ts',
   use: {
     baseURL: base,
     trace: 'on-first-retry',
@@ -44,6 +48,8 @@ export default defineConfig({
     // VITE_ANTHROPIC_API_KEY is pinned EMPTY so AI-adjacent specs exercise the offline
     // stub providers deterministically (a real key in the developer's .env must never
     // leak into the suite - the video specs rely on the stub generator).
+    // NOTE: none of this applies when reuseExistingServer adopts a server someone else
+    // already started - that path is guarded by globalSetup above, not by this env block.
     env: { VITE_SUPABASE_URL: '', VITE_SUPABASE_ANON_KEY: '', VITE_RENDER_API: '1', VITE_ANTHROPIC_API_KEY: '', VITE_AI_MODEL: '', VITE_AI_PROXY_URL: '' },
   },
 });
