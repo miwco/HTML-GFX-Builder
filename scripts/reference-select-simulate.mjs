@@ -119,6 +119,8 @@ const sim = await page.evaluate(
         distinctPicks: new Set(seq.map((g) => g.ids.join('+'))).size,
         acrossBriefMean: all.mean,
         acrossBriefMeanRun1: run1.mean,
+        run1Collisions: run1.collisions,
+        run1Pairs: run1.pairs,
         crossBriefCollisions: all.collisions,
         crossBriefPairs: all.pairs,
         histogram,
@@ -132,9 +134,19 @@ const sim = await page.evaluate(
     // Why a brief lands where it does: how many cards its prose matches at all, and which one
     // ends up anchoring. The anchor is exempt from anti-dominance by design, so an anchor that
     // recurs across many briefs puts a ceiling on how far apart their picks can ever be.
+    // Report the DECLARATION-ORDER anchor beside the one actually chosen. They differ only when
+    // a brief matches several cards and strength picks a different winner, so this is the one
+    // place the anchor rule's effect (or lack of it) is visible.
     const matchProfile = briefs.map((b) => {
       const matched = rc.REFERENCE_CARDS.filter((c) => c.keywords.test(b.prompt));
-      return { label: b.label, matched: matched.length, anchor: matched[0]?.id ?? '(none)' };
+      localStorage.removeItem(RECENCY_KEY); // cold, so this is the anchor and not a rotation
+      const chosen = rc.selectReferenceCards(b.prompt);
+      return {
+        label: b.label,
+        matched: matched.length,
+        byArrayOrder: matched[0]?.id ?? '(none)',
+        anchor: chosen[0]?.id ?? '(none)',
+      };
     });
 
     return {
@@ -166,6 +178,11 @@ line(
   `${sim.A.crossBriefCollisions} (${pct(sim.A.crossBriefCollisions, sim.A.crossBriefPairs)})`,
   `${sim.B.crossBriefCollisions} (${pct(sim.B.crossBriefCollisions, sim.B.crossBriefPairs)})`,
 );
+line(
+  '  same, run 1 only',
+  `${sim.A.run1Collisions} (${pct(sim.A.run1Collisions, sim.A.run1Pairs)})`,
+  `${sim.B.run1Collisions} (${pct(sim.B.run1Collisions, sim.B.run1Pairs)})`,
+);
 
 const topOf = (h) =>
   Object.entries(h)
@@ -179,7 +196,10 @@ console.log('\n  keyword matches per brief -> anchor (anchor never rotates, neve
 const anchorCount = {};
 for (const m of sim.matchProfile) {
   if (m.matched > 0) anchorCount[m.anchor] = (anchorCount[m.anchor] ?? 0) + 1;
-  console.log(`    ${m.label.padEnd(26)} ${String(m.matched).padStart(2)} match  ->  ${m.anchor}`);
+  const moved = m.anchor !== m.byArrayOrder ? `   (array order would pick ${m.byArrayOrder})` : '';
+  console.log(
+    `    ${m.label.padEnd(26)} ${String(m.matched).padStart(2)} match  ->  ${m.anchor}${moved}`,
+  );
 }
 const anchorShare = Object.entries(anchorCount).sort((a, b) => b[1] - a[1]);
 console.log(`  anchor share: ${anchorShare.map(([id, n]) => `${id}:${n}`).join('  ')}`);
