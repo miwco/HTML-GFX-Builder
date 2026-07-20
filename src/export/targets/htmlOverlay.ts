@@ -120,7 +120,9 @@ export const htmlOverlayTarget: ExportTarget = {
       `${name}.html`,
       await composeSelfContainedHtml(withReceiver, [autoplayScript(ctx?.sampleData ?? {}, outMs)]),
     );
-    addControlPanel(root, template);
+    // This package is ONE graphic file: there is no images/ folder beside the panel, so its
+    // picker sends the embedded bytes rather than a path that resolves at neither end.
+    addControlPanel(root, template, { inlineAssets: true });
     root.file('README.md', overlayReadme(template));
     return zip;
   },

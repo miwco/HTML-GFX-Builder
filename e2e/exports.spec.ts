@@ -268,21 +268,51 @@ const IMAGE_ROUNDTRIP = `(async () => {
 
   const target = EXPORT_TARGETS.find((t) => t.id === 'html-overlay');
   const zip = await target.build(tpl, { sampleData });
-  let html = '';
+  let html = '', panel = '';
   for (const [p, f] of Object.entries(zip.files)) {
-    if (/\\.html$/i.test(p) && !/controlpanel/i.test(p)) html = await f.async('string');
+    if (!/\\.html$/i.test(p)) continue;
+    if (/controlpanel/i.test(p)) panel = await f.async('string');
+    else html = await f.async('string');
   }
-  return { skipped: false, html, rawPaths: (html.match(/images\\/acme-logo\\.png/g) || []).length };
+  // The panel's IMAGES entries: value is what gets SENT, src is what it paints.
+  var images = [];
+  var m = panel.match(/var IMAGES = (\\[[\\s\\S]*?\\]);/);
+  if (m) { try { images = JSON.parse(m[1]); } catch (e) { images = []; } }
+  return {
+    skipped: false,
+    html,
+    rawPaths: (html.match(/images\\/acme-logo\\.png/g) || []).length,
+    images,
+  };
 })()`;
 
 test('a single-file export survives its own autoplay: the baked logo stays inlined', async ({ page }, testInfo) => {
   test.setTimeout(120_000);
   await page.goto('/app');
   await page.keyboard.press('Escape');
-  const built = (await page.evaluate(IMAGE_ROUNDTRIP)) as { skipped: boolean; html: string; rawPaths: number };
+  const built = (await page.evaluate(IMAGE_ROUNDTRIP)) as {
+    skipped: boolean;
+    html: string;
+    rawPaths: number;
+    images: { value: string; label: string; src: string }[];
+  };
   test.skip(built.skipped, 'no catalog variant produces an image field');
 
   expect(built.rawPaths, 'a raw images/ path survived into the single-file export').toBe(0);
+
+  // The bundled panel sits beside a package with no images/ folder, so a picked value has to
+  // be the embedded bytes: sending a relative path would blank the graphic's inlined image.
+  expect(built.images.length, 'the panel offered no images to pick').toBeGreaterThan(0);
+  expect(
+    built.images.filter((i) => !i.value.startsWith('data:')).map((i) => i.value),
+    'the panel would send a relative path a single-file package cannot resolve',
+  ).toEqual([]);
+  expect(
+    built.images.filter((i) => !i.src.startsWith('data:')).map((i) => i.src),
+    'the panel would paint a thumbnail from a path that is not in the package',
+  ).toEqual([]);
+  // The operator still reads the asset's real name, not a 20 KB data URL.
+  expect(built.images.every((i) => i.label === 'images/acme-logo.png')).toBe(true);
 
   const dir = testInfo.outputPath('overlay-lone');
   mkdirSync(dir, { recursive: true });

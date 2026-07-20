@@ -95,9 +95,9 @@ export function injectControlReceiver(html: string, template: SpxTemplate): stri
 
 /** Bundle the generated controlpanel.html next to the graphic. When the graphic has the remote-
  *  control block, the panel also gets the Supabase Realtime send path (same project + topic). */
-export function addControlPanel(root: JSZip, template: SpxTemplate): void {
+export function addControlPanel(root: JSZip, template: SpxTemplate, opts?: { inlineAssets?: boolean }): void {
   const remote = hasRealtimeControl(template.js) ? remoteControlConfig(template.name) : null;
-  root.file('controlpanel.html', renderControlPanelHtml(template, remote));
+  root.file('controlpanel.html', renderControlPanelHtml(template, remote, opts));
 }
 
 /** A short README explaining how to deploy the package in SPX. */
