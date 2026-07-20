@@ -178,33 +178,38 @@ const CAPTURE = `(async () => {
         // Fonts change every measurement; the cap stops a missing face from hanging the run.
         await Promise.race([doc.fonts.ready.then(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
 
-        // Some graphics NEVER settle by design — a marquee loops forever, a credits roll
-        // travels, gt03 wobbles on a CSS "infinite" keyframe. Waiting for them to rest is
-        // waiting for something that will not happen, so pose them deterministically instead.
+        // MEASURE THE AUTHORED DESIGN, NOT AN ANIMATION PHASE.
         //
-        // CSS animations and transitions are killed outright: they are motion, and this
-        // baseline is about the design underneath it.
+        // The first version of this fingerprinted the settled on-air pose. That is the wrong
+        // frame to measure and it made the spec flaky under load: a ticker marquee is an
+        // infinite GSAP repeat driven by a measured builder, so there is no "settled" state
+        // for it to reach — seeking an endless timeline to its end lands wherever the clock
+        // happened to be, and tk06 drifted by 32 elements whenever the machine was busy.
+        //
+        // Motion is deliberately NOT tokenized (model/themeTokens.ts says why), so the gate
+        // does not need the animated frame to do its job: everything a token can touch —
+        // colour, radius, blur, shadow, weight, tracking, and the layout those imply — is
+        // fully determined by the CSS with no timeline running at all. Removing motion from
+        // the measurement removes the whole class of timing flake with it. The animated
+        // runtime is still covered, by bench.spec.ts.
         const still = doc.createElement('style');
-        still.textContent = '*, *::before, *::after { animation: none !important; transition: none !important; }';
+        still.textContent =
+          '*, *::before, *::after { animation: none !important; transition: none !important; }' +
+          // Templates hide their root until play(); reveal it so layout is measurable. The
+          // root is always the template's single top-level element, and forcing it the same
+          // way every run means the reveal itself can never drift.
+          ' body > * { opacity: 1 !important; }';
         doc.head.appendChild(still);
 
-        // GSAP is posed by SNAP, which exists for exactly this: it kills the tweens and
-        // replays the canonical path with progress(1, true) and suppressed callbacks, so
-        // loops and clocks stay silent. play() first, so we learn which state is on air, then
-        // snap back to that same state with its timers parked.
-        try { typeof win.play === 'function' && win.play(); } catch (e) { void e; }
-        let posed = false;
+        // Never play. Just make sure nothing GSAP may have touched at load carries inline
+        // styles into the measurement.
         try {
-          if (typeof win.noacgSnap === 'function' && typeof win.noacgMachineState === 'function') {
-            win.noacgSnap(win.noacgMachineState().groups, { timers: false });
-            posed = true;
+          if (win.gsap) {
+            win.gsap.globalTimeline.pause();
+            win.gsap.killTweensOf('*');
+            win.gsap.set(doc.body.querySelectorAll('*'), { clearProps: 'all' });
           }
         } catch (e) { void e; }
-        if (!posed) {
-          // No machine runtime (a hand-written import): fall back to accelerate-and-settle.
-          try { win.gsap && win.gsap.globalTimeline && win.gsap.globalTimeline.timeScale(20); } catch (e) { void e; }
-          await new Promise((r) => setTimeout(r, 400));
-        }
         await new Promise((r) => win.requestAnimationFrame(() => win.requestAnimationFrame(r)));
 
         const walk = (el, path) => {
