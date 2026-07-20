@@ -16,6 +16,7 @@ import { gt06 } from '../gameTimers/gt06';
 import { ss01 } from '../startingSoon/ss01';
 import { ss02 } from '../startingSoon/ss02';
 import { ss03 } from '../startingSoon/ss03';
+import { ss04 } from '../startingSoon/ss04';
 import type { GraphicType, TypeGroup } from './graphicType';
 
 /** The pause/resume group, shared by both clock types. The two states carry a short dim/undim
@@ -173,6 +174,17 @@ export const holdingScreenType: GraphicType = {
     defaultZone: 'mid-center',
   },
   designs: [
+    {
+      // Designed FOR this cell: no noacg holding screen existed. The house void panel as a
+      // pre-show front door — sibling of lt11 House Strap and card05 House Title.
+      id: 'ss04',
+      name: 'House Hold',
+      description: 'The house holding screen: mono kicker, display show name, a breathing void clock chip.',
+      styleTag: 'noacg',
+      palette: paletteById('noacg'),
+      fontId: 'space-grotesk',
+      create: (_type, options) => ss04.create(options),
+    },
     {
       id: 'ss01',
       name: 'Quiet Hold',
