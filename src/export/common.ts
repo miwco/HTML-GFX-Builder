@@ -6,6 +6,7 @@ import gsapSource from '../assets/gsap.min.js?raw';
 import lottieSource from '../assets/lottie.min.js?raw';
 import { parseDataUrl } from '../assets/assetUtils';
 import { templateUsesLottie } from '../assets/lottieSupport';
+import { fetchBundledFont, referencedFontFiles } from './bundledFonts';
 import { FONT_LICENSE_NOTE } from '../model/fonts';
 import type { SpxTemplate } from '../model/types';
 import { controlChannelName } from '../control/controlModel';
@@ -22,21 +23,18 @@ import { slug } from './slug';
  * fetch them at export time and write them under fonts/ with the same relative path the CSS uses.
  */
 export async function addReferencedFonts(zip: JSZip, template: SpxTemplate): Promise<void> {
-  const refs = [...template.css.matchAll(/url\(["']?fonts\/([\w.-]+\.(?:woff2|woff|ttf|otf))["']?\)/gi)].map((m) => m[1]);
-  const unique = [...new Set(refs)];
+  const unique = referencedFontFiles(template.css);
   if (unique.length === 0) return;
   // Imported fonts already live in template.assets (written by the assets loop);
   // only the builder-bundled files need fetching from /fonts.
   const assetPaths = new Set(template.assets.map((a) => a.path));
   for (const file of unique) {
     if (assetPaths.has(`fonts/${file}`)) continue;
-    try {
-      const res = await fetch(`/fonts/${file}`);
-      if (!res.ok) continue;
-      zip.file(`fonts/${file}`, await res.arrayBuffer());
-    } catch {
-      // Font fetch failed (offline dev edge case) — the export still works with fallback fonts.
-    }
+    const buffer = await fetchBundledFont(file);
+    // A missing file leaves the reference dangling, but a FOLDER package can still be repaired
+    // by dropping the font in by hand; the single-file inliner throws instead, because nothing
+    // can be dropped in beside a one-file export.
+    if (buffer) zip.file(`fonts/${file}`, buffer);
   }
   zip.file('FONT_LICENSES.md', FONT_LICENSE_NOTE);
 }

@@ -116,7 +116,10 @@ export const htmlOverlayTarget: ExportTarget = {
     // along so the overlay leaves by itself — same behavior as the editor preview.
     const withReceiver = { ...template, html: injectControlReceiver(template.html, template) };
     const outMs = /^\d+$/.test(template.settings.out ?? '') ? Number(template.settings.out) : null;
-    root.file(`${name}.html`, composeSelfContainedHtml(withReceiver, [autoplayScript(ctx?.sampleData ?? {}, outMs)]));
+    root.file(
+      `${name}.html`,
+      await composeSelfContainedHtml(withReceiver, [autoplayScript(ctx?.sampleData ?? {}, outMs)]),
+    );
     addControlPanel(root, template);
     root.file('README.md', overlayReadme(template));
     return zip;

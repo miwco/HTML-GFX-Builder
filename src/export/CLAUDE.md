@@ -7,7 +7,20 @@ validation gates every export (root non-negotiables 3 and 4).
 - **registry.ts** - 6 targets, each with its own successMessage + ExportContext (the Data
   panel's sampleData rides along so serverless targets can bake it).
 - **slug.ts** - shared slug helper (lives here to avoid an import cycle).
-- **selfContained.ts** - single-file composer: inline CSS/GSAP/JS/assets + extra body scripts.
+- **selfContained.ts** - single-file composer: inline CSS/GSAP/JS/assets/FONTS + extra body
+  scripts. ASYNC, because the fonts are fetched to be embedded.
+- **bundledFonts.ts** - the one place that knows how a builder font leaves the app. Generated CSS
+  always says `url("fonts/<file>")`; there are exactly two ways to honour that, and the package
+  shape picks one. A FOLDER package ships the file beside the HTML (common.ts
+  `addReferencedFonts`); a SINGLE-FILE package has no sibling to ship to, so `inlineBundledFonts`
+  embeds the bytes as a data: URL. Call it AFTER inlineAssetRefs - an imported font is an asset
+  and is already substituted by then, so whatever still matches is builder-bundled. A font that
+  cannot be fetched THROWS here (the folder writer only skips): nothing downstream fails when a
+  face is missing, because `font-display: swap` just paints the fallback, so the graphic would
+  play out in the wrong typeface with no error anywhere. That was a real shipped bug in all three
+  single-file targets. Pinned by exports.spec.ts, which opens each one alone over `file://` -
+  setContent() and srcdoc both inherit the dev server's base URL and hide exactly this class of
+  defect.
 - **targets/spxStarter.ts** - the one SPX export = spxTarget, id 'spx'; + buildStarterInto,
   reused by packets.
 - **targets/htmlOverlay.ts** - OBS/vMix browser source: an autoplay block fills fields from baked

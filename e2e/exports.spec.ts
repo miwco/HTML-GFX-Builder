@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createProject } from './_create';
 import JSZip from 'jszip';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import nodePath from 'node:path';
 
 // The CasparCG and OGraf export targets — not just zip-structure checks: the CasparCG
 // file is loaded and driven with an XML payload, and the OGraf Graphic is imported and
@@ -226,4 +227,80 @@ test('ograf: a valid v1 Graphic whose Web Component passes the action contract',
   expect(result.currentStep).toBe(0);
   expect(result.opacity).toBe('1');
   expect(result.cleared).toBe(true);
+});
+
+// ── Fonts actually arrive ────────────────────────────────────────────────────────────────
+//
+// Generated CSS references a bundled face as url("fonts/<file>.woff2"), which a FOLDER package
+// satisfies by shipping the file beside the HTML and a SINGLE-FILE package can only satisfy by
+// embedding the bytes. The single-file half was missing: casparcg, h2r and html-overlay emitted
+// the reference and wrote no font, so those graphics played out in the fallback stack.
+//
+// It hid twice over — `font-display: swap` renders fallback text instead of erroring, and every
+// other check in this file loads an export through setContent() or a srcdoc, both of which
+// inherit the DEV SERVER's base URL, where /fonts/ happens to exist. So this test insists on the
+// real destination: the file alone in a directory, opened over file://, with no sibling anything.
+
+/** Text entries of a package, keyed by path (binaries skipped). */
+async function textEntries(zip: JSZip): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const [entryPath, entry] of Object.entries(zip.files)) {
+    if (entry.dir || /\.(woff2?|ttf|otf|png|jpe?g|gif|webp|avif)$/i.test(entryPath)) continue;
+    out[entryPath] = await entry.async('string');
+  }
+  return out;
+}
+
+const FONT_REF = /url\(["']?(?:\.\/)?fonts\/([\w./-]+\.(?:woff2|woff|ttf|otf))["']?\)/gi;
+
+test('every export target carries the fonts its own code references', async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  await createHairline(page);
+
+  const targets = [
+    { label: 'SPX export', singleFile: false },
+    { label: 'HTML overlay (OBS / vMix)', singleFile: true },
+    { label: 'H2R Graphics export', singleFile: true },
+    { label: 'CasparCG export', singleFile: true },
+    { label: 'OGraf (EBU) export', singleFile: false },
+    { label: 'LiveOS (NetOn.Live) export', singleFile: false },
+  ];
+
+  for (const { label, singleFile } of targets) {
+    const zip = await downloadTarget(page, label);
+    const texts = await textEntries(zip);
+    const packaged = new Set(Object.keys(zip.files).filter((p) => !zip.files[p].dir));
+
+    // Any relative font reference that survives packaging must have a file to resolve to.
+    // (An embedded font is a data: URL and no longer matches, which is the point.)
+    const dangling: string[] = [];
+    for (const [entryPath, text] of Object.entries(texts)) {
+      const dir = entryPath.includes('/') ? entryPath.slice(0, entryPath.lastIndexOf('/') + 1) : '';
+      for (const [, file] of text.matchAll(FONT_REF)) {
+        if (!packaged.has(`${dir}fonts/${file}`)) dangling.push(`${entryPath} -> fonts/${file}`);
+      }
+    }
+    expect(dangling, `${label}: references a font the package does not contain`).toEqual([]);
+
+    if (!singleFile) continue;
+
+    // The single-file targets get the real test: alone on disk, over file://, nothing beside it.
+    // Every @font-face the graphic declares must still reach status "loaded".
+    const htmlEntry = Object.keys(texts).find((p) => /\.html$/i.test(p) && !/controlpanel/i.test(p))!;
+    const dir = testInfo.outputPath(`lone-${label.replace(/\W+/g, '-')}`);
+    mkdirSync(dir, { recursive: true });
+    const onDisk = nodePath.join(dir, 'index.html');
+    writeFileSync(onDisk, texts[htmlEntry], 'utf8');
+
+    const lone = await page.context().newPage();
+    await lone.goto(`file://${onDisk.replace(/\\/g, '/')}`);
+    const faces = await lone.evaluate(async () => {
+      await document.fonts.ready;
+      return Array.from(document.fonts).map((f) => `${f.family.replace(/["']/g, '')}:${f.status}`);
+    });
+    await lone.close();
+
+    expect(faces.length, `${label}: the graphic declares no @font-face at all`).toBeGreaterThan(0);
+    expect(faces.filter((f) => !f.endsWith(':loaded')), `${label}: a font did not load from file://`).toEqual([]);
+  }
 });
