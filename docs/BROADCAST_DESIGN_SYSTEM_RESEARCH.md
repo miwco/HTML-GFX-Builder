@@ -906,6 +906,38 @@ Predicted from §8.3f's companion histogram, not yet observed on this exact pass
 spending**; if they diverge from the table, the divergence is itself a finding about §8.3f and
 goes in the write-up rather than being silently corrected.
 
+**OBSERVED 2026-07-20, before any spend.** Replayed on the varied bank at `runs=1` - the exact
+ledger warming the paid pass will see (brief-outer, run-inner; at 3 runs the ledger is warmer by
+brief 2 and the companions rotate differently, so the 3-run replay is not the right read for a
+1-run pass). Both deciding briefs came out **exactly as predicted**, so there is no divergence to
+report and the confirmation signatures above stand unmodified:
+
+| brief | `contrast` (observed) | `padded` (observed) | vs predicted |
+|---|---|---|---|
+| `Cooking title` | `editorial-warm` + `dense-telop` | `editorial-warm` + `minimal` | matches |
+| `Logo sting with asset` | `brand-ident` + `data-terminal` | `brand-ident` + `minimal` | matches |
+
+The `padded` top-up resolved to `minimal` in both cases - genre-compatible and, notably, the
+blandest card in the pool. That is worth stating in advance because it shapes what a null means
+from the other side: if the contrast arm is *not* worse, part of the reason may be that its
+dosage-matched control was topped up with a card carrying little design DNA to relay. The full
+bank at `runs=1`, for the record:
+
+```
+Esports opener          contrast: competitive-overlay + graphic-poster   padded: sport + competitive-overlay
+Cooking title           contrast: editorial-warm + dense-telop           padded: editorial-warm + minimal
+Awards reveal           contrast: celebration + minimal                  padded: celebration + stage-format
+Transparent lower-third contrast: editorial-warm + dense-telop           padded: editorial-warm + stage-format
+Long title              contrast: editorial-warm + data-terminal         padded: editorial-warm + dense-telop
+Single-word hero        contrast: graphic-poster + sport                 padded: graphic-poster + minimal
+Logo sting with asset   contrast: brand-ident + data-terminal            padded: brand-ident + minimal
+```
+
+**Arm guard satisfied for arm 1.** With `SELECTION_MODE = 'contrast'`, arm A of the replay
+(`selectReferenceCards`, the only path that reads the const) was byte-identical to the `contrast`
+column and differed from `padded` on all 7 briefs. The same check must be repeated after the
+line is edited to `'padded'`, before the second arm is bought.
+
 **What REFUTES §8.3f.** If those two `contrast` videos are not visibly worse than their `padded`
 counterparts - concretely, if a reviewer shown the four hold-phase frames without arm labels
 cannot pick out the contrast pair as the mis-guided ones - then Finding 2's substantive half is
