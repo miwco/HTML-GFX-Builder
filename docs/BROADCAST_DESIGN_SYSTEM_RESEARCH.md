@@ -948,6 +948,31 @@ Measured selector behaviour versus the shipped keyword pick:
 | Mean pair separation (0-1) | 0.39-0.58 where a pair existed | 0.688 |
 | Companion rotates over 4 repeats of one brief | no | 4 distinct |
 
+#### The selector was inert on realistic briefs (caught pre-bench)
+
+Worth recording separately, because it nearly cost a wasted paid bench and because the
+failure is invisible to unit-style checks.
+
+Before running the A/B, the two arms were compared on the actual bench bank
+(`scripts/video-bench-briefs.varied.json`). **Six of seven briefs came out byte-identical** -
+the paid run would have measured almost nothing.
+
+The cause: short synthetic test strings match one card, but real briefs are verbose prose that
+match two by keyword. With `count = 2` the selector then "chose" between exactly two
+candidates, which is no choice. It only engaged where a brief matched zero or one card - the
+opposite of what was intended. Worse, a matched pair can itself be narrow: the awards brief
+matched `celebration` + `stage-format`, two cards **0.181** apart, and a matched-only pool
+cannot escape that.
+
+Fix: anchor exactly ONE card (the best match) and always draw companions from the wider
+genre-compatible field, rather than widening only when too few matched. Result on the same
+bank - arms differ on 5/7, mean pair separation 0.765 against the legacy 0.505, and the awards
+brief goes 0.181 -> 0.701 while keeping `celebration` as its anchor.
+
+The general lesson: **a selection heuristic must be checked against real brief text, not
+representative keywords.** The two briefs that still return no cards match no keyword at all,
+so both arms agree honestly there.
+
 #### Two things the free verification caught
 
 Both are recorded because they are easy to reintroduce.

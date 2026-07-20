@@ -412,34 +412,37 @@ export function selectReferenceCards(prompt: string, count = 2): ReferenceCard[]
   const matched = REFERENCE_CARDS.filter((c) => c.keywords.test(prompt));
   if (matched.length === 0) return []; // no signal - no reference is a valid outcome
 
-  const recent = recentReferenceIds();
-  const freshest = <T extends ReferenceCard>(cards: T[], need: number): T[] => {
-    const fresh = cards.filter((c) => !recent.includes(c.id));
-    return fresh.length >= need ? fresh : cards;
-  };
-
-  // Enough cards matched outright - contrast among the relevant ones.
-  if (matched.length >= count) return pickContrasting(freshest(matched, count), count);
-
-  // Otherwise ANCHOR on what matched and widen for the remaining slots. The anchor is
-  // non-negotiable: max-min over an unanchored pool returns the two most mutually-unlike
-  // cards, which was measured discarding the very card that matched the brief (an awards
-  // brief losing the celebration card). So relevance pins the first pick, and contrast only
-  // chooses its companions.
+  // ANCHOR EXACTLY ONE, then always widen. Both halves are load-bearing, and both were
+  // arrived at by measurement rather than reasoning:
   //
-  // The widening stays appropriate because the MATCHED cards vote on genre: only cards
-  // sharing a voted genre join the pool, so a cooking brief never reaches data-terminal.
+  //  - The anchor is non-negotiable. Max-min over an unanchored pool returns the two most
+  //    mutually-unlike cards and happily discards the one that matched the brief - an awards
+  //    brief lost the celebration card outright. Relevance pins the first pick.
+  //
+  //  - Widening must happen even when several cards matched. Only anchoring what matched
+  //    left the selector inert on realistic briefs: verbose real-world prose matches two
+  //    cards by keyword, so "choosing" between them is no choice, and on the bench bank six
+  //    of seven briefs came out byte-identical to the legacy path. Worse, the matched pair
+  //    can itself be a narrow one (an awards brief matched celebration + stage-format, two
+  //    cards 0.18 apart on the axes), and a matched-only pool cannot escape that.
+  //
+  // So: the best match anchors, and every companion is chosen from the wider genre-compatible
+  // field. Widening stays appropriate because the MATCHED cards vote on genre - a cooking
+  // brief never reaches the data-terminal card.
+  const anchor = matched[0];
   const voted = new Set(matched.flatMap((c) => c.genres));
   const candidates = REFERENCE_CARDS.filter(
-    (c) => !matched.includes(c) && c.genres.some((g) => voted.has(g)),
+    (c) => c !== anchor && c.genres.some((g) => voted.has(g)),
   );
-  if (candidates.length === 0) return matched;
+  if (candidates.length === 0) return [anchor];
 
-  return pickContrasting(
-    [...matched, ...freshest(candidates, count - matched.length)],
-    count,
-    matched,
-  );
+  // Anti-dominance applies to ELIGIBILITY only: drop recently-used companions while enough
+  // remain, then let the (never re-weighted) contrast step run on what is left.
+  const recent = recentReferenceIds();
+  const fresh = candidates.filter((c) => !recent.includes(c.id));
+  const pool = fresh.length >= count - 1 ? fresh : candidates;
+
+  return pickContrasting([anchor, ...pool], count, [anchor]);
 }
 
 /** The Director-prompt section for the picked cards ('' when none matched). */
