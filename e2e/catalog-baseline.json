@@ -1,0 +1,265 @@
+{
+  "$comment": "Emitted-code fingerprints for every catalog variant at its own defaults. Re-record with UPDATE_CATALOG_BASELINE=1 and let the diff be the review. See e2e/catalog-baseline.spec.ts.",
+  "variants": {
+    "bug01": {
+      "html": "79a54f39f197bc37",
+      "css": "b13490667c60a0ea",
+      "js": "374930f80581fe23"
+    },
+    "bug02": {
+      "html": "f53ced7a048636b8",
+      "css": "c587f7578a8553bc",
+      "js": "936c414530d3a8ac"
+    },
+    "card01": {
+      "html": "fc19ee90cf31ced2",
+      "css": "b9dfa4117a155097",
+      "js": "14cb44cbe8820343"
+    },
+    "card02": {
+      "html": "095414cb3190fd63",
+      "css": "5fa710f53f3f2c9d",
+      "js": "bced00d85619a007"
+    },
+    "card03": {
+      "html": "10a01365582eca0a",
+      "css": "f11d091d13e63ac8",
+      "js": "7256154d0e7e33c1"
+    },
+    "card04": {
+      "html": "684b63bac6ed3c74",
+      "css": "ec5ab6be109dce33",
+      "js": "51b3b141d39adcca"
+    },
+    "card05": {
+      "html": "6a3009085d3b7eb9",
+      "css": "aacfaf7ede48fcfd",
+      "js": "e3590d947c9ce24c"
+    },
+    "cr01": {
+      "html": "9b2acb216120a3f6",
+      "css": "8faaa70604f83cd7",
+      "js": "614930aab00dbe5c"
+    },
+    "cr02": {
+      "html": "59fc9caad5e18bde",
+      "css": "33dc5e6fd55f80cd",
+      "js": "8a976170a45a0d7a"
+    },
+    "cr03": {
+      "html": "114b0013f6be95c3",
+      "css": "9a6b8faa0294f84b",
+      "js": "aa6754d216f31194"
+    },
+    "cr04": {
+      "html": "71dd1836dfb2b409",
+      "css": "23766322fa101f75",
+      "js": "59c113bd4ac06101"
+    },
+    "gt01": {
+      "html": "77088b50f3181775",
+      "css": "34d68bb6b4eceaf1",
+      "js": "774bbf0349d5f433"
+    },
+    "gt02": {
+      "html": "ad8b7d9a7758fe9f",
+      "css": "f7b8cdb1f4007fea",
+      "js": "41242b7f7ced4947"
+    },
+    "gt03": {
+      "html": "70fe9b5605d84e03",
+      "css": "97a2413dc4d23b42",
+      "js": "7215f2a661195f8c"
+    },
+    "gt04": {
+      "html": "90baa72a2df70cda",
+      "css": "d052a797fb0b62e4",
+      "js": "d873fd009860678b"
+    },
+    "ig01": {
+      "html": "ee36f6b24e2c823d",
+      "css": "7d3c0021e682d2b0",
+      "js": "8af20823e5b32f98"
+    },
+    "ig02": {
+      "html": "d331297b27c70c72",
+      "css": "66a245d48d80980c",
+      "js": "ab1d0a438e1b5df0"
+    },
+    "ig03": {
+      "html": "d0627f9c055bbd2b",
+      "css": "d563f4cf3e67dfd0",
+      "js": "8be32bbb93b9701a"
+    },
+    "ig04": {
+      "html": "b90cc2d1b974e57b",
+      "css": "f99b004ce4224d6c",
+      "js": "886e0617d3a9d5e6"
+    },
+    "ig05": {
+      "html": "28d0d2e0b7633e94",
+      "css": "f0edc370271c754c",
+      "js": "78370ace584af8ad"
+    },
+    "ig06": {
+      "html": "8c670d7c64509439",
+      "css": "7b1d6459420469de",
+      "js": "90d794a7beb55c50"
+    },
+    "ig07": {
+      "html": "69885aa652af1ad7",
+      "css": "00625775503264e8",
+      "js": "021fe95084531b44"
+    },
+    "imp01": {
+      "html": "78c380061bf3aae3",
+      "css": "04e7d4aeca721e69",
+      "js": "436c859621a72a0c"
+    },
+    "lt01": {
+      "html": "7edd3214493b882e",
+      "css": "57881c1bdc856988",
+      "js": "95e38c40a6cdc610"
+    },
+    "lt02": {
+      "html": "4eaa796e3d9bbfbc",
+      "css": "58f5e1d9f947a6e8",
+      "js": "1a332c4ddbf86cee"
+    },
+    "lt03": {
+      "html": "521a12f1a8ac70a5",
+      "css": "4f09acab4b8ad1cc",
+      "js": "f984250809e690f9"
+    },
+    "lt04": {
+      "html": "7ac3b5c88d6b1015",
+      "css": "2881bf07863adb5a",
+      "js": "baee46f2f0d2a6e9"
+    },
+    "lt05": {
+      "html": "b550966026c90083",
+      "css": "ecca8d6297eb0c30",
+      "js": "488dad4d1e0f013f"
+    },
+    "lt06": {
+      "html": "39256bb259d93bfd",
+      "css": "aac2558278080ee1",
+      "js": "0149f3e24d303a84"
+    },
+    "lt07": {
+      "html": "6b55b13a3f115d49",
+      "css": "4e2f2872f17b31ce",
+      "js": "8e4ba6de518611d8"
+    },
+    "lt08": {
+      "html": "2b3495016fe36b51",
+      "css": "117a540f1d46ea7a",
+      "js": "b9b6bc6b4b4d738c"
+    },
+    "lt09": {
+      "html": "0a1bafbd7550a9b8",
+      "css": "09f31dcef46ff17c",
+      "js": "38531dc7842a37a8"
+    },
+    "lt10": {
+      "html": "ad51570205d43220",
+      "css": "0993b84e23e160d2",
+      "js": "4f8ce8451ed04454"
+    },
+    "lt11": {
+      "html": "a4c7255cd30ff72b",
+      "css": "bf7687c2a96425ee",
+      "js": "56aec3299efe015f"
+    },
+    "lt12": {
+      "html": "b595df9b9e642671",
+      "css": "115771d98f4a8582",
+      "js": "870d03f18c3d36a8"
+    },
+    "lt13": {
+      "html": "3350007196c2694c",
+      "css": "8c52e02656d83180",
+      "js": "0d79bc0e97cd7fe8"
+    },
+    "lt14": {
+      "html": "284c4e1e3f6fe563",
+      "css": "7a288742243980b9",
+      "js": "37e6ecfcecde1617"
+    },
+    "qz01": {
+      "html": "2993c9c725d84b55",
+      "css": "b8a1f078b47f1961",
+      "js": "d07d8f5d164be97f"
+    },
+    "sb01": {
+      "html": "e8c6faed3b5d9756",
+      "css": "538891652d1b92dd",
+      "js": "981e63695fe7e492"
+    },
+    "sb02": {
+      "html": "ef22dc63b3a770c9",
+      "css": "f621a44175b9bf06",
+      "js": "61b268a0bc2461ca"
+    },
+    "ss01": {
+      "html": "c7c732db9d1959b1",
+      "css": "0c21305c96b610e7",
+      "js": "7a8e6a0d43c8efd4"
+    },
+    "ss02": {
+      "html": "4f88751c5fb0739d",
+      "css": "f8d77103b6dec09c",
+      "js": "f4e13ce1d9462db8"
+    },
+    "ss03": {
+      "html": "9b531bb596075c06",
+      "css": "f412cfb8b019e0d9",
+      "js": "14cdf51e39428e2c"
+    },
+    "tk01": {
+      "html": "0ab1b0b516bf71d4",
+      "css": "f9749cbdd5261fd5",
+      "js": "71e4d54385760735"
+    },
+    "tk02": {
+      "html": "e6666e93365fab2e",
+      "css": "6e5cb54ab6d96200",
+      "js": "3672bc2b4a77a2a5"
+    },
+    "tk03": {
+      "html": "17152012f15952e1",
+      "css": "36ba3ace31421ba3",
+      "js": "2905cf733921c36f"
+    },
+    "tk04": {
+      "html": "10db03b4251138c4",
+      "css": "25914aeec462af39",
+      "js": "667648db6ee35f8c"
+    },
+    "tk05": {
+      "html": "6d1f1c332ab8dbb6",
+      "css": "16dbe4dbe303f385",
+      "js": "a9fa0adf9e39e3b9"
+    },
+    "tk06": {
+      "html": "36e1de7929e184f0",
+      "css": "3dd744f6a7be8f80",
+      "js": "7d257b9bf37a23b4"
+    },
+    "tk07": {
+      "html": "e40c3c4e94d700b0",
+      "css": "4d5484d987473149",
+      "js": "ce7062ffec499b26"
+    },
+    "vs01": {
+      "html": "b38061cab08e171b",
+      "css": "10872ed6546d0fb8",
+      "js": "806f4d4a813c13f9"
+    },
+    "vs02": {
+      "html": "e823e942aea44e96",
+      "css": "20b872e2e1cf036c",
+      "js": "d52989a2c10ec81d"
+    }
+  }
+}
