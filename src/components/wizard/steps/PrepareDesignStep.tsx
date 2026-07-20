@@ -15,11 +15,12 @@ interface Props {
   resolution: Resolution;
   /** The current artwork asset (the cleaned file once an erase is applied). */
   images: AssetFile[];
-  /** The untouched upload — every erase runs from THESE pixels, so re-runs never compound. */
+  /** The untouched upload — the erase CHAIN runs from THESE pixels, so re-runs never compound. */
   original: AssetFile | null;
-  erase: DesignEraseState | null;
-  onApplyErase: (erase: DesignEraseState, images: AssetFile[]) => void;
-  onClearErase: () => void;
+  /** Every applied erase, in the order it was marked. */
+  erases: DesignEraseState[];
+  /** Replace the whole erase list and the artwork it produced (one draft patch). */
+  onErases: (erases: DesignEraseState[], images: AssetFile[]) => void;
   /** Set/clear the artwork's stretch mode (lands on draft.designArt.stretch). */
   onStretch: (stretch: DesignStretch | null) => void;
   /** Preview-only: the content-width slider's demo text, pushed into the live preview. */
@@ -46,15 +47,14 @@ export default function PrepareDesignStep({
   resolution,
   images,
   original,
-  erase,
-  onApplyErase,
-  onClearErase,
+  erases,
+  onErases,
   onStretch,
   onDemoText,
 }: Props) {
   // Has the user answered "does it have baked-in text?" — starts answered when an erase
   // already exists (coming back to the step keeps the surface open).
-  const [marking, setMarking] = useState<boolean | null>(erase ? true : null);
+  const [marking, setMarking] = useState<boolean | null>(erases.length > 0 ? true : null);
   // A run whose background was NOT flat, held for an explicit "use it anyway" instead of
   // silently applying a fill the samples disagreed on.
   const [pending, setPending] = useState<{ rect: EraseRect; result: EraseResult } | null>(null);
@@ -71,22 +71,32 @@ export default function PrepareDesignStep({
   const fullFrame = art.width === resolution.width && art.height === resolution.height;
   const cleanedUrl = pending
     ? pending.result.dataUrl
-    : erase && typeof current?.data === 'string'
+    : erases.length > 0 && typeof current?.data === 'string'
       ? current.data
       : null;
   const downloadName = `${(current?.path ?? 'images/design.png').replace(/^.*\//, '').replace(/\.[^.]+$/, '')}-clean.png`;
 
+  const stateOf = (rect: EraseRect, result: EraseResult): DesignEraseState => ({
+    rect,
+    uniform: result.sampling.uniform,
+    maxDeviation: result.sampling.maxDeviation,
+    fill: result.sampling.fill,
+    ink: result.ink ?? undefined,
+  });
+
+  /**
+   * Mark ANOTHER region. Each erase runs against the artwork as it stands, so a design with a
+   * name and a title takes two marks and keeps both — and each region's ink is measured
+   * before its own fill lands, which is what lets every one of them seed a real field.
+   */
   const run = async (rect: EraseRect) => {
-    if (!original || typeof original.data !== 'string') return;
+    if (!original || typeof current?.data !== 'string') return;
     setBusy(true);
     setPending(null);
     try {
-      const result = await eraseRegionFlat(original.data, rect);
+      const result = await eraseRegionFlat(current.data, rect);
       if (result.sampling.uniform) {
-        onApplyErase(
-          { rect, uniform: true, maxDeviation: result.sampling.maxDeviation, fill: result.sampling.fill },
-          [{ ...original, data: result.dataUrl }],
-        );
+        onErases([...erases, stateOf(rect, result)], [{ ...original, data: result.dataUrl }]);
       } else {
         setPending({ rect, result });
       }
@@ -97,26 +107,57 @@ export default function PrepareDesignStep({
 
   const applyPending = () => {
     if (!pending || !original) return;
-    onApplyErase(
-      {
-        rect: pending.rect,
-        uniform: false,
-        maxDeviation: pending.result.sampling.maxDeviation,
-        fill: pending.result.sampling.fill,
-      },
+    onErases(
+      [...erases, stateOf(pending.rect, pending.result)],
       [{ ...original, data: pending.result.dataUrl }],
     );
     setPending(null);
   };
 
+  /**
+   * Drop one mark — which means REPLAYING the rest from the untouched upload. Undoing a fill
+   * in place is not possible (its pixels are gone), and re-running the survivors from the
+   * original is the only way to get an artwork that carries exactly the marks still standing.
+   * The same replay is what has always kept re-runs from compounding.
+   */
+  const removeErase = async (index: number) => {
+    if (!original || typeof original.data !== 'string') return;
+    setPending(null);
+    const keep = erases.filter((_, i) => i !== index);
+    if (keep.length === 0) {
+      onErases([], [original]);
+      return;
+    }
+    setBusy(true);
+    try {
+      let data = original.data;
+      const next: DesignEraseState[] = [];
+      for (const e of keep) {
+        const result = await eraseRegionFlat(data, e.rect);
+        data = result.dataUrl;
+        next.push(stateOf(e.rect, result));
+      }
+      onErases(next, [{ ...original, data }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** How many editable fields the marks will produce — one per line of text found. */
+  const seedCount = erases.reduce((n, e) => n + Math.max(1, e.ink?.lines.length ?? 1), 0);
+
   /** Where the guides start when stretch is switched on: the erased text's edges when the
    *  user marked some (the text zone IS the stretch zone), else a middle-third default. */
   const defaultGuides = (): { left: number; right: number } => {
-    if (erase) {
+    if (erases.length > 0) {
+      // Every marked region together: the band that has to stretch is the one holding all
+      // the text, not whichever piece of it was marked first.
       const k = art.width / sourceW;
+      const lo = Math.min(...erases.map((e) => e.rect.x));
+      const hi = Math.max(...erases.map((e) => e.rect.x + e.rect.width));
       return {
-        left: Math.max(8, Math.round(erase.rect.x * k)),
-        right: Math.min(art.width - 8, Math.round((erase.rect.x + erase.rect.width) * k)),
+        left: Math.max(8, Math.round(lo * k)),
+        right: Math.min(art.width - 8, Math.round(hi * k)),
       };
     }
     return { left: Math.round(art.width * 0.35), right: Math.round(art.width * 0.65) };
@@ -148,7 +189,7 @@ export default function PrepareDesignStep({
         src={shownSrc}
         sourceWidth={sourceW}
         sourceHeight={sourceH}
-        rect={pending?.rect ?? erase?.rect ?? null}
+        rects={pending ? [...erases.map((e) => e.rect), pending.rect] : erases.map((e) => e.rect)}
         onRect={(r) => void run(r)}
         drawEnabled={marking === true && !busy}
       >
@@ -178,14 +219,42 @@ export default function PrepareDesignStep({
           </div>
         </div>
       )}
-      {erase && !pending && (
+      {erases.length > 0 && !pending && (
         <div className="wz-prep-verdict good" data-testid="erase-done">
           <p>
-            {erase.uniform
+            {erases.every((e) => e.uniform)
               ? 'The background is flat — the text was erased cleanly.'
-              : 'Filled with the average background colour (the samples were not flat).'}{' '}
-            A text field will sit in the erased region when the project is created.
+              : 'Filled with the average background colour (some samples were not flat).'}{' '}
+            {seedCount === 1
+              ? 'A text field will sit in the erased region when the project is created.'
+              : `${seedCount} text fields will sit in the erased regions when the project is created.`}{' '}
+            Mark more baked-in text any time — each region becomes its own field.
           </p>
+          <ul className="wz-prep-marks" data-testid="erase-marks">
+            {erases.map((e, i) => (
+              <li key={i}>
+                <span className="mono">
+                  {Math.round(e.rect.width)} × {Math.round(e.rect.height)} at{' '}
+                  {Math.round(e.rect.x)}, {Math.round(e.rect.y)}
+                </span>
+                <span className="hint">
+                  {(e.ink?.lines.length ?? 1) > 1
+                    ? `${e.ink!.lines.length} lines`
+                    : e.ink
+                      ? '1 line'
+                      : 'no text found'}
+                  {e.uniform ? '' : ' · average fill'}
+                </span>
+                <button
+                  data-testid={`erase-remove-${i}`}
+                  onClick={() => void removeErase(i)}
+                  title="Drop this mark — the artwork is rebuilt from your original with the rest"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
           <div className="row" style={{ gap: 8 }}>
             <button
               onPointerDown={() => setComparing(true)}
@@ -197,11 +266,11 @@ export default function PrepareDesignStep({
             </button>
             {cleanedUrl && (
               <a className="btn" data-testid="erase-download" href={cleanedUrl} download={downloadName}>
-                Download cleaned PNG
+                Download cleaned artwork
               </a>
             )}
-            <button data-testid="erase-remove" onClick={() => { setPending(null); onClearErase(); }}>
-              Remove erase
+            <button data-testid="erase-remove" onClick={() => { setPending(null); onErases([], original ? [original] : []); }}>
+              {erases.length > 1 ? 'Remove all erases' : 'Remove erase'}
             </button>
           </div>
         </div>
@@ -232,10 +301,11 @@ export default function PrepareDesignStep({
             </button>
           </p>
         )}
-        {marking && !erase && !pending && (
+        {marking && erases.length === 0 && !pending && (
           <p className="hint" style={{ marginTop: 10 }}>
-            Drag a box over the baked-in text on the artwork above. Redraw it any time — the
-            erase always starts from your original file.
+            Drag a box over the baked-in text on the artwork above — one box per piece of text,
+            so a name and a title each become their own field. Remove a box any time; the
+            artwork is always rebuilt from your original file.
           </p>
         )}
       </div>

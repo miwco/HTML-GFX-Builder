@@ -67,12 +67,16 @@ export const CARD_TEXT_RECT = { x: 0.18, y: 0.42, width: 0.37, height: 0.13 };
  * tool: flat off-white background, a dark inset frame, a dark "baked text" bar at
  * CARD_TEXT_RECT (the stand-in for a name typed into the design), and a dark blob on the
  * right (the stand-in for cap-side artwork). `background: 'gradient'` makes the background
- * a horizontal ramp instead — the case a flat-fill erase must REFUSE.
+ * a horizontal ramp instead — the case a flat-fill erase must REFUSE, and `textRect` moves
+ * the bar (a design whose text was set centred, or from the right edge).
  */
 export function framedCardPng(
   width: number,
   height: number,
-  opts: { background?: 'flat' | 'gradient' } = {},
+  opts: {
+    background?: 'flat' | 'gradient';
+    textRect?: { x: number; y: number; width: number; height: number };
+  } = {},
 ): Buffer {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
@@ -82,11 +86,12 @@ export function framedCardPng(
 
   const frameInset = Math.round(Math.min(width, height) * 0.06);
   const frameWidth = Math.max(2, Math.round(Math.min(width, height) * 0.008));
+  const tr = opts.textRect ?? CARD_TEXT_RECT;
   const text = {
-    x0: Math.round(width * CARD_TEXT_RECT.x),
-    y0: Math.round(height * CARD_TEXT_RECT.y),
-    x1: Math.round(width * (CARD_TEXT_RECT.x + CARD_TEXT_RECT.width)),
-    y1: Math.round(height * (CARD_TEXT_RECT.y + CARD_TEXT_RECT.height)),
+    x0: Math.round(width * tr.x),
+    y0: Math.round(height * tr.y),
+    x1: Math.round(width * (tr.x + tr.width)),
+    y1: Math.round(height * (tr.y + tr.height)),
   };
   const blob = {
     x0: Math.round(width * 0.72),

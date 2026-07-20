@@ -6,6 +6,29 @@ against evidence rather than memory.
 
 Model throughout: `claude-sonnet-5` (the bench pins it; director and coder both use it).
 
+## How to read this document, and how to leave it
+
+Most of it is a **record of measurements at a moment in time**, not a description of how the
+code behaves today. That distinction has already cost a session: a pass observed clip findings
+reading `clipped by <div>`, a later change fixed exactly that, and the observation sat here
+looking like current behaviour. The same trap caught the routes a composition variable can
+bind by, described here as a closed set that later grew, and a follow-up that stayed on the
+open list after it was done.
+
+So, when you change something this document describes:
+
+- **Correct the claim where it is made, don't only append.** A reader hitting the old
+  paragraph first will believe it. Marking a passage *Superseded* with a pointer is enough -
+  the history is worth keeping, the ambiguity is not.
+- **Close the follow-up in the same commit as the fix.** An open item that is secretly done
+  invites the next session to redo it.
+- **Distrust the absolutes you find here** - "the complete set", "the only route", "cannot
+  miss one". Every one of them was true when written and is a hostage to the next change.
+  Prefer "as measured", and date it.
+- **A measurement is not a promise about the future.** Say what ran, on what, and when; if a
+  change is verified in unit terms but never seen on a live generation, say that too rather
+  than letting it read as proven.
+
 ## Running the bench
 
 ```bash
@@ -105,12 +128,13 @@ Beyond validation:
   hold, backdrops excluded. A metric and an outlier detector, **not** a pass/fail gate and
   not something to tune against; see the variance finding below.
 - **Dead controls**, on BOTH engines - a declared control nothing reads. HyperFrames: a
-  composition variable nothing binds (the validator enforces this, so the bench is an
-  independent audit of the rule). Remotion: a declared input the module never reads off
-  `fields`, counting all three read routes - nothing in the product enforces that one, so here
-  the bench is the only thing looking. Auditing both is what makes a cross-engine repair-round
-  comparison honest: a rule only one engine enforces shows up as repair rounds there and as
-  silence on the other, which looks like a quality gap and is not one.
+  composition variable nothing binds. Remotion: a declared input the module never reads off
+  `fields`. **Both are now enforced by the validators**, so the bench is an independent audit
+  of each rule rather than the only thing looking - the Remotion half was added after this
+  audit found the gap, and the audit is what proved the new rule does not misfire. Auditing
+  both is also what made the cross-engine repair-round comparison honest: a rule only one
+  engine enforces shows up as repair rounds there and as silence on the other, which looks
+  like a quality gap and is not one.
 
 ## Findings that changed the code
 
@@ -164,8 +188,22 @@ that does nothing when dragged - a promise the document does not keep, and one n
 rule caught because the document is otherwise perfectly legal. Prompt guidance held for six
 generations and then missed one (an accent declared, then written as a hex literal); across
 36 it missed three. Binding is deterministic and checkable, so the validator now enforces it,
-naming all three binding routes (`data-var-text`, `data-var-src`, `var(--id)`). Those are the
-complete set of routes a value can take into a composition, so the check cannot miss one.
+naming the binding routes: `data-var-text`, `data-var-src`, `var(--id)`, and a container style
+query, `@container style(--id: …)`. The first three were once described here as the complete
+set; the style query was added later, when removing `boolean`/`enum` from the contract
+(follow-up 4) surfaced it as the only route by which those types can change what a viewer
+sees. Treat the list as current, not closed - a value route this check does not know about
+reads as a dead control, and a rule that rejects working code cannot be repaired around.
+
+**The Remotion side now has the same rule** (`inputs`). It went unchecked far longer for a
+structural reason: Remotion declares its inputs in the emit tool rather than in the code, so
+the validator was never handed them, and a declared-but-unread input shipped a dead control
+with nothing to catch it. They now travel with the source. Measured at 0 occurrences across
+21 real generations - which is the argument for the rule rather than against it: it costs
+nothing today and catches the defect the moment model behaviour drifts. It counts three read
+routes (`fields.key`, `fields['key']`, destructuring) and stands down entirely when a module
+hands `fields` on wholesale, because a key may then never appear literally and an invented
+finding costs a repair round.
 
 ### The exported standalone HTML shipped a broken image
 
@@ -322,6 +360,11 @@ adding.
 The **transparent overlay was the hardest brief on both engines** - the only readability
 finding in the set (HyperFrames) and the most repair rounds on each. Everything else,
 including the long title and the single-word hero, came through clean on both.
+
+> **Superseded.** That "on both engines" was one sample per engine. At three it did not hold:
+> Remotion is 3/3 clean on the overlay with no repair rounds, HyperFrames 1/3. See "Correcting
+> an earlier claim about the overlay brief" below - the brief is hard on ONE engine, for a
+> reason that is now measured.
 
 ### The one real defect, and what it revealed
 
@@ -538,9 +581,10 @@ leaf. Animated headline text is the one thing that is never a leaf: the model sp
 per-word or per-half spans, exactly as the motion skills teach. The binding and the motion want
 the same element, so on every text-hero brief the model must pick one.
 
-All nine findings were plain `string` (×6) and `color` (×3) variables - not the `boolean`/`enum`
-types the contract advertises without giving them a working route, which is a separate latent
-trap that did not fire here. The colours were cheap to fix (`var(--accent)` in CSS, one round).
+All nine findings were plain `string` (×6) and `color` (×3) variables - not `boolean`/`enum`,
+which the contract advertised at the time without giving them a working route. That was a
+separate latent trap, it did not fire here, and it has since been closed (follow-up 4 below).
+The colours were cheap to fix (`var(--accent)` in CSS, one round).
 The three text cases each resolved badly, in a different way:
 
 - **`long-title-r1` satisfied the rule with a hidden mirror.** It kept its eight per-word spans
@@ -592,6 +636,12 @@ single mechanical cause, and it is visible in the findings before opening a sing
 
 - every HyperFrames clip is **`clipped by <div>`** - an inner element;
 - every Remotion clip is **`clipped by <div.__remotion-player>`** - the frame itself.
+
+(Those are the messages **as they read during that pass**. The bare `<div>` was itself a
+defect - the finding described elements by class and never by id, while generated
+compositions select structure by id - and has since been fixed; a clip finding now names the
+box that binds the width and states its size. The observation below still stands: what
+differs between the engines is *which* element does the cutting.)
 
 Remotion's text is only ever cut by the edge of the world. HyperFrames' text is cut by a box the
 composition built around it. The determinant is narrow: **an explicit width on an ancestor of
@@ -674,10 +724,14 @@ what remains of it is the spend.
    shares its `data-var-text` id - what the model does when it splits animated text and binds
    each fragment. Reproduced live (`HURRICANEHURRICANE`). Subsumed by item 1; no wording change
    would have helped.
-4. **`boolean` and `enum` variables have no working binding route.** The contract advertises six
-   types; the driver has two scalar routes (`--<id>` in CSS, `data-var-text`), and neither makes
-   a boolean or an enum do anything useful. Latent rather than measured - all nine `variables`
-   findings were `string`/`color` - so either give them a route or stop offering them.
+4. ~~**`boolean` and `enum` variables have no working binding route.**~~ **Done** - the contract
+   stopped offering them. It advertised six types while the driver carried a scalar by two
+   routes (`--<id>` in CSS, `data-var-text`), neither of which makes a boolean or a named
+   choice do anything a viewer sees, so a model taking the offer earned a rejection for a
+   control that does nothing. It now advertises `string`, `number`, `color`, `image`. Both
+   types stay accepted by the parser for hand-written work, and a container style query -
+   `@container style(--flag: true)`, the one route by which they CAN work - now counts as a
+   binding, because rejecting a binding that works is unfixable and burns every repair round.
 5. **The countdown-style minimal reveal** - historically the weakest brief, and the
    "uncommitted default" look it falls into is unmoved by prose. It came through clean in
    this pass, so treat the earlier finding as unconfirmed rather than settled.
@@ -687,13 +741,18 @@ what remains of it is the spend.
 
 ## Handoff
 
-**State.** Everything described here is on `main`, including the comment-blanking fix, the
-sharpened clip finding, and the generation corpus. Two things the 42-generation pass found
-and did NOT fix: follow-up 1, deferred by decision, and follow-up 2, which needs a contract
-sentence and a measurement rather than more analysis. One caveat worth carrying: the clip
-finding now names the box and hands over the arithmetic, but that change is proven only to
-emit the right string - **not** to reduce repair rounds. Check that on the next paid run
-before treating it as a win. The bench supports both engines
+**State.** Everything described here is on `main`: the comment-blanking fix, the sharpened
+clip finding, the generation corpus, the Remotion `inputs` rule, and the removal of
+`boolean`/`enum` from the contract. Two things the 42-generation pass found and did NOT fix:
+follow-up 1, deferred by decision, and follow-up 2, which needs a contract sentence and a
+measurement rather than more analysis.
+
+**Two caveats worth carrying, because both look finished and are not.** The clip finding is
+verified to produce correct, actionable messages on the real generations that motivated it -
+replaying them there caught two bugs in it - but it is **not** proven to reduce repair rounds.
+The `inputs` rule has never fired on a live generation by construction, since it was measured
+at 0 occurrences. Neither is a win until a paid run says so; both are cheap to fold into
+follow-up 2's measurement. The bench supports both engines
 (`--engine`), runs free against the offline provider (`--stub`), and records tokens, repair
 rounds and their causes, the sources that failed a repair round, dead space, and dead
 controls. Offline coverage is 14/14 clean across both engines and all seven briefs.

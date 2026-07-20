@@ -16,6 +16,7 @@ import { probeAsset } from '../assets/assetInfo';
 import { fileToDataUrl, isImageAsset, isLottieAsset, uniqueAssetPath } from '../assets/assetUtils';
 import { ASSET_DRAG_TYPE } from './AssetsPanel';
 import CanvasSelection, { type CanvasRect } from './CanvasSelection';
+import { partLocked } from './partLocks';
 import { phaseIdOf } from './StepTimeline';
 import type { SpxWindow } from './PlayoutSimulator';
 import { useIsMobile } from './useIsMobile';
@@ -228,8 +229,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   areaDraftRef.current = areaDraft;
   /** The TEXT tool's pressed-down point (doc px) — the click that places point text. */
   const textPressRef = useRef<{ x: number; y: number } | null>(null);
+  /** The placed field this press GRABBED outright (selected + started dragging in one
+   *  gesture), so the release knows not to climb out of a selection it just made. */
+  const promotedRef = useRef<string | null>(null);
   const [editing, setEditing] = useState<EditState | null>(null);
-  const [cursor, setCursor] = useState<'default' | 'grab' | 'text'>('default');
   // The root's rect (doc px) while the pointer is over it — anchors the scale handle. Rendered
   // via × scale into the doc-space overlay, so no logical conversion is needed.
   const [hoverRect, setHoverRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
@@ -269,6 +272,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   const setSelected = useTemplateStore((s) => s.setSelectedPart);
   const setSelectedParts = useTemplateStore((s) => s.setSelectedParts);
   const toggleSelectedPart = useTemplateStore((s) => s.toggleSelectedPart);
+  const partLocks = useTemplateStore((s) => s.partLocks);
+  const setPartLock = useTemplateStore((s) => s.setPartLock);
   /** The selected elements' live rects in DOC px (rAF-tracked below; rendered via × scale into
    *  the doc-space overlay); the PRIMARY (first selected) carries the chip, the rest get plain
    *  outlines. */
@@ -506,17 +511,56 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     applyTemplate({ ...template, ...change.patch }); // one undoable apply — same as the gutter
     requestReplay();
   };
+  // ── The DESIGN UNIT of an imported design: the artwork and the box that holds it together
+  //    with the text placed on it. They are not layers you size on their own — the artwork's
+  //    size IS the composition's size, and every placed field's left/top/font-size is written
+  //    as `calc(Npx * var(--scale))` against it. So their corner handle is the DESIGN scale
+  //    handle (one :root --scale patch, the same write the Style panel's size knob makes),
+  //    which moves artwork and fields as one; a scale KEYFRAME on the artwork alone would
+  //    leave every field behind and break the layout the user imported. Motion is untouched:
+  //    the Inspector's Properties tab still keyframes the artwork's scale like any layer.
+  //    Code-derived as always (designInfo), so catalog templates keep the layer handles. ──
+  const designUnit = useMemo(
+    () => (designInfo ? [`.${designInfo.prefix}-art`, `.${designInfo.prefix}-box`] : []),
+    [designInfo],
+  );
+  const designUnitSelected = !!selectedPart && designUnit.includes(selectedPart.selector);
+
+  /** Is this part LOCKED for canvas gestures? (components/partLocks.ts owns the meaning and
+   *  the defaults, so this layer and the Inspector's toggle can never disagree.) */
+  const isLocked = useCallback(
+    (selector: string) => partLocked(selector, partLocks, designInfo?.prefix ?? null),
+    [partLocks, designInfo],
+  );
+
+  /** The selected part whose lock the chip offers as a padlock, or null. Only the imported
+   *  ARTWORK for now: it is the one part with a non-obvious default, and the one a user has
+   *  to be able to unlock to animate it as a layer of its own. Every other part is unlocked
+   *  and has nothing to say about it, so its chip stays a plain label. */
+  const lockToggleFor =
+    designInfo && selectedPart?.selector === `.${designInfo.prefix}-art` && !isMobile
+      ? selectedPart.selector
+      : null;
+
   // The corner scale handle anchors to the hovered root — or to the selection while the
-  // WHOLE GRAPHIC is selected, so the chip's one existing root action stays reachable.
-  const handleRect = hoverRect ?? (selectedPart?.kind === 'root' ? selRect : null);
+  // WHOLE GRAPHIC (or an imported design's own unit) is selected, so the chip's one existing
+  // root action stays reachable.
+  const handleRect = hoverRect ?? (selectedPart?.kind === 'root' || designUnitSelected ? selRect : null);
 
   // A single selected NON-ROOT layer on a data-block template gets scale + rotate handles on
   // its selection box; dragging them keys scale/rotation at the playhead (pivoting around the
   // layer's transform-origin — the Inspector pivot). The root keeps its own --scale handle.
   // A PLACED line is the exception: its corner handle resizes the TEXT (a design decision in
-  // its `#fN` rule), so the keyframe handles step aside for it — same doctrine as its drag.
+  // its `#fN` rule), so the keyframe handles step aside for it — same doctrine as its drag —
+  // and so does an imported design's own unit (above), whose corner scales the composition.
   const layerTfSel =
-    dataModel && selectedParts.length === 1 && selectedPart && selectedPart.kind !== 'root' && !placed[selectedPart.selector]
+    dataModel &&
+    selectedParts.length === 1 &&
+    selectedPart &&
+    selectedPart.kind !== 'root' &&
+    !placed[selectedPart.selector] &&
+    !designUnitSelected &&
+    !isLocked(selectedPart.selector)
       ? selectedPart.selector
       : null;
 
@@ -525,6 +569,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   // rule) resizes its wrapper box.
   const lineSizeSel = useMemo(() => {
     if (selectedParts.length !== 1 || !selectedPart) return null;
+    if (isLocked(selectedPart.selector)) return null; // locked: selectable, never resizable
     const pl = placed[selectedPart.selector];
     if (!pl) return null;
     const fieldId = selectedPart.selector.slice(1);
@@ -544,7 +589,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       return { kind: 'slot' as const, fieldId, wrapperId: pl.wrapperId, base: slot.width, baseH: slot.height, scaled: slot.scaled };
     }
     return null;
-  }, [selectedParts, selectedPart, placed, template.html, template.css]);
+  }, [selectedParts, selectedPart, placed, template.html, template.css, isLocked]);
 
   /** Clear a size drag's inline previews — the stylesheet values return. */
   const clearLineSizePreview = useCallback(
@@ -822,6 +867,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (editing) return; // the editor overlay handles its own events
+    promotedRef.current = null;
     const p = clientToDoc(e);
     // An armed TEXT TOOL claims the pointer outright — selection, drags, and the lasso all
     // wait until the tool disarms (Escape, the toolbar, or the creation itself).
@@ -835,10 +881,36 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       setAreaDraft({ x0: p.x, y0: p.y, x1: p.x, y1: p.y, active: false });
       return;
     }
-    // The placement drag claims a pointer down ON a selected PLACED line (its wrapper —
-    // the positioned element). Selected placed lines move together; the delta converts
-    // to design px through the computed --scale, since that is what the rule holds.
-    const placedSel = selectedParts
+    // DIRECT MANIPULATION on a PLACED field: a press on the visible topmost field grabs THAT
+    // field, with no select-then-drag round trip — the rule every graphics editor follows.
+    // The press selects it and starts its placement drag in one motion.
+    //
+    // Scoped to placed fields on purpose. Their drag is a DESIGN decision written into their
+    // own CSS rule, so grabbing one by mistake costs a nudge and one undo. A keyframe layer's
+    // drag WRITES MOTION at the playhead, which is why the interaction model
+    // (docs/TIMELINE_INTERACTION_MODEL.md, amendment 3) makes selection the deliberate step
+    // there — that stays exactly as it was, on every template.
+    //
+    // LOCKED parts are skipped, so an imported design's artwork never swallows the press meant
+    // for the text drawn on top of it, and a press on BARE artwork still falls through to the
+    // root's zone drag (which moves the whole graphic). Shift-click stays a selection gesture,
+    // and pressing an already-selected field keeps the multi-selection drag as it was.
+    const topHit =
+      toolArmed === 'select' && !e.shiftKey
+        ? partChainAt(p).find((c) => !isLocked(c.part.selector)) ?? null
+        : null;
+    const promoted =
+      topHit && placed[topHit.part.selector] && !selectedParts.includes(topHit.part.selector)
+        ? topHit.part.selector
+        : null;
+    /** What this press moves: the freshly grabbed element, else the standing selection —
+     *  minus anything locked, which a selection may well contain. */
+    const moveSel = (promoted ? [promoted] : selectedParts).filter((sel) => !isLocked(sel));
+
+    // The placement drag claims a pointer down ON a PLACED line (its wrapper — the positioned
+    // element). Placed lines under the press move together; the delta converts to design px
+    // through the computed --scale, since that is what the rule holds.
+    const placedSel = moveSel
       .map((sel) => ({ sel, place: placed[sel] as LinePlacement | undefined }))
       .filter((x): x is { sel: string; place: LinePlacement } => !!x.place);
     if (placedSel.length > 0) {
@@ -848,6 +920,12 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
         .filter((x): x is { sel: string; place: LinePlacement; el: HTMLElement } => !!x.el && x.el.getClientRects().length > 0);
       if (els.some((x) => inRect(p, x.el.getBoundingClientRect()))) {
         e.currentTarget.setPointerCapture(e.pointerId);
+        if (promoted) {
+          // Grabbed in one gesture: select it now, and remember that the release must not
+          // then CLIMB out of it (clicking the already-selected part is what climbs).
+          setSelected(promoted);
+          promotedRef.current = promoted;
+        }
         const scaleVar = d ? parseFloat(getComputedStyle(d.documentElement).getPropertyValue('--scale')) || 1 : 1;
         setPlaceDrag({
           lines: els.map((x) => ({
@@ -867,11 +945,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
         return;
       }
     }
-    // The keyframe drag claims next: pointer down ON any selected non-root layer
-    // moves the whole selection (works outside the root too — block parts live there).
-    if (kfDraggable) {
+    // The keyframe drag claims next: a pointer down ON a non-root layer moves it (and, when
+    // it was already selected, the whole selection — works outside the root too, since block
+    // parts live there).
+    const kfSel = kfSelectors.filter((sel) => !isLocked(sel));
+    if (kfSel.length > 0) {
       const d = doc();
-      const els = kfSelectors
+      const els = kfSel
         .map((sel) => ({ sel, el: d?.querySelector<HTMLElement>(sel) ?? null }))
         .filter((x): x is { sel: string; el: HTMLElement } => !!x.el && x.el.getClientRects().length > 0);
       if (els.some((x) => inRect(p, x.el.getBoundingClientRect()))) {
@@ -898,7 +978,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     const el = rootEl();
     if (!el) return;
     const r = el.getBoundingClientRect();
-    if (!inRect(p, r)) {
+    // A LOCKED root keeps its selection and its handles but gives up the zone drag, so the
+    // press draws a marquee straight over the graphic — which is the point of locking it
+    // while placing fields on top.
+    if (!inRect(p, r) || isLocked(rootSelector)) {
       // EMPTY canvas: a drag lassos (shift keeps the existing selection); a plain
       // click still selects/deselects on release (below the threshold → selectAt).
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -929,6 +1012,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     const hits: string[] = [];
     for (const part of parts) {
       if (part.kind === 'root') continue;
+      if (isLocked(part.selector)) continue; // a locked part takes no gesture, marquee included
       const pel = partScreenEl(d, part.selector);
       if (!pel) continue;
       const pr = pel.getBoundingClientRect();
@@ -1006,29 +1090,16 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       return;
     }
     if (editing || scaleDragRef.current) return;
-    // Hover affordances: hand on the graphic, text cursor on an editable line, and the
-    // corner scale handle anchored to the root while the pointer is over it. A selected,
-    // position-armed layer reads as grabbable everywhere (its drag keys x/y).
+    // Hover affordance: the corner scale handle, anchored to the root while the pointer is
+    // over it. The CURSOR deliberately stays the arrow — the standard editor convention is
+    // that the pointer names the gesture in progress, not the one that would be possible.
+    // A hand over everything movable said "hand" over the entire graphic and taught nothing;
+    // what a click will select is shown by the hover outline and its name chip instead.
     const p = clientToDoc(e);
-    const overKfLayer =
-      (kfDraggable &&
-        kfSelectors.some((sel) => {
-          const el = doc()?.querySelector<HTMLElement>(sel);
-          return !!el && el.getClientRects().length > 0 && inRect(p, el.getBoundingClientRect());
-        })) ||
-      // A selected PLACED line is grabbable the same way — its drag re-places it.
-      selectedParts.some((sel) => {
-        const pl = placed[sel];
-        const el = pl ? doc()?.getElementById(pl.wrapperId) : null;
-        return !!el && el.getClientRects().length > 0 && inRect(p, el.getBoundingClientRect());
-      });
     const r = rootEl()?.getBoundingClientRect();
-    if (overKfLayer) setCursor('grab');
     if (r && inRect(p, r)) {
-      if (!overKfLayer) setCursor(textFieldAt(p) ? 'text' : 'grab');
       setHoverRect({ left: r.left, top: r.top, width: r.width, height: r.height });
     } else {
-      if (!overKfLayer) setCursor('default');
       // Keep the handle reachable: it sits just OUTSIDE the root's corner, so don't clear
       // the rect while the pointer is within its small halo.
       if (hoverRect) {
@@ -1413,8 +1484,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     if (pd) {
       setPlaceDrag(null);
       if (!pd.active) {
-        // A click stays a click — the selection still climbs through containers.
-        if (!editingRef.current) selectAt(clientToDoc(e), e.shiftKey);
+        // A click stays a click — the selection still climbs through containers. Unless the
+        // press GRABBED this field (it was not selected before): that click already made its
+        // selection, and climbing straight out of it would undo the grab.
+        if (!editingRef.current && !promotedRef.current) selectAt(clientToDoc(e), e.shiftKey);
         return;
       }
       commitPlaceDrag(pd);
@@ -1541,6 +1614,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   };
 
   // Ghost rect (screen px) while an ACTIVE drag is under way.
+  // The one cursor the canvas sets for itself: MOVE, while something is actually being
+  // moved. Handles carry their own resize cursors, an armed tool its own, panning the hand.
+  const moving = !!(drag?.active || layerDrag?.active || placeDrag?.active);
+
   const ghost = drag?.active
     ? {
         left: drag.root.left * scale + drag.dx,
@@ -1622,7 +1699,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
   return (
     <div
-      className={`canvas-layer${ghost ? ' dragging' : ''} cursor-${cursor}${toolArmed !== 'select' ? ` tool-${toolArmed}` : ''}`}
+      className={`canvas-layer${ghost || moving ? ' moving' : ''}${toolArmed !== 'select' ? ` tool-${toolArmed}` : ''}`}
       style={{ width, height }}
       data-testid="canvas-layer"
       onDragOver={onAssetDragOver}
@@ -1667,9 +1744,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                   // On a phone every one of these lines would advertise a desktop gesture —
                   // double-click, arrow keys, the corner handle — so the chip shows just the
                   // name there: less guidance beats an instruction the device can't follow.
-                  hint: pressEligible || isMobile
+                  // The padlock states the lock in its own words, so the chip drops the hint
+                  // beside it rather than ellipsizing both into halves of a sentence.
+                  hint: pressEligible || isMobile || lockToggleFor
                     ? undefined
-                    : placed[selectedPart.selector]
+                    : isLocked(selectedPart.selector)
+                      ? 'Locked — unlock it to move or resize it here'
+                      : placed[selectedPart.selector]
                       ? 'Double-click edits · drag places · arrows nudge'
                       : kfDraggable && selectedPart.kind === 'line'
                         ? 'Double-click edits · drag or arrows move'
@@ -1680,7 +1761,23 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                             : selectedPart.kind === 'root'
                               ? 'Corner handle resizes'
                               : undefined,
-                  action: pressEligible ? (
+                  action: pressEligible || lockToggleFor ? (
+                    <>
+                    {lockToggleFor && (
+                    <button
+                      className={`canvas-lock${isLocked(lockToggleFor) ? ' locked' : ''}`}
+                      onClick={() => setPartLock(lockToggleFor, !isLocked(lockToggleFor))}
+                      title={
+                        isLocked(lockToggleFor)
+                          ? 'Locked: canvas drags pass through to whatever sits on top of it. Click to unlock.'
+                          : 'Unlocked: it takes canvas drags. Click to lock it out of the way.'
+                      }
+                      data-testid="canvas-lock"
+                    >
+                      {isLocked(lockToggleFor) ? '🔒 Locked' : '🔓 Unlocked'}
+                    </button>
+                    )}
+                    {pressEligible && (
                     <select
                       className="canvas-appears"
                       value={selectedPress}
@@ -1700,6 +1797,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                         presses![selectedPress].length === 1
                       ) && <option value={presses!.length}>appears on a new press</option>}
                     </select>
+                    )}
+                    </>
                   ) : undefined,
                 }
               : null

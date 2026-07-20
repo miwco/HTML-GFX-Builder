@@ -176,7 +176,10 @@ test('stretch: a long value grows the design at full type size, and a short one 
   expect(painted).toBe(true);
 
   const rest = await boxMetrics(page);
-  await setSample(page, 'Alexandra Konstantinopoulos');
+  // A value long enough to need more room than the design was drawn with, but still short
+  // enough to get it — the seeded field is sized from the erased text's own ink, so the
+  // headroom before the frame edge is whatever that type size leaves.
+  await setSample(page, 'Alexandra Riva');
   await expect.poll(async () => (await boxMetrics(page)).width).toBeGreaterThan(rest.width + 40);
   const grown = await boxMetrics(page);
   expect(grown.font).toBe(rest.font); // the image answered — the type never shrank
