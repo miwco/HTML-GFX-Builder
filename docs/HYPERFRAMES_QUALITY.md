@@ -673,11 +673,16 @@ flex child with auto width, while HyperFrames' sits inside a strap the model gav
 percentage width - the natural way to build a card in CSS. Confirmed outside the overlay brief:
 `esports-opener-r1` clips "NOVA" inside `.slab-wrap { width: 62% }`.
 
-So the fix, when it is worth making, is one sentence in the HyperFrames contract rather than a
-new rule: hero and strap text either sits in a layer with no width bound (panel painted as a
-sibling behind it), or the fit arithmetic runs against **the container's** width rather than the
+So the fix, when it is worth making, looked like one sentence in the HyperFrames contract rather
+than a new rule: hero and strap text either sits in a layer with no width bound (panel painted as
+a sibling behind it), or the fit arithmetic runs against **the container's** width rather than the
 frame's. Not done here - it is a prompt change, and this document's own standing lesson is that
 prompt changes need a measured before/after rather than prose.
+
+> **That sentence was written, measured, and REVERTED on 2026-07-20 - it made the structure
+> worse, not better.** See "The contract sentence that failed its measurement" below. The
+> mechanism described in this section is still the correct diagnosis; the prescribed fix is not.
+> Do not re-derive the same sentence from this paragraph and land it unmeasured.
 
 ### Correcting an earlier claim about the overlay brief
 
@@ -695,6 +700,122 @@ the one shape whose whole design is text inside a box. Follow-up 2 below asked f
 sample size before anyone wrote prose about it; this is that prose, and it narrows the follow-up
 from "both engines" to one.
 
+> **Superseded on 2026-07-20 as a statement about the engines.** Three fresh samples per engine
+> on this brief inverted it. On the overlay brief: Remotion spent 4 repair rounds across 2 of its
+> 3 runs, every one of them `text-clip`; HyperFrames spent 0 `text-clip` rounds in either of its
+> two arms (BEFORE 0 rounds, AFTER 1 round, that one `text-safe-area`). All 9 overlay runs shipped
+> contract-valid with no readability defect. The overlay brief is hard on *whichever* engine draws
+> a narrow strap on the day - not on HyperFrames specifically. The **containment mechanism** above
+> survives (it is structural, and was re-confirmed by reading the sources); the **engine
+> attribution** does not. See the 2026-07-20 pass below.
+
+## The contract sentence that failed its measurement (18 generations, ~$2.1, 2026-07-20)
+
+Follow-up 2's candidate change, written and measured exactly as this document demands. **The
+result is negative and the sentence is not in the code.** Recorded because a negative result that
+is not written down gets re-derived: the paragraph proposing this sentence is persuasive, and the
+next reader will land it on the strength of the prose unless this section is here.
+
+**Method.** The two briefs the follow-up named - "Transparent lower-third" and "Single-word hero"
+from `scripts/video-bench-briefs.varied.json`, copied byte-identical - three samples each, on
+`claude-sonnet-5`, against the same dev server, BEFORE and AFTER the one-sentence change. A
+Remotion arm on the same two briefs ran as a contemporaneous control. 18 generations,
+199,970 in / 167,211 out.
+
+The sentence added a `CONTAINMENT` bullet to `HYPERFRAMES_CONTRACT`: hero and strap text either
+sits in a layer with no width bound (panel painted as a SIBLING behind it), or the type
+arithmetic runs against the container's width rather than the frame's.
+
+**Repair rounds did not move.**
+
+| | BEFORE | AFTER |
+|---|---|---|
+| Contract-valid | 6/6 | 6/6 |
+| Runs needing a repair | 2/6 | 2/6 |
+| Repair rounds | 3 | 2 |
+| Repair causes | `variables`×2 `text-clip`×1 | `text-safe-area`×1 `text-occluded`×1 |
+| Shipped readability defects | 0 | 0 |
+
+Fisher's exact on runs-needing-repair gives **p = 1.0**. At 2-3 rounds per arm nothing here is
+distinguishable from noise, in either direction.
+
+**The structural read is what settles it, and it points the wrong way.** Repair rounds are a weak
+instrument at n=6, so every shipped source was classified directly for the defect the sentence
+targets - is the hero/name line inside an ancestor narrower than the frame, while its type is
+sized from the frame? That is a property of the code, not a sampled outcome, so it is far more
+sensitive than a round count:
+
+| | BEFORE | AFTER |
+|---|---|---|
+| AT-RISK, both briefs | 1/6 | **3/6** |
+| AT-RISK, overlay brief only | 1/3 | **3/3** |
+| Type fitted to the CONTAINER's width | 1 | **0** |
+
+The sentence asked for one of two safe shapes and produced neither more often. Two specifics
+carry the conclusion, both verified by reading the sources rather than trusting a classifier:
+
+- **The model already writes the safe shape without being told.** `before/transparent-lower-third-r1`
+  computes `PANEL_W = 0.36 * 1920; INNER_W = PANEL_W * 0.78; fontSize = (INNER_W * 0.65) /
+  (CAP_ADV * CHAR_COUNT)` - the container-fitted arithmetic the sentence exists to induce, emitted
+  spontaneously. No AFTER run did this.
+- **Where the sentence was followed, it was followed by halves.**
+  `after/transparent-lower-third-r3` did paint the panel as a sibling behind the text - and still
+  put `width: 60%` on `#text-block` and sized from `const FRAME_W = 1920; targetWidth =
+  FRAME_W * 0.30`. The memorable parenthetical ("panel as a sibling") landed; the load-bearing
+  clause ("the text layer carries no width") did not. Offering two escape routes in one sentence
+  let the model take a third path that satisfies neither.
+
+**Why this is a negative result and not a null one.** A null result would justify keeping a
+harmless sentence. This one moved the target metric the wrong way on the brief it was written for
+(1/3 → 3/3 AT-RISK) while buying nothing measurable, so it was reverted. `HYPERFRAMES_CONTRACT`
+is unchanged on `main`.
+
+**What the honest next attempt looks like**, if anyone takes this up: not a rephrasing. The
+generations that fail do so because a `nowrap` line's size and its box's size are computed from
+different numbers - which a validator can *see* in the rendered geometry and a prompt can only
+ask about. The clip finding already reports exactly that pair (`needs 916px but that box gives it
+561px`) and, as measured below, repairs from it now win. A structural fix belongs in the checks,
+not in more contract prose. Note also that nothing in these 18 runs shipped a readability defect,
+so the *user-visible* cost of the whole containment issue is currently zero - which is an argument
+for leaving it alone rather than for spending on it.
+
+## The two unverified caveats, now measured (same 18 generations)
+
+Both were flagged in the handoff as proven in unit and corpus terms only.
+
+**1. The sharpened clip finding produces repairs that WIN. Confirmed in production terms.**
+`text-clip` fired 5 times across 3 runs (1 HyperFrames BEFORE, 4 Remotion). Every one of those
+runs shipped clean: `gate.probed` true, `gate.ok` true, zero readability issues on the shipped
+source. The two runs that spent BOTH rounds (`ctrl-remotion/transparent-lower-third-r1` and
+`-r3`) each wrote `rejected-1` and `rejected-2` and then shipped a clean third emit - so this is a
+genuine win, **not** the soft-rule demotion that would also leave `ok: true`. Across all 18
+generations, **zero readability defects shipped**, against the 42-generation pass where clips did
+ship.
+
+Both message branches fired on live generations, each correctly:
+
+```
+- text-clip: "Senior Climate Scientist — W" is CUT OFF - 39% of its width is clipped by <div>.
+  The line needs 916px but that box gives it 561px. Give the text room …
+- text-clip: "Senior Archivist, National H" is CUT OFF - 18% of its width is clipped by
+  <div.__remotion-player>. At 825px it FITS that 1920px box - it …
+```
+
+The first names the binding box and hands over the arithmetic; the second correctly refuses to
+report widths as a size problem and sends the model to MOVE the text instead. That is the
+too-wide / parked-offscreen split working on real output, which had only ever been replayed.
+
+**2. The Remotion `inputs` rule still has never fired.** Zero occurrences in the 6 Remotion
+generations here, and `deadVars` is 0 across all 18 runs on both engines. Cumulative: **0 across
+27 Remotion generations** (21 in the earlier audit, 6 here). The rule remains a correct-by-
+construction guard that has never caught anything live - which is what it was argued for, but it
+is still not a *demonstrated* win and should not be described as one.
+
+One caveat on how to measure it next time: the bench's `gate` re-validation is called **without**
+`declaredInputs`, so `inputs` can never appear in `gate.rules`. It can only surface in
+`repairCauses` (the harness passes `emitted.inputs` on the repair path) or in the bench's own
+independent `deadVars` audit. Looking only at `gate.rules` would report a false zero.
+
 ## Open follow-ups
 
 Ordered by value. The re-measurement turned up two; the total-crop half is done (above), so
@@ -711,14 +832,17 @@ what remains of it is the spend.
    changes; validator rules against a shared `data-var-text` id and a hidden bound element
    (correct, but leaves no legal path and would *raise* repair rounds unless paired with the
    first); or a taught pattern in the contract. Needs a decision before code.
-2. **Stop HyperFrames text being cropped by the box the composition built around it.**
-   Narrowed from "the overlay brief is weakest on both engines", which three samples per
-   engine disproved: Remotion is 3/3 clean on it, HyperFrames 1/3. The cause is measured
-   (above) - an explicit width on an ancestor of `nowrap` text, while the fit arithmetic sizes
-   type against the frame. The candidate change is one sentence of contract: paint the panel
-   as a sibling behind the text, or fit the type to **the container's** width. It is a prompt
-   change, so it needs a measured before/after on the overlay and single-word-hero briefs
-   rather than prose - the one thing this document keeps insisting on.
+2. ~~**Stop HyperFrames text being cropped by the box the composition built around it.**~~
+   **Measured 2026-07-20; the prescribed fix failed and was reverted. Not open as a prompt
+   change.** The candidate sentence made the structure worse on the brief it targeted (AT-RISK
+   1/3 → 3/3 on the overlay) and moved repair rounds not at all (p = 1.0); see "The contract
+   sentence that failed its measurement". Two things changed alongside it: the engine
+   attribution is retired (the same pass had Remotion needing 4 repair rounds on this brief and
+   HyperFrames 0), and the user-visible cost is currently **zero** - no readability defect
+   shipped in 18 generations. The containment mechanism itself is real and still described
+   above. If it is ever worth acting on, act in the CHECKS, which can see the box-vs-type
+   geometry, not in more contract prose - and note the bar is now higher, since the thing being
+   fixed is latent rather than shipping.
 3. ~~**Sharpen the repair message when text looks duplicated.**~~ **Explained, not a message
    problem.** "NOACGNOACG" is the driver writing one variable's value into every element that
    shares its `data-var-text` id - what the model does when it splits animated text and binds
@@ -744,15 +868,17 @@ what remains of it is the spend.
 **State.** Everything described here is on `main`: the comment-blanking fix, the sharpened
 clip finding, the generation corpus, the Remotion `inputs` rule, and the removal of
 `boolean`/`enum` from the contract. Two things the 42-generation pass found and did NOT fix:
-follow-up 1, deferred by decision, and follow-up 2, which needs a contract sentence and a
-measurement rather than more analysis.
+follow-up 1, deferred by decision, and follow-up 2 - which was taken up on 2026-07-20, measured,
+and closed NEGATIVE: the contract sentence it prescribed was written, benched over 18
+generations, found to make the structure worse, and reverted. `HYPERFRAMES_CONTRACT` is
+unchanged.
 
-**Two caveats worth carrying, because both look finished and are not.** The clip finding is
-verified to produce correct, actionable messages on the real generations that motivated it -
-replaying them there caught two bugs in it - but it is **not** proven to reduce repair rounds.
-The `inputs` rule has never fired on a live generation by construction, since it was measured
-at 0 occurrences. Neither is a win until a paid run says so; both are cheap to fold into
-follow-up 2's measurement. The bench supports both engines
+**Both of those caveats were measured on 2026-07-20 and are now settled** (section above). The
+clip finding is confirmed in production terms: 5 live `text-clip` findings, every affected run
+shipped clean, both message branches fired correctly, and zero readability defects shipped across
+18 generations. The `inputs` rule is confirmed *unfired*: still 0 occurrences, now across 27
+Remotion generations - a guard that has never caught anything live, which is honest rather than
+disappointing but must not be written up as a win. The bench supports both engines
 (`--engine`), runs free against the offline provider (`--stub`), and records tokens, repair
 rounds and their causes, the sources that failed a repair round, dead space, and dead
 controls. Offline coverage is 14/14 clean across both engines and all seven briefs.
