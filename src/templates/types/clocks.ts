@@ -103,6 +103,7 @@ export const countdownType: GraphicType = {
       styleTag: 'sport',
       palette: paletteById('inferno'),
       fontId: 'archivo',
+      samples: { label: 'SHOT CLOCK' },
       create: (_type, options) => gt02.create(options),
     },
   ],
@@ -155,6 +156,7 @@ export const holdingScreenType: GraphicType = {
       styleTag: 'sport',
       palette: paletteById('volt'),
       fontId: 'archivo',
+      samples: { show: 'FRIDAY FIGHT NIGHT' },
       create: (_type, options) => ss02.create(options),
     },
     {
@@ -164,6 +166,7 @@ export const holdingScreenType: GraphicType = {
       styleTag: 'glass',
       palette: paletteById('frost'),
       fontId: 'manrope',
+      samples: { show: 'Midnight Sessions' },
       create: (_type, options) => ss03.create(options),
     },
   ],

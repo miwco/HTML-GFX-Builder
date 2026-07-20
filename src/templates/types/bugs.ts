@@ -5,8 +5,6 @@
 import { paletteById } from '../../model/wizard';
 import { bug01 } from '../cornerBug/bug01';
 import { bug02 } from '../cornerBug/bug02';
-import { lt01 } from '../lowerThirds/lt01';
-import { lt05 } from '../lowerThirds/lt05';
 import { lt14 } from '../lowerThirds/lt14';
 import type { GraphicType } from './graphicType';
 
@@ -55,6 +53,8 @@ export const sponsorBugType: GraphicType = {
       styleTag: 'glass',
       palette: paletteById('frost'),
       fontId: 'manrope',
+      // This type declares "On Air" (bug02's caption); bug01 has always suggested "LIVE".
+      samples: { caption: 'LIVE' },
       create: (_type, options) => bug01.create(options),
     },
   ],
@@ -102,23 +102,13 @@ export const socialBugType: GraphicType = {
       fontId: 'space-grotesk',
       create: (_type, options) => lt14.create(options),
     },
-    {
-      id: 'lt01',
-      name: 'Hairline',
-      description: 'Pure typography beside one thin vertical line - no panel, whitespace does the work.',
-      styleTag: 'minimal',
-      palette: paletteById('ivory'),
-      fontId: 'inter',
-      create: (_type, options) => lt01.create(options),
-    },
-    {
-      id: 'lt05',
-      name: 'Angle Slab',
-      description: 'A forward-leaning dark slab with a chunky accent edge - fast, aggressive sport energy.',
-      styleTag: 'sport',
-      palette: paletteById('volt'),
-      fontId: 'oswald',
-      create: (_type, options) => lt05.create(options),
-    },
+    // No general lower third can be promoted here, and the reason is worth stating because
+    // nothing structural stops it: this type shares the lower-third prefix, category, parts AND
+    // field count, so lt01 and lt05 compiled cleanly and passed every shape check. They are
+    // still the wrong graphic. Promotion replaces a catalog variant BY ID, so claiming lt01
+    // turned the catalog's default lower third into a handle bug - its fields became
+    // handle/platform and its sample data "@noacg", which broke the wizard, the canvas chip and
+    // every spec that starts from a lower third. A type this close to another is exactly where
+    // "the parts resolve" stops being evidence that a design belongs to it.
   ],
 };

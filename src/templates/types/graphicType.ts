@@ -132,9 +132,12 @@ export function fieldIdFor(fields: TypeField[], key: string): string | null {
   return at < 0 ? null : `f${at}`;
 }
 
-/** The type's line fields as wizard LineSpecs (the suggested-lines starting point). */
-export function typeLines(fields: TypeField[]): LineSpec[] {
-  return fields.filter((f) => f.role === 'line').map((f) => ({ title: f.label, sample: f.value }));
+/** The type's line fields as wizard LineSpecs (the suggested-lines starting point).
+ *  `samples` is the promoted design's own starting text, by logical key — see TypeDesign. */
+export function typeLines(fields: TypeField[], samples?: Record<string, string>): LineSpec[] {
+  return fields
+    .filter((f) => f.role === 'line')
+    .map((f) => ({ title: f.label, sample: samples?.[f.key] ?? f.value }));
 }
 
 // ── The machine ──────────────────────────────────────────────────────────────
@@ -230,6 +233,19 @@ export interface TypeDesign {
   styleTag: StyleTag;
   palette: Palette;
   fontId: string;
+  /**
+   * This design's own starting text, by the type's LOGICAL field key. A type declares one set
+   * of field values, but a design is written around its own: the shot-clock countdown says
+   * "SHOT CLOCK", not the type's "ROUND 1", and the stat card says "87%", not a poll question.
+   * Without this a promoted design arrives in the wizard showing text it was never designed
+   * around — which is what "promotion changes a design's identity, not what a user sees"
+   * forbids.
+   *
+   * Unlike the theme-token override map, entries here are NOT conformance debt to be driven to
+   * zero: a sample is supposed to suit its design. Only keys the design actually differs on
+   * need listing; anything absent falls through to the type's value.
+   */
+  samples?: Record<string, string>;
   /** Build the template. A type reuses its category's existing assembler here — it never
    *  grows an assembly path of its own. */
   create(type: GraphicType, options?: Parameters<TemplateVariant['create']>[0]): SpxTemplate;
@@ -417,7 +433,7 @@ export function variantsFromType(type: GraphicType): TemplateVariant[] {
       styleTag: design.styleTag,
       description: design.description,
       maxLines: type.capabilities.maxLines,
-      suggestedLines: typeLines(type.fields),
+      suggestedLines: typeLines(type.fields, design.samples),
       logo: type.capabilities.logo,
       animationPresets: type.capabilities.animationPresets,
       defaultPalette: design.palette,

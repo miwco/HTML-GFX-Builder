@@ -6,7 +6,6 @@ import { paletteById } from '../../model/wizard';
 import { card01 } from '../infoCards/card01';
 import { card02 } from '../infoCards/card02';
 import { card03 } from '../infoCards/card03';
-import { card04 } from '../infoCards/card04';
 import { card05 } from '../infoCards/card05';
 import type { GraphicType } from './graphicType';
 
@@ -50,15 +49,11 @@ export const titleCardType: GraphicType = {
       fontId: 'space-grotesk',
       create: (_type, options) => card05.create(options),
     },
-    {
-      id: 'card04',
-      name: 'Quote Card',
-      description: 'A panel-free centered quote: large accent quote marks, light italic text, a short hairline, quiet attribution.',
-      styleTag: 'minimal',
-      palette: paletteById('ivory'),
-      fontId: 'manrope',
-      create: (_type, options) => card04.create(options),
-    },
+    // card04 is NOT promotable here: it supports three lines and this type declares five, and a
+    // compiled variant takes the TYPE's capabilities. Promotion would offer two more lines than
+    // the quote card was designed to hold. The mismatch widens rather than strips, which is why
+    // no test caught it - it was found by comparing every promotion's declared capabilities
+    // against its type's.
   ],
 };
 
@@ -111,6 +106,7 @@ export const topicCardType: GraphicType = {
       styleTag: 'sport',
       palette: paletteById('volt'),
       fontId: 'oswald',
+      samples: { heading: 'MATCH STATS' },
       create: (_type, options) => card02.create(options),
     },
     {
@@ -120,6 +116,7 @@ export const topicCardType: GraphicType = {
       styleTag: 'glass',
       palette: paletteById('frost'),
       fontId: 'manrope',
+      samples: { heading: '20:00 — Opening keynote' },
       create: (_type, options) => card03.create(options),
     },
   ],
