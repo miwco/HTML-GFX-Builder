@@ -195,25 +195,52 @@ that sees it.
 ## 6. The twelve types
 
 Counts are how many of the 60 reference formats in `live_format_graphics_needs.xlsx` ask for
-that graphic.
+that graphic. Every type now ships in all four style families; the design named here is the
+noacg (or, where the house has none, the flagship) look, and its machine is the same whichever
+family a cell is in.
 
-| Type | Freq | Design | Machine |
+| Type | Freq | Flagship design | Machine |
 |---|---|---|---|
 | Lower third | 52 | lt11 House Strap | – |
 | Sponsor bug | 37 | bug02 House Clock | – |
-| Countdown | 30 | gt01 Clean Clock | parallel `clock` (pause/resume) |
-| Topic card | 29 | card01 Hairline Card | – |
+| Countdown | 30 | gt05 House Countdown | parallel `clock` (pause/resume) |
+| Topic card | 29 | card06 House Topic | – |
 | Title card | 23 | card05 House Title | – |
-| Agenda | 22 | ig06 Schedule Board | – |
-| Social handle | 17 | lt14 House Handle (new) | – |
-| Poll result | 13 | ig02 Glass Bars | – |
-| Holding screen | 9 | ss01 Calm Hold | parallel `clock` |
-| Ticker | 8 | tk05 House Wire | timer cycle + pause/resume/skip |
-| Scoreboard | 5 | sb01 Match Strip | parallel `flag` / `clock` / `result` |
-| Quiz board | — | qz01 Arena Quiz | branches `selected` / `locked` |
+| Agenda | 22 | ig08 House Schedule | – |
+| Social handle | 17 | lt14 House Handle | – |
+| Poll result | 13 | ig11 House Poll | – |
+| Holding screen | 9 | ss04 House Hold | parallel `clock` |
+| Ticker | 8 | tk07 House Rotator | timer cycle + pause/resume/skip |
+| Scoreboard | 5 | sb03 House Score | parallel `flag` / `clock` / `result` |
+| Quiz board | — | qz02 House Quiz | branches `selected` / `locked` |
 
 The last three earn their place by what they prove rather than by frequency: parallel groups,
 timer-driven motion, and the far end of the model.
+
+### The matrix is full — and how it filled
+
+All 48 cells (12 types × noacg / glass / sport / minimal) are filled. The route there is worth
+recording, because it was not the one the first pass predicted:
+
+- **The promotion well ran dry fast.** 24 cells looked promotable on parts alone; 8 actually were
+  on the first pass, and after promoting the single design that cleared all six gates on the
+  second (lt05 into the sport lower third), **zero** promotable designs remained. Every other cell
+  is a DESIGNED variant. "The parts resolve" is the weakest evidence a design belongs to a type,
+  and in a mature catalog it is almost always the *only* thing that resolves.
+- **Designed, not promoted, is the norm — not a failure.** A cell with no promotable candidate is
+  a cell that needs a design, and 30 of them got one, each named against its lower-third sibling
+  and built from its family's shape tokens rather than improvised. A designed variant is a
+  first-class fill; a promotion is just the shortcut available when an existing design already *is*
+  the graphic.
+- **Type-uniform runtimes belong in one place.** When every design of a type renders its content
+  the same way — a schedule board's rows, a poll's bars — that rebuild is not per-design and does
+  not belong copied into each. It lifts into a shared helper (`infographics/dataRuntimes.ts`), and
+  the designs that used to inline it emit byte-identical output afterwards, so the baseline proves
+  the extraction changed nothing.
+- **A rotator is a preset, not a redesign.** The three ticker cells are strips with ordinary
+  items; the shared ticker runtime turns any design into a rotator when the rotate preset is
+  chosen (the track stops travelling and wraps, the separator hides). The design work was the
+  strip, not the motion.
 
 ### Which acceptance criterion each proves
 

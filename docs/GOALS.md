@@ -875,6 +875,40 @@ Contract: `docs/GRAPHIC_TYPES.md`. Types chosen by frequency across the 60 forma
       timer state carrying endless loops or measured motion is now a validation error. This is
       why the ticker type is a rotator with its own finishing entrance preset.
 
+### The template factory — types × themes (2026-07-21 — Phase 3 of the template-library stage)
+
+Contract: `docs/GRAPHIC_TYPES.md`. The catalog is types × style families, and the second axis is
+now full: every one of the 12 types ships in all four families (noacg / glass / sport / minimal).
+
+- [x] **The 48-cell matrix is complete** - 12 types × 4 style families, every cell filled. The
+      naive "24 promotable" estimate from the first pass fully collapsed: after promoting the one
+      design that survived all six gates (lt05 into the sport lower third), the promotion well was
+      dry, so the remaining cells are DESIGNED variants, each named against its lower-third sibling
+      and reusing its family's shape tokens (DESIGN_LANGUAGE §8). 30 new designs across every
+      category, from corner bugs to the flagship quiz board.
+- [x] **The capabilities gate became mechanical, and caught a shipped defect** - promotion took
+      its type's `animationPresets`, `defaultZone`, palette and font wholesale, so six promoted
+      designs had drifted their DEFAULT entrance and four had lost presets outright (the house bug
+      opened on a plain fade, the stats card lost its signature stinger, a minimal scoreboard
+      defaulted to a sport slam). Invisible to every check because `create({})` resolves the preset
+      from the design's own record - a baseline taken from OUTPUT cannot see a gate that only
+      changes INPUT. `TypeDesign.animationPresets` / `defaultZone` are the escape hatch (mirroring
+      `samples`), and `graphic-types.spec.ts` now enforces it: a type may WIDEN what a design
+      offers but never change its default or take something away.
+- [x] **"Persist a machine only when the derived one is wrong" held across the fill** - the new
+      lower thirds, cards, bugs and boards emit no machine key; only the countdowns, holding
+      screen, scoreboards, tickers and quiz boards carry one, and each drives the parallel or
+      branch machine its type already declared with zero new machine code.
+- [x] **Shared content runtimes, not copy-paste** - the schedule-row and poll-bar rebuilds were
+      identical across every board of a type, so they moved into `infographics/dataRuntimes.ts`;
+      ig06 and ig02 now call the shared helpers and emit byte-for-byte what they did before (the
+      baseline did not move), and the six new boards reuse them.
+- [x] **Every fill is verified** - `npm run build`, the type conformance suite, the machine
+      tests (countdown clock, scorebug, ticker cycle, Millionaire arc), the `l3-sweep` for swept
+      categories, a render probe for the rest, and both catalog baselines recorded as pure
+      additions. A documented non-promotion (the sport agenda's standings-vs-schedule ambiguity)
+      stays recorded where the next reader looks.
+
 ### Quality bar (always-on)
 - [x] `npm run build` green as the CI gate
 - [x] Playwright E2E for core UI flows
