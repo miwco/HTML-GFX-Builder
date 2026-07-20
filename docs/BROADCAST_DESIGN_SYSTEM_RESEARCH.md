@@ -779,9 +779,9 @@ result write-up, so the references each arm was handed are on the record beside 
 > 1. **"Flip `USE_CONTRAST_SELECTION` and change nothing else" is not a controlled comparison.**
 >    The keyword path is `filter(...).slice(0, 2)`, so a brief matching one card is handed ONE
 >    card, while contrast anchors one and always widens to two. The arms differed in HOW MUCH
->    reference prose was injected, not only in which cards. The control arm is therefore the
->    **dosage-matched padded-legacy** arm added to `reference-select-simulate.mjs`, never raw
->    legacy.
+>    reference prose was injected, not only in which cards. That flag is therefore replaced by
+>    `SELECTION_MODE` (`'contrast' | 'padded' | 'legacy'`), and **the paid arms are `contrast`
+>    vs `padded`** - the dosage-matched control - never raw `legacy`.
 > 2. **The free gate's headline number does not stand in for the primary metric, and on this
 >    mechanism the two move in opposite directions.** See §8.3f. The gate now reports spread and
 >    collisions beside the mean, and vetoes on them independently.

@@ -105,7 +105,7 @@ const result = await page.evaluate(async (briefs) => {
 
   return {
     poolSize: rc.REFERENCE_CARDS.length,
-    flag: rs.USE_CONTRAST_SELECTION,
+    mode: rs.SELECTION_MODE,
     rows,
     differs: rows.filter((r) => r.differs).length,
     total: rows.length,
@@ -119,7 +119,7 @@ const result = await page.evaluate(async (briefs) => {
 await browser.close();
 
 const fmt = (list) => (list.length ? list.join(' + ') : '(none)');
-console.log(`pool: ${result.poolSize} cards   USE_CONTRAST_SELECTION=${result.flag}   bank: ${BANK}\n`);
+console.log(`pool: ${result.poolSize} cards   mode=${result.mode}   bank: ${BANK}\n`);
 for (const r of result.rows) {
   console.log(`${r.differs ? '*' : ' '} ${r.label}`);
   console.log(`    contrast  ${fmt(r.contrast)}   spread ${r.spreadContrast ?? 'n/a'}`);

@@ -21,7 +21,8 @@ import {
   pickContrasting,
   recencyPenaltyFor,
   recentReferenceIds,
-  USE_CONTRAST_SELECTION,
+  SELECTION_MODE,
+  type SelectionMode,
   type ReferenceAxes,
 } from '../referenceSelect';
 
@@ -520,11 +521,41 @@ function strongestMatch(
   });
 }
 
+/** What the app actually calls. The arm is a build-time constant; see SELECTION_MODE. */
 export function selectReferenceCards(prompt: string, count = 2): ReferenceCard[] {
-  if (!USE_CONTRAST_SELECTION) return detectReferenceCards(prompt);
+  return selectWithMode(prompt, SELECTION_MODE, count);
+}
+
+/**
+ * Every arm, behind one parameter, so the bench harness and the free simulation drive the REAL
+ * selector instead of a copy of it. A second implementation in a script drifts from this one and
+ * then quietly reports on a selector the product does not run - which already happened once, when
+ * a sim reimplemented the anchor rule and measured declaration order instead of strongest match.
+ */
+export function selectWithMode(
+  prompt: string,
+  mode: SelectionMode,
+  count = 2,
+): ReferenceCard[] {
+  if (mode === 'legacy') return detectReferenceCards(prompt);
 
   const matched = REFERENCE_CARDS.filter((c) => c.keywords.test(prompt));
   if (matched.length === 0) return []; // no signal - no reference is a valid outcome
+
+  // THE DOSAGE-MATCHED CONTROL (see SELECTION_MODE). Keyword choice - declaration order, no
+  // contrast, no recency - but widened to `count` from the same genre-compatible field the
+  // contrast path draws from, so the two arms hand over the same NUMBER of cards and differ
+  // only in WHICH. Benching contrast against raw `legacy` cannot separate those two things.
+  if (mode === 'padded') {
+    if (matched.length >= count) return matched.slice(0, count);
+    const votedGenres = new Set(matched.flatMap((c) => c.genres));
+    const rest = REFERENCE_CARDS.filter(
+      (c) => !matched.includes(c) && c.genres.some((g) => votedGenres.has(g)),
+    );
+    // `matched` is non-empty here, so this never returns nothing - it just tops up when the
+    // genre-compatible field is too small to reach `count`.
+    return [...matched, ...rest].slice(0, count);
+  }
 
   // ANCHOR EXACTLY ONE, then always widen. Both halves are load-bearing, and both were
   // arrived at by measurement rather than reasoning:

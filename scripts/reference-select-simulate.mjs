@@ -58,27 +58,17 @@ const sim = await page.evaluate(
     const RECENCY_KEY = 'spx-gfx-ai-reference-recency';
     const byId = new Map(rc.REFERENCE_CARDS.map((c) => [c.id, c]));
 
-    // THE PADDED-LEGACY CONTROL. `detectReferenceCards` is `filter(...).slice(0, 2)`, so a brief
-    // matching ONE card is handed ONE card; `selectReferenceCards` anchors one and always widens
-    // to two. So the shipped A/B varies TWO things at once - which companion is chosen, and how
-    // many cards are injected at all. A gallery win under that design is unattributable, because
-    // "two cards of design DNA beat one" is a rival explanation costing a one-line change to the
-    // legacy path rather than the whole contrast mechanism.
+    // THE PADDED-LEGACY CONTROL, driven through the REAL selector (`selectWithMode`) rather than
+    // reimplemented here. `detectReferenceCards` is `filter(...).slice(0, 2)`, so a brief matching
+    // ONE card is handed ONE card, while contrast anchors one and always widens to two - the
+    // shipped A/B therefore varies which companion is chosen AND how many cards are injected at
+    // all. A gallery win under that design is unattributable, because "two cards of design DNA
+    // beat one" is a rival explanation costing a one-line change rather than the whole mechanism.
     //
-    // This control keeps legacy's CHOICE rule (declaration order, no contrast, no recency) and
-    // only removes the dosage difference: it tops up to two from the same genre-compatible field
-    // contrast draws from. Contrast measured against THIS is the honest read of the feature.
-    const paddedLegacy = (prompt) => {
-      const matched = rc.REFERENCE_CARDS.filter((c) => c.keywords.test(prompt));
-      if (matched.length === 0) return [];
-      if (matched.length >= 2) return matched.slice(0, 2);
-      const anchor = matched[0];
-      const voted = new Set(matched.flatMap((c) => c.genres));
-      const cands = rc.REFERENCE_CARDS.filter(
-        (c) => c !== anchor && c.genres.some((g) => voted.has(g)),
-      );
-      return cands.length ? [anchor, cands[0]] : [anchor];
-    };
+    // Why it delegates: a second copy of a selection rule in a script drifts from the product's
+    // and then reports on a selector nobody runs. That already happened here once - a sim
+    // reimplemented the anchor and silently measured declaration order instead of strongest match.
+    const paddedLegacy = (prompt) => rc.selectWithMode(prompt, 'padded');
 
     // Distance between two PICKS: mean cross distance over every card pair. Two picks sharing
     // a card score low, which is what we want - a shared card is shared design DNA.
@@ -286,9 +276,9 @@ if (dosesDiffer) {
   const share = gain ? `${(((gain - (cleanGain ?? 0)) / gain) * 100).toFixed(0)}%` : 'n/a';
   console.log(
     `\n  CONFOUNDED: the arms differ in HOW MANY cards are injected, not only which.\n` +
-      `  ${share} of the headline gain is dosage, not selection. A paid A/B flipping only\n` +
-      `  USE_CONTRAST_SELECTION cannot attribute a win to the mechanism - "two cards beat one"\n` +
-      `  explains it and costs a one-line change to the legacy path. Judge against PADDED-LEGACY.`,
+      `  ${share} of the headline gain is dosage, not selection. A paid A/B run as contrast vs\n` +
+      `  legacy cannot attribute a win to the mechanism - "two cards beat one" explains it and\n` +
+      `  costs a one-line change. Run the paid arms as SELECTION_MODE 'contrast' vs 'padded'.`,
   );
 }
 

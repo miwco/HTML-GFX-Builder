@@ -40,11 +40,27 @@ export interface ReferenceAxes {
 }
 
 /**
- * A/B switch for the PoC. `false` restores the shipped keyword pick byte for byte, so the
- * two arms can be benched against each other by flipping one line.
- * Typed as boolean so both branches stay live for the compiler.
+ * A/B switch for the PoC. Three arms, not two, and the third one is the point.
+ *
+ *  - `contrast`  the feature: strongest-match anchor, then a max-min contrasting companion.
+ *  - `padded`    THE CONTROL. The keyword pick's choice rule - declaration order, no contrast,
+ *                no recency - but always widened to two cards from the same genre-compatible
+ *                field `contrast` draws from.
+ *  - `legacy`    what shipped: `filter(...).slice(0, 2)`, byte for byte.
+ *
+ * `legacy` is NOT a usable control, which is why `padded` exists. A brief matching one card is
+ * handed ONE card by the keyword pick, while contrast anchors one and always widens to two - so
+ * the two arms differ in how much reference prose is injected, not only in which cards. On the
+ * bench bank that is 9 of 21 generations. A gallery win measured against `legacy` could then be
+ * explained by "two cards of design DNA beat one", which costs a one-line change rather than the
+ * whole contrast mechanism. Benching `contrast` against `padded` holds the dosage constant and
+ * leaves only the choice of companion varying, which is the thing under test.
+ *
+ * See docs/BROADCAST_DESIGN_SYSTEM_RESEARCH.md §8.3f and scripts/reference-select-simulate.mjs.
+ * Typed wide so every branch stays live for the compiler.
  */
-export const USE_CONTRAST_SELECTION: boolean = true;
+export type SelectionMode = 'contrast' | 'padded' | 'legacy';
+export const SELECTION_MODE: SelectionMode = 'contrast';
 
 // Ordinal axes: distance is how far apart the steps are, not merely whether they differ.
 const COLOR_ORDER = ['restrained', 'committed', 'full-palette', 'drenched'] as const;
