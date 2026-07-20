@@ -23,10 +23,11 @@ import type {
 import { paletteById } from '../../model/wizard';
 import type { EasingId } from '../../model/easings';
 import type { CustomFont } from '../../model/fonts';
-import type { EraseRect } from '../../assets/eraseRegion';
+import type { EraseRect, RegionInk } from '../../assets/eraseRegion';
 
-/** The applied baked-text erase: the marked rectangle (in the artwork's SOURCE pixels) and
- *  the sampling verdict it ran with. The rectangle also seeds the first text field at create. */
+/** ONE applied baked-text erase: the marked rectangle (in the artwork's SOURCE pixels) and
+ *  the sampling verdict it ran with. Its measured ink seeds a real text field per LINE it
+ *  held, at create. */
 export interface DesignEraseState {
   rect: EraseRect;
   /** Whether the background samples counted as flat (assets/eraseRegion FLAT_BG_TOLERANCE). */
@@ -34,6 +35,10 @@ export interface DesignEraseState {
   maxDeviation: number;
   /** The applied fill colour — the seeded field contrasts against exactly this. */
   fill: { r: number; g: number; b: number; a: number };
+  /** Where the erased text ACTUALLY sat, measured from the pixels (SOURCE px). The seeded
+   *  field is built from this rather than from the loose rectangle the user drew. Absent on
+   *  a region that held only background — and on drafts made before it was measured. */
+  ink?: RegionInk;
 }
 
 export interface WizardDraft {
@@ -84,8 +89,10 @@ export interface WizardDraft {
   designArt: DesignArt | null;
   /** The untouched upload, kept so an erase re-runs from clean pixels (never compounds). */
   designOriginal: AssetFile | null;
-  /** The applied baked-text erase (Prepare step); null = none. */
-  designErase: DesignEraseState | null;
+  /** The applied baked-text erases (Prepare step), in the order they were marked; [] = none.
+   *  A design usually has more than one piece of baked text — a name AND a title, a scoreline
+   *  AND a clock — so each marked region is its own erase, and each seeds its own field(s). */
+  designErases: DesignEraseState[];
 }
 
 /** A draft update: top-level fields replace; `animation` and `nudge` deep-merge. */
@@ -127,7 +134,7 @@ export function initialDraft(): WizardDraft {
     logoEnabled: null,
     designArt: null,
     designOriginal: null,
-    designErase: null,
+    designErases: [],
   };
 }
 
@@ -195,28 +202,108 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
  * Data tab and canvas text tools use. The rect is in the artwork's SOURCE pixels; placement
  * is design px, so the fitToFrame ratio maps between them (the retina case).
  */
-function withEraseSeedField(template: SpxTemplate, draft: WizardDraft): SpxTemplate {
-  if (!draft.designErase || !draft.designArt) return template;
+function withEraseSeedFields(template: SpxTemplate, draft: WizardDraft): SpxTemplate {
   const art = draft.designArt;
+  if (!art || draft.designErases.length === 0) return template;
   const k = art.width / (art.sourceWidth ?? art.width);
-  const r = draft.designErase.rect;
-  // The field sits ON the erased fill, so contrast against exactly that: dark ink on a
-  // light fill, white on a dark one (a transparent fill reads as the dark broadcast frame).
-  const f = draft.designErase.fill;
-  const luminance = f.a < 64 ? 0 : (0.2126 * f.r + 0.7152 * f.g + 0.0722 * f.b) / 255;
-  const added = addPlacedLine(template, {
-    color: luminance > 0.5 ? '#16181c' : '#ffffff',
-    title: 'Name',
-    ftype: 'textfield',
-    at: { x: Math.round(r.x * k), y: Math.round(r.y * k) },
-    // Approximate the erased text's size from its box: ~72% of the height (the box wraps
-    // ascenders/descenders with air), CAPPED by width/7 — a name is roughly a dozen glyphs
-    // at ~half an em each, and a tall script original (whose box height far exceeds its cap
-    // height) would otherwise seed type twice the visual size the design was drawn with.
-    fontSize: Math.max(10, Math.round(Math.min(r.height * k * 0.72, (r.width * k) / 7))),
-    maxWidth: Math.max(64, Math.round(r.width * k)),
-  });
-  return added ? added.template : template;
+  // Every line of every erased region becomes a field, in reading order: a user who marked a
+  // name and a title got two pieces of text back, not one field over both.
+  let next = template;
+  let seeded = 0;
+  for (const erase of draft.designErases) {
+    // The field sits ON the erased fill, so contrast against exactly that: dark ink on a
+    // light fill, white on a dark one (a transparent fill reads as the dark broadcast frame).
+    const f = erase.fill;
+    const luminance = f.a < 64 ? 0 : (0.2126 * f.r + 0.7152 * f.g + 0.0722 * f.b) / 255;
+    const color = luminance > 0.5 ? '#16181c' : '#ffffff';
+    // Build the replacement from what was MEASURED, not from the lasso the user drew: the
+    // rectangle is deliberately loose (you draw it around text, with air), so its edges say
+    // nothing about where the type sat. The ink does.
+    //
+    // Nothing here reconstructs the font — flattened pixels don't carry one. It reproduces the
+    // things that ARE in the pixels: each line's bounds, which edge it was set from, how tall
+    // it was, and where its top was. That is what makes the field land on the erased text
+    // instead of near it; the user restyles from there.
+    for (const line of erase.ink?.lines ?? []) {
+      const box = { x: line.x * k, width: line.width * k };
+      // Cap-top to baseline is ~0.72 em in every face the product bundles (and close to it in
+      // anything a broadcast design is set in), which is why the measurement stops at the
+      // baseline: the FULL ink run is 0.72 em for a word without descenders and 0.94 em for
+      // one with them, so a size read off it would be right for "Riva" and 30% out for "Gray".
+      // Verified against real typeset text, not a stand-in bar (e2e/import-canvas.spec.ts).
+      // Bounded, too: a region marked over a logo has ink but no type in it at all.
+      // …and never so large that the field arrives already overflowing its own slot. A region
+      // marked over a LOGO or an illustration has ink as tall as it is wide, and cap height
+      // read off that is type the width could never hold: the fit runtime floors its shrink at
+      // 55% and then CLIPS, so the field would open showing "Tex". Roughly half an em per
+      // glyph of the value it starts with is the bound that never binds on a real line of
+      // text (which is many times wider than it is tall) and always binds on a block.
+      const title = seedTitle(seeded);
+      const fits = (line.width * k) / (0.55 * Math.max(4, title.length));
+      const fontSize = Math.max(
+        10,
+        Math.min(Math.round((line.capHeight * k) / 0.72), Math.round(fits), Math.round(art.height * 0.5)),
+      );
+      // Which edge the type was set from. Centred is a real design decision (a title card, a
+      // badge) and worth detecting: text whose middle sits on the artwork's middle was almost
+      // certainly centred, and seeding it left-anchored would drift the moment the operator
+      // types a name of a different length — the one thing this field exists to survive.
+      const centre = box.x + box.width / 2;
+      const align =
+        Math.abs(centre - art.width / 2) <= art.width * 0.045 ? 'center' as const
+        : centre < art.width / 2 ? 'left' as const
+        : 'right' as const;
+      const anchorX = align === 'center' ? centre : align === 'right' ? box.x + box.width : box.x;
+      const added = addPlacedLine(next, {
+        color,
+        title,
+        ftype: 'textfield',
+        // line-height 1 makes the box exactly one em tall, so the glyphs land predictably
+        // inside it: the ink starts about a tenth of an em below the box top.
+        lineHeight: 1,
+        at: { x: Math.round(anchorX), y: Math.round(line.top * k - fontSize * 0.1) },
+        fontSize,
+        align,
+        // The slot is the room the erased text had, measured from its own anchor — plus the
+        // side bearings, which is the difference between what type PAINTS and the width it
+        // OCCUPIES. Without that margin the slot is a hair narrower than the very text it was
+        // measured from, and the fit runtime shrinks the seed on arrival: the field would open
+        // ~10% under the size the design was set in, every time.
+        maxWidth: Math.max(64, Math.round((align === 'center' ? box.width * 2 : box.width) + fontSize * 0.12)),
+      });
+      if (added) {
+        next = added.template;
+        seeded++;
+      }
+    }
+    // No measurable ink (a region marked over blank background): fall back to the rectangle,
+    // sized from its box — ~72% of the height (the box wraps ascenders/descenders with air),
+    // CAPPED by width/7, since a name is roughly a dozen glyphs at ~half an em each and a tall
+    // script original would otherwise seed type twice the size the design was drawn with.
+    if (!erase.ink) {
+      const r = erase.rect;
+      const added = addPlacedLine(next, {
+        color,
+        title: seedTitle(seeded),
+        ftype: 'textfield',
+        at: { x: Math.round(r.x * k), y: Math.round(r.y * k) },
+        fontSize: Math.max(10, Math.round(Math.min(r.height * k * 0.72, (r.width * k) / 7))),
+        maxWidth: Math.max(64, Math.round(r.width * k)),
+      });
+      if (added) {
+        next = added.template;
+        seeded++;
+      }
+    }
+  }
+  return next;
+}
+
+/** What a seeded field is called. The first two get the words a lower third actually uses —
+ *  the overwhelmingly common shape is a name over a title — and anything past that is
+ *  numbered. Every one is renamed in a click from the Inspector's Style tab. */
+function seedTitle(index: number): string {
+  return index === 0 ? 'Name' : index === 1 ? 'Title' : `Text ${index + 1}`;
 }
 
 /**
@@ -230,7 +317,7 @@ function withEraseSeedField(template: SpxTemplate, draft: WizardDraft): SpxTempl
 function withStretchDemoLine(template: SpxTemplate, draft: WizardDraft): SpxTemplate {
   const art = draft.designArt;
   const hz = art?.stretch?.horizontal;
-  if (!art || !hz || draft.designErase) return template; // the erase-seeded field is the demo
+  if (!art || !hz || draft.designErases.length > 0) return template; // the erase-seeded fields are the demo
   const added = addPlacedLine(template, {
     title: 'Sample',
     ftype: 'textfield',
@@ -249,7 +336,7 @@ export function buildDraftTemplate(
 ): SpxTemplate {
   let template = variant.create(draftToOptions(variant, draft));
   if (variant.category === 'imported-design') {
-    template = withEraseSeedField(template, draft);
+    template = withEraseSeedFields(template, draft);
     if (opts.stretchDemo) template = withStretchDemoLine(template, draft);
   }
   const inId = draft.animation.presetId ?? variant.animationPresets[0];

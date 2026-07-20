@@ -20,6 +20,10 @@ const ZOOM_MAX = 8;
  * elements that animate in from off-canvas). Reloads (debounced) when the code changes, and
  * reports runtime errors back to the store.
  *
+ * Panning is the familiar set: hold Space and drag, drag with the middle mouse button, or
+ * (zoomed in) scroll/trackpad-swipe. All of them move the VIEW only — they are handled here,
+ * above the gesture overlay, so no document element can move under a pan.
+ *
  * Coordinate note: the iframe + overlays live in a `.canvas-world` that is centred in the
  * stage and translated by `pan`; the effective scale passed to the overlays is fit × zoom.
  * CanvasInteraction derives its own scale from that width and reads the overlay's live
@@ -125,15 +129,62 @@ export default function PreviewFrame({ iframeRef }: Props) {
     // zoomToward reads live refs; stage identity is stable for the component's life.
   }, []);
 
-  // Middle-mouse drag pans the viewport. Captured before the overlay so the canvas gesture
-  // layer never sees it. (Left-drag stays with the canvas; a plain wheel pans when zoomed in.)
+  // ── PANNING: hold Space (the gesture every graphics editor shares) or drag with the middle
+  //    mouse button. Both are captured BEFORE the overlay, so the canvas gesture layer never
+  //    sees them and no document element can move under a pan.
+  //
+  //    Space arms only while the pointer is over the stage — off the stage it stays the
+  //    timeline's Play key. While armed the keydown is swallowed in the CAPTURE phase, so
+  //    the graphic does not also start playing under the pan.
   const panDrag = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const [panActive, setPanActive] = useState(false);
+  const [spacePan, setSpacePan] = useState(false);
+  const overStage = useRef(false);
+  const spacePanRef = useRef(false);
+  spacePanRef.current = spacePan;
+
+  useEffect(() => {
+    // Space belongs to a text field that has focus — there it types a space and nothing else.
+    // A focused BUTTON does yield it: clicking a stage tool leaves that button focused, and a
+    // pan that stopped working until you clicked elsewhere would be the more surprising rule.
+    // Enter still activates the button, so nothing becomes unreachable from the keyboard.
+    const claimed = (t: EventTarget | null) =>
+      t instanceof HTMLElement &&
+      !!t.closest('input, textarea, select, [contenteditable="true"], .monaco-editor');
+    const onDown = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || e.repeat || !overStage.current || claimed(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation(); // capture phase: Space belongs to the pan while it is armed
+      setSpacePan(true);
+    };
+    const onUp = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' || !spacePanRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setSpacePan(false);
+      // Releasing mid-drag restores the previous tool (and its cursor) immediately.
+      panDrag.current = null;
+      setPanActive(false);
+    };
+    // Leaving the window (Alt-Tab with Space held) must not strand the canvas in pan mode.
+    const onBlur = () => { setSpacePan(false); panDrag.current = null; setPanActive(false); };
+    window.addEventListener('keydown', onDown, true);
+    window.addEventListener('keyup', onUp, true);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onDown, true);
+      window.removeEventListener('keyup', onUp, true);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
   const onStagePointerDown = (e: React.PointerEvent) => {
-    if (e.button === 1) {
+    if (e.button === 1 || (spacePan && e.button === 0)) {
       e.preventDefault();
       e.stopPropagation();
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       panDrag.current = { x: e.clientX, y: e.clientY, px: panRef.current.x, py: panRef.current.y };
+      setPanActive(true);
     }
   };
   const onStagePointerMove = (e: React.PointerEvent) => {
@@ -143,6 +194,7 @@ export default function PreviewFrame({ iframeRef }: Props) {
   };
   const onStagePointerUp = () => {
     panDrag.current = null;
+    setPanActive(false);
   };
 
   // Listen for runtime errors posted from the preview document.
@@ -185,13 +237,16 @@ export default function PreviewFrame({ iframeRef }: Props) {
 
   return (
     <div
-      className={`preview-stage ${previewBg}`}
+      className={`preview-stage ${previewBg}${spacePan ? ' panning' : ''}${panActive ? ' panning-active' : ''}`}
       ref={stageRef}
       style={{ aspectRatio: `${docW} / ${docH}` }}
+      data-testid="preview-stage"
       onPointerDownCapture={onStagePointerDown}
       onPointerMove={onStagePointerMove}
       onPointerUp={onStagePointerUp}
       onPointerCancel={onStagePointerUp}
+      onPointerEnter={() => { overStage.current = true; }}
+      onPointerLeave={() => { overStage.current = false; }}
     >
       <div
         className="canvas-world"

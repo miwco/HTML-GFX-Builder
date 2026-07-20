@@ -14,10 +14,12 @@ interface Props {
 /**
  * "Import graphic", step 1 — bring in the finished artwork.
  *
- * ONE image, and it IS the design (not a logo dropped into someone else's template). Its
- * natural size is MEASURED here rather than assumed: it decides the graphic's size, whether
- * the design covers the frame or floats inside it, and where the text defaults land. Guessing
- * any of that would put the user's artwork somewhere they didn't draw it.
+ * ONE image, and it IS the design (not a logo dropped into someone else's template). Any
+ * raster format the browser decodes is accepted — the flow works off the decoded pixels, so
+ * PNG, JPEG, WebP, GIF and AVIF are the same to it. Its natural size is MEASURED here rather
+ * than assumed: it decides the graphic's size, whether the design covers the frame or floats
+ * inside it, and where the text defaults land. Guessing any of that would put the user's
+ * artwork somewhere they didn't draw it.
  */
 export default function ImportDesignStep({ art, images, resolution, onArt, onClear }: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
@@ -56,14 +58,24 @@ export default function ImportDesignStep({ art, images, resolution, onArt, onCle
 
   const take = async (files: FileList | File[]) => {
     setError(null);
+    // Any image the browser can decode is welcome — the pipeline works off the decoded
+    // pixels, never the container, so PNG, JPEG, WebP, GIF and AVIF all behave the same.
+    // (Erasing baked-in text re-encodes to PNG, so a lossy original never loses more.)
     const file = Array.from(files).find((f) => f.type.startsWith('image/'));
     if (!file) {
-      setError('That is not an image. Bring in the finished design as a PNG (transparency is kept).');
+      setError('That is not an image. Bring in your finished design as a PNG, JPEG, or WebP — any image your browser can open.');
       return;
     }
     try {
       const dataUrl = await fileToDataUrl(file);
       const size = await measure(dataUrl);
+      // A vector file with no intrinsic size measures 0 × 0, and every downstream number
+      // (the design's size, the placement defaults, the erase rect) is derived from it —
+      // so say what is wrong instead of creating a zero-sized design.
+      if (size.width < 1 || size.height < 1) {
+        setError('That image has no fixed pixel size. Export it at the size you want it on air and drop it again.');
+        return;
+      }
       // One design per graphic: a second drop REPLACES the artwork rather than piling up.
       const asset: AssetFile = { path: uniqueAssetPath(file.name, []), data: dataUrl };
       onArt({ path: asset.path, ...fitToFrame(size) }, [asset]);
@@ -96,8 +108,9 @@ export default function ImportDesignStep({ art, images, resolution, onArt, onCle
         <strong>{art ? 'Drop another design to replace it' : 'Drop your finished design here'}</strong>
         {!art && (
           <span className="hint">
-            The image you already made — a PNG with transparency keeps everything behind it
-            visible on air. It becomes the graphic itself; you add the fields in the editor.
+            The image you already made — PNG, JPEG, WebP, or anything else your browser opens.
+            A format that carries transparency (PNG or WebP) keeps everything behind it visible
+            on air. It becomes the graphic itself; you add the fields in the editor.
           </span>
         )}
       </div>

@@ -298,7 +298,7 @@ export default function CreationWizard() {
                     // A fresh drop resets the Prepare step: the pristine pixels become the
                     // erase's source, and any erase from a previous artwork is meaningless.
                     designOriginal: importedImages[0] ?? null,
-                    designErase: null,
+                    designErases: [],
                     category: 'imported-design',
                     // There is no design to choose — the artwork IS it — so the variant is
                     // settled here, and the graphic creates BARE: its text/number/image
@@ -318,7 +318,7 @@ export default function CreationWizard() {
                     importedImages: [],
                     variantId: null,
                     designOriginal: null,
-                    designErase: null,
+                    designErases: [],
                   })
                 }
               />
@@ -350,14 +350,17 @@ export default function CreationWizard() {
                 resolution={draftResolution(draft)}
                 images={draft.importedImages}
                 original={draft.designOriginal}
-                erase={draft.designErase}
-                onApplyErase={(designErase, importedImages) =>
-                  patch({ designErase, importedImages })
-                }
-                onClearErase={() =>
+                erases={draft.designErases}
+                onErases={(designErases, importedImages) =>
                   patch({
-                    designErase: null,
-                    importedImages: draft.designOriginal ? [draft.designOriginal] : draft.importedImages,
+                    designErases,
+                    // Clearing every mark hands the pristine upload back as the artwork.
+                    importedImages:
+                      importedImages.length > 0
+                        ? importedImages
+                        : draft.designOriginal
+                          ? [draft.designOriginal]
+                          : draft.importedImages,
                   })
                 }
                 onStretch={(stretch) =>
