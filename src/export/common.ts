@@ -4,7 +4,7 @@
 import type JSZip from 'jszip';
 import gsapSource from '../assets/gsap.min.js?raw';
 import lottieSource from '../assets/lottie.min.js?raw';
-import { parseDataUrl } from '../assets/assetUtils';
+import { isFontAsset, parseDataUrl } from '../assets/assetUtils';
 import { templateUsesLottie } from '../assets/lottieSupport';
 import { fetchBundledFont, referencedFontFiles } from './bundledFonts';
 import { FONT_LICENSE_NOTE } from '../model/fonts';
@@ -24,7 +24,11 @@ import { slug } from './slug';
  */
 export async function addReferencedFonts(zip: JSZip, template: SpxTemplate): Promise<void> {
   const unique = referencedFontFiles(template.css);
-  if (unique.length === 0) return;
+  // The licence has to follow the BYTES, not the stylesheet. Keying the whole function off the
+  // CSS match alone meant a package could carry a font the regex had not seen — an imported
+  // face written by the assets loop — and ship no FONT_LICENSES.md with it.
+  const importedFonts = template.assets.filter((a) => isFontAsset(a.path));
+  if (unique.length === 0 && importedFonts.length === 0) return;
   // Imported fonts already live in template.assets (written by the assets loop);
   // only the builder-bundled files need fetching from /fonts.
   const assetPaths = new Set(template.assets.map((a) => a.path));

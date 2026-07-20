@@ -38,6 +38,24 @@ validation gates every export (root non-negotiables 3 and 4).
 - **common.ts** - addSharedAssets, addReferencedFonts, injectControlReceiver + addControlPanel,
   FONT_LICENSES.md.
 
+## Font licensing (the rule: the licence follows the BYTES)
+
+The seven bundled faces are OFL 1.1. §2 requires every redistributed copy of the font software
+to CONTAIN the copyright notice and the licence - as a stand-alone text file, a human-readable
+header, or readable metadata. A LINK satisfies none of those, and §2 is triggered by
+REDISTRIBUTION, not by sale, so the product being free does not retire it. The binaries have
+name ID 13 stripped and an empty WOFF2 metadata block, so there is no in-binary fallback either.
+
+`public/fonts/OFL.txt` is the single source: the full licence plus all seven copyright lines. It
+is served at `/fonts/OFL.txt` beside the fonts, imported `?raw` into `model/fonts.ts` as
+`FONT_LICENSE_NOTE` (stand-alone form) and `fontLicenseComment()` (header form), and read from
+disk by the two build scripts that embed font bytes. Two consequences worth remembering:
+`addReferencedFonts` keys the notice off the BYTES in the package (CSS refs OR a font in
+`template.assets`) rather than off a regex match, and a surface that embeds fonts and cannot
+ship a sibling file - a single-file export, the player host, the generated worker CSS - carries
+the header instead. exports.spec.ts asserts every package that ships font bytes also ships the
+text.
+
 ## Packaging conventions
 
 - Asset paths: uploads land at `images/<file>` (fonts at `fonts/<file>`); the export zip wraps

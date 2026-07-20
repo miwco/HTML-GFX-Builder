@@ -13,7 +13,11 @@ import type { ExportTarget } from '../registry';
  * exports resolve it there); only this packaged copy gets the ../ hop.
  */
 function cssForSubfolder(css: string): string {
-  return css.replace(/url\(\s*(['"]?)(images|fonts|lottie|assets)\//g, 'url($1../$2/');
+  // `(?:\.\/)?` matters: every other reader of these references accepts a "./" prefix
+  // (assetUtils inlineAssetRefs, validateTemplate, bundledFonts FONT_REF_RE), so a stylesheet
+  // written with one would be left un-hopped here while addReferencedFonts still wrote the file
+  // at the package root — the reference and the file disagreeing inside one package build.
+  return css.replace(/url\(\s*(['"]?)(?:\.\/)?(images|fonts|lottie|assets)\//g, 'url($1../$2/');
 }
 
 /** Write one SPX-format template into the given zip folder (reused by packet export). */

@@ -125,17 +125,48 @@ export function labelFontFaceCss(font: BundledFont): string {
 }`;
 }
 
-/** License note written into exported packages that bundle a font. */
+// The OFL itself, vendored at public/fonts/OFL.txt (served at /fonts/OFL.txt, copied into the
+// build) and imported here so the licence travels with the fonts rather than being linked.
+// OFL §2 requires each redistributed copy of the Font Software to CONTAIN the copyright notice
+// and this licence — as a stand-alone text file, a human-readable header, or readable metadata.
+// A URL pointing at the licence satisfies none of those, and §2 is triggered by redistribution,
+// not by sale, so shipping the product free does not retire the obligation.
+import oflLicenseText from '../../public/fonts/OFL.txt?raw';
+
+/** The full OFL 1.1 text plus every bundled font's copyright line. */
+export const OFL_TEXT = oflLicenseText;
+
+/** License note written into exported packages that bundle a font, as a stand-alone file
+ *  (OFL §2's first permitted form). */
 export const FONT_LICENSE_NOTE = `# Font licenses
 
-Fonts under fonts/ that came from this builder's bundled set are licensed under the
-SIL Open Font License 1.1 (OFL): they may be bundled, redistributed, and used commercially,
-but not sold on their own. Full license text: https://openfontlicense.org
-(Bundled fonts sourced from Google Fonts, https://fonts.google.com.)
+The fonts under fonts/ that came from this builder's bundled set are licensed under the
+SIL Open Font License, Version 1.1. They may be bundled, embedded, redistributed and used
+commercially, but not sold on their own. The complete licence and the copyright notice for
+every bundled font follow.
 
-Fonts you imported yourself are governed by their own licenses — make sure you have the
-right to embed and distribute them.
-`;
+Fonts you imported yourself are NOT covered by any of this and are governed by their own
+licences — make sure you have the right to embed and distribute them before sharing a
+package that contains one.
+
+----------------------------------------------------------------------
+
+${oflLicenseText}`;
+
+/**
+ * The same notice as a comment block, for the surfaces that have nowhere to put a separate
+ * file: a single-file export is one .html by contract, and an inlined page cannot ship a
+ * sibling. OFL §2 names exactly this form — "human-readable headers".
+ *
+ * `open`/`close` differ per host language: `/* … *\/` inside CSS, `<!-- … -->` in HTML.
+ */
+export function fontLicenseComment(syntax: 'html' | 'css'): string {
+  const body = `Bundled fonts — SIL Open Font License 1.1\n\n${oflLicenseText}`;
+  // A comment cannot contain its own terminator. The OFL text has neither sequence, but
+  // guarding here means an edit to the licence file can never produce a broken document.
+  const safe = body.replace(/--!?>/g, '-- >').replace(/\*\//g, '* /');
+  return syntax === 'html' ? `<!--\n${safe}\n-->` : `/*\n${safe}\n*/`;
+}
 
 // ── User-imported fonts (embedded in the template + its export) ───────────────
 

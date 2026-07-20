@@ -8,9 +8,10 @@
 
 import gsapSource from '../assets/gsap.min.js?raw';
 import lottieSource from '../assets/lottie.min.js?raw';
-import { inlineAssetRefs } from '../assets/assetUtils';
+import { inlineAssetRefs, isFontAsset } from '../assets/assetUtils';
 import { templateUsesLottie } from '../assets/lottieSupport';
 import { inlineBundledFonts } from './bundledFonts';
+import { fontLicenseComment } from '../model/fonts';
 import type { SpxTemplate } from '../model/types';
 
 /**
@@ -32,9 +33,15 @@ export async function composeSelfContainedHtml(
     .replace(/<script\b[^>]*src=["'](?:\.\/)?(?:js\/|css\/)[^"']*["'][^>]*>\s*<\/script>\s*/gi, '');
   // Uploaded fonts are assets and are already substituted by the line below; whatever still
   // reads url("fonts/…") afterwards is a builder-bundled face, embedded here.
-  const css = await inlineBundledFonts(inlineAssetRefs(template.css, template.assets));
+  const { css, embedded } = await inlineBundledFonts(inlineAssetRefs(template.css, template.assets));
+  // A single-file export has nowhere to put a FONT_LICENSES.md, so when it carries font bytes
+  // the licence rides along as a human-readable header — OFL §2's second permitted form.
+  const licence = embedded.length > 0 || template.assets.some((a) => isFontAsset(a.path))
+    ? `${fontLicenseComment('html')}\n`
+    : '';
 
   const headInjection =
+    licence +
     `<script>/* GSAP (bundled) — no internet needed at playout. */\n${gsapSource}</script>\n` +
     // The Lottie player inlines only when the graphic uses it; its animation JSON is
     // already a data: URL here (inlineAssetRefs above), so file:// playout works.

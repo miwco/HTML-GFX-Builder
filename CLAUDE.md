@@ -149,8 +149,9 @@ src/
                showchat/ is audience send-in (SendIn page, ModerationPanel, chatGraphicBlock)
   components/ * the React app: AppShell, CodeEditor, canvas, timeline dock, Inspector, the
                five-tab SidePanel, wizard/, auth/, and video/ (the PARALLEL video shell)
-public/fonts/  the 7 bundled woff2 fonts (served at /fonts, copied into exports); src/assets/ has
-               the bundled gsap.min.js + data-URL asset helpers, src/teach/ the Monaco tooltips
+public/fonts/  the 7 bundled woff2 fonts + OFL.txt, the ONE licence source (served at /fonts,
+               copied into exports - src/export/CLAUDE.md); src/assets/ has the bundled
+               gsap.min.js + data-URL asset helpers, src/teach/ the Monaco tooltips
 scripts/       dev-port.mjs, l3-sweep.mjs, ai-compare.mjs + ai-bench.mjs (both SPEND TOKENS),
                render-smoke*.mjs, hooks/ (guard hooks wired in .claude/settings.json)
 api/           the render service's Vercel functions; typechecked by tsconfig.api.json

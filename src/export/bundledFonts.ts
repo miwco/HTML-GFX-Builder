@@ -19,7 +19,11 @@
 
 /** The generated `url("fonts/<file>")` reference. Kept in one place so the folder writer and
  *  the inliner can never disagree about what counts as a bundled-font reference. */
-export const FONT_REF_RE = /url\(["']?(?:\.\/)?fonts\/([\w.-]+\.(?:woff2|woff|ttf|otf))["']?\)/gi;
+// `[\w./-]+` and not `[\w.-]+`: the Assets panel may nest ONE user folder inside a bucket
+// (assetUtils.ts uniqueAssetPath), so an imported font legitimately lives at
+// fonts/<folder>/<file>.woff2. A class without `/` silently stops seeing those, which used to
+// mean the package shipped the font bytes and no licence note at all.
+export const FONT_REF_RE = /url\(["']?(?:\.\/)?fonts\/([\w./-]+\.(?:woff2|woff|ttf|otf))["']?\)/gi;
 
 /** The @font-face `format()` keyword for a file extension. */
 const FORMATS: Record<string, string> = { woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' };
@@ -68,9 +72,9 @@ function toBase64(buffer: ArrayBuffer): string {
  * which is the right outcome: refusing to build beats handing someone a graphic that looks
  * correct in the editor and wrong on air.
  */
-export async function inlineBundledFonts(css: string): Promise<string> {
+export async function inlineBundledFonts(css: string): Promise<{ css: string; embedded: string[] }> {
   const files = referencedFontFiles(css);
-  if (files.length === 0) return css;
+  if (files.length === 0) return { css, embedded: [] };
 
   const dataUrls = new Map<string, string>();
   for (const file of files) {
@@ -85,8 +89,9 @@ export async function inlineBundledFonts(css: string): Promise<string> {
     dataUrls.set(file, `data:${FORMATS[ext] ?? 'application/octet-stream'};base64,${toBase64(buffer)}`);
   }
 
-  return css.replace(FONT_REF_RE, (whole, file: string) => {
+  const out = css.replace(FONT_REF_RE, (whole, file: string) => {
     const url = dataUrls.get(file);
     return url ? `url("${url}")` : whole;
   });
+  return { css: out, embedded: files };
 }

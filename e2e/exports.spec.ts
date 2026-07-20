@@ -282,6 +282,24 @@ test('every export target carries the fonts its own code references', async ({ p
     }
     expect(dangling, `${label}: references a font the package does not contain`).toEqual([]);
 
+    // Wherever the bytes go, the licence goes: OFL §2 wants each redistributed copy to CONTAIN
+    // the copyright notice and the licence, as a stand-alone file (the folder packages'
+    // FONT_LICENSES.md) or a human-readable header (the single-file targets' HTML comment).
+    // It is triggered by redistribution, so shipping the product free does not retire it.
+    const carriesFonts =
+      Object.keys(zip.files).some((p) => /\.(woff2?|ttf|otf)$/i.test(p)) ||
+      Object.values(texts).some((t) => t.includes('data:font/'));
+    expect(carriesFonts, `${label}: shipped no font bytes at all — the graphic has no typography`).toBe(true);
+    const everything = Object.values(texts).join('\n');
+    expect(
+      everything.includes('SIL OPEN FONT LICENSE Version 1.1'),
+      `${label}: carries font bytes but not the OFL licence text`,
+    ).toBe(true);
+    expect(
+      everything.includes('Copyright 2020 The Inter Project Authors'),
+      `${label}: carries font bytes but not the per-font copyright notices`,
+    ).toBe(true);
+
     if (!singleFile) continue;
 
     // The single-file targets get the real test: alone on disk, over file://, nothing beside it.
