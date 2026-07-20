@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createProject } from './_create';
 import JSZip from 'jszip';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import nodePath from 'node:path';
 
 // The CasparCG and OGraf export targets — not just zip-structure checks: the CasparCG
 // file is loaded and driven with an XML payload, and the OGraf Graphic is imported and
@@ -226,4 +227,193 @@ test('ograf: a valid v1 Graphic whose Web Component passes the action contract',
   expect(result.currentStep).toBe(0);
   expect(result.opacity).toBe('1');
   expect(result.cleared).toBe(true);
+});
+
+// ── Fonts actually arrive ────────────────────────────────────────────────────────────────
+//
+// Generated CSS references a bundled face as url("fonts/<file>.woff2"), which a FOLDER package
+// satisfies by shipping the file beside the HTML and a SINGLE-FILE package can only satisfy by
+// embedding the bytes. The single-file half was missing: casparcg, h2r and html-overlay emitted
+// the reference and wrote no font, so those graphics played out in the fallback stack.
+//
+// It hid twice over — `font-display: swap` renders fallback text instead of erroring, and every
+// other check in this file loads an export through setContent() or a srcdoc, both of which
+// inherit the DEV SERVER's base URL, where /fonts/ happens to exist. So this test insists on the
+// real destination: the file alone in a directory, opened over file://, with no sibling anything.
+
+// A single-file export must survive its own autoplay. The overlay target BAKES the Data panel's
+// values into a load handler, and a filelist field's value is an asset path — so the markup's
+// correctly inlined data: URL got overwritten by `images/<file>` the moment the page loaded, in
+// a package that has no images/ folder. The logo painted on frame one and then disappeared, with
+// no console error: a broken <img alt=""> over transparent video looks like an empty slot.
+// Measured before the fix on cr01 — naturalWidth 0 and a failed file:// request.
+const IMAGE_ROUNDTRIP = `(async () => {
+  const { CATALOG } = await import('/src/templates/catalog.ts');
+  const { EXPORT_TARGETS } = await import('/src/export/registry.ts');
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  let tpl = null, field = null;
+  for (const variant of Object.values(CATALOG).flat().filter(Boolean)) {
+    for (const opts of [{ logo: true }, {}]) {
+      let t; try { t = variant.create(opts); } catch (e) { continue; }
+      const f = t.fields.find((x) => x.ftype === 'filelist');
+      if (f) { tpl = t; field = f; break; }
+    }
+    if (field) break;
+  }
+  if (!field) return { skipped: true };
+  tpl.assets = [...(tpl.assets ?? []), { path: 'images/acme-logo.png', data: PNG }];
+  field.value = 'images/acme-logo.png';
+  const sampleData = {};
+  for (const f of tpl.fields) sampleData[f.field] = f.value ?? '';
+
+  const target = EXPORT_TARGETS.find((t) => t.id === 'html-overlay');
+  const zip = await target.build(tpl, { sampleData });
+  let html = '', panel = '';
+  for (const [p, f] of Object.entries(zip.files)) {
+    if (!/\\.html$/i.test(p)) continue;
+    if (/controlpanel/i.test(p)) panel = await f.async('string');
+    else html = await f.async('string');
+  }
+  // The panel's IMAGES entries: value is what gets SENT, src is what it paints.
+  var images = [];
+  var m = panel.match(/var IMAGES = (\\[[\\s\\S]*?\\]);/);
+  if (m) { try { images = JSON.parse(m[1]); } catch (e) { images = []; } }
+  return {
+    skipped: false,
+    html,
+    rawPaths: (html.match(/images\\/acme-logo\\.png/g) || []).length,
+    images,
+  };
+})()`;
+
+test('a single-file export survives its own autoplay: the baked logo stays inlined', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  await page.goto('/app');
+  await page.keyboard.press('Escape');
+  const built = (await page.evaluate(IMAGE_ROUNDTRIP)) as {
+    skipped: boolean;
+    html: string;
+    rawPaths: number;
+    images: { value: string; label: string; src: string }[];
+  };
+  test.skip(built.skipped, 'no catalog variant produces an image field');
+
+  expect(built.rawPaths, 'a raw images/ path survived into the single-file export').toBe(0);
+
+  // The bundled panel sits beside a package with no images/ folder, so a picked value has to
+  // be the embedded bytes: sending a relative path would blank the graphic's inlined image.
+  expect(built.images.length, 'the panel offered no images to pick').toBeGreaterThan(0);
+  expect(
+    built.images.filter((i) => !i.value.startsWith('data:')).map((i) => i.value),
+    'the panel would send a relative path a single-file package cannot resolve',
+  ).toEqual([]);
+  expect(
+    built.images.filter((i) => !i.src.startsWith('data:')).map((i) => i.src),
+    'the panel would paint a thumbnail from a path that is not in the package',
+  ).toEqual([]);
+  // The operator still reads the asset's real name, not a 20 KB data URL.
+  expect(built.images.every((i) => i.label === 'images/acme-logo.png')).toBe(true);
+
+  const dir = testInfo.outputPath('overlay-lone');
+  mkdirSync(dir, { recursive: true });
+  const onDisk = nodePath.join(dir, 'index.html');
+  writeFileSync(onDisk, built.html, 'utf8');
+
+  const lone = await page.context().newPage();
+  const failed: string[] = [];
+  lone.on('requestfailed', (r) => failed.push(r.url().slice(0, 120)));
+  await lone.goto(`file://${onDisk.replace(/\\/g, '/')}`);
+  await lone.waitForTimeout(800); // let the autoplay load handler run and call update()
+  const broken = await lone.evaluate(() =>
+    Array.from(document.querySelectorAll('img'))
+      .filter((el) => el.getAttribute('src'))
+      .filter((el) => el.naturalWidth === 0)
+      .map((el) => `${el.id || '(no id)'} -> ${el.src.slice(0, 60)}`),
+  );
+  await lone.close();
+
+  expect(broken, 'an image was broken AFTER the autoplay block ran').toEqual([]);
+  expect(failed, 'the lone export requested a file that is not there').toEqual([]);
+});
+
+/** Text entries of a package, keyed by path (binaries skipped). */
+async function textEntries(zip: JSZip): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const [entryPath, entry] of Object.entries(zip.files)) {
+    if (entry.dir || /\.(woff2?|ttf|otf|png|jpe?g|gif|webp|avif)$/i.test(entryPath)) continue;
+    out[entryPath] = await entry.async('string');
+  }
+  return out;
+}
+
+const FONT_REF = /url\(["']?(?:\.\/)?fonts\/([\w./-]+\.(?:woff2|woff|ttf|otf))["']?\)/gi;
+
+test('every export target carries the fonts its own code references', async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  await createHairline(page);
+
+  const targets = [
+    { label: 'SPX export', singleFile: false },
+    { label: 'HTML overlay (OBS / vMix)', singleFile: true },
+    { label: 'H2R Graphics export', singleFile: true },
+    { label: 'CasparCG export', singleFile: true },
+    { label: 'OGraf (EBU) export', singleFile: false },
+    { label: 'LiveOS (NetOn.Live) export', singleFile: false },
+  ];
+
+  for (const { label, singleFile } of targets) {
+    const zip = await downloadTarget(page, label);
+    const texts = await textEntries(zip);
+    const packaged = new Set(Object.keys(zip.files).filter((p) => !zip.files[p].dir));
+
+    // Any relative font reference that survives packaging must have a file to resolve to.
+    // (An embedded font is a data: URL and no longer matches, which is the point.)
+    const dangling: string[] = [];
+    for (const [entryPath, text] of Object.entries(texts)) {
+      const dir = entryPath.includes('/') ? entryPath.slice(0, entryPath.lastIndexOf('/') + 1) : '';
+      for (const [, file] of text.matchAll(FONT_REF)) {
+        if (!packaged.has(`${dir}fonts/${file}`)) dangling.push(`${entryPath} -> fonts/${file}`);
+      }
+    }
+    expect(dangling, `${label}: references a font the package does not contain`).toEqual([]);
+
+    // Wherever the bytes go, the licence goes: OFL §2 wants each redistributed copy to CONTAIN
+    // the copyright notice and the licence, as a stand-alone file (the folder packages'
+    // FONT_LICENSES.md) or a human-readable header (the single-file targets' HTML comment).
+    // It is triggered by redistribution, so shipping the product free does not retire it.
+    const carriesFonts =
+      Object.keys(zip.files).some((p) => /\.(woff2?|ttf|otf)$/i.test(p)) ||
+      Object.values(texts).some((t) => t.includes('data:font/'));
+    expect(carriesFonts, `${label}: shipped no font bytes at all — the graphic has no typography`).toBe(true);
+    const everything = Object.values(texts).join('\n');
+    expect(
+      everything.includes('SIL OPEN FONT LICENSE Version 1.1'),
+      `${label}: carries font bytes but not the OFL licence text`,
+    ).toBe(true);
+    expect(
+      everything.includes('Copyright 2020 The Inter Project Authors'),
+      `${label}: carries font bytes but not the per-font copyright notices`,
+    ).toBe(true);
+
+    if (!singleFile) continue;
+
+    // The single-file targets get the real test: alone on disk, over file://, nothing beside it.
+    // Every @font-face the graphic declares must still reach status "loaded".
+    const htmlEntry = Object.keys(texts).find((p) => /\.html$/i.test(p) && !/controlpanel/i.test(p))!;
+    const dir = testInfo.outputPath(`lone-${label.replace(/\W+/g, '-')}`);
+    mkdirSync(dir, { recursive: true });
+    const onDisk = nodePath.join(dir, 'index.html');
+    writeFileSync(onDisk, texts[htmlEntry], 'utf8');
+
+    const lone = await page.context().newPage();
+    await lone.goto(`file://${onDisk.replace(/\\/g, '/')}`);
+    const faces = await lone.evaluate(async () => {
+      await document.fonts.ready;
+      return Array.from(document.fonts).map((f) => `${f.family.replace(/["']/g, '')}:${f.status}`);
+    });
+    await lone.close();
+
+    expect(faces.length, `${label}: the graphic declares no @font-face at all`).toBeGreaterThan(0);
+    expect(faces.filter((f) => !f.endsWith(':loaded')), `${label}: a font did not load from file://`).toEqual([]);
+  }
 });

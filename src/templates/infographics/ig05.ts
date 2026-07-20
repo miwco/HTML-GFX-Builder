@@ -69,8 +69,8 @@ export const ig05: TemplateVariant = defineInfographicVariant(
   padding: calc(26px * var(--scale)) calc(40px * var(--scale)) calc(24px * var(--scale));  /* generous inner air */
   background: var(--panel-bg);     /* the panel color (retints via the :root contract) */
   border: 1px solid rgba(255, 255, 255, 0.14);  /* hairline keyline lifts the panel off video */
-  border-top: calc(3px * var(--scale)) solid var(--accent);  /* the accent hairline (family token: 2-4px) */
-  border-radius: calc(2px * var(--scale));  /* barely-there rounding (minimal style) */
+  border-top: var(--accent-weight) solid var(--accent);  /* the family's accent weight */
+  border-radius: var(--panel-radius);  /* the family's panel radius */
 }
 
 /* The kicker — quiet tracking-wide caps, the accent's second, tiny appearance. */
@@ -78,12 +78,12 @@ export const ig05: TemplateVariant = defineInfographicVariant(
   font-size: calc(19px * var(--scale) * var(--type-scale));  /* label scale — a caption, not a headline */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.2;                /* compact label leading */
-  letter-spacing: 0.18em;          /* wide tracking — small caps breathe */
+  letter-spacing: var(--label-tracking);  /* the kicker's authored tracking */
   text-indent: 0.18em;             /* re-center: tracking adds space after the last cap too */
   text-transform: uppercase;       /* reads as a label, whatever the operator types */
   white-space: nowrap;             /* a short caps label never wraps mid-word */
   text-align: center;              /* the whole stack is center-axis */
-  color: var(--accent);            /* accent kicker — same move as its lt03 sibling */
+  color: var(--label-color);       /* the kicker's authored color */
 }
 
 /* The figure row — currency mark and total share one centered baseline. */
@@ -162,6 +162,10 @@ export const ig05: TemplateVariant = defineInfographicVariant(
   color: var(--text-dim);          /* dimmed — never full white twice */
 }`,
 
+      tokens: {
+        labelTracking: '0.18em',
+        labelColor: 'var(--accent)',
+      },
       fields: [
         { field: 'f0', ftype: 'textfield', title: o.lines[0]?.title || 'Total', value: totalText },
         { field: 'f1', ftype: 'textfield', title: o.lines[1]?.title || 'Goal', value: goalText },

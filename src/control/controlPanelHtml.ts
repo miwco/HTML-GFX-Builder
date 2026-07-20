@@ -29,13 +29,33 @@ function jsonForScript(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
+/**
+ * `inlineAssets` is the packaging shape, not a preference. Beside a FOLDER package the panel
+ * and the graphic both sit next to a real images/ folder, so a relative path is the right
+ * value to send — it is also what an SPX operator expects a filelist field to hold. Beside a
+ * SINGLE-FILE export there is no folder: a relative path paints nothing in the panel and,
+ * worse, blanks a correctly-inlined image on the graphic the moment it is sent. There the
+ * data: URL is the only value that resolves at both ends.
+ */
 export function renderControlPanelHtml(
-  template: { name: string; fields: SpxField[]; assets: { path: string }[] },
+  template: { name: string; fields: SpxField[]; assets: { path: string; data?: unknown }[] },
   remote?: RemoteControlConfig | null,
+  opts?: { inlineAssets?: boolean },
 ): string {
   const channel = controlChannelName(template.name);
   const controls = emitControls(template.fields);
-  const imagePaths = template.assets.filter((a) => isImageAsset(a.path)).map((a) => a.path);
+  const images = template.assets
+    .filter((a) => isImageAsset(a.path))
+    .map((a) => {
+      const dataUrl = typeof a.data === 'string' && a.data.startsWith('data:') ? a.data : null;
+      return {
+        value: opts?.inlineAssets && dataUrl ? dataUrl : a.path,
+        label: a.path,
+        // The thumbnail prefers the embedded bytes wherever we have them: it then renders in
+        // the panel even when the panel is opened on its own, away from the package.
+        src: dataUrl ?? a.path,
+      };
+    });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -82,7 +102,7 @@ export function renderControlPanelHtml(
 </div>
 <script>
 var CONTROLS = ${jsonForScript(controls)};
-var IMAGES = ${jsonForScript(imagePaths)};
+var IMAGES = ${jsonForScript(images)};
 var CHANNEL = ${jsonForScript(channel)};
 var REMOTE = ${jsonForScript(remote ?? null)};   // {ref,key,topic} when remote control is enabled, else null
 
@@ -172,11 +192,23 @@ function buildControl(c) {
     txt.oninput = function () { onChange(c.key, txt.value); };
     wrap.appendChild(el('div', { class: 'row' }, [col, txt]));
   } else if (c.kind === 'image') {
+    // Each entry is { value, label, src }: the LABEL is always the readable asset path, the
+    // SRC is what this panel paints its thumbnail with, and the VALUE is what gets sent to
+    // the graphic. They differ beside a single-file export, which has no images/ folder for
+    // a relative path to resolve against — there the value and the src are the data: URL.
     var isel = el('select', { class: 'grow' });
     isel.appendChild(el('option', { value: '' }, ['None']));
-    IMAGES.forEach(function (p) { var opt = el('option', { value: p }, [p]); if (p === v) opt.selected = true; isel.appendChild(opt); });
-    var img = el('img', { class: 'thumb', alt: '' }); if (v) img.setAttribute('src', v);
-    isel.onchange = function () { if (isel.value) img.setAttribute('src', isel.value); else img.removeAttribute('src'); onChange(c.key, isel.value); };
+    var byValue = {};
+    IMAGES.forEach(function (a) {
+      byValue[a.value] = a.src;
+      var opt = el('option', { value: a.value }, [a.label]);
+      if (a.value === v || a.label === v) opt.selected = true;
+      isel.appendChild(opt);
+    });
+    var img = el('img', { class: 'thumb', alt: '' });
+    function paint(val) { if (val) img.setAttribute('src', byValue[val] || val); else img.removeAttribute('src'); }
+    paint(isel.value || v);
+    isel.onchange = function () { paint(isel.value); onChange(c.key, isel.value); };
     wrap.appendChild(el('div', { class: 'row' }, [isel, img]));
   } else {
     var t = el('input', { type: 'text' }); t.value = v || '';

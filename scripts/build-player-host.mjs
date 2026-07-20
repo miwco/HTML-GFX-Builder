@@ -36,6 +36,13 @@ const fontWarmScript = `[${VIDEO_FONTS.map((f) => JSON.stringify(f.family)).join
 // Inlined for the same reason as the fonts: this page has no origin a fetch could use.
 const textChecksJs = readFileSync(join(root, 'src', 'video', 'textChecks.js'), 'utf8');
 
+// This page EMBEDS the font bytes, so the OFL notice has to be embedded with them — the page is
+// self-contained by design and cannot point at a sibling file. OFL §2 permits exactly this
+// "human-readable header" form. (public/fonts/OFL.txt is the same text, served beside the fonts
+// themselves for every surface that CAN resolve a sibling.) Read here, beside the other inlined
+// sources, because sourceHash() below has to see it.
+const oflText = readFileSync(join(root, 'src', 'assets', 'OFL.txt'), 'utf8').replace(/--!?>/g, '-- >');
+
 function* walk(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, entry.name);
@@ -57,10 +64,11 @@ function sourceHash() {
     h.update(f.slice(hostDir.length));
     h.update(readFileSync(f));
   }
-  // The inlined font CSS and readability checks are part of the output, so a change to
-  // either must invalidate the cached build even though no host source changed.
+  // The inlined font CSS, readability checks and licence header are part of the output, so a
+  // change to any of them must invalidate the cached build even though no host source changed.
   h.update(videoFontCss);
   h.update(textChecksJs);
+  h.update(oflText);
   return h.digest('hex');
 }
 
@@ -111,6 +119,7 @@ if (/src="\.\/assets\//.test(html)) {
 // Inline the bundled video fonts (@font-face data URLs) + a boot-time warm script into the
 // head, so compositions render real broadcast type and the very first mount isn't fallback.
 const fontBlock =
+  `<!--\nBundled fonts — SIL Open Font License 1.1\n\n${oflText}\n-->\n` +
   `<style id="noacg-video-fonts">\n${videoFontCss}\n</style>\n<script>${fontWarmScript}</script>\n` +
   `<script>/* NoaCG readability checks (src/video/textChecks.js) */\n${textChecksJs}\n</script>\n`;
 if (html.includes('</head>')) {

@@ -88,19 +88,18 @@ ${logo}${lineMasks(o)}
 .lower-third-box {
   padding: calc(22px * var(--scale)) calc(30px * var(--scale));  /* generous inner air */${boxLogoDecls}
   background: var(--panel-bg);     /* translucent white — the glass tint */
-  backdrop-filter: blur(18px);     /* frosts the video playing behind the card */
-  -webkit-backdrop-filter: blur(18px);  /* Safari spelling of the same effect */
-  border-radius: calc(18px * var(--scale));  /* soft, friendly card corners */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),  /* 1px inner keyline catches the light */
-              0 20px 60px rgba(0, 0, 0, 0.35);            /* one soft wide shadow lifts the card */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  border-radius: var(--panel-radius);  /* the card's authored radius */
+  box-shadow: var(--panel-keyline), var(--panel-shadow);  /* the family's keyline and lift */
 }
 
 /* Line 1 — the name leads. */
 .lower-third-name {
   font-size: calc(46px * var(--scale) * var(--type-scale));  /* headline size */
-  font-weight: 700;                /* bold enough to carry the card */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.1;                /* tight leading — big text needs less */
-  letter-spacing: -0.01em;         /* large text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   color: var(--text-color);        /* primary text color */
 }
 
@@ -116,15 +115,17 @@ ${logo}${lineMasks(o)}
 /* Line 3 (optional) — a small-caps kicker, e.g. a handle or a location. */
 .lower-third-extra {
   margin-top: calc(10px * var(--scale));  /* a touch more air before the kicker */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(17px * var(--scale) * var(--type-scale));   /* small label size */
   font-weight: 600;                /* semibold keeps small caps legible */
   line-height: 1.2;                /* compact single-line label */
-  letter-spacing: 0.14em;          /* small caps need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
   text-transform: uppercase;       /* label voice */
-  color: var(--accent);            /* the one accent moment on the card */
+  color: var(--label-color);        /* the family's label color */
 }${logoCss}`,
 
       hasAccent: false,
+      tokens: { panelRadius: 'calc(18px * var(--scale))' },
     };
   },
 );

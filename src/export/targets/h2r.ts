@@ -110,7 +110,7 @@ export const h2rTarget: ExportTarget = {
         ? template.html.replace(/<\/head>/i, `${gddScript(template)}</head>`)
         : gddScript(template) + template.html,
     };
-    root.file(`${name}.html`, composeSelfContainedHtml(withGdd, [H2R_TOGGLE_SHIM]));
+    root.file(`${name}.html`, await composeSelfContainedHtml(withGdd, [H2R_TOGGLE_SHIM]));
     root.file('README.md', h2rReadme(template));
     return zip;
   },

@@ -18,6 +18,7 @@
 
 import { paletteById } from '../../model/wizard';
 import { sb01 } from '../scoreboards/sb01';
+import { sb02 } from '../scoreboards/sb02';
 import type { GraphicType } from './graphicType';
 
 export const scoreboardType: GraphicType = {
@@ -145,6 +146,15 @@ export const scoreboardType: GraphicType = {
       palette: paletteById('volt'),
       fontId: 'oswald',
       create: (_type, options) => sb01.create(options),
+    },
+    {
+      id: 'sb02',
+      name: 'Quiet Score',
+      description: 'Panel-free corner stack - two quiet rows split by a hairline, accent rule on the edge.',
+      styleTag: 'minimal',
+      palette: paletteById('ivory'),
+      fontId: 'inter',
+      create: (_type, options) => sb02.create(options),
     },
   ],
 };

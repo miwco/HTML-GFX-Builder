@@ -60,24 +60,24 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
 .starting-soon-kicker {
   font-size: calc(24px * var(--scale) * var(--type-scale)); /* label scale — clearly subordinate */
   font-weight: 600;                /* firm enough for small caps to carry */
-  letter-spacing: 0.24em;          /* wide tracking — the label breathes */
+  letter-spacing: var(--label-tracking);  /* the hold label's authored tracking */
   text-transform: uppercase;       /* reads as a label, whatever the operator types */
-  color: var(--text-dim);          /* dimmed — never pure white twice */
+  color: var(--label-color);       /* the family's label color */
 }
 
 /* The show name — large and elegant; the only heavy element on the card. */
 .starting-soon-show {
   font-size: calc(92px * var(--scale) * var(--type-scale)); /* full-frame headline scale */
-  font-weight: 600;                /* confident without shouting */
+  font-weight: var(--display-weight);  /* the show's authored display weight */
   line-height: 1.08;               /* big text sits tight */
-  letter-spacing: -0.01em;         /* large sizes tighten slightly */
+  letter-spacing: var(--display-tracking);  /* large display type tightens slightly */
   color: var(--text-color);        /* primary text color */
 }
 
 /* The hairline — the design's single accent moment, and the hold-loop breath target. */
 .starting-soon-rule {
   width: calc(84px * var(--scale));  /* a short stroke — a mark, not a rule across the card */
-  height: calc(2px * var(--scale));  /* true hairline weight */
+  height: var(--accent-weight);    /* the hold's authored accent weight */
   margin: calc(18px * var(--scale)) 0;  /* extra air above and below the separator */
   background: var(--accent);       /* the one small, sharp dose of accent color */
   will-change: transform;          /* hint the browser: the breath scales this */
@@ -97,5 +97,10 @@ export const ss01: TemplateVariant = defineStartingSoonVariant(
 .starting-soon-done .starting-soon-clock {
   color: var(--accent);            /* 0:00 lights up in the accent color */
 }`,
+    tokens: {
+      accentWeight: 'calc(2px * var(--scale))',
+      labelTracking: '0.24em',
+      displayWeight: '600',
+    },
   }),
 );

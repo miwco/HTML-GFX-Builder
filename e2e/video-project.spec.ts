@@ -416,22 +416,32 @@ test('a declared input the module never reads is rejected as a control that woul
 
 test('video: a modal takes the shortcuts - Ctrl+Z behind My videos leaves the project alone', async ({ page }) => {
   await createCountdownProject(page);
+  // The first generation auto-runs and lands as its OWN undoable snapshot. Until it does,
+  // every edit below races it: a generation that arrives after the fps change becomes the
+  // newest undo target, so the Ctrl+Z after the dialog closes rewinds the generation and
+  // leaves fps alone - the test failing on ordering, not on the guard.
+  await waitForGeneration(page);
 
-  // Make something UNDOABLE first: patchSettings snapshots history (setSource deliberately
-  // does not - Monaco owns keystroke undo). Without a real undo target this test would pass
-  // no matter what the guard did.
-  const fps = () =>
+  // Make something UNDOABLE: patchSettings snapshots history (setSource deliberately does
+  // not - Monaco owns keystroke undo). Without a real undo target this test would pass no
+  // matter what the guard did.
+  const state = () =>
     page.evaluate(async () => {
       const { useVideoProjectStore } = await import('/src/store/videoProjectStore.ts');
-      return useVideoProjectStore.getState().project.fps;
+      const s = useVideoProjectStore.getState();
+      return { fps: s.project.fps, depth: s.history.length };
     });
-  const original = await fps();
-  expect(original).not.toBe(50); // the premise: 50 is a real change, so undo has something to rewind
+  const original = await state();
+  expect(original.fps).not.toBe(50); // the premise: 50 is a real change, so undo has something to rewind
   await page.evaluate(async () => {
     const { useVideoProjectStore } = await import('/src/store/videoProjectStore.ts');
     useVideoProjectStore.getState().patchSettings({ fps: 50 });
   });
-  expect(await fps()).toBe(50);
+  const patched = await state();
+  expect(patched.fps).toBe(50);
+  // The fps change is the NEWEST undo target and nothing has landed on top of it - the
+  // premise the assertion after the dialog closes rests on.
+  expect(patched.depth).toBe(original.depth + 1);
 
   // The video shell binds undo/redo globally, exactly like the SPX one. Both stand down while
   // a dialog is up (src/components/spaceKey.ts) - a keystroke aimed at the dialog must never
@@ -440,5 +450,12 @@ test('video: a modal takes the shortcuts - Ctrl+Z behind My videos leaves the pr
   await expect(page.getByTestId('saved-videos')).toBeVisible();
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(200);
-  expect(await fps()).toBe(50);
+  expect((await state()).fps).toBe(50);
+
+  // Standing down is not the same as breaking: closing the dialog hands the key back, and
+  // the same keystroke now rewinds the change it was aimed at all along.
+  await page.getByTestId('saved-videos').getByTitle('Close').click();
+  await expect(page.getByTestId('saved-videos')).toHaveCount(0);
+  await page.keyboard.press('Control+z');
+  await expect.poll(async () => (await state()).fps).toBe(original.fps);
 });

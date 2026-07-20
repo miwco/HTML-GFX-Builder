@@ -10,7 +10,10 @@
 
 import { paletteById } from '../../model/wizard';
 import { gt01 } from '../gameTimers/gt01';
+import { gt02 } from '../gameTimers/gt02';
 import { ss01 } from '../startingSoon/ss01';
+import { ss02 } from '../startingSoon/ss02';
+import { ss03 } from '../startingSoon/ss03';
 import type { GraphicType, TypeGroup } from './graphicType';
 
 /** The pause/resume group, shared by both clock types. The two states carry a short dim/undim
@@ -93,6 +96,16 @@ export const countdownType: GraphicType = {
       fontId: 'inter',
       create: (_type, options) => gt01.create(options),
     },
+    {
+      id: 'gt02',
+      name: 'Power Clock',
+      description: 'A corner slab clock with a leaning accent edge — flips to the accent and flashes at zero.',
+      styleTag: 'sport',
+      palette: paletteById('inferno'),
+      fontId: 'archivo',
+      samples: { label: 'SHOT CLOCK' },
+      create: (_type, options) => gt02.create(options),
+    },
   ],
 };
 
@@ -135,6 +148,26 @@ export const holdingScreenType: GraphicType = {
       palette: paletteById('ivory'),
       fontId: 'inter',
       create: (_type, options) => ss01.create(options),
+    },
+    {
+      id: 'ss02',
+      name: 'Volt Hold',
+      description: 'Centered sport stack — accent chip, huge condensed show name, slab-mounted countdown.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'archivo',
+      samples: { show: 'FRIDAY FIGHT NIGHT' },
+      create: (_type, options) => ss02.create(options),
+    },
+    {
+      id: 'ss03',
+      name: 'Frost Hold',
+      description: 'A centered frosted card with the countdown breathing inside a soft glass pill.',
+      styleTag: 'glass',
+      palette: paletteById('frost'),
+      fontId: 'manrope',
+      samples: { show: 'Midnight Sessions' },
+      create: (_type, options) => ss03.create(options),
     },
   ],
 };

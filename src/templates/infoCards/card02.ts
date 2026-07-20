@@ -59,7 +59,7 @@ ${cardLineMasks(o)}
   inset: 0;                        /* ... edge to edge */
   z-index: -1;                     /* paints behind the text and the accent */
   background: var(--panel-bg);     /* near-black slab behind the text */
-  border-radius: 0;                /* hard corners - sport shape language */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
   transform: skewX(-8deg);         /* SKEW: the whole slab leans forward, same as lt05 */
 }
 
@@ -69,7 +69,7 @@ ${cardLineMasks(o)}
   left: 0;                         /* ... flush with the box's left side */
   top: 0;                          /* full height, top ... */
   bottom: 0;                       /* ... to bottom */
-  width: calc(10px * var(--scale));  /* chunky 10px slab, not a hairline */
+  width: var(--accent-weight);     /* the family's accent edge weight */
   background: var(--accent);       /* the loud color moment on the edge */
   transform: skewX(-8deg);         /* transforms on ::before don't reach siblings, so the
                                       accent leans itself to fuse with the painted slab */
@@ -78,9 +78,9 @@ ${cardLineMasks(o)}
 /* Line 1 - the card heading. Big, heavy, all caps. */
 .info-card-name {
   font-size: calc(48px * var(--scale) * var(--type-scale));  /* headline scale for a card */
-  font-weight: 700;                /* maximum punch */
+  font-weight: var(--display-weight);  /* the family's display weight */
   line-height: 1.1;                /* tight - big text needs little leading */
-  letter-spacing: 0.02em;          /* a touch of air between the caps */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   text-transform: uppercase;       /* headings are shouted, not spoken */
   color: var(--text-color);        /* primary text */
 }

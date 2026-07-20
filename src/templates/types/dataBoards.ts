@@ -55,6 +55,15 @@ export const agendaType: GraphicType = {
       fontId: 'inter',
       create: (_type, options) => ig06.create(options),
     },
+    // ig03 is held back pending a design call rather than rejected outright. Structurally it
+    // fits — a standings stack is rows plus a title, exactly this type's shape — but its rows
+    // are live-timing standings and this type's are a schedule, and its own row sample is a
+    // shared constant rather than literal text, so pairing it up needs a person to confirm the
+    // two really are the same graphic. Left out rather than guessed at.
+    // ig04 is NOT promotable here: this type declares two fields and ig04 emits three. A type's
+    // field count is part of its contract (the control page and the compiled fN ids are built
+    // from it), so a design with an extra field is a different graphic rather than the same one
+    // restyled. It is also a poll ring by design, which is the other type's subject.
   ],
 };
 
@@ -94,5 +103,10 @@ export const pollType: GraphicType = {
       fontId: 'manrope',
       create: (_type, options) => ig02.create(options),
     },
+    // ig01 is NOT promotable here, and per-design samples cannot rescue it: this type is an
+    // options LIST plus a question, and ig01 is a single figure plus a label. Its two lines are
+    // "87%" and "Audience share", which line up positionally with "options" and "question" and
+    // mean something else entirely. A big stat is a different graphic from a poll result, not
+    // the same one in another skin — the minimal poll cell needs its own design.
   ],
 };

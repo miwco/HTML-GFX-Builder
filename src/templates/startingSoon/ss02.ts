@@ -75,9 +75,9 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   font-size: calc(24px * var(--scale) * var(--type-scale));  /* label scale — a kicker, not a headline */
   font-weight: 700;                /* bold so the spaced caps carry */
   line-height: 1.2;                /* a single tight label row */
-  letter-spacing: 0.16em;          /* spaced-out caps read as a tag */
+  letter-spacing: var(--label-tracking);  /* the chip label's authored tracking */
   text-transform: uppercase;       /* sport graphics shout */
-  color: var(--panel-bg);          /* the dark slab hue doubles as ink on the accent */
+  color: var(--accent-ink);        /* the family's ink on an accent-filled chip */
   text-align: center;              /* centered stack — centered chip text */
 }
 
@@ -97,9 +97,9 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   position: relative;              /* anchors its painted slab (::before) */
   padding: calc(14px * var(--scale)) calc(44px * var(--scale));  /* generous slab padding */
   font-size: calc(92px * var(--scale) * var(--type-scale));  /* headline scale for a full-screen hold */
-  font-weight: 900;                /* maximum impact weight */
+  font-weight: var(--display-weight);  /* the show's authored display weight */
   line-height: 1.05;               /* tight — big text needs little leading */
-  letter-spacing: -0.01em;         /* big text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* the show's authored display tracking */
   text-transform: uppercase;       /* names are shouted, not spoken */
   color: var(--text-color);        /* primary text on the dark slab */
   text-align: center;              /* wrapped rows center on the stack axis */
@@ -112,7 +112,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   inset: 0;                        /* ... edge to edge */
   z-index: -1;                     /* behind the text */
   background: var(--panel-bg);     /* near-black slab — never pure #000 */
-  border-radius: 0;                /* hard corners */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
   transform: skewX(-8deg);         /* the same family lean as the chip */
 }
 
@@ -131,7 +131,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   inset: 0;                        /* ... of the slab */
   z-index: -1;                     /* behind the digits and the edge */
   background: var(--panel-bg);     /* the heavy dark block */
-  border-radius: 0;                /* hard corners */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
   transform: skewX(-8deg);         /* fused with the accent edge's lean */
 }
 
@@ -143,7 +143,7 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
   left: 0;                         /* ... flush with the slab box */
   top: 0;                          /* full height, top ... */
   bottom: 0;                       /* ... to bottom */
-  width: calc(10px * var(--scale));  /* the family's chunky slab width */
+  width: var(--accent-weight);     /* the family's accent edge weight */
   will-change: transform;          /* hint the browser: this element breathes */
 }
 .starting-soon-edge::before {
@@ -168,5 +168,10 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
 .starting-soon-done .starting-soon-clock {
   color: var(--accent);            /* zero reached: the digits go loud */
 }`,
+    tokens: {
+      labelTracking: '0.16em',
+      displayWeight: '900',
+      displayTracking: '-0.01em',
+    },
   }),
 );

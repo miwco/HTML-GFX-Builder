@@ -89,7 +89,7 @@ ${mask(0)}
 .info-card-accent {
   display: block;                  /* its own row between quote and attribution */
   width: calc(64px * var(--scale));   /* short on purpose — a pause, not a divider */
-  height: calc(2px * var(--scale));   /* minimal-family hairline weight */
+  height: var(--accent-weight);       /* the card's authored accent weight */
   margin: calc(30px * var(--scale)) auto 0;  /* clear break below the quote; auto centers it */
   background: var(--accent);       /* a second small dose of the same accent */
   will-change: transform;          /* hint the browser: presets animate this line */
@@ -111,12 +111,13 @@ ${mask(0)}
   font-weight: 600;                /* semibold keeps tiny caps legible */
   line-height: 1.2;                /* a single tight line */
   text-transform: uppercase;       /* caps — a label, not a sentence */
-  letter-spacing: 0.16em;          /* small caps breathe (tracking-wide, family voice) */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
   white-space: nowrap;             /* short caps labels never wrap mid-word */
-  color: var(--text-dim);          /* dimmed — never pure white twice */
+  color: var(--label-color);       /* the family's label color */
   margin-top: calc(8px * var(--scale));  /* name + role read as one attribution unit */
 }`,
       hasAccent: true,
+      tokens: { accentWeight: 'calc(2px * var(--scale))' },
     };
   },
 );

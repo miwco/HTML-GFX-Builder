@@ -58,15 +58,15 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
   font-size: calc(18px * var(--scale) * var(--type-scale));  /* kicker scale — clearly a label, not a headline */
   font-weight: 600;                /* enough weight for small caps to carry */
   line-height: 1.3;                /* relaxed leading at small sizes */
-  letter-spacing: 0.06em;          /* quiet tracked caps — the lt02 family voice */
+  letter-spacing: var(--label-tracking);  /* the timer label's authored tracking */
   text-transform: uppercase;       /* reads as a label, whatever the operator types */
-  color: var(--text-dim);          /* dimmed — the clock owns the bright white */
+  color: var(--label-color);       /* the family's label color */
 }
 
 /* The hairline — short on purpose: a mark between label and clock, not a full rule. */
 .game-timer-accent {
   width: calc(64px * var(--scale));  /* a short stroke — never the full stack width */
-  height: calc(2px * var(--scale));  /* true hairline weight */
+  height: var(--accent-weight);    /* the timer's authored accent weight */
   background: var(--accent);       /* the one small, sharp dose of accent color */
   will-change: transform;          /* hint the browser: line-reveal scales this */
 }
@@ -92,5 +92,9 @@ export const gt01: TemplateVariant = defineGameTimerVariant(
   22%, 66% { opacity: 0.2; }       /* …off — two quick blinks, then settle */
 }`,
     hasAccent: true,
+    tokens: {
+      accentWeight: 'calc(2px * var(--scale))',
+      labelTracking: '0.06em',
+    },
   }),
 );

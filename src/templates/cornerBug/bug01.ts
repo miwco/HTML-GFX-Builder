@@ -110,11 +110,10 @@ ${bugLineMasks(o)}
   text-align: center;              /* wrapped caption rows center too (overrides the zone alignment) */
   padding: calc(18px * var(--scale));  /* even air on all four sides */
   background: var(--panel-bg);     /* translucent white — the glass tint */
-  backdrop-filter: blur(18px);     /* frosts the video playing behind the tile */
-  -webkit-backdrop-filter: blur(18px);  /* Safari spelling of the same effect */
-  border-radius: calc(16px * var(--scale));  /* soft tile corners */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),  /* 1px inner keyline catches the light */
-              0 20px 60px rgba(0, 0, 0, 0.35);            /* one soft wide shadow lifts the tile */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  border-radius: var(--panel-radius);  /* the family's panel radius */
+  box-shadow: var(--panel-keyline), var(--panel-shadow);  /* the family's keyline and lift */
 }
 
 ${markCss}
@@ -122,15 +121,20 @@ ${markCss}
 /* The caption — a tiny caps label under the mark (e.g. LIVE, or a channel name). */
 .corner-bug-name {
   margin-top: calc(10px * var(--scale));  /* air between the mark and the caption */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(16px * var(--scale) * var(--type-scale));   /* small label size */
   font-weight: 700;                /* bold keeps small caps legible at bug scale */
   line-height: 1.2;                /* compact label leading */
-  letter-spacing: 0.18em;          /* small caps need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the caption's authored tracking */
   text-transform: uppercase;       /* label voice */
-  color: var(--text-color);        /* primary text — the accent stays on the mark */
+  color: var(--label-color);        /* the caption's authored color */
 }`,
 
       hasAccent: false, // the accent moment is the placeholder diamond, not a separate shape
+      tokens: {
+        labelTracking: '0.18em',
+        labelColor: 'var(--text-color)',
+      },
     };
   },
 );

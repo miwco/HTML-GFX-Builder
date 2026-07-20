@@ -61,11 +61,11 @@ ${lineMasks(o)}
   align-items: center;             /* the dot centers on the name row */
   row-gap: calc(6px * var(--scale));       /* breathing room between wrapped rows */
   padding: calc(20px * var(--scale)) calc(30px * var(--scale));  /* generous card padding */
-  border-radius: calc(14px * var(--scale));                      /* soft, friendly corners */
+  border-radius: var(--panel-radius);                            /* the card's authored radius */
   background-color: var(--panel-bg);       /* the retintable glass layer */
-  backdrop-filter: blur(18px);             /* frosts the video behind the card */
-  -webkit-backdrop-filter: blur(18px);     /* Safari spelling of the same effect */
-  box-shadow: 0 calc(24px * var(--scale)) calc(70px * var(--scale)) rgba(0, 0, 0, 0.45);  /* one very soft, wide lift */
+  backdrop-filter: var(--panel-blur);      /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  box-shadow: var(--panel-shadow);         /* the card's authored lift */
 }
 
 /* The accent dot — the design's single sharp dose of brand color. */
@@ -93,9 +93,9 @@ ${lineMasks(o)}
 /* The name — the biggest, boldest line; everything else defers to it. */
 .lower-third-name {
   font-size: calc(44px * var(--scale) * var(--type-scale));    /* headline size */
-  font-weight: 600;                /* strong but not shouty */
+  font-weight: var(--display-weight);  /* the name's authored display weight */
   line-height: 1.1;                /* big text sits tight */
-  letter-spacing: -0.01em;         /* big text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   color: var(--text-color);        /* primary text color */
 }
 
@@ -109,14 +109,22 @@ ${lineMasks(o)}
 
 /* The third line — a small spaced-out uppercase label, dimmed like the title. */
 .lower-third-extra {
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(18px * var(--scale) * var(--type-scale));    /* the smallest line */
   font-weight: 600;                /* semibold keeps small uppercase type crisp */
   line-height: 1.3;                /* matches the title's rhythm */
-  letter-spacing: 0.1em;           /* small caps breathe */
+  letter-spacing: var(--label-tracking);  /* the label's authored tracking */
   text-transform: uppercase;       /* label styling */
-  color: var(--text-dim);          /* dimmed — the dot stays the one sharp accent dose */
+  color: var(--label-color);        /* the label's authored color */
 }`,
 
     hasAccent: true,
+    tokens: {
+      panelRadius: 'calc(14px * var(--scale))',
+      panelShadow: '0 calc(24px * var(--scale)) calc(70px * var(--scale)) rgba(0, 0, 0, 0.45)',
+      labelTracking: '0.1em',
+      labelColor: 'var(--text-dim)',
+      displayWeight: '600',
+    },
   }),
 );

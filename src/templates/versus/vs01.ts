@@ -132,8 +132,7 @@ export const vs01: TemplateVariant = defineVersusVariant(
   border-radius: 50%;              /* the circle itself */
   background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01));
   border: 2px solid rgba(255, 255, 255, 0.15);  /* a thin keyline catches the light */
-  box-shadow: 0 0 calc(60px * var(--scale)) color-mix(in srgb, var(--accent) 25%, transparent),  /* accent halo */
-              inset 0 0 calc(40px * var(--scale)) rgba(0, 0, 0, 0.5);  /* inner shade gives the dish depth */
+  box-shadow: var(--panel-shadow);  /* the logo dish's authored panel depth */
   display: flex;                   /* centers the badge… */
   align-items: center;             /* …vertically… */
   justify-content: center;         /* …and horizontally */
@@ -172,9 +171,9 @@ export const vs01: TemplateVariant = defineVersusVariant(
 /* The team names: heavy caps with a cool glow — the arena voice. */
 .versus-name {
   font-size: calc(62px * var(--scale));  /* headline scale, a step under the VS */
-  font-weight: 800;                /* maximum punch */
+  font-weight: var(--display-weight);  /* the team names' authored display weight */
   line-height: 1.08;               /* tight — big caps need little leading */
-  letter-spacing: 0.03em;          /* a touch of air between the caps */
+  letter-spacing: var(--display-tracking);  /* the team names' authored display tracking */
   text-transform: uppercase;       /* team names are shouted, not spoken */
   color: var(--text-color);        /* primary text on the dark floor */
   text-shadow: 0 0 calc(20px * var(--scale)) color-mix(in srgb, var(--accent) 50%, transparent),  /* accent glow */
@@ -182,11 +181,11 @@ export const vs01: TemplateVariant = defineVersusVariant(
 }
 /* The edge bars: each name carries the accent on its OUTER edge — A left, B right. */
 .versus-name-a {
-  border-left: calc(6px * var(--scale)) solid var(--accent);   /* team A's accent edge */
+  border-left: var(--accent-weight) solid var(--accent);  /* team A's authored accent edge */
   padding-left: calc(22px * var(--scale));                     /* air between bar and caps */
 }
 .versus-name-b {
-  border-right: calc(6px * var(--scale)) solid var(--accent);  /* team B mirrors it */
+  border-right: var(--accent-weight) solid var(--accent);  /* team B's authored accent edge */
   padding-right: calc(22px * var(--scale));                    /* …with mirrored air */
 }
 
@@ -233,9 +232,9 @@ export const vs01: TemplateVariant = defineVersusVariant(
   font-size: calc(38px * var(--scale));  /* clearly beneath the names in the hierarchy */
   font-weight: 600;                /* solid but not shouting */
   line-height: 1.3;                /* room for a wrapped second row */
-  letter-spacing: 0.16em;          /* spaced caps breathe */
+  letter-spacing: var(--label-tracking);  /* the event label's authored tracking */
   text-transform: uppercase;       /* the label voice */
-  color: var(--text-color);        /* primary text — the accent stays on the hairline below */
+  color: var(--label-color);       /* the family's label colour */
 }
 
 /* The accent hairline: a gradient line closing the card under the event line. */
@@ -248,6 +247,14 @@ export const vs01: TemplateVariant = defineVersusVariant(
 }`,
 
       hasAccent: true,
+      tokens: {
+        panelShadow:
+          '0 0 calc(60px * var(--scale)) color-mix(in srgb, var(--accent) 25%, transparent), inset 0 0 calc(40px * var(--scale)) rgba(0, 0, 0, 0.5)',
+        accentWeight: 'calc(6px * var(--scale))',
+        labelTracking: '0.16em',
+        displayWeight: '800',
+        displayTracking: '0.03em',
+      },
     };
   },
 );

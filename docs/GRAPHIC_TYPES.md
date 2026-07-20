@@ -122,6 +122,39 @@ here the input is our own declaration compiled by our own code, and degrading wo
 graphic whose control page has buttons that do nothing. Every catalog variant is created by the
 bench spec, so a broken type is a red build.
 
+### What makes a design promotable — six gates, not one
+
+A compiled variant takes its TYPE's declarations, so promotion can change things about a design
+that have nothing to do with which type it belongs to. "The required parts resolve" is the
+weakest of the checks and the only obvious one. All six have to hold:
+
+| gate | what fails | caught by |
+|---|---|---|
+| **parts** | a required selector is absent | `attachMachine` / `missingParts` |
+| **fields** | the design emits a different field COUNT than the type declares | `graphic-types.spec.ts` |
+| **machine + motion** | a timer transition on a design whose timeline never ends | `validateMachine` |
+| **capabilities** | design and type disagree on `logo` or `maxLines` | nothing — read it |
+| **samples** | the design's starting text differs from the type's field values | nothing — read it |
+| **semantics** | the fields line up but MEAN different things | nothing — judgement |
+
+The last three are the dangerous ones, and the last two are not mechanically checkable at all.
+Measured on the first pass: 24 cells looked promotable on parts alone, 8 actually were.
+
+Two worked examples, both real:
+- `lt01` into **social-bug** passed every shape check — that type shares the lower-third prefix,
+  category, parts *and* field count, and differs only in what the fields mean. It replaced the
+  catalog's default lower third with a handle bug and broke about forty specs.
+- `card04` into **title-card** would have offered five lines to a design built for three. It
+  broke nothing, so no test objected; it was found by comparing declared capabilities.
+
+`TypeDesign.samples` (by logical field key) is the escape hatch for the samples gate: a design
+keeps the text it was written around while the type still declares defaults for anything that
+does not care. **These are not conformance debt.** A theme-token override records a design
+disagreeing with its family and that map is meant to shrink; a sample is *supposed* to suit its
+design. Only the wizard's suggested lines are affected — the emitted html, css and js are
+identical either way, which is why no baseline moves and why a rendered check is the only thing
+that sees it.
+
 ---
 
 ## 6. The twelve types

@@ -64,11 +64,11 @@ export const cr02: TemplateVariant = defineCreditsVariant(
   height: calc(720px * var(--scale));      /* the roll window — travel distance comes from this */
   overflow: hidden;                /* the track scrolls through, never past, this window */
   padding: 0 calc(56px * var(--scale));    /* side air only — rows may roll under top/bottom edges */
-  border-radius: calc(16px * var(--scale));                      /* glass-family corners (14–18 px) */
+  border-radius: var(--panel-radius);                            /* the family's panel radius */
   background-color: var(--panel-bg);       /* the retintable glass layer */
-  backdrop-filter: blur(18px);             /* frosts the video behind the panel (family token) */
-  -webkit-backdrop-filter: blur(18px);     /* Safari spelling of the same effect */
-  box-shadow: 0 calc(20px * var(--scale)) calc(60px * var(--scale)) rgba(0, 0, 0, 0.35);  /* one soft, wide lift */
+  backdrop-filter: var(--panel-blur);      /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  box-shadow: var(--panel-shadow);         /* the panel's authored lift */
 }
 
 /* The track — the element the preset actually moves (gsap animates its y). */
@@ -84,11 +84,12 @@ export const cr02: TemplateVariant = defineCreditsVariant(
 /* A section heading — spans the full width, centered, led by the accent dot. */
 .credits-heading {
   text-align: center;              /* headings sit on the panel's center axis */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(20px * var(--scale) * var(--type-scale));    /* a label, not a headline — the names lead */
   font-weight: 600;                /* semibold keeps small uppercase type crisp (lt10's label) */
-  letter-spacing: 0.1em;           /* small caps breathe */
+  letter-spacing: var(--label-tracking);  /* the heading's authored tracking */
   text-transform: uppercase;       /* label styling, whatever case the operator types */
-  color: var(--text-color);        /* full strength — it anchors the section */
+  color: var(--label-color);        /* the heading's authored color */
   margin-bottom: calc(18px * var(--scale));        /* air before the section's first credit row */
 }
 
@@ -159,9 +160,10 @@ export const cr02: TemplateVariant = defineCreditsVariant(
   justify-content: center;         /* label centered horizontally */
   border: calc(1px * var(--scale)) solid rgba(255, 255, 255, 0.18);  /* the glass-family keyline */
   border-radius: calc(14px * var(--scale));        /* rounded like everything in this family */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(16px * var(--scale) * var(--type-scale));    /* a quiet label, not content */
   font-weight: 600;                /* semibold keeps the small uppercase label crisp */
-  letter-spacing: 0.1em;           /* matches the heading label's tracking */
+  letter-spacing: var(--label-tracking);  /* matches the heading label's tracking */
   text-transform: uppercase;       /* label styling */
   color: var(--text-dim);          /* dimmed — it is a hint, not a credit */
 }
@@ -207,5 +209,10 @@ function renderEndBlock(yearHtml, logoSrc) {
     '<div class="credits-year">' + yearHtml + '</div>' +
   '</div>';
 }`,
+    tokens: {
+      panelShadow: '0 calc(20px * var(--scale)) calc(60px * var(--scale)) rgba(0, 0, 0, 0.35)',
+      labelTracking: '0.1em',
+      labelColor: 'var(--text-color)',
+    },
   }),
 );

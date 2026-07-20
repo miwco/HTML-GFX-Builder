@@ -59,22 +59,22 @@ export const ig02: TemplateVariant = defineInfographicVariant(
   box-sizing: border-box;          /* padding stays inside the fixed width */
   padding: calc(26px * var(--scale)) calc(32px * var(--scale));  /* generous inner air */
   background: var(--panel-bg);     /* the palette's glass tint — retints via the :root contract */
-  backdrop-filter: blur(18px);     /* frosts the video playing behind the panel */
-  -webkit-backdrop-filter: blur(18px);  /* Safari spelling of the same effect */
-  border-radius: calc(16px * var(--scale));  /* soft, friendly card corners */
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),  /* 1px inner keyline catches the light */
-              0 20px 60px rgba(0, 0, 0, 0.35);            /* one soft wide shadow lifts the panel */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
+  border-radius: var(--panel-radius);  /* the family's panel radius */
+  box-shadow: var(--panel-keyline), var(--panel-shadow);  /* the family's keyline and lift */
 }
 
 /* Heading — a small-caps kicker in the accent color, like the Frosted Card's third line. */
 .infographic-heading {
   margin-bottom: calc(20px * var(--scale));  /* air before the first bar row */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(17px * var(--scale) * var(--type-scale));  /* small label size */
   font-weight: 700;                /* bold keeps small caps legible */
   line-height: 1.2;                /* compact label leading */
-  letter-spacing: 0.14em;          /* small caps need room to breathe */
+  letter-spacing: var(--label-tracking);  /* the family's label tracking */
   text-transform: uppercase;       /* label voice */
-  color: var(--accent);            /* the accent kicker — same move as its lt08 sibling */
+  color: var(--label-color);        /* the family's label color */
   overflow-wrap: break-word;       /* break very long unbroken words */
   text-wrap: balance;              /* wrapped rows get even lengths */
 }

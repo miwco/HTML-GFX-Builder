@@ -124,5 +124,11 @@ export const tickerType: GraphicType = {
       fontId: 'space-grotesk',
       create: (_type, options) => tk07.create(options),
     },
+    // tk01 / tk02 / tk03 are NOT promotable here, for the same reason tk05 is not: they are
+    // classic MARQUEES. This type's machine cycles on a timer, and a timer is armed by a call
+    // scheduled at the end of the entry timeline — a marquee's measured, endlessly repeating
+    // motion never reaches that point, so the cycle would silently never fire. validateMachine
+    // catches it, which is how this was found. The minimal / sport / glass rotator cells have to
+    // be DESIGNED as rotators; there is nothing in the catalog to promote into them.
   ],
 };

@@ -61,12 +61,12 @@ export const tk03: TemplateVariant = defineTickerVariant(
   height: calc(64px * var(--scale));   /* compact pill height */
   box-sizing: border-box;          /* padding stays inside the fixed width and height */
   padding: 0 calc(32px * var(--scale));  /* generous capsule end-caps for the text */
-  border-radius: 999px;            /* full pill - a cap, not a size, so it is not scaled */
+  border-radius: var(--panel-radius);  /* the pill's authored panel radius */
   background: var(--panel-bg);     /* the palette's glass tint - retints via the :root contract */
-  backdrop-filter: blur(18px);     /* frosted glass: softly blurs the video behind the strip */
-  -webkit-backdrop-filter: blur(18px);  /* Safari spelling of the same effect */
+  backdrop-filter: var(--panel-blur);  /* the family's backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
   position: relative;              /* anchors the ::after accent ring to the capsule */
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);  /* one soft wide shadow lifts the pill off the video */
+  box-shadow: var(--panel-shadow);  /* the family's panel lift */
 }
 
 /* Accent edge: the same softened ring lt09 draws - the border stays pure var(--accent)
@@ -87,11 +87,12 @@ export const tk03: TemplateVariant = defineTickerVariant(
   align-items: center;             /* dot and text share the capsule's center line */
   gap: calc(9px * var(--scale));   /* small gap between the dot and the label */
   flex-shrink: 0;                  /* long items never squeeze the label */
+  font-family: var(--font-label);  /* the family's label face */
   font-size: calc(15px * var(--scale) * var(--type-scale));  /* small-caps kicker size */
   font-weight: 700;                /* bold - the label reads as a badge */
-  letter-spacing: 0.12em;          /* small caps breathe */
+  letter-spacing: var(--label-tracking);  /* the label's authored tracking */
   text-transform: uppercase;       /* label is always set in caps */
-  color: var(--accent);            /* the label wears the one accent color */
+  color: var(--label-color);        /* the family's label color */
 }
 
 /* The dot: a small round accent marker in front of the label - the pill's "on air" light. */
@@ -137,5 +138,9 @@ function renderTickerItem(text) {
   return '<div class="ticker-item">' + text + '</div>';
 }`,
     doubleItems: false, // flip cycles the single set - doubling would repeat every item twice
+    tokens: {
+      panelRadius: '999px',
+      labelTracking: '0.12em',
+    },
   }),
 );

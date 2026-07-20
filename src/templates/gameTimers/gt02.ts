@@ -59,7 +59,7 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
   inset: 0;                        /* ... edge to edge */
   z-index: -1;                     /* paints behind the label and the clock */
   background: var(--panel-bg);     /* near-black slab — never pure #000 */
-  border-radius: 0;                /* hard corners — sport shape language */
+  border-radius: var(--panel-radius);  /* the family's panel corner radius */
   transform: skewX(-8deg);         /* SKEW: the whole slab leans forward, mid-sprint */
 }
 
@@ -71,7 +71,7 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
   left: 0;                         /* ... flush with the box's left side */
   top: 0;                          /* full height, top ... */
   bottom: 0;                       /* ... to bottom */
-  width: calc(10px * var(--scale));  /* chunky 10px slab, not a hairline */
+  width: var(--accent-weight);     /* the family's accent edge weight */
   background: var(--accent);       /* the one loud color moment */
   transform: skewX(-8deg);         /* SKEW: matches the slab, so the two fuse seamlessly */
 }
@@ -79,10 +79,10 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
 /* The label: dimmed spaced-out caps (lt05's secondary treatment) — the leaning edge
    stays the single accent dose while the clock runs. */
 .game-timer-label {
-  color: var(--text-dim);          /* secondary line dims — one accent dose per graphic */
+  color: var(--label-color);       /* the label's authored colour */
   font-size: calc(19px * var(--scale) * var(--type-scale));  /* kicker scale — clearly a label, not a headline */
   font-weight: 700;                /* bold so the small caps carry */
-  letter-spacing: 0.1em;           /* spaced-out caps read as a tag */
+  letter-spacing: var(--label-tracking);  /* the label's authored tracking */
   text-transform: uppercase;       /* sport graphics shout, whatever the operator types */
 }
 
@@ -111,5 +111,9 @@ export const gt02: TemplateVariant = defineGameTimerVariant(
 @keyframes game-timer-flash {
   50% { opacity: 0.15; }           /* dip to near-off mid-blink; ends back at full */
 }`,
+    tokens: {
+      labelTracking: '0.1em',
+      labelColor: 'var(--text-dim)',
+    },
   }),
 );

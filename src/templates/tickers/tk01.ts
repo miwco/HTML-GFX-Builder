@@ -59,7 +59,7 @@ export const tk01: TemplateVariant = defineTickerVariant(
   width: calc(1680px * var(--scale));  /* near full-width, inside the safe areas */
   height: calc(72px * var(--scale));   /* the strip's fixed height */
   background: var(--panel-bg);     /* near-black bar — never pure #000 */
-  border-top: calc(2px * var(--scale)) solid var(--accent);  /* the single accent edge */
+  border-top: var(--accent-weight) solid var(--accent);  /* the strip's authored accent weight */
   will-change: opacity;            /* hint the browser: the preset fades this */
 }
 
@@ -72,9 +72,9 @@ export const tk01: TemplateVariant = defineTickerVariant(
   background: var(--accent);       /* the one solid accent surface */
   font-size: calc(18px * var(--scale) * var(--type-scale)); /* kicker scale — clearly a label, not a headline */
   font-weight: 700;                /* bold so the small caps carry */
-  letter-spacing: 0.12em;          /* small caps breathe */
+  letter-spacing: var(--label-tracking);  /* the label block's authored tracking */
   text-transform: uppercase;       /* reads as a tag, whatever the operator types */
-  color: var(--panel-bg);          /* dark ink on the bright accent block */
+  color: var(--accent-ink);        /* the family's ink on an accent-filled block */
 }
 
 /* The scrolling window — items travel through it and clip at its edges. */
@@ -108,6 +108,10 @@ export const tk01: TemplateVariant = defineTickerVariant(
 }`,
     // renderTickerItem(text): the markup for ONE item — text plus its trailing dot,
     // so the doubled track reads as an even, endless chain.
+    tokens: {
+      accentWeight: 'calc(2px * var(--scale))',
+      labelTracking: '0.12em',
+    },
     rowBuilderJs: `// renderTickerItem(text): one item followed by a small dim dot separator.
 function renderTickerItem(text) {
   return '<span class="ticker-item">' + text + '</span>' +

@@ -65,7 +65,7 @@ ${lineMasks(o, '        ')}
   display: flex;                   /* badge and text sit side by side */
   align-items: stretch;            /* the badge stretches to the text panel's height */
   background: var(--panel-bg);     /* dark panel behind the text stack */
-  box-shadow: 0 calc(10px * var(--scale)) 0 rgba(0, 0, 0, 0.25);  /* hard offset shadow — sticker-slab feel */
+  box-shadow: var(--panel-shadow);  /* the slab's authored panel lift */
 }
 
 /* The badge: a solid accent square holding the logo — the one bold accent moment. */
@@ -108,8 +108,8 @@ ${lineMasks(o, '        ')}
 .lower-third-title {
   font-size: calc(27px * var(--scale) * var(--type-scale));  /* clearly subordinate to the name (≈2.2:1 vs the headline) */
   line-height: 1.2;                /* a touch more air than the headline */
-  color: var(--text-dim);          /* secondary text steps back */
-  letter-spacing: 0.14em;          /* tracked-out small caps breathe */
+  color: var(--label-color);       /* the support label's authored colour */
+  letter-spacing: var(--label-tracking);  /* the support label's authored tracking */
   text-transform: uppercase;       /* matches the headline's voice */
 }
 
@@ -117,11 +117,16 @@ ${lineMasks(o, '        ')}
 .lower-third-extra {
   font-size: calc(18px * var(--scale) * var(--type-scale));  /* the smallest voice in the stack */
   line-height: 1.2;                /* same rhythm as the subtitle */
-  color: var(--text-dim);          /* stays quiet next to the name */
-  letter-spacing: 0.14em;          /* same tracking as the subtitle */
+  color: var(--label-color);       /* the kicker label's authored colour */
+  letter-spacing: var(--label-tracking);  /* the kicker label's authored tracking */
   text-transform: uppercase;       /* keeps the stack uniform */
 }`,
       hasAccent: true,
+      tokens: {
+        panelShadow: '0 calc(10px * var(--scale)) 0 rgba(0, 0, 0, 0.25)',
+        labelTracking: '0.14em',
+        labelColor: 'var(--text-dim)',
+      },
     };
   },
 );

@@ -46,12 +46,12 @@ ${lineMasks(o)}
   flex-wrap: wrap;                 /* extreme lengths drop the handle to a new row, never overflow */
   gap: calc(14px * var(--scale));  /* breathing room between name and handle */
   padding: calc(24px * var(--scale)) calc(44px * var(--scale));  /* generous capsule padding (~0.55em / 1em of the name size) */
-  border-radius: 999px;            /* full pill — a cap, not a size, so it is not scaled */
+  border-radius: var(--panel-radius);  /* the pill's authored panel radius */
   background: var(--panel-bg);     /* the palette's glass tint — retints via the :root contract */
-  backdrop-filter: blur(16px);     /* frosted glass: softly blurs the video behind the pill */
-  -webkit-backdrop-filter: blur(16px);  /* Safari spelling of the same effect */
+  backdrop-filter: var(--panel-blur);  /* the pill's authored backdrop treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
   position: relative;              /* anchors the ::after accent ring to the pill */
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);  /* one soft wide shadow lifts the pill off the video */
+  box-shadow: var(--panel-shadow);  /* the family's panel lift */
 }
 
 /* Accent edge: a softened ring drawn by a pseudo-element — the border stays pure
@@ -76,9 +76,9 @@ ${lineMasks(o)}
 /* Name — the big line. */
 .lower-third-name {
   font-size: calc(44px * var(--scale) * var(--type-scale));  /* headline size (2:1 against the handle) */
-  font-weight: 800;                /* heaviest weight — contrast through weight, not more fonts */
+  font-weight: var(--display-weight);  /* the name's authored display weight */
   line-height: 1.15;               /* tight leading: big text needs less air between rows */
-  letter-spacing: -0.01em;         /* big text tightens slightly */
+  letter-spacing: var(--display-tracking);  /* the family's display tracking */
   color: var(--text-color);        /* primary text color */
 }
 
@@ -90,5 +90,10 @@ ${lineMasks(o)}
   color: var(--accent);            /* the handle wears the one accent color */
 }`,
     hasAccent: false, // the accent moment is the edge ring + handle color, not a separate shape
+    tokens: {
+      panelBlur: 'blur(16px)',
+      panelRadius: '999px',
+      displayWeight: '800',
+    },
   }),
 );

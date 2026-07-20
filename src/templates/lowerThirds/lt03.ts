@@ -42,7 +42,7 @@ ${lineMasks(o)}
 .lower-third-box {
   background: var(--panel-bg);                     /* the panel color (retint via :root) */
   border: 1px solid rgba(255, 255, 255, 0.14);     /* hairline keyline lifts the panel off video */
-  border-radius: calc(2px * var(--scale));         /* barely-there corner rounding (minimal style) */
+  border-radius: var(--panel-radius);              /* the family's panel radius */
   padding: calc(18px * var(--scale)) calc(28px * var(--scale));  /* generous breathing room */
 }
 
@@ -52,7 +52,7 @@ ${lineMasks(o)}
   left: 0;                                         /* flush with the panel's left side */
   top: 0;                                          /* stretches from the panel's top… */
   bottom: 0;                                       /* …to its bottom (full height) */
-  width: calc(4px * var(--scale));                 /* slim bar — the one sharp dose of accent */
+  width: var(--accent-weight);                     /* the bar's authored accent weight */
   background: var(--accent);                       /* the single accent color */
   will-change: transform, opacity;                 /* hint the browser: this element animates */
 }
@@ -60,9 +60,9 @@ ${lineMasks(o)}
 /* Line 1 — the name: big and confident, pure white. */
 .lower-third-name {
   font-size: calc(48px * var(--scale) * var(--type-scale));            /* headline scale */
-  font-weight: 700;                                /* bold carries the hierarchy */
+  font-weight: var(--display-weight);              /* the family's display weight */
   line-height: 1.1;                                /* tight — big text needs less leading */
-  letter-spacing: -0.01em;                         /* big text tightens slightly */
+  letter-spacing: var(--display-tracking);         /* large display type tightens slightly */
   color: var(--text-color);                        /* primary text color */
 }
 
@@ -80,8 +80,8 @@ ${lineMasks(o)}
   font-weight: 600;                                /* semibold keeps small caps legible */
   line-height: 1.3;                                /* matches the title's rhythm */
   text-transform: uppercase;                       /* small-caps label treatment */
-  letter-spacing: 0.12em;                          /* small caps breathe */
-  color: var(--accent);                            /* the accent's second, tiny appearance */
+  letter-spacing: var(--label-tracking);           /* the kicker's authored label tracking */
+  color: var(--label-color);                       /* the kicker's authored label color */
 }
 
 /* Lines read as one unit: a small, even gap between them. */
@@ -90,5 +90,10 @@ ${lineMasks(o)}
 }`,
 
     hasAccent: true,
+    tokens: {
+      accentWeight: 'calc(4px * var(--scale))',
+      labelTracking: '0.12em',
+      labelColor: 'var(--accent)',
+    },
   }),
 );

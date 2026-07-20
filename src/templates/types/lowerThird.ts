@@ -7,6 +7,7 @@
 // variant is already judged against.
 
 import { paletteById } from '../../model/wizard';
+import { lt02 } from '../lowerThirds/lt02';
 import { lt11 } from '../lowerThirds/lt11';
 import type { GraphicType } from './graphicType';
 
@@ -49,5 +50,24 @@ export const lowerThirdType: GraphicType = {
       fontId: 'space-grotesk',
       create: (_type, options) => lt11.create(options),
     },
+    {
+      id: 'lt02',
+      name: 'Underline',
+      description: 'Panel-free name and title separated by a short accent underline.',
+      styleTag: 'minimal',
+      palette: paletteById('signal'),
+      fontId: 'space-grotesk',
+      samples: { name: 'Marcus Chen', title: 'Senior Analyst' },
+      create: (_type, options) => lt02.create(options),
+    },
+    // lt07 is NOT promotable here either, for a third reason worth naming: a compiled variant
+    // takes the TYPE's capabilities, not the design's. lt07 declares `logo: 'optional'` and
+    // three lines; this type declares no logo and two. Promoting it silently stripped the badge
+    // it is named for and dropped it out of the wizard's logo-first ordering. The sport
+    // lower-third cell needs a two-line design with no logo slot.
+    // lt10 is NOT promotable here: this type declares two fields (name, title) and lt10 emits
+    // three. A type's field count is part of its contract — the control page and the compiled
+    // fN ids are built from it — so a design carrying an extra field is a different graphic,
+    // not the same graphic in another skin. The glass lower-third cell needs a two-field design.
   ],
 };

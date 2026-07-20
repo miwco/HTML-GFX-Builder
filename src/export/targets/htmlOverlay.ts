@@ -116,8 +116,13 @@ export const htmlOverlayTarget: ExportTarget = {
     // along so the overlay leaves by itself — same behavior as the editor preview.
     const withReceiver = { ...template, html: injectControlReceiver(template.html, template) };
     const outMs = /^\d+$/.test(template.settings.out ?? '') ? Number(template.settings.out) : null;
-    root.file(`${name}.html`, composeSelfContainedHtml(withReceiver, [autoplayScript(ctx?.sampleData ?? {}, outMs)]));
-    addControlPanel(root, template);
+    root.file(
+      `${name}.html`,
+      await composeSelfContainedHtml(withReceiver, [autoplayScript(ctx?.sampleData ?? {}, outMs)]),
+    );
+    // This package is ONE graphic file: there is no images/ folder beside the panel, so its
+    // picker sends the embedded bytes rather than a path that resolves at neither end.
+    addControlPanel(root, template, { inlineAssets: true });
     root.file('README.md', overlayReadme(template));
     return zip;
   },
