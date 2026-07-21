@@ -2064,6 +2064,139 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .timeline-dock-chips { position: absolute; top: -1px; right: 14px; display: inline-flex; gap: 6px; }
 .timeline-dock-chips .timeline-dock-toggle { position: static; }
 .timeline-dock-toggle.convert { color: var(--amber); border-color: rgba(246, 166, 35, 0.45); }
+
+/* ---------- The machine graph (Phase 4 — the node editor's read-first surface) ---------- */
+.machine-graph { position: relative; overflow: auto; height: 100%; }
+.mg-canvas { position: relative; }
+.mg-wires { position: absolute; inset: 0; pointer-events: none; }
+.mg-wires text {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  fill: var(--text-dim);
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+/* The default-path spine — the walk play/next/stop really follow. */
+.mg-arrow-walk path { stroke: rgba(246, 166, 35, 0.75); stroke-width: 1.5; }
+.mg-arrow-walk text { fill: var(--amber); }
+.mg-head-walk { fill: rgba(246, 166, 35, 0.85); }
+/* The edge into the final waypoint when no next arrow is authored: stop's, not next's. */
+.mg-arrow-stop path { stroke-dasharray: 5 4; }
+/* Authored branch arrows: operator events solid, timers dashed, reserved triggers faint. */
+.mg-arrow-op path { stroke: rgba(232, 237, 242, 0.45); stroke-width: 1.25; }
+.mg-arrow-timer path { stroke: rgba(232, 237, 242, 0.45); stroke-width: 1.25; stroke-dasharray: 4 4; }
+.mg-arrow-reserved path { stroke: rgba(232, 237, 242, 0.18); stroke-width: 1; stroke-dasharray: 2 4; }
+.mg-arrow-reserved text { fill: rgba(232, 237, 242, 0.3); }
+.mg-head-dim { fill: rgba(232, 237, 242, 0.55); }
+.mg-lane-line { stroke: rgba(232, 237, 242, 0.1); stroke-dasharray: 3 5; }
+.mg-lane-label {
+  position: absolute;
+  left: 10px;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  opacity: 0.7;
+  pointer-events: none;
+}
+/* A state box. The rest state (initial) is an outline; the current state wears the amber
+   on-air ring — restrained glow, per the brand. */
+.mg-state {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: var(--bg-3, #1b212c);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.mg-state:hover { border-color: rgba(246, 166, 35, 0.5); }
+.mg-state.mg-initial { background: transparent; border-style: dashed; color: var(--text-dim); }
+.mg-state.mg-current {
+  border-color: var(--amber);
+  box-shadow: 0 0 10px rgba(246, 166, 35, 0.25);
+  color: var(--text);
+}
+.mg-badge { font-size: 10px; color: var(--amber); flex-shrink: 0; }
+.mg-state.mg-initial .mg-badge { color: var(--text-dim); }
+.mg-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mg-derived-chip {
+  position: absolute;
+  left: 10px;
+  bottom: 8px;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  padding: 1px 7px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  pointer-events: auto;
+  cursor: help;
+}
+/* Arrow interactivity: a wide invisible twin of each authored arrow takes the clicks
+   (the visible stroke is 1.5px — no one can hit that); selection brightens the real one. */
+.mg-hit { stroke: transparent; stroke-width: 12; pointer-events: stroke; cursor: pointer; }
+.mg-label-hit { pointer-events: auto; cursor: pointer; }
+.mg-arrow-selected path:not(.mg-hit) { stroke: var(--amber); stroke-width: 2; }
+.mg-arrow-selected text { fill: var(--amber); }
+.mg-state.mg-selected { border-color: var(--amber); border-style: solid; }
+/* The detail card — the selected state's / transition's settings, top-right of the graph. */
+.mg-card {
+  position: absolute;
+  top: 26px;
+  right: 12px;
+  width: 210px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.mg-card-title { font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); }
+.mg-card-title .mg-badge { margin-right: 4px; }
+.mg-card-name { font-size: 12.5px; color: var(--text); }
+.mg-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.mg-card-row select { flex: 1; min-width: 0; }
+.mg-card-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  font-size: 12px;
+  padding: 3px 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+}
+.mg-card-input:focus { border-color: rgba(246, 166, 35, 0.5); outline: none; }
+.mg-card-action {
+  font-size: 11px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.mg-card-action:hover { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
 .tlv2-reveal { position: absolute; top: 50%; transform: translateY(-50%); color: var(--text-dim); font-size: 11px; pointer-events: none; }
 .tlv2-playhead {
   position: absolute;

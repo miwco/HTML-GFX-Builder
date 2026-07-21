@@ -26,6 +26,7 @@ import { changePartPress } from '../blocks/stepAssign';
 import { getTemplateParts } from '../model/structure';
 import { replaceDefinitionInHtml } from '../model/spxDefinition';
 import LegacyTimeline from './LegacyTimeline';
+import MachineGraph from './MachineGraph';
 import { activatableFocus, editorShortcutsLive, spacePansCanvas } from './spaceKey';
 import type { SpxWindow } from './PlayoutSimulator';
 
@@ -85,9 +86,14 @@ export default function TimelineDock({ iframeRef }: Props) {
   const template = useTemplateStore((s) => s.template);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
+  const setPlayhead = useTemplateStore((s) => s.setPlayhead);
   const native = useMemo(() => parseAnimData(template.js), [template.js]);
   const imported = useMemo(() => (native ? null : importAnimData(template)), [native, template]);
   const data = native ?? imported;
+  // The bottom dock's surface (Phase 4, Rive-style): the step TIMELINE or the machine GRAPH.
+  // A workspace choice, not a document property — it holds across template switches; a
+  // template without a readable data block has no graph and falls back to the timeline path.
+  const [surface, setSurface] = useState<'timeline' | 'machine'>('timeline');
   const convert = () => {
     if (!imported) return;
     const js = replaceRegionWithAnimData(template.js, imported);
@@ -98,12 +104,40 @@ export default function TimelineDock({ iframeRef }: Props) {
   return (
     <div className="timeline-dock">
       {data ? (
-        <StepTimeline iframeRef={iframeRef} data={data} editable={native !== null} />
+        surface === 'machine' && native ? (
+          <MachineGraph
+            iframeRef={iframeRef}
+            data={native}
+            onOpenStep={(step) => {
+              // "Open its timeline": swap back to the step surface parked at that step —
+              // the playhead is where the Inspector stamps keyframes, so the state's
+              // content is immediately editable.
+              setPlayhead({ step, t: 0 });
+              setSurface('timeline');
+            }}
+          />
+        ) : (
+          <StepTimeline iframeRef={iframeRef} data={data} editable={native !== null} />
+        )
       ) : (
         <LegacyTimeline iframeRef={iframeRef} />
       )}
-      {native === null && data && (
-        <span className="timeline-dock-chips">
+      <span className="timeline-dock-chips">
+        {native !== null && (
+          <button
+            className="timeline-dock-toggle"
+            onClick={() => setSurface((s) => (s === 'machine' ? 'timeline' : 'machine'))}
+            title={
+              surface === 'machine'
+                ? 'Back to the step timeline'
+                : 'Show the state graph — states as boxes, transitions as arrows, click a state to snap the preview there'
+            }
+            data-testid="timeline-surface-toggle"
+          >
+            {surface === 'machine' ? '≡ timeline' : '◇ states'}
+          </button>
+        )}
+        {native === null && data && (
           <button
             className="timeline-dock-toggle convert"
             onClick={convert}
@@ -112,8 +146,8 @@ export default function TimelineDock({ iframeRef }: Props) {
           >
             ◆ use keyframes
           </button>
-        </span>
-      )}
+        )}
+      </span>
     </div>
   );
 }
