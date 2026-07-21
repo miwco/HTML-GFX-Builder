@@ -25,8 +25,10 @@ import {
   loadShows,
   moveShowGraphic,
   removeShowGraphic,
+  setShowHostedSlug,
   type Show,
 } from '../model/shows';
+import { publishControlShow, unpublishControlShow } from '../control/hostedControl';
 import { useTemplateStore, type PlayoutAction } from '../store/templateStore';
 
 /**
@@ -74,6 +76,35 @@ export default function ControlPanel() {
     const blob = await zip.generateAsync({ type: 'blob' });
     saveAs(blob, `${slug(show.name)}_show.zip`);
     setShowNote(`✓ Exported "${show.name}" — one folder per graphic + show_controlpanel.html.`);
+  };
+  // ── Hosted control (account feature): publish the show's control page online ──
+  const [publishBusy, setPublishBusy] = useState(false);
+  const hostedUrl = (s: string) => `${window.location.origin}/app?control=${encodeURIComponent(s)}`;
+  const publishShow = async (show: Show) => {
+    setPublishBusy(true);
+    try {
+      const hostedSlug = await publishControlShow(show);
+      if (hostedSlug) {
+        setShows(setShowHostedSlug(show.id, hostedSlug));
+        setShowNote('✓ Hosted control page is live — share the link with your operators. Re-publish after changing the show.');
+      }
+    } catch (e) {
+      setShowNote(`Publish failed: ${(e as Error).message}`);
+    } finally {
+      setPublishBusy(false);
+    }
+  };
+  const unpublishShow = async (show: Show) => {
+    setPublishBusy(true);
+    try {
+      await unpublishControlShow(show.id);
+      setShows(setShowHostedSlug(show.id, undefined));
+      setShowNote('Hosted control page removed — the link no longer works.');
+    } catch (e) {
+      setShowNote(`Unpublish failed: ${(e as Error).message}`);
+    } finally {
+      setPublishBusy(false);
+    }
   };
 
   const controls = fieldDescriptors(template.fields); // operator view: hidden fields stay hidden
@@ -292,6 +323,58 @@ export default function ControlPanel() {
                 ⬇ Export show package
               </button>
             </div>
+            {backendConfigured && (
+              <div style={{ marginTop: 10 }}>
+                {needsSignIn ? (
+                  <p className="muted">
+                    <button className="link-inline" onClick={() => openSignIn('Sign in to host this show’s control page online.')}>
+                      Sign in
+                    </button>{' '}
+                    to host this show's control page online — operators then drive it from any
+                    device via a private link, with crash recovery.
+                  </p>
+                ) : (
+                  <>
+                    <div className="row">
+                      <button
+                        className="primary"
+                        disabled={publishBusy || activeShow.graphics.length === 0}
+                        onClick={() => publishShow(activeShow)}
+                        title="Create or update the online control page for this show"
+                      >
+                        {activeShow.hostedSlug ? '↻ Re-publish online page' : '🌐 Host control page online'}
+                      </button>
+                      {activeShow.hostedSlug && (
+                        <button disabled={publishBusy} onClick={() => unpublishShow(activeShow)}>Unpublish</button>
+                      )}
+                    </div>
+                    {activeShow.hostedSlug && (
+                      <div className="row" style={{ marginTop: 6 }}>
+                        <input
+                          readOnly
+                          value={hostedUrl(activeShow.hostedSlug)}
+                          style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}
+                          title="The operator link — anyone with it can drive the show (keep it private)"
+                          onFocus={(e) => e.currentTarget.select()}
+                        />
+                        <button
+                          onClick={() => { void navigator.clipboard?.writeText(hostedUrl(activeShow.hostedSlug!)); setShowNote('✓ Link copied.'); }}
+                          title="Copy the operator link"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                    {activeShow.hostedSlug && (
+                      <p className="hint" style={{ marginTop: 6 }}>
+                        Exporting the show now bakes the hosted receiver into each graphic, so the
+                        online page drives the exported package from any device — with recovery.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </>
         )}
         {showNote && <p className="status-ok" style={{ marginTop: 6 }}>{showNote}</p>}

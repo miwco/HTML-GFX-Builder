@@ -79,6 +79,22 @@ export function eventButtons(js: string): ControlButton[] {
   return machine ? machineControls(machine) : [];
 }
 
+/** Which states each event fires from, per group — a control surface greys a button the
+ *  machine would drop (the same structural guard, precomputed so no graph code ships). */
+export function eventLegality(js: string): Record<string, Record<string, string[]>> {
+  const machine = parseAnimData(js)?.machine;
+  const legal: Record<string, Record<string, string[]>> = {};
+  if (!machine) return legal;
+  for (const group of machine.groups) {
+    for (const t of group.transitions) {
+      if (t.trigger !== 'operator' || !t.event) continue;
+      const perGroup = (legal[t.event] ??= {});
+      (perGroup[group.id] ??= []).push(t.from);
+    }
+  }
+  return legal;
+}
+
 // ── The control ⇄ graphic message protocol ──────────────────────────────────
 // A control panel and the graphic it drives talk over a BroadcastChannel (same browser,
 // same origin — local, Era 4). Era 5.3 added a Supabase Realtime transport with the SAME

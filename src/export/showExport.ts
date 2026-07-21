@@ -11,6 +11,7 @@ import JSZip from 'jszip';
 import { slug } from './common';
 import { buildStarterInto } from './targets/spxStarter';
 import { renderShowControlPanelHtml } from '../control/controlPanelHtml';
+import { hostedReceiverConfig, hostedReceiverBlock, stripHostedReceiver } from '../control/hostedReceiver';
 import type { Show } from '../model/shows';
 
 export async function buildShowZip(show: Show): Promise<JSZip> {
@@ -23,7 +24,16 @@ export async function buildShowZip(show: Show): Promise<JSZip> {
     let n = 2;
     while (used.has(name)) name = `${slug(graphic.name)}_${n++}`;
     used.add(name);
-    await buildStarterInto(root.folder(name)!, graphic.template);
+    // A published show bakes the hosted-control receiver into each graphic, so the exported
+    // package is drivable from the hosted page as-is. The saved snapshot stays clean — the
+    // block exists only in the export; an unpublished show exports 100% offline.
+    let template = graphic.template;
+    const hosted = show.hostedSlug ? hostedReceiverConfig(show.hostedSlug, graphic.name) : null;
+    if (hosted) {
+      const js = stripHostedReceiver(template.js).trimEnd() + '\n\n' + hostedReceiverBlock(hosted);
+      template = { ...template, js };
+    }
+    await buildStarterInto(root.folder(name)!, template);
   }
   root.file('show_controlpanel.html', renderShowControlPanelHtml(show.name, show.graphics.map((g) => g.template)));
   root.file(
@@ -35,8 +45,10 @@ export async function buildShowZip(show: Show): Promise<JSZip> {
       `Run each graphic's index.html as a browser source (OBS, vMix, a browser tab), then open\n` +
       `show_controlpanel.html in another tab of the SAME browser. One card per graphic: fields,\n` +
       `the state machine's buttons, and Play/Stop/Update/Next — each card drives its own\n` +
-      `graphic independently over a BroadcastChannel, no server needed.\n\n` +
-      `Extract this folder into your SPX/CasparCG templates directory as-is.\n`,
+      `graphic independently over a BroadcastChannel, no server needed.\n` +
+      (show.hostedSlug
+        ? `\n## Hosted control (enabled)\nEach graphic also carries the HOSTED CONTROL receiver: the show's online control page\n(?control=<slug>) drives these graphics from any device, with recovery — the commands live\nin a durable log. The slug baked into js/template.js is a capability; keep it private, and\ndelete the marked "HOSTED CONTROL" block for a pure-offline graphic.\n` : '') +
+      `\nExtract this folder into your SPX/CasparCG templates directory as-is.\n`,
   );
   return zip;
 }

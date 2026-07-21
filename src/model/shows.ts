@@ -14,6 +14,10 @@ export interface Show {
   name: string;
   /** In rundown order — the order the control page presents them. */
   graphics: SavedGraphic[];
+  /** The hosted control page's capability slug, once published (control/hostedControl.ts).
+   *  Kept on the record so the URL survives reloads and the show export can bake the hosted
+   *  receiver into its graphics. Rotating/unpublishing clears it. */
+  hostedSlug?: string;
   /** When the show last changed (ISO). Bumped on every mutation; drives cloud sync (LWW). */
   updatedAt: string;
   /** Soft-delete tombstone (hidden from the UI, kept so the delete syncs). See Packet.deleted. */
@@ -122,6 +126,19 @@ export function moveShowGraphic(showId: string, graphicId: string, dir: -1 | 1):
       show.updatedAt = nowIso();
       saveAll(all);
     }
+  }
+  return all.filter((s) => !s.deleted);
+}
+
+/** Record (or clear, with undefined) a show's hosted control slug after (un)publishing. */
+export function setShowHostedSlug(showId: string, slug: string | undefined): Show[] {
+  const all = loadAllShows();
+  const show = all.find((s) => s.id === showId);
+  if (show) {
+    if (slug) show.hostedSlug = slug;
+    else delete show.hostedSlug;
+    show.updatedAt = nowIso();
+    saveAll(all);
   }
   return all.filter((s) => !s.deleted);
 }

@@ -20,12 +20,13 @@
   <meta property="og:image" content="/landing/shot-title.png" />
 
   <!-- Old share links point at the root with a query (?chat=<slug> send-in pages,
-       ?template=<slug> community deep links). The app now lives at /app — forward them
+       ?template=<slug> community deep links, ?control=<slug> hosted control pages).
+       The app now lives at /app — forward them
        before anything paints. -->
   <script>
     (function () {
       var q = window.location.search;
-      if (/[?&](chat|template)=/.test(q)) window.location.replace('/app' + q);
+      if (/[?&](chat|template|control)=/.test(q)) window.location.replace('/app' + q);
     })();
   </script>
 

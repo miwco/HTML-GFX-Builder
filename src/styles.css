@@ -523,6 +523,63 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
 .show-graphic-row { margin-top: 6px; gap: 4px; }
 .show-row-btn { padding: 2px 8px; font-size: 12px; flex: 0 0 auto; }
 
+/* ---------- The hosted control page (?control=<slug>) ---------- */
+.hosted-control { min-height: 100vh; background: var(--bg-1); }
+.hosted-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--bg-1);
+  z-index: 2;
+}
+.hosted-header h1 { font-size: 16px; margin: 0; }
+.hosted-control main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hosted-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.hosted-card > h2 { font-size: 14px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+.hosted-card .field-row { padding: 8px 0; }
+.hosted-card .field-row > label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.hosted-state-chip {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 10px;
+}
+.hosted-staged-chip { font-size: 12px; font-weight: 400; color: #e8b34a; }
+.hosted-events h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin: 8px 0 6px;
+  font-weight: 600;
+}
+.hosted-error { color: #e07a5f; font-size: 13px; }
+
 /* ---------- Category grouping (Essentials / Specials) ---------- */
 .wz-cat-group { margin-bottom: 18px; }
 .wz-cat-group-title {

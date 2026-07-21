@@ -14,8 +14,7 @@
 
 import type { SpxField } from '../model/types';
 import type { FieldDescriptor } from '../model/fieldModel';
-import { parseAnimData } from '../blocks/animData';
-import { controlChannelName, eventButtons, fieldDescriptors, type ControlButton } from './controlModel';
+import { controlChannelName, eventButtons, eventLegality, fieldDescriptors, type ControlButton } from './controlModel';
 import type { RemoteControlConfig } from './realtimeControl';
 import { isImageAsset } from '../assets/assetUtils';
 
@@ -56,22 +55,6 @@ function emitControls(fields: SpxField[]): EmittedControl[] {
   return fieldDescriptors(fields).map((d) => ({ ...d, value: byId.get(d.key)?.value ?? '' }));
 }
 
-/** Which states each event fires from, per group — the panel greys a button the machine
- *  would drop (same structural guard, precomputed so the page needs no graph code). */
-function emitLegality(js: string): Record<string, Record<string, string[]>> {
-  const machine = parseAnimData(js)?.machine;
-  const legal: Record<string, Record<string, string[]>> = {};
-  if (!machine) return legal;
-  for (const group of machine.groups) {
-    for (const t of group.transitions) {
-      if (t.trigger !== 'operator' || !t.event) continue;
-      const perGroup = (legal[t.event] ??= {});
-      (perGroup[group.id] ??= []).push(t.from);
-    }
-  }
-  return legal;
-}
-
 function emitGraphic(
   template: PanelTemplate,
   remote: RemoteControlConfig | null,
@@ -94,7 +77,7 @@ function emitGraphic(
     channel: controlChannelName(template.name),
     controls: emitControls(template.fields),
     events: eventButtons(template.js),
-    legal: emitLegality(template.js),
+    legal: eventLegality(template.js),
     images,
     remote,
   };

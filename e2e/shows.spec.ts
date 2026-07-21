@@ -113,6 +113,19 @@ test('a show collects graphics in rundown order and exports one aggregated panel
   await third.close();
 });
 
+test('offline: the hosted control route answers honestly and the Shows section grows no cloud UI', async ({ page }) => {
+  // The e2e server pins offline mode (no Supabase env): the capability route must say so
+  // rather than spin, and the Shows section must stay purely local (auth-posture rule).
+  await page.goto('/app?control=some-slug');
+  await expect(page.locator('.sendin-card')).toContainText('Hosted control needs the cloud backend');
+
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
+  await page.getByTestId('dock-tab-control').click();
+  const section = page.locator('.panel-section', { hasText: 'Shows' });
+  await expect(section).toBeVisible();
+  await expect(section.getByText(/host.*online/i)).toHaveCount(0);
+});
+
 test('the rundown reorders and removes; deleting the show keeps nothing behind', async ({ page }) => {
   await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
   await addCurrentToShow(page, 'Reorder Show', true);
