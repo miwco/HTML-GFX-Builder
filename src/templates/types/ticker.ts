@@ -17,6 +17,9 @@
 
 import { paletteById } from '../../model/wizard';
 import { tk07 } from '../tickers/tk07';
+import { tk08 } from '../tickers/tk08';
+import { tk09 } from '../tickers/tk09';
+import { tk10 } from '../tickers/tk10';
 import type { GraphicType } from './graphicType';
 
 const ITEMS_SAMPLE = [
@@ -122,13 +125,73 @@ export const tickerType: GraphicType = {
       styleTag: 'noacg',
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
+      // The house wire's own copy. Without these the wizard offered the type's generic
+      // "Welcome to tonight's live show" while the graphic renders the newsroom lines it was
+      // written around.
+      samples: {
+        items: [
+          'Parliament passes 2026 budget after all-night session',
+          'Central bank holds rate at 3.25%',
+          'National team qualifies for the final',
+          'Storm warning issued for the coast',
+        ].join('\n'),
+        label: 'News',
+      },
       create: (_type, options) => tk07.create(options),
     },
-    // tk01 / tk02 / tk03 are NOT promotable here, for the same reason tk05 is not: they are
-    // classic MARQUEES. This type's machine cycles on a timer, and a timer is armed by a call
-    // scheduled at the end of the entry timeline — a marquee's measured, endlessly repeating
-    // motion never reaches that point, so the cycle would silently never fire. validateMachine
-    // catches it, which is how this was found. The minimal / sport / glass rotator cells have to
-    // be DESIGNED as rotators; there is nothing in the catalog to promote into them.
+    {
+      // Designed FOR this cell as a rotator. tk01 / tk02 / tk03 are NOT promotable here, for the
+      // same reason tk05 is not: they are classic MARQUEES (or, in tk03's case, a flip whose
+      // items stack absolutely). This type's machine cycles on a timer armed at the end of the
+      // entry timeline — a marquee's measured, endlessly repeating motion never reaches that
+      // point, so the cycle would silently never fire. validateMachine catches it. So the
+      // glass / sport / minimal rotators are DESIGNED as rotators — each a strip that holds one
+      // story long enough to read, the sibling of its family's lower third.
+      id: 'tk08',
+      name: 'Frost Rotator',
+      description: 'A frosted strip that holds one story at a time — timed, and pausable on air.',
+      styleTag: 'glass',
+      palette: paletteById('frost'),
+      fontId: 'manrope',
+      // Its items match the type's default; only its label differs.
+      samples: { label: 'NOW' },
+      create: (_type, options) => tk08.create(options),
+    },
+    {
+      id: 'tk09',
+      name: 'Volt Rotator',
+      description: 'A dark rail with a leaning accent chip, holding one story at a time — pausable on air.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: {
+        items: [
+          'HOME SIDE TAKES THE LEAD IN THE 62ND MINUTE',
+          'SUBSTITUTION: NUMBER 9 ON FOR NUMBER 11',
+          'YELLOW CARD SHOWN FOR A LATE CHALLENGE',
+          'FIVE MINUTES OF STOPPAGE TIME SIGNALLED',
+        ].join('\n'),
+        label: 'LIVE',
+      },
+      create: (_type, options) => tk09.create(options),
+    },
+    {
+      id: 'tk10',
+      name: 'Wire Rotator',
+      description: 'A quiet strip that holds one story at a time, split by a thin accent keyline.',
+      styleTag: 'minimal',
+      palette: paletteById('ivory'),
+      fontId: 'inter',
+      samples: {
+        items: [
+          'Markets close higher for a third straight session',
+          'Central bank signals no change to rates this quarter',
+          'Unemployment holds steady at a four-year low',
+          'Energy prices ease as supply concerns fade',
+        ].join('\n'),
+        label: 'NEWS',
+      },
+      create: (_type, options) => tk10.create(options),
+    },
   ],
 };

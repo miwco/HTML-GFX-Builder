@@ -171,7 +171,6 @@ export const ss02: TemplateVariant = defineStartingSoonVariant(
     tokens: {
       labelTracking: '0.16em',
       displayWeight: '900',
-      displayTracking: '-0.01em',
     },
   }),
 );

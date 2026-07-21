@@ -5,7 +5,12 @@
 import { paletteById } from '../../model/wizard';
 import { bug01 } from '../cornerBug/bug01';
 import { bug02 } from '../cornerBug/bug02';
+import { bug03 } from '../cornerBug/bug03';
+import { bug04 } from '../cornerBug/bug04';
 import { lt14 } from '../lowerThirds/lt14';
+import { lt16 } from '../lowerThirds/lt16';
+import { lt17 } from '../lowerThirds/lt17';
+import { lt18 } from '../lowerThirds/lt18';
 import type { GraphicType } from './graphicType';
 
 /** SPONSOR / LOGO BUG — 37 of the 60 reference formats want one (sponsor bug, partner logo,
@@ -44,6 +49,8 @@ export const sponsorBugType: GraphicType = {
       styleTag: 'noacg',
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
+      // The house bug rises into its corner; the type's list leads with a plain fade.
+      animationPresets: ['slide-up', 'blur-in', 'pop-spring', 'fade', 'slide-down', 'flip-3d'],
       create: (_type, options) => bug02.create(options),
     },
     {
@@ -55,7 +62,39 @@ export const sponsorBugType: GraphicType = {
       fontId: 'manrope',
       // This type declares "On Air" (bug02's caption); bug01 has always suggested "LIVE".
       samples: { caption: 'LIVE' },
+      // The frosted tile resolves out of a blur — that IS the glass entrance.
+      animationPresets: ['blur-in', 'pop-spring', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      // Drawn for the top-right safe area; the house bug is the one that sits top-left.
+      defaultZone: 'top-right',
       create: (_type, options) => bug01.create(options),
+    },
+    {
+      // Designed FOR this cell, not promoted: no sport corner bug existed. A solid slab with
+      // the accent fused to its left edge — the corner-scale sibling of lt05/lt06.
+      id: 'bug03',
+      name: 'Slab Bug',
+      description: 'A solid slab with a chunky accent edge, holding a logo and a heavy caps caption.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: { caption: 'LIVE' },
+      animationPresets: ['pop-spring', 'slide-up', 'slide-down', 'fade', 'blur-in', 'flip-3d'],
+      defaultZone: 'top-right',
+      create: (_type, options) => bug03.create(options),
+    },
+    {
+      // Designed FOR this cell: the panel-free minimal bug — a logo over a short accent
+      // underline and a tiny caption, the sibling of lt01 Hairline / lt02 Underline.
+      id: 'bug04',
+      name: 'Hairline Bug',
+      description: 'A panel-free logo mark over a short accent underline and a tiny caps caption.',
+      styleTag: 'minimal',
+      palette: paletteById('signal'),
+      fontId: 'inter',
+      samples: { caption: 'LIVE' },
+      animationPresets: ['fade', 'slide-up', 'slide-down', 'blur-in', 'flip-3d'],
+      defaultZone: 'top-right',
+      create: (_type, options) => bug04.create(options),
     },
   ],
 };
@@ -102,13 +141,46 @@ export const socialBugType: GraphicType = {
       fontId: 'space-grotesk',
       create: (_type, options) => lt14.create(options),
     },
-    // No general lower third can be promoted here, and the reason is worth stating because
-    // nothing structural stops it: this type shares the lower-third prefix, category, parts AND
-    // field count, so lt01 and lt05 compiled cleanly and passed every shape check. They are
-    // still the wrong graphic. Promotion replaces a catalog variant BY ID, so claiming lt01
-    // turned the catalog's default lower third into a handle bug - its fields became
-    // handle/platform and its sample data "@noacg", which broke the wizard, the canvas chip and
-    // every spec that starts from a lower third. A type this close to another is exactly where
-    // "the parts resolve" stops being evidence that a design belongs to it.
+    {
+      // Designed FOR this cell. No general lower third can be PROMOTED here, and the reason is
+      // worth stating because nothing structural stops it: this type shares the lower-third
+      // prefix, category, parts AND field count, so lt01 and lt05 compiled cleanly and passed
+      // every shape check. They are still the wrong graphic — their fields mean name/title, not
+      // handle/platform, and promotion replaces a catalog variant BY ID, so claiming lt01 would
+      // turn the catalog's default lower third into a handle bug. So the glass/sport/minimal
+      // handles are DESIGNED as compact handle strips instead — small siblings of the lower
+      // thirds in each family, each carrying a real accent element this type requires.
+      id: 'lt16',
+      name: 'Frost Handle',
+      description: 'A compact frosted social strip: a handle over its platform, led by an accent dot.',
+      styleTag: 'glass',
+      palette: paletteById('frost'),
+      fontId: 'manrope',
+      samples: { handle: '@lunamakes', platform: 'INSTAGRAM' },
+      animationPresets: ['blur-in', 'pop-spring', 'fade', 'slide-down', 'flip-3d'],
+      create: (_type, options) => lt16.create(options),
+    },
+    {
+      id: 'lt17',
+      name: 'Volt Handle',
+      description: 'A compact sport strip with an accent edge — a handle in heavy caps over its platform.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: { handle: '@TEAMVOLTA', platform: 'TIKTOK' },
+      animationPresets: ['slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      create: (_type, options) => lt17.create(options),
+    },
+    {
+      id: 'lt18',
+      name: 'Line Handle',
+      description: 'A panel-free social mark: a handle over its platform beside a thin accent hairline.',
+      styleTag: 'minimal',
+      palette: paletteById('signal'),
+      fontId: 'inter',
+      samples: { handle: '@marcuschen', platform: 'YOUTUBE' },
+      animationPresets: ['line-reveal', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      create: (_type, options) => lt18.create(options),
+    },
   ],
 };

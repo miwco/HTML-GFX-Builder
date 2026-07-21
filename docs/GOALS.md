@@ -875,6 +875,56 @@ Contract: `docs/GRAPHIC_TYPES.md`. Types chosen by frequency across the 60 forma
       timer state carrying endless loops or measured motion is now a validation error. This is
       why the ticker type is a rotator with its own finishing entrance preset.
 
+### The template factory — types × themes (2026-07-21 — Phase 3 of the template-library stage)
+
+Contract: `docs/GRAPHIC_TYPES.md`. The catalog is types × style families, and the second axis is
+now full: every one of the 12 types ships in all four families (noacg / glass / sport / minimal).
+
+- [x] **The 48-cell matrix is complete** - 12 types × 4 style families, every cell filled. The
+      naive "24 promotable" estimate from the first pass fully collapsed: after promoting the one
+      design that survived all six gates (lt05 into the sport lower third), the promotion well was
+      dry, so the remaining cells are DESIGNED variants, each named against its lower-third sibling
+      and reusing its family's shape tokens (DESIGN_LANGUAGE §8). 30 new designs across every
+      category, from corner bugs to the flagship quiz board.
+- [x] **The capabilities gate became mechanical, and caught a shipped defect** - promotion took
+      its type's `animationPresets`, `defaultZone`, palette and font wholesale, so six promoted
+      designs had drifted their DEFAULT entrance and four had lost presets outright (the house bug
+      opened on a plain fade, the stats card lost its signature stinger, a minimal scoreboard
+      defaulted to a sport slam). Invisible to every check because `create({})` resolves the preset
+      from the design's own record - a baseline taken from OUTPUT cannot see a gate that only
+      changes INPUT. `TypeDesign.animationPresets` / `defaultZone` are the escape hatch (mirroring
+      `samples`), and `graphic-types.spec.ts` now enforces it: a type may WIDEN what a design
+      offers but never change its default or take something away.
+- [x] **"Persist a machine only when the derived one is wrong" held across the fill** - the new
+      lower thirds, cards, bugs and boards emit no machine key; only the countdowns, holding
+      screen, scoreboards, tickers and quiz boards carry one, and each drives the parallel or
+      branch machine its type already declared with zero new machine code.
+- [x] **Shared content runtimes, not copy-paste** - the schedule-row and poll-bar rebuilds were
+      identical across every board of a type, so they moved into `infographics/dataRuntimes.ts`;
+      ig06 and ig02 now call the shared helpers and emit byte-for-byte what they did before (the
+      baseline did not move), and the six new boards reuse them.
+- [x] **Every fill is verified** - `npm run build`, the type conformance suite, the machine
+      tests (countdown clock, scorebug, ticker cycle, Millionaire arc), the `l3-sweep` for swept
+      categories, a render probe for the rest, and both catalog baselines recorded as pure
+      additions. A documented non-promotion (the sport agenda's standings-vs-schedule ambiguity)
+      stays recorded where the next reader looks.
+- [x] **The batch loop is a run-anytime gate** - `node scripts/factory.mjs` (dev server up)
+      derives the matrix from the live registry, runs every design through the six gates,
+      validates the pack config, and greps every variant's emitted CSS for literal forms of
+      family-valued tokens (the conformance metric's blind spot); any failure exits non-zero,
+      so it sits in CI beside `npm run build`.
+- [x] **The gates run without a human** - the commit-driven gates (build + offline E2E + the
+      factory gates) joined `.github/workflows/ci.yml` on every push and PR, and the
+      time-driven check (dependency audit + staleness) runs weekly
+      (`.github/workflows/weekly-audit.yml`, Monday cron, rolling failure issue). Job A of
+      docs/NIGHTLY_AUTOMATION_PLAN.md, split by what actually drifts; the AI generation
+      pipeline (jobs B/C) stays a plan behind its own decisions.
+- [x] **Every reference format has its pack** - the 60 live-program formats map onto 12 packs
+      (`docs/PACK_TAXONOMY.md`; config in `src/templates/packs.ts`). A pack is PURE CONFIG over
+      the filled matrix - one entry, no new template work - which is the "catalog growth is a
+      config change" claim made true for the axis it is true on; a new THEME is deliberately
+      not config (twelve designs + a token row), and the doc records what one costs.
+
 ### Quality bar (always-on)
 - [x] `npm run build` green as the CI gate
 - [x] Playwright E2E for core UI flows

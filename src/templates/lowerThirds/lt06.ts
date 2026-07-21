@@ -67,7 +67,6 @@ ${lineMasks(o)}
     hasAccent: false,
     tokens: {
       displayWeight: '900',
-      displayTracking: '-0.01em',
     },
   }),
 );

@@ -77,7 +77,7 @@ export const tk06: TemplateVariant = defineTickerVariant(
   flex-shrink: 0;                  /* never squeezed by the scrolling viewport */
   padding: 0 calc(32px * var(--scale));  /* generous horizontal breathing room */
   background: var(--accent);       /* the one solid accent surface */
-  box-shadow: 0 0 calc(24px * var(--scale)) color-mix(in srgb, var(--accent) 40%, transparent);
+  box-shadow: var(--accent-glow);  /* the house glow around the accent block */
   font-family: var(--font-label);  /* the family's label face */
   font-size: calc(20px * var(--scale) * var(--type-scale)); /* label scale */
   font-weight: 700;                /* bold mono caps read as a stamp */

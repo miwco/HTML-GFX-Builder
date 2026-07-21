@@ -1,0 +1,60 @@
+# WEEKLY DEPENDENCY AUDIT — the time-driven half of repo health.
+#
+# Everything commit-driven (build, the offline e2e suite, the factory gates) runs in ci.yml on
+# every push and PR — a scheduled repeat of those would only re-prove yesterday, since npm ci
+# is lockfile-pinned. What drifts WITHOUT a commit is the advisory database, so that is all
+# this checks: new high/critical advisories against the pinned tree, plus a non-blocking
+# staleness report. Weekly is deliberate — advisory latency of a few days is acceptable for a
+# client-side app with pinned dependencies (docs/NIGHTLY_AUTOMATION_PLAN.md job A, re-scoped).
+#
+# Secret-free. The AI generation pipeline (plan jobs B/C) is a separate, separately-approved
+# workflow when its §10 decisions are made.
+
+name: weekly-audit
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write # the failure step files/updates a rolling issue
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fails on high/critical only — the tracked low/moderate advisories (repo maintenance
+      # notes) stay a report, not a weekly alarm.
+      - name: Dependency audit
+        run: npm audit --audit-level=high
+
+      - name: Staleness report (non-blocking)
+        run: npm outdated || true
+
+      # Fail-loud: one rolling tracking issue, updated per red run.
+      - name: File / update the failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="Weekly dependency audit is red"
+          BODY="Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }} (commit ${{ github.sha }})"
+          EXISTING="$(gh issue list --state open --search "\"$TITLE\" in:title" --json number --jq '.[0].number')"
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Still red. $BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi

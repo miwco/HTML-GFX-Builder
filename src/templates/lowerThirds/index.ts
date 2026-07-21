@@ -18,6 +18,10 @@ import { lt11 } from './lt11';
 import { lt12 } from './lt12';
 import { lt13 } from './lt13';
 import { lt14 } from './lt14';
+import { lt15 } from './lt15';
+import { lt16 } from './lt16';
+import { lt17 } from './lt17';
+import { lt18 } from './lt18';
 
 export const LOWER_THIRDS: TemplateVariant[] = [
   // NoaCG house (the product's own on-air look — brand-kit overlays as templates)
@@ -30,14 +34,18 @@ export const LOWER_THIRDS: TemplateVariant[] = [
   lt02, // Underline — accent underline draws in between name and title
   lt03, // Side Tag — quiet panel with keyline + accent bar
   lt04, // Kicker — light panel, accent kicker chip above the name
+  lt18, // Line Handle — compact minimal social mark (social-handle type, minimal)
   // Sport / esport
   lt05, // Angle Slab — skewed slab, condensed caps
   lt06, // Split Bar — stepped name/team bars, bold accent
   lt07, // Number Badge — accent badge (logo slot) + slab text
+  lt17, // Volt Handle — compact sport social mark (social-handle type, sport)
   // Modern social / glass
   lt08, // Frosted Card — backdrop-blur glass card (logo slot)
   lt09, // Gradient Pill — compact pill, name + handle inline
   lt10, // Soft Stack — floating card, accent dot, three-line capable
+  lt15, // Frost Strap — glass lower third with a real accent edge (lower-third type, glass)
+  lt16, // Frost Handle — compact glass social mark (social-handle type, glass)
 ];
 
 export function lowerThirdById(id: string): TemplateVariant | undefined {

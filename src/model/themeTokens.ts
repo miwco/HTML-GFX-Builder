@@ -122,16 +122,28 @@ const MONO_LABEL = '"JetBrains Mono", Consolas, "Courier New", monospace';
  * - §8 gives the house chip radius as 6 px. NOTHING in the catalog ships 6 px (bug02's mark
  *   bars are 3 px, lt14 cites the token while shipping neither). Not encoded — a fiction in
  *   the doc should not become a fiction in the code.
- * - §8 gives sport a "hard offset (sticker-slab)" shadow. The flagship slabs (sb01, qz01)
- *   have no box-shadow at all. Encoded as shipped; the doc is what needs correcting.
+ * - §8 gives sport a "hard offset (sticker-slab)" shadow. First encoded as NO_SHADOW (the
+ *   flagship slabs sb01/qz01 read no shadow at all), but the full-matrix review found every
+ *   sport READER painting its own — a default serving nobody. Now lt07's hard offset, as the
+ *   starting point §8 intended; the loud ones (gt03/gt04's sticker stacks, vs01's halo) keep
+ *   overriding, and that is intent, not debt (THEME_DEFAULTS_REVIEW).
  * - The minimal keyline is 0.14 in §8, 0.15 in §3, and 0.10/0.18/0.12 in ig06. §8 wins as the
  *   named authority; ig06 carries the difference as a variant override until it is reviewed.
  *
  * And where the census corrected a value read off a single example:
  * - noacg labelTracking is 0.2em (the mode, lt13+lt14), not lt11's 0.22em.
- * - sport labelTracking is 0.08em. The 0.02em first taken from §8 is a DISPLAY tracking and
- *   appears zero times on a sport label.
  * - glass displayTracking is -0.01em (5 of 10 uses), not 0.
+ *
+ * Re-valued by the full-matrix review (2026-07-21, THEME_DEFAULTS_REVIEW.md), which measured
+ * every override's direction rather than a single example:
+ * - sport labelTracking 0.08em -> 0.14em: all seven sport overrides moved UP from 0.08, none
+ *   down — the old value found the right element but the wrong number.
+ * - sport displayWeight 700 -> 800: every override climbed (800x3, 900x2); §8's
+ *   "condensed/heavy caps" was a floor sport kept climbing off.
+ * - sport displayTracking 0.02em -> -0.01em: four of five overrides adopted the other three
+ *   families' value; §8's "sport opens up and shouts" is about labels, not display tracking.
+ *   All four families now sit at -0.01em — whether this stays a family token is an open
+ *   modelling question (ig07's 0.12em shows it already covers two roles).
  */
 export const FAMILY_TOKENS: Record<StyleTag, ThemeTokens> = {
   minimal: {
@@ -151,16 +163,16 @@ export const FAMILY_TOKENS: Record<StyleTag, ThemeTokens> = {
   sport: {
     panelBlur: 'none',
     panelRadius: '0',
-    panelShadow: NO_SHADOW,
+    panelShadow: '0 calc(10px * var(--scale)) 0 rgba(0, 0, 0, 0.25)',
     panelKeyline: NO_SHADOW,
     accentWeight: 'calc(10px * var(--scale))',
     accentGlow: NO_SHADOW,
     accentInk: 'var(--panel-bg)',
     fontLabel: 'var(--font-heading)',
-    labelTracking: '0.08em',
+    labelTracking: '0.14em',
     labelColor: 'var(--text-color)',
-    displayWeight: '700',
-    displayTracking: '0.02em',
+    displayWeight: '800',
+    displayTracking: '-0.01em',
   },
   glass: {
     panelBlur: 'blur(18px)',

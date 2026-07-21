@@ -8,6 +8,12 @@
 import { paletteById } from '../../model/wizard';
 import { ig02 } from '../infographics/ig02';
 import { ig06 } from '../infographics/ig06';
+import { ig08 } from '../infographics/ig08';
+import { ig09 } from '../infographics/ig09';
+import { ig10 } from '../infographics/ig10';
+import { ig11 } from '../infographics/ig11';
+import { ig12 } from '../infographics/ig12';
+import { ig13 } from '../infographics/ig13';
 import type { GraphicType } from './graphicType';
 
 // The promoted variants' own sample content, unchanged. A type describes the SHAPE of a
@@ -53,7 +59,56 @@ export const agendaType: GraphicType = {
       styleTag: 'minimal',
       palette: paletteById('ivory'),
       fontId: 'inter',
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
       create: (_type, options) => ig06.create(options),
+    },
+    {
+      // Designed FOR this cell: no noacg schedule board existed. The house void panel as a
+      // running order — sibling of lt11 House Strap and card06 House Topic.
+      id: 'ig08',
+      name: 'House Schedule',
+      description: 'The house running order: a void panel with mono heading and time/show rows.',
+      styleTag: 'noacg',
+      palette: paletteById('noacg'),
+      fontId: 'space-grotesk',
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
+      create: (_type, options) => ig08.create(options),
+    },
+    {
+      // Designed FOR this cell: no glass schedule board existed. A frosted running order —
+      // sibling of lt08 Frosted Card and ig02 Glass Bars.
+      id: 'ig09',
+      name: 'Frost Schedule',
+      description: 'A frosted glass running order: a soft heading over time/show rows.',
+      styleTag: 'glass',
+      palette: paletteById('frost'),
+      fontId: 'manrope',
+      samples: { rows: '20:00 | Doors open\n21:00 | Live set\n22:30 | DJ until late', heading: 'TONIGHT' },
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
+      create: (_type, options) => ig09.create(options),
+    },
+    {
+      // Designed FOR this cell rather than promoting ig03 Timing Tower. ig03 fits the SHAPE of
+      // an agenda (rows plus a title) but its rows are live-timing standings, not a schedule,
+      // and pairing it up was left as an open design call. A purpose-built sport schedule board
+      // sidesteps that ambiguity — sibling of lt06 Split Bar and card02 Slab Card.
+      id: 'ig10',
+      name: 'Volt Schedule',
+      description: 'A solid sport slab running order: heavy condensed times against show names.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: { rows: '13:00 | HEAT ONE\n14:30 | SEMI FINALS\n16:00 | GRAND FINAL', heading: 'ORDER OF PLAY' },
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
+      create: (_type, options) => ig10.create(options),
     },
     // ig03 is held back pending a design call rather than rejected outright. Structurally it
     // fits — a standings stack is rows plus a title, exactly this type's shape — but its rows
@@ -101,7 +156,74 @@ export const pollType: GraphicType = {
       styleTag: 'glass',
       palette: paletteById('orchid'),
       fontId: 'manrope',
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design writes its question as a short all-caps kicker over the bars; the type's
+      // default is a full sentence. Both are questions — this one is the design's own.
+      samples: { question: 'HOW WE WATCH' },
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
       create: (_type, options) => ig02.create(options),
+    },
+    {
+      // Designed FOR this cell: no noacg poll board existed. The house void panel with amber
+      // bars — sibling of lt11 House Strap and ig08 House Schedule.
+      id: 'ig11',
+      name: 'House Poll',
+      description: 'The house poll board: a void panel with a mono heading and growing amber bars.',
+      styleTag: 'noacg',
+      palette: paletteById('noacg'),
+      fontId: 'space-grotesk',
+      samples: { options: 'Streaming | 78\nBroadcast | 54\nOn demand | 36', question: 'HOW WE WATCH' },
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
+      create: (_type, options) => ig11.create(options),
+    },
+    {
+      // Designed FOR this cell: no sport poll board existed. A solid slab with square-cut
+      // accent bars — sibling of lt06 Split Bar and card02 Slab Card.
+      id: 'ig12',
+      name: 'Volt Poll',
+      description: 'A solid sport slab bar chart: heavy caps labels with square-cut accent fills.',
+      styleTag: 'sport',
+      palette: paletteById('volt'),
+      fontId: 'oswald',
+      samples: { options: 'HOME | 62\nAWAY | 38', question: 'POSSESSION' },
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
+      create: (_type, options) => ig12.create(options),
+    },
+    {
+      // Designed FOR this cell: no minimal poll board existed. A quiet panel with slim bars —
+      // sibling of lt01 Hairline and ig06 Schedule Board.
+      id: 'ig13',
+      name: 'Clean Poll',
+      description: 'A quiet dark panel bar chart: an accent heading over slim growing bars.',
+      styleTag: 'minimal',
+      palette: paletteById('ivory'),
+      fontId: 'inter',
+      samples: { options: 'Agree | 64\nNeutral | 22\nDisagree | 14', question: 'VIEWER POLL' },
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
+      create: (_type, options) => ig13.create(options),
     },
     // ig01 is NOT promotable here, and per-design samples cannot rescue it: this type is an
     // options LIST plus a question, and ig01 is a single figure plus a label. Its two lines are

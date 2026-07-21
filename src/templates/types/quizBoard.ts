@@ -17,6 +17,9 @@
 
 import { paletteById } from '../../model/wizard';
 import { qz01 } from '../quiz/qz01';
+import { qz02 } from '../quiz/qz02';
+import { qz03 } from '../quiz/qz03';
+import { qz04 } from '../quiz/qz04';
 import type { GraphicType } from './graphicType';
 
 export const quizBoardType: GraphicType = {
@@ -115,9 +118,44 @@ export const quizBoardType: GraphicType = {
       name: 'Arena Quiz',
       description: 'The game-show board: a leaning question slab over four lettered answer rows.',
       styleTag: 'sport',
-      palette: paletteById('volt'),
-      fontId: 'oswald',
+      // The board's own authored pairing — royal behind the accent edge, archivo in the
+      // letter chips. This entry had transcribed the sport family's volt/oswald instead.
+      palette: paletteById('royal'),
+      fontId: 'archivo',
       create: (_type, options) => qz01.create(options),
+    },
+    {
+      // Designed FOR this cell: no noacg quiz existed. The house void card with an amber accent
+      // edge and amber letter blocks — sibling of lt11 House Strap and card05 House Title.
+      id: 'qz02',
+      name: 'House Quiz',
+      description: 'The house quiz card: a void panel, amber accent edge, four amber-lettered answer rows.',
+      styleTag: 'noacg',
+      palette: paletteById('noacg'),
+      fontId: 'space-grotesk',
+      create: (_type, options) => qz02.create(options),
+    },
+    {
+      // Designed FOR this cell: no glass quiz existed. A frosted card with softly-rounded glass
+      // answer chips — sibling of lt08 Frosted Card and card09 Frost Title.
+      id: 'qz03',
+      name: 'Frost Quiz',
+      description: 'A frosted quiz card with softly-rounded answer chips led by accent letter blocks.',
+      styleTag: 'glass',
+      palette: paletteById('frost'),
+      fontId: 'manrope',
+      create: (_type, options) => qz03.create(options),
+    },
+    {
+      // Designed FOR this cell: no minimal quiz existed. A quiet card with hairline-separated
+      // rows and accent letter rings — sibling of lt01 Hairline and card01 Hairline Card.
+      id: 'qz04',
+      name: 'Clean Quiz',
+      description: 'A quiet quiz card: a question over a keyline, four hairline-separated answer rows.',
+      styleTag: 'minimal',
+      palette: paletteById('ivory'),
+      fontId: 'inter',
+      create: (_type, options) => qz04.create(options),
     },
   ],
 };

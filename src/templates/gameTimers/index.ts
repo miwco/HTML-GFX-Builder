@@ -6,12 +6,16 @@ import { gt01 } from './gt01';
 import { gt02 } from './gt02';
 import { gt03 } from './gt03';
 import { gt04 } from './gt04';
+import { gt05 } from './gt05';
+import { gt06 } from './gt06';
 
 export const GAME_TIMERS: TemplateVariant[] = [
   gt01, // game-show countdown #1 (style family + lower-third sibling noted in gt01.ts)
   gt02, // game-show countdown #2 (style family + lower-third sibling noted in gt02.ts)
   gt03, // game-show countdown #3 — the playful badge clock (kids' show, exuberant)
   gt04, // game-show countdown #4 — the composed stage-ring clock (kids' show, controlled)
+  gt05, // House Countdown — noacg, amber bar + void panel (sibling lt11 House Strap)
+  gt06, // Frost Countdown — glass, frosted card + accent-ringed clock pill (sibling lt08 / ss03)
 ];
 
 export function gameTimerVariantById(id: string): TemplateVariant | undefined {

@@ -172,7 +172,6 @@ export const ig03: TemplateVariant = defineInfographicVariant(
 
       tokens: {
         accentWeight: 'calc(8px * var(--scale))',
-        labelTracking: '0.14em',
       },
 
       fields: [

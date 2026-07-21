@@ -19,6 +19,8 @@
 import { paletteById } from '../../model/wizard';
 import { sb01 } from '../scoreboards/sb01';
 import { sb02 } from '../scoreboards/sb02';
+import { sb03 } from '../scoreboards/sb03';
+import { sb04 } from '../scoreboards/sb04';
 import type { GraphicType } from './graphicType';
 
 export const scoreboardType: GraphicType = {
@@ -154,7 +156,38 @@ export const scoreboardType: GraphicType = {
       styleTag: 'minimal',
       palette: paletteById('ivory'),
       fontId: 'inter',
+      // A quiet corner stack reveals its lines; it must not inherit the sport strip's slam
+      // just because the sport design happens to be this type's first.
+      // A quiet corner stack reveals its lines; it must not inherit the sport strip's slam
+      // just because the sport design happens to be this type's first.
+      animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      // A panel-free corner stack, drawn against the top-left edge rather than centred.
+      defaultZone: 'top-left',
       create: (_type, options) => sb02.create(options),
+    },
+    {
+      // Designed FOR this cell: no noacg scoreboard existed. The house void strip with an
+      // amber accent edge that doubles as the flag marker — sibling of lt11 House Strap.
+      id: 'sb03',
+      name: 'House Score',
+      description: 'The house score strip: void panel, amber accent edge, scores in void chips.',
+      styleTag: 'noacg',
+      palette: paletteById('noacg'),
+      fontId: 'space-grotesk',
+      animationPresets: ['slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      create: (_type, options) => sb03.create(options),
+    },
+    {
+      // Designed FOR this cell: no glass scoreboard existed. A frosted strip with a soft accent
+      // bar that doubles as the flag marker — sibling of lt08 Frosted Card.
+      id: 'sb04',
+      name: 'Frost Score',
+      description: 'A frosted score strip: soft accent bar, team names, scores in glass chips.',
+      styleTag: 'glass',
+      palette: paletteById('frost'),
+      fontId: 'manrope',
+      animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      create: (_type, options) => sb04.create(options),
     },
   ],
 };

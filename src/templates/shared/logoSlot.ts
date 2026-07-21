@@ -45,7 +45,7 @@ export function applyLogoSlot(design: StandardDesign, prefix: string, o: Resolve
   width: calc(56px * var(--scale));   /* logo square width */
   height: calc(56px * var(--scale));  /* logo square height */
   margin-bottom: calc(14px * var(--scale));  /* air between logo and the first line */
-  border-radius: calc(12px * var(--scale));  /* rounded corners echo the panel shape */
+  border-radius: var(--panel-radius);  /* the chip follows the family's corner treatment */
   object-fit: contain;             /* show the whole logo, never crop a wide wordmark */
 }`;
 

@@ -6,6 +6,7 @@
 
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineInfographicVariant } from './shared';
+import { barsRuntimeJs } from './dataRuntimes';
 
 const BARS_SAMPLE = 'Streaming | 78\nBroadcast | 54\nOn demand | 36';
 
@@ -139,51 +140,9 @@ export const ig02: TemplateVariant = defineInfographicVariant(
         { field: 'f1', ftype: 'textfield', title: o.lines[1]?.title || 'Heading', value: headingText },
       ],
 
-      // rebuildInfographic(): re-render the bar rows from the hidden #f0 source.
-      // Each source line is "Label | value" — the drawn fill is clamped to the 0-100 track.
-      runtimeExtraJs: `// escapeHtml(): the rows below are built with innerHTML — operator text is escaped
-// first so input like "Latency <500ms" reads as text and never runs as markup.
-function escapeHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// rebuildInfographic(): parse the hidden #f0 source (one "Label | value" per line)
-// and rebuild the #infographic-bars rows. Each fill is rendered already at its value so an
-// on-air update() shows fresh data at once; on play() the 'bars-grow' preset resets
-// the fills to 0 and grows each one back to its data-value percent.
-function rebuildInfographic() {
-  var bars = document.getElementById('infographic-bars');
-  var lines = document.getElementById('f0').textContent.split('\\n');
-  var html = '';
-  lines.forEach(function (raw) {
-    var line = raw.trim();
-    if (line === '') return;                       // skip blank lines
-    var parts = line.split('|');
-    var label = parts[0].trim();
-    var valueText = (parts[1] || '').trim();       // the figure exactly as the operator typed it
-    var value = parseFloat(valueText);             // NaN when the value part is missing
-    if (label === '' || isNaN(value)) return;      // skip lines without a label or a number
-    var fill = Math.max(0, Math.min(100, value));  // clamp only the DRAWN fill to the 0-100 track
-    html += '<div class="infographic-row">'
-          +   '<div class="infographic-bar-head">'
-          +     '<span class="infographic-bar-label">' + escapeHtml(label) + '</span>'
-          +     '<span class="infographic-bar-value">' + escapeHtml(valueText) + '</span>'  // show the typed figure, never a silently altered one
-          +   '</div>'
-          +   '<div class="infographic-bar-track">'
-          +     '<div class="infographic-bar-fill" data-value="' + fill + '" style="width: ' + fill + '%"></div>'
-          +   '</div>'
-          + '</div>';
-  });
-  bars.innerHTML = html;
-}
-
-// Render once on load so the preview shows the chart before the first update().
-// This file loads in <head>, before the chart elements exist — wait for the DOM.
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', rebuildInfographic);
-} else {
-  rebuildInfographic();            // DOM already parsed (e.g. an inline preview build)
-}`,
+      // rebuildInfographic(): re-render the bar rows from the hidden #f0 source (one
+      // "Label | value" per line). Shared by every poll design — see dataRuntimes.ts.
+      runtimeExtraJs: barsRuntimeJs(),
     };
   },
 );

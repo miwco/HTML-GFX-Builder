@@ -67,7 +67,7 @@ ${chip}${mask(0)}
   letter-spacing: var(--label-tracking);  /* the label's authored tracking */
   text-transform: uppercase;       /* BREAKING, whatever the operator types */
   color: var(--accent-ink);        /* dark ink on the accent plate */
-  box-shadow: 0 0 calc(26px * var(--scale)) color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: var(--accent-glow);  /* the house glow around the accent chip */
 }
 
 /* The headline panel (f0) — the house void with the 8px bar as its left border. */
@@ -75,8 +75,8 @@ ${chip}${mask(0)}
   display: inline-block;           /* the panel hugs the headline text */
   padding: calc(26px * var(--scale)) calc(60px * var(--scale)) calc(30px * var(--scale)) calc(32px * var(--scale));
   background: var(--panel-bg);     /* void rgba(10,12,16,.86) by default */
-  backdrop-filter: blur(8px);      /* the house blur */
-  -webkit-backdrop-filter: blur(8px);  /* Safari spelling of the same effect */
+  backdrop-filter: var(--panel-blur);  /* the family's panel treatment */
+  -webkit-backdrop-filter: var(--panel-blur);  /* Safari spelling of the same effect */
   border-left: var(--accent-weight) solid var(--accent);  /* the family's accent edge weight */
   font-size: calc(46px * var(--scale) * var(--type-scale));  /* headline size — one strong statement */
   font-weight: var(--display-weight);  /* the family's display weight */

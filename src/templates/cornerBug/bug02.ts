@@ -125,7 +125,7 @@ ${bugLineMasks(o)}
 .corner-bug-mark i:nth-child(1) {
   width: 100%;                     /* the full-length accent bar on top */
   background: var(--accent);       /* the one accent moment */
-  box-shadow: 0 0 calc(12px * var(--scale)) color-mix(in srgb, var(--accent) 60%, transparent);
+  box-shadow: var(--accent-glow);  /* the house glow on the one accent moment */
 }
 .corner-bug-mark i:nth-child(2) {
   width: 66%;                      /* the middle bar steps in */

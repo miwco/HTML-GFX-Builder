@@ -244,6 +244,21 @@ const CAPTURE = `(async () => {
 
 test('every catalog variant renders identically', async ({ page }, testInfo) => {
   test.setTimeout(300_000);
+
+  // The fingerprint is PLATFORM-BOUND: rects and letter-spacing resolve through the OS font
+  // rasterizer, so a baseline recorded on Windows can never match a Linux runner — CI was red
+  // for a day on exactly that before the baseline learned to say where it was recorded. The
+  // comparison runs only on the recording platform; everywhere else this skips loudly rather
+  // than failing meaninglessly. The SOURCE baseline above is byte-exact and platform-free, so
+  // CI keeps its guard against emitted-code drift either way.
+  if (!UPDATE_RENDER && existsSync(RENDER_BASELINE)) {
+    const recordedOn = JSON.parse(readFileSync(RENDER_BASELINE, 'utf8')).platform;
+    test.skip(
+      typeof recordedOn === 'string' && recordedOn !== process.platform,
+      `render baseline recorded on "${recordedOn}", this is "${process.platform}" — font rasterization differs; re-record here to compare here`,
+    );
+  }
+
   await page.goto('/app');
   await page.keyboard.press('Escape');
 
@@ -268,7 +283,9 @@ test('every catalog variant renders identically', async ({ page }, testInfo) => 
           $comment:
             'Computed-style and geometry fingerprints of every catalog variant, settled and on air. ' +
             'Substituting a token for the literal it was given must not move these. ' +
-            'Re-record with UPDATE_RENDER_BASELINE=1 only when the look changed ON PURPOSE.',
+            'Re-record with UPDATE_RENDER_BASELINE=1 only when the look changed ON PURPOSE. ' +
+            'Platform-bound: compared only on the platform that recorded it (font rasterization).',
+          platform: process.platform,
           variants: actual,
         },
         null,

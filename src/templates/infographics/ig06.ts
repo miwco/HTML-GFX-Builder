@@ -7,6 +7,7 @@
 
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineInfographicVariant } from './shared';
+import { scheduleRowsRuntimeJs } from './dataRuntimes';
 
 const ROWS_SAMPLE = '20:00 | News at Eight\n21:00 | The Debate\n22:15 | Late Edition';
 
@@ -147,45 +148,9 @@ export const ig06: TemplateVariant = defineInfographicVariant(
         { field: 'f1', ftype: 'textfield', title: o.lines[1]?.title || 'Heading', value: headingText },
       ],
 
-      // rebuildInfographic(): re-render the schedule rows from the hidden #f0 source.
-      // Each source line is "time | show" — rows missing either part are skipped.
-      runtimeExtraJs: `// escapeHtml(): the rows below are built with innerHTML — operator text is escaped
-// first so input like "Movies <18" reads as text and never runs as markup.
-function escapeHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-// rebuildInfographic(): parse the hidden #f0 source (one "time | show" per line)
-// and rebuild the #infographic-rows schedule. Only the FIRST pipe splits the line, so a show
-// name may itself contain a "|". Lines without both parts are skipped, like ig02.
-function rebuildInfographic() {
-  var rows = document.getElementById('infographic-rows');
-  var lines = document.getElementById('f0').textContent.split('\\n');
-  var html = '';
-  lines.forEach(function (raw) {
-    var line = raw.trim();
-    if (line === '') return;                       // skip blank lines
-    var split = line.indexOf('|');                 // first pipe only — shows may contain one
-    if (split === -1) return;                      // no pipe: not a "time | show" line
-    var time = line.slice(0, split).trim();
-    var show = line.slice(split + 1).trim();
-    if (time === '' || show === '') return;        // skip half-empty rows
-    html += '<div class="infographic-row">'
-          +   '<span class="infographic-time">' + escapeHtml(time) + '</span>'
-          +   '<span class="infographic-dot"></span>'
-          +   '<span class="infographic-show">' + escapeHtml(show) + '</span>'
-          + '</div>';
-  });
-  rows.innerHTML = html;
-}
-
-// Render once on load so the preview shows the board before the first update().
-// This file loads in <head>, before the board elements exist — wait for the DOM.
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', rebuildInfographic);
-} else {
-  rebuildInfographic();            // DOM already parsed (e.g. an inline preview build)
-}`,
+      // rebuildInfographic(): re-render the schedule rows from the hidden #f0 source (one
+      // "time | show" per line). Shared by every agenda design — see dataRuntimes.ts.
+      runtimeExtraJs: scheduleRowsRuntimeJs(),
     };
   },
 );

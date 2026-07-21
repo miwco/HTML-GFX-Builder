@@ -4,7 +4,9 @@ A **type** says what a graphic IS. A **design** says what it looks like. The cat
 types × designs, and Phase 3 turns that second axis into themes without the first one moving.
 
 Companion docs: `STATE_MACHINE_SCHEMA.md` (the machine a type declares),
-`DESIGN_LANGUAGE.md` (the taste bar a design is judged against).
+`DESIGN_LANGUAGE.md` (the taste bar a design is judged against), `PACK_TAXONOMY.md` (the
+packs — curated type-subsets the 60 reference formats map onto; config in
+`src/templates/packs.ts`, validated by the factory).
 
 ---
 
@@ -133,12 +135,47 @@ weakest of the checks and the only obvious one. All six have to hold:
 | **parts** | a required selector is absent | `attachMachine` / `missingParts` |
 | **fields** | the design emits a different field COUNT than the type declares | `graphic-types.spec.ts` |
 | **machine + motion** | a timer transition on a design whose timeline never ends | `validateMachine` |
-| **capabilities** | design and type disagree on `logo` or `maxLines` | nothing — read it |
+| **capabilities** | design and type disagree on any offered default | `graphic-types.spec.ts` |
 | **samples** | the design's starting text differs from the type's field values | nothing — read it |
 | **semantics** | the fields line up but MEAN different things | nothing — judgement |
 
 The last three are the dangerous ones, and the last two are not mechanically checkable at all.
 Measured on the first pass: 24 cells looked promotable on parts alone, 8 actually were.
+
+#### The capabilities gate is the whole offered default set, not just `logo` and `maxLines`
+
+`animationPresets` is a capability like the other two, and the loudest of them — **`[0]` is the
+default a new project is created with**, and the list is exactly what the wizard, the Inspector
+and the AI's legal-preset check offer. A type declaring one list for all its designs therefore
+rewrites the motion of every design it promotes.
+
+Measured across the twenty shipped promotions: **six drifted their default entrance and four
+lost presets outright.** bug02, the house sponsor bug, opened with a plain fade instead of rising
+into its corner. card02's `snap-stinger` — the preset its painted lean exists to survive — stopped
+being offered anywhere. sb02 "Quiet Score", a *minimal* design, defaulted to a sport slam purely
+because its type's other design is a sport one.
+
+**Why nothing caught it, which is the durable part.** `create({})` resolves the preset from the
+design's OWN variant record, not from the compiled one, so the emitted code never moves — and
+neither does `catalog-baseline.json`, nor the render fingerprint, nor the byte-identity check
+that exists precisely to police promotion. The drift lives entirely in what the UI offers. **A
+baseline taken from output cannot see a gate that only changes input**, and this is the second
+gate in this table with that shape (`samples` is the first).
+
+`TypeDesign.animationPresets` is the escape hatch, exactly mirroring `TypeDesign.samples`: the
+design keeps the vocabulary it was authored around, the type still declares the default for
+designs that do not care. Like samples and unlike theme-token overrides, entries here are **not
+conformance debt** — a sport slab and a glass panel are *supposed* to enter differently.
+
+**`defaultZone` is the same story**, and it drifted on four designs. A type says a sponsor bug is
+"parked in a corner"; *which* corner is a drawing decision, and bug01's frosted tile is authored
+for the top-right safe area in its own file's opening comment. `TypeDesign.defaultZone` overrides
+it the same way. (`palette` and `fontId` were already per-design — qz01's entry had simply
+transcribed the sport family's volt/oswald over the board's own royal/archivo.)
+
+The rule that falls out, and the one the spec now enforces: **a type may WIDEN what a design
+offers — a longer preset list, more lines — but it may never change that design's own default or
+take something away.**
 
 Two worked examples, both real:
 - `lt01` into **social-bug** passed every shape check — that type shares the lower-third prefix,
@@ -155,30 +192,106 @@ design. Only the wizard's suggested lines are affected — the emitted html, css
 identical either way, which is why no baseline moves and why a rendered check is the only thing
 that sees it.
 
+### The factory runs all six gates — `scripts/factory.mjs`
+
+The Phase 3 batch loop (docs/noacg-master-goals.md). It derives the type × family matrix from the
+live registry, runs every design through all six gates, classifies each failure **by the gate that
+caught it**, writes a machine-readable report (`--json`), and **exits non-zero**, so it works as a
+CI gate beside `npm run build`. `node scripts/factory.mjs` prints matrix + gates;
+`check --ids a,b` scopes it. It needs the dev server up, like `scripts/l3-sweep.mjs`.
+
+It reads the registry through the running app rather than parsing source, because a type's
+`category` is kebab-case (`corner-bug`, `info-card`) and a naive word regex silently truncates it —
+that mistake once produced a confident wrong count of what was promotable.
+
+Three of the six gates were "not mechanically checkable". All three now have a mechanical form:
+
+- **capabilities** — compares a compiled variant against the design's own PRE-MERGE catalog entry
+  (`HAND_WRITTEN`, exported from `catalog.ts` for this). Covers the whole offered set: `logo`,
+  `maxLines`, the preset vocabulary and the zone.
+- **samples** — compares the text a design renders against what the wizard would offer.
+- **semantics** — cannot be *decided* by machine, but the real failure (`lt01` into social-bug) had
+  a mechanical tell: the design's line LABELS differed from the type's field labels. The factory
+  raises that signal; the author signs it off with **`TypeDesign.semantics`**, and an
+  unacknowledged signal fails the batch.
+
+**What it caught on its first run over the full matrix — 13 of 48 designs:** the motion/zone drift
+above still un-declared on all eight agenda and poll designs (each authored for a single measured
+preset, compiled to three); `lt02` widened to a mask-wipe it was never drawn for; `card02`/`card03`
+and `tk07` showing generic type copy instead of their own (card03's were a line out of step, so the
+wizard offered the first body line as the card's heading); and the `Bars`/`Heading` vs
+`Options`/`Question` semantics signal on the four poll designs. All fixed; the loop is green at
+48/48.
+
+Beyond the six per-design gates, the loop also validates **the pack config** (`packs.ts`
+resolves against the live registry; the 60 reference formats covered exactly once — see
+`PACK_TAXONOMY.md`) and **literal token drift**: the emitted CSS of every catalog variant is
+grepped for the literal FORMS of tokens the family actually values (a hand-typed glow where
+`var(--accent-glow)` should be, a literal `backdrop-filter: blur()` where `var(--panel-blur)`
+should be). The override map cannot see those — a design hand-typing a near-miss of its
+family's value reads as *conformant* — which is how bug02/lt12/tk05/tk06 shipped near-miss
+glows (THEME_DEFAULTS_REVIEW §"The blind spot"). Scoped to families where the token has a real
+value, so sport's intentional accent halos never trip it.
+
+**Failure modes the loop has recorded (append new ones here):**
+- *A purpose-built design needs `samples` just as a promoted one does.* Any design whose own
+  suggested lines differ from the type's field defaults must declare them — the gate is about the
+  wizard's text matching the design, not about promotion.
+- *Measured-motion designs must declare `animationPresets`.* A design whose entrance IS its
+  measured builder (a bars-grow, a rows-cascade) offers exactly one preset in its own file, and a
+  type that offers three silently re-choreographs it.
+
 ---
 
 ## 6. The twelve types
 
 Counts are how many of the 60 reference formats in `live_format_graphics_needs.xlsx` ask for
-that graphic.
+that graphic. Every type now ships in all four style families; the design named here is the
+noacg (or, where the house has none, the flagship) look, and its machine is the same whichever
+family a cell is in.
 
-| Type | Freq | Design | Machine |
+| Type | Freq | Flagship design | Machine |
 |---|---|---|---|
 | Lower third | 52 | lt11 House Strap | – |
 | Sponsor bug | 37 | bug02 House Clock | – |
-| Countdown | 30 | gt01 Clean Clock | parallel `clock` (pause/resume) |
-| Topic card | 29 | card01 Hairline Card | – |
+| Countdown | 30 | gt05 House Countdown | parallel `clock` (pause/resume) |
+| Topic card | 29 | card06 House Topic | – |
 | Title card | 23 | card05 House Title | – |
-| Agenda | 22 | ig06 Schedule Board | – |
-| Social handle | 17 | lt14 House Handle (new) | – |
-| Poll result | 13 | ig02 Glass Bars | – |
-| Holding screen | 9 | ss01 Calm Hold | parallel `clock` |
-| Ticker | 8 | tk05 House Wire | timer cycle + pause/resume/skip |
-| Scoreboard | 5 | sb01 Match Strip | parallel `flag` / `clock` / `result` |
-| Quiz board | — | qz01 Arena Quiz | branches `selected` / `locked` |
+| Agenda | 22 | ig08 House Schedule | – |
+| Social handle | 17 | lt14 House Handle | – |
+| Poll result | 13 | ig11 House Poll | – |
+| Holding screen | 9 | ss04 House Hold | parallel `clock` |
+| Ticker | 8 | tk07 House Rotator | timer cycle + pause/resume/skip |
+| Scoreboard | 5 | sb03 House Score | parallel `flag` / `clock` / `result` |
+| Quiz board | — | qz02 House Quiz | branches `selected` / `locked` |
 
 The last three earn their place by what they prove rather than by frequency: parallel groups,
 timer-driven motion, and the far end of the model.
+
+### The matrix is full — and how it filled
+
+All 48 cells (12 types × noacg / glass / sport / minimal) are filled. The route there is worth
+recording, because it was not the one the first pass predicted:
+
+- **The promotion well ran dry fast.** 24 cells looked promotable on parts alone; 8 actually were
+  on the first pass, and after promoting the single design that cleared all six gates on the
+  second (lt05 into the sport lower third), **zero** promotable designs remained. Every other cell
+  is a DESIGNED variant. "The parts resolve" is the weakest evidence a design belongs to a type,
+  and in a mature catalog it is almost always the *only* thing that resolves.
+- **Designed, not promoted, is the norm — not a failure.** A cell with no promotable candidate is
+  a cell that needs a design, and 30 of them got one, each named against its lower-third sibling
+  and built from its family's shape tokens rather than improvised. A designed variant is a
+  first-class fill; a promotion is just the shortcut available when an existing design already *is*
+  the graphic.
+- **Type-uniform runtimes belong in one place.** When every design of a type renders its content
+  the same way — a schedule board's rows, a poll's bars — that rebuild is not per-design and does
+  not belong copied into each. It lifts into a shared helper (`infographics/dataRuntimes.ts`), and
+  the designs that used to inline it emit byte-identical output afterwards, so the baseline proves
+  the extraction changed nothing.
+- **A rotator is a preset, not a redesign.** The three ticker cells are strips with ordinary
+  items; the shared ticker runtime turns any design into a rotator when the rotate preset is
+  chosen (the track stops travelling and wraps, the separator hides). The design work was the
+  strip, not the motion.
 
 ### Which acceptance criterion each proves
 

@@ -116,7 +116,6 @@ ${logo}${cardLineMasks(o)}
 }${logoCss}`,
 
       hasAccent: false,
-      tokens: { panelRadius: 'calc(18px * var(--scale))' },
     };
   },
 );

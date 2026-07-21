@@ -217,9 +217,7 @@ export const vs02: TemplateVariant = defineVersusVariant(
       hasAccent: true,
       tokens: {
         panelShadow: '0 calc(10px * var(--scale)) calc(30px * var(--scale)) rgba(0, 0, 0, 0.5)',
-        labelTracking: '0.14em',
         labelColor: 'var(--text-dim)',
-        displayTracking: '-0.01em',
       },
     };
   },

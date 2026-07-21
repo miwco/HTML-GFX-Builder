@@ -16,8 +16,15 @@ import { QUIZ } from './quiz';
 import { IMPORTED_DESIGNS } from './importedDesign/shared';
 import { mergeCatalog, typeVariants } from './types/registry';
 
-/** The hand-written variants — a category's own files, in their curated browse order. */
-const HAND_WRITTEN: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
+/**
+ * The hand-written variants — a category's own files, in their curated browse order.
+ *
+ * Exported because the PRE-MERGE list is the only place a promoted design's OWN authored
+ * capabilities survive: `mergeCatalog` replaces the entry with the type-compiled one. Comparing
+ * the two is what makes the capabilities gate checkable at all (docs/GRAPHIC_TYPES.md §5), and
+ * `scripts/factory.mjs` reads it for exactly that.
+ */
+export const HAND_WRITTEN: Partial<Record<TemplateCategory, TemplateVariant[]>> = {
   'lower-third': LOWER_THIRDS,
   'info-card': INFO_CARDS,
   'end-credits': END_CREDITS,
