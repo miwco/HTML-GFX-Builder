@@ -837,6 +837,28 @@ It is not merely a statistical artifact. It hands out guidance that is wrong on 
 Sunday-morning cooking title is given the dense variety-telop card, and a channel ident is given
 the financial trading-terminal card.
 
+> **AMENDED 2026-07-21, after the §8.3g pass - see §8.3h for the frames.** The paragraph
+> immediately above is the one sentence in this section that was never measured, and it is now
+> **not supported**. Both of its two instances were generated, both arms, and neither convicted
+> on the signatures §8.3g fixed in advance: the cooking title came back a warm two-line serif
+> lockup with one kicker and no strap, banner, ticker furniture or second information layer; the
+> ident came back a centred mark with `ON AIR` in a tracked broadcast sans, no numerals, no
+> readout, no grid, no monospace. Neither is visibly worse than its dosage-matched counterpart.
+>
+> What was over-claimed is the step from *input* to *output* - "hands out guidance that is wrong
+> on its face" reads as a claim about what the mechanism PRODUCES, and it was inferred entirely
+> from the card prose, with no frame generated. The word "hands" is doing work it did not earn:
+> the cards are handed to the Motion Director, not to the screen.
+>
+> **Everything else in this section stands, and the amendment does not rescue the mechanism.**
+> The concentration is measured and unchanged (62% of companions from two never-matched cards,
+> run-1 sd 0.052 against the control's 0.135). Finding 1 stands. The proxy-invalidity argument -
+> that `setDistance` is maximised by the concentration it is supposed to penalise - stands
+> untouched, and it never depended on the output claim. Nor is the null strong evidence that the
+> guidance was SOUND: §8.3g pre-declared the reason, and the plans confirmed it (§8.3h). The
+> honest reading is that this section over-reached on one inference, not that contrast selection
+> was vindicated.
+
 So the obvious next move was to fix the companion rule and re-measure. `scripts/reference-companion-sweep.mjs`
 sweeps the candidates against the dosage-matched control, holding the anchor rule fixed:
 
@@ -996,6 +1018,62 @@ the same arm twice and produce a null by construction, which would look exactly 
 refutation this section is set up to accept. So before each paid arm, run the free simulator and
 confirm its arm A (`selectReferenceCards`, the only path that reads `SELECTION_MODE`) matches the
 intended mode's column. An unverified arm invalidates the pass.
+
+### 8.3h The §8.3g pass, as it came out
+
+Run 2026-07-21. 14 generations, `contrast` vs `padded`, varied bank, run 1, ~$2. Both arms 7/7
+clean, 0 repair rounds (contrast 63058in/56254out, padded 61242in/53417out). Arm guard passed
+both times: with the const at `'contrast'` the simulator's arm A was byte-identical to the
+`contrast` column and differed from `padded` on all 7 briefs; after the edit it was identical to
+`padded` and differed from `contrast`. So the two arms really were two arms.
+
+**The plans, read before the frames as §8.3g requires. The companion was ABSENT from both.**
+Not merely diluted - contradicted, axis by axis:
+
+| deciding brief | companion card | what the plan did with it |
+|---|---|---|
+| `Cooking title` | `dense-telop` (cut motion, colour-as-legend, density is the point, screen-native, heavy outlining) | plan specifies eased masked reveals with "nothing visibly slammed", "One accent color" used as mood, a single wordmark plus one kicker, a printed-card surface with paper grain and an inset hairline border. No outlining anywhere. |
+| `Logo sting with asset` | `data-terminal` (the numeral IS the primary object, tabular mono, L-band shrinking the picture, mechanical continuous motion) | plan has no numerals at all, sets `ON AIR` in a "bold broadcast sans", uses a spring slam with 4-6% overshoot and a bloom pulse, and fills the frame. No band, no picture-shrink. |
+
+**The frames agree.** Judged on the hold frame (f070) against the signatures §8.3g fixed in
+advance. Neither contrast video convicts, and neither is visibly worse than its counterpart:
+
+- `Cooking title` - contrast is a warm cream-to-terracotta field, `SUNDAY KITCHEN` in two serif
+  lines, a small terracotta mug glyph, one tracked kicker. One information layer. The predicted
+  telop density, stacked straps, ticker furniture and broadcast chrome are all absent. If
+  anything it reads as the stronger of the pair; the padded version carries an odd dark sphere
+  across the background and sets the wordmark noticeably smaller.
+- `Logo sting with asset` - contrast is a charcoal field, the icon centred in an amber bloom,
+  `ON AIR` tracked beneath in a bold sans. No mono, no readout, no numerals, no grid. It is
+  near-identical to the padded version, which is itself the result worth noting: the companion
+  changed from `data-terminal` to `minimal` and the output barely moved.
+
+**So this is the weak null, exactly the one §8.3g pre-declared.** The output-level half of
+Finding 2 is refuted (§8.3f is amended in place above). The cards themselves are not vindicated:
+the companion never reached the frames, so what was measured is the Motion Director's filtering,
+not the soundness of the guidance. The chain cards -> Director -> eight plan strings -> code is
+lossy enough here to erase the companion entirely, which also means **this pass cannot be used to
+argue that reference cards matter** - in the two cases examined, the companion demonstrably did
+not.
+
+**Incidental, not pre-registered, and reported only because the frames exist.** Across the other
+five briefs the arms split 2-2-1 with no pattern: contrast better on `Awards reveal` (padded's
+gold bands cut through the type) and `Transparent lower-third` (padded's plate floats at
+mid-frame with a near-illegible subtitle); padded better on `Esports opener` and `Single-word
+hero`; `Long title` a wash. N=5, no arms-blind judging, no significance - listed so the file is
+not selectively quoted later.
+
+**One thing here IS worth acting on, and it is not about references.** Both contrast losses are
+legibility defects that the validation gate passed as clean: on `Esports opener` the second word
+`RIFT` renders dark-on-dark behind `NOVA` and is effectively invisible at the hold; on
+`Single-word hero` the kicker sits across the baseline of `LANDFALL`. Both were probed and both
+came back "clean". That is a gate finding, independent of this A/B, and it should be chased on
+its own rather than folded into the reference-card question.
+
+**What this pass does NOT do.** It does not run §8.3d's paid A/B, does not measure the primary
+metric (a count of visually distinct designs, which N=7 unblinded cannot support), and does not
+reinstate contrast selection. §8.3f's concentration finding and its proxy-invalidity argument
+both survive intact, and they remain the reasons the mechanism is not shipped.
 
 ### 8.4 Explicitly out of scope for the PoC
 
