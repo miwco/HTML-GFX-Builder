@@ -218,7 +218,6 @@ export const qz01: TemplateVariant = defineQuizVariant(
 }`,
     hasAccent: false, // the accent edge is a painted ::after layer, not a .quiz-accent element
     tokens: {
-      displayWeight: '800',
       displayTracking: '0.01em',
     },
   }),

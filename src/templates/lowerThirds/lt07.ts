@@ -123,8 +123,6 @@ ${lineMasks(o, '        ')}
 }`,
       hasAccent: true,
       tokens: {
-        panelShadow: '0 calc(10px * var(--scale)) 0 rgba(0, 0, 0, 0.25)',
-        labelTracking: '0.14em',
         labelColor: 'var(--text-dim)',
       },
     };

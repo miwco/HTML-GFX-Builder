@@ -1,8 +1,19 @@
 # Theme defaults review
 
 A recommendation for the human on the four families' token defaults in `src/model/themeTokens.ts`.
-**Nothing here has been applied.** `FAMILY_TOKENS` is unchanged; every proposal below is yours to
-accept or reject. The point of the doc is to make the override map's shape legible and to say, per
+
+> **STATUS 2026-07-21: APPLIED, as recommended and user-approved.** The four sport changes
+> below landed (panelShadow encoded as lt07's hard offset, which made lt07's own override a
+> deletable no-op too); the two keep-as-is decisions held, with the three 18px glass overrides
+> (lt08/card03/ig04) conformed down to 16px; the literal-drift holdouts were routed through
+> their tokens and the factory now greps the literal forms; the logo chip reads
+> `var(--panel-radius)`. Overrides equal to the new defaults were deleted. The render baseline
+> was re-recorded with the diff confirmed against the keeper lists below. Still open: the
+> `labelColor` / `displayTracking` modelling questions (per-design vs family token) — those are
+> re-modelling, not re-valuing, and were deliberately not part of this application.
+
+The remainder of this document is the review as written before the decision, kept because the
+keeper lists and the reasoning are the audit trail for the re-record. The point of the doc is to make the override map's shape legible and to say, per
 token, whether an override reads as drift (an accident worth deleting) or intent (a design that
 genuinely needs a different value), with the exact render-baseline cost of conforming it.
 

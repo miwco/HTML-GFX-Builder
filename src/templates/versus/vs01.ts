@@ -252,7 +252,6 @@ export const vs01: TemplateVariant = defineVersusVariant(
           '0 0 calc(60px * var(--scale)) color-mix(in srgb, var(--accent) 25%, transparent), inset 0 0 calc(40px * var(--scale)) rgba(0, 0, 0, 0.5)',
         accentWeight: 'calc(6px * var(--scale))',
         labelTracking: '0.16em',
-        displayWeight: '800',
         displayTracking: '0.03em',
       },
     };

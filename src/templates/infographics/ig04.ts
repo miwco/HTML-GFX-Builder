@@ -186,7 +186,6 @@ export const ig04: TemplateVariant = defineInfographicVariant(
 
       runtimeExtraJs: '', // stat shape: update() writes fields straight in — no rebuild needed
       tokens: {
-        panelRadius: 'calc(18px * var(--scale))',
         labelTracking: '0.18em',
         labelColor: 'var(--text-dim)',
       },

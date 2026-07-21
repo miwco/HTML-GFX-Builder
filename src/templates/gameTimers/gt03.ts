@@ -213,7 +213,6 @@ export const gt03: TemplateVariant = defineGameTimerVariant(
     tokens: {
       panelShadow:
         '0 calc(14px * var(--scale)) 0 rgba(0,0,0,0.18), 0 calc(26px * var(--scale)) calc(50px * var(--scale)) rgba(0,0,0,0.35), inset 0 calc(-16px * var(--scale)) calc(34px * var(--scale)) rgba(0,0,0,0.16), inset 0 calc(16px * var(--scale)) calc(34px * var(--scale)) rgba(255,255,255,0.28)',
-      displayWeight: '800',
     },
     // Drain ring + exuberant per-tick clock bounce + the last-three-seconds state.
     runtimeExtraJs: badgeRingRuntimeJs('bounce'),
