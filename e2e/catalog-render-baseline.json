@@ -1,5 +1,6 @@
 {
-  "$comment": "Computed-style and geometry fingerprints of every catalog variant, settled and on air. Substituting a token for the literal it was given must not move these. Re-record with UPDATE_RENDER_BASELINE=1 only when the look changed ON PURPOSE.",
+  "$comment": "Computed-style and geometry fingerprints of every catalog variant, settled and on air. Substituting a token for the literal it was given must not move these. Re-record with UPDATE_RENDER_BASELINE=1 only when the look changed ON PURPOSE. Platform-bound: compared only on the platform that recorded it (font rasterization).",
+  "platform": "win32",
   "variants": {
     "bug01": {
       "#count": "10",
