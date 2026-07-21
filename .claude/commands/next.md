@@ -56,8 +56,13 @@ better earn its existence.
 - **A short imperative title** the user can pick by name.
 - **What it concretely means** - files/areas touched, roughly how big, and why it is worth doing
   *now* rather than in a fresh session.
-- **Its source** - session leftover, verification gap, repo hygiene, or backlog (`docs/GOALS.md`
-  / memory). Session leftovers and verification gaps always outrank backlog items.
+- **Its source** - session leftover, verification gap, landing the work (`/safe-merge` + push),
+  or backlog (`docs/GOALS.md` / memory). Session leftovers and verification gaps always outrank
+  backlog items.
+
+When the session's work is committed and verified, **"merge and push via `/safe-merge`" is a
+first-class option** - often the recommended one. Offering it here is fine; the user picking it
+is what makes it user-initiated. Never run it yourself off this command.
 
 Mark exactly one option as **recommended** and say why in one line. If only one honest option
 exists, list only that one - do not pad to three.
@@ -76,9 +81,11 @@ natural close. Do not append a consolation backlog list.
 
 - **Read, don't write.** This command plans; it changes nothing. No commits, fixes, file
   creation, or memory writes.
-- **Options must be actionable from this worktree, this session.** Never offer "merge to main"
-  (user-initiated only), other worktrees' business, or work that plainly belongs in a fresh
-  session - name that separately in one line if it exists.
+- **Options must be about THIS session's line of work.** Suggesting `/safe-merge`/push for this
+  session's branch is in scope; never execute it unasked. Never offer repo/workspace cleanup
+  (leftover worktrees, stale branches, node_modules pruning, etc.) - the user handles those
+  deliberately elsewhere. Same for other worktrees' business or work that plainly belongs in a
+  fresh session - name that separately in one line if it exists.
 - **Respect the user's focus argument** - filter options through it; if it filters everything
   out, say so rather than stretching.
 - **Be fast.** Grounding is a minute of reads, not a research project. Never run the full e2e
