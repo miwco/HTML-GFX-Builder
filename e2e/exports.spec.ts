@@ -274,10 +274,10 @@ const IMAGE_ROUNDTRIP = `(async () => {
     if (/controlpanel/i.test(p)) panel = await f.async('string');
     else html = await f.async('string');
   }
-  // The panel's IMAGES entries: value is what gets SENT, src is what it paints.
+  // The panel's per-graphic images entries: value is what gets SENT, src is what it paints.
   var images = [];
-  var m = panel.match(/var IMAGES = (\\[[\\s\\S]*?\\]);/);
-  if (m) { try { images = JSON.parse(m[1]); } catch (e) { images = []; } }
+  var m = panel.match(/var GRAPHICS = (\\[[\\s\\S]*?\\]);/);
+  if (m) { try { images = (JSON.parse(m[1])[0] || {}).images || []; } catch (e) { images = []; } }
   return {
     skipped: false,
     html,

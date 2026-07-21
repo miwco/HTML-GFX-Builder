@@ -171,7 +171,7 @@ test('round-trip: the exported panel fires machine events, greys illegal ones, a
   const lock = panel.getByRole('button', { name: '⚡ Lock it in' });
 
   // The hello answer arrives with the resting state: everything machine-side is illegal.
-  await expect(panel.locator('#state-chip')).toBeVisible();
+  await expect(panel.locator('.state-chip')).toBeVisible();
   await expect(select).toBeDisabled();
   await expect(lock).toBeDisabled();
 
@@ -189,7 +189,7 @@ test('round-trip: the exported panel fires machine events, greys illegal ones, a
   await select.click();
   await expect(graphic.locator('#f6')).toHaveText('C');
   await expect(lock).toBeEnabled();
-  await expect(panel.locator('#state-chip')).toContainText('selected');
+  await expect(panel.locator('.state-chip')).toContainText('selected');
 
   await panel.close();
   await graphic.close();

@@ -519,6 +519,9 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
 }
 .ctl-event-destructive { border-color: #7a4a2a; }
 .ctl-event-destructive:hover { border-color: var(--accent); }
+/* Show rundown rows (the Control tab's Shows section). */
+.show-graphic-row { margin-top: 6px; gap: 4px; }
+.show-row-btn { padding: 2px 8px; font-size: 12px; flex: 0 0 auto; }
 
 /* ---------- Category grouping (Essentials / Specials) ---------- */
 .wz-cat-group { margin-bottom: 18px; }

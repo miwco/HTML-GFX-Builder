@@ -17,6 +17,16 @@ import { hasChatGraphic, chatGraphicBlock, stripChatGraphic, chatBackendRefKey, 
 import { listMyShows, type ShowRow } from '../showchat/chatData';
 import ModerationPanel from '../showchat/ModerationPanel';
 import { slug } from '../export/common';
+import { buildShowZip } from '../export/showExport';
+import {
+  addGraphicToShow,
+  createShow,
+  deleteShow,
+  loadShows,
+  moveShowGraphic,
+  removeShowGraphic,
+  type Show,
+} from '../model/shows';
 import { useTemplateStore, type PlayoutAction } from '../store/templateStore';
 
 /**
@@ -40,6 +50,31 @@ export default function ControlPanel() {
   const [chatShows, setChatShows] = useState<ShowRow[]>([]);
   const [chatShowId, setChatShowId] = useState('');
   const [chatMode, setChatMode] = useState<ChatMode>('feed');
+  // ── Shows (the rundown level): local model, aggregated control-page export ──
+  const [shows, setShows] = useState<Show[]>(() => loadShows());
+  const [showId, setShowId] = useState('');
+  const [newShowName, setNewShowName] = useState('');
+  const [showNote, setShowNote] = useState<string | null>(null);
+  const activeShow = shows.find((s) => s.id === showId) ?? null;
+
+  const makeShow = () => {
+    const next = createShow(newShowName);
+    setShows(next);
+    setShowId(next[next.length - 1]?.id ?? '');
+    setNewShowName('');
+  };
+  const addCurrent = () => {
+    if (!activeShow) return;
+    const { shows: next, error } = addGraphicToShow(activeShow.id, template);
+    setShows(next);
+    setShowNote(error ?? `✓ "${template.name}" is in the show (same name updates in place).`);
+  };
+  const exportShow = async (show: Show) => {
+    const zip = await buildShowZip(show);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    saveAs(blob, `${slug(show.name)}_show.zip`);
+    setShowNote(`✓ Exported "${show.name}" — one folder per graphic + show_controlpanel.html.`);
+  };
 
   const controls = fieldDescriptors(template.fields); // operator view: hidden fields stay hidden
   // The machine's event buttons (empty without an explicit machine — the derived linear
@@ -191,6 +226,76 @@ export default function ControlPanel() {
       <button onClick={downloadPanel} title="A self-contained operator page that drives the exported graphic">
         ⬇ Download control panel (.html)
       </button>
+
+      <div className="divider" />
+      <div className="panel-section">
+        <h3>Shows <span className="muted">— run graphics together</span></h3>
+        <p className="hint">
+          A show collects graphics that run at once (bug + lower third + ticker). Exporting it
+          packages every graphic plus <strong>one</strong> control page with a card per graphic
+          — the whole show operated from a single tab.
+        </p>
+        <div className="row">
+          <input
+            placeholder="New show name"
+            value={newShowName}
+            onChange={(e) => setNewShowName(e.target.value)}
+          />
+          <button onClick={makeShow} disabled={!newShowName.trim()}>Create</button>
+        </div>
+        {shows.length > 0 && (
+          <div className="row" style={{ marginTop: 8 }}>
+            <select className="grow" value={showId} onChange={(e) => setShowId(e.target.value)}>
+              <option value="">Pick a show…</option>
+              {shows.map((s) => (
+                <option key={s.id} value={s.id}>{s.name} ({s.graphics.length})</option>
+              ))}
+            </select>
+            {activeShow && (
+              <button className="primary" onClick={addCurrent} title="Add or update this graphic in the show">
+                + Add current
+              </button>
+            )}
+          </div>
+        )}
+        {activeShow && (
+          <>
+            {activeShow.graphics.length === 0 && (
+              <p className="muted" style={{ marginTop: 6 }}>Empty — add the current graphic, then open other graphics and add them too.</p>
+            )}
+            {activeShow.graphics.map((g, i) => (
+              <div key={g.id} className="row show-graphic-row">
+                <span className="grow" style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {i + 1}. {g.name}
+                </span>
+                <button
+                  className="show-row-btn"
+                  disabled={i === 0}
+                  onClick={() => setShows(moveShowGraphic(activeShow.id, g.id, -1))}
+                  title="Move up the rundown"
+                >↑</button>
+                <button
+                  className="show-row-btn"
+                  disabled={i === activeShow.graphics.length - 1}
+                  onClick={() => setShows(moveShowGraphic(activeShow.id, g.id, 1))}
+                  title="Move down the rundown"
+                >↓</button>
+                <button className="show-row-btn" onClick={() => setShows(removeShowGraphic(activeShow.id, g.id))} title="Remove from the show">✕</button>
+              </div>
+            ))}
+            <div className="row" style={{ marginTop: 8 }}>
+              <button onClick={() => { setShows(deleteShow(activeShow.id)); setShowId(''); }} title="Delete this show (its graphics stay saved wherever else they live)">
+                Delete show
+              </button>
+              <div className="spacer" style={{ flex: 1 }} />
+              <button className="primary" disabled={activeShow.graphics.length === 0} onClick={() => exportShow(activeShow)}>
+                ⬇ Export show package
+              </button>
+            </div>
+          </>
+        )}
+        {showNote && <p className="status-ok" style={{ marginTop: 6 }}>{showNote}</p>}
+      </div>
 
       <div className="divider" />
       <div className="panel-section">
