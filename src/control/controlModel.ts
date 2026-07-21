@@ -6,6 +6,8 @@
 
 import type { SpxField } from '../model/types';
 import type { FieldDescriptor, FieldKind } from '../model/fieldModel';
+import { parseAnimData } from '../blocks/animData';
+import { machineControls, type ControlButton } from '../blocks/animMachine';
 import { slug } from '../export/slug';
 
 /** Map an SPX ftype to a control kind. The non-data ftypes carry no control at all. */
@@ -62,16 +64,41 @@ export function fieldDescriptors(
   return out;
 }
 
+// ── Event buttons (Phase 5) ─────────────────────────────────────────────────
+// The state machine's side of the panel: every authored operator event renders as a button
+// (blocks/animMachine.ts machineControls — labels/sections/payloads come from the machine's
+// own `controls` metadata, so the list travels inside the template). Only an EXPLICIT
+// machine offers buttons: the derived linear machine's one event is `next`, which the
+// lifecycle row already carries.
+
+export type { ControlButton } from '../blocks/animMachine';
+
+/** The event buttons a template's control surfaces render (empty without an explicit machine). */
+export function eventButtons(js: string): ControlButton[] {
+  const machine = parseAnimData(js)?.machine;
+  return machine ? machineControls(machine) : [];
+}
+
 // ── The control ⇄ graphic message protocol ──────────────────────────────────
 // A control panel and the graphic it drives talk over a BroadcastChannel (same browser,
-// same origin — local, Era 4). Era 5 swaps the transport for a Supabase Realtime channel
-// with the SAME message shape, so nothing above the transport changes.
+// same origin — local, Era 4). Era 5.3 added a Supabase Realtime transport with the SAME
+// message shape, so nothing above the transport changes. Phase 5 adds the machine cues:
+// `event` rides the serial queue (noacgDispatch — the payload lands only if the machine
+// accepts the event), `snap` enters states instantly (noacgSnap — recovery, emergency
+// jumps), and `hello` asks the graphic to answer with its current machine state.
 
 export type ControlMessage =
   | { t: 'update'; data: Record<string, string> }
   | { t: 'play' }
   | { t: 'stop' }
-  | { t: 'next' };
+  | { t: 'next' }
+  | { t: 'event'; event: string; payload?: Record<string, string> }
+  | { t: 'snap'; snap: Record<string, string> | null }
+  | { t: 'hello' };
+
+/** What the graphic answers on the same channel: its machine state after every handled
+ *  message (and on `hello`), so a panel can show the current state and grey illegal buttons. */
+export type ControlReply = { t: 'state'; state: { groups: Record<string, string> } };
 
 /** The channel name a template's control panel and graphic share (derived from its name). */
 export function controlChannelName(templateName: string): string {

@@ -98,13 +98,18 @@ export function realtimeControlBlock(cfg: RemoteControlConfig): string {
   var full = 'realtime:' + TOPIC, n = 0, joinRef = null, ws = null, hb = null, backoff = 1000;
   function ref() { return String(++n); }
 
-  // Reuse the graphic's own runtime — identical to the Era-4 BroadcastChannel receiver.
+  // Reuse the graphic's own runtime — identical to the Era-4 BroadcastChannel receiver,
+  // including the machine cues ('event' rides the serial queue, 'snap' enters instantly).
+  // Send-only from the panel side, so no state replies here — the hosted control page
+  // (Phase 5) reads state through its own durable channel instead.
   function dispatch(m) {
     if (!m) return;
     if (m.t === 'play' && typeof play === 'function') play();
     else if (m.t === 'stop' && typeof stop === 'function') stop();
     else if (m.t === 'next' && typeof next === 'function') next();
     else if (m.t === 'update' && typeof update === 'function') update(JSON.stringify(m.data || {}));
+    else if (m.t === 'event' && typeof noacgDispatch === 'function') noacgDispatch(m.event, m.payload);
+    else if (m.t === 'snap' && typeof noacgSnap === 'function') noacgSnap(m.snap || null);
   }
 
   function connect() {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { detectPrefix } from '../model/structure';
 import { parseAnimData } from '../blocks/animData';
-import { allOperatorEvents } from '../blocks/animMachine';
+import { machineControls } from '../blocks/animMachine';
 
 interface Props {
   iframeRef: RefObject<HTMLIFrameElement | null>;
@@ -93,12 +93,12 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
   const templateJs = useTemplateStore((s) => s.template.js);
   const sendEvent = useTemplateStore((s) => s.sendEvent);
 
-  // The EVENT STRIP (Phase 1's minimal machine surface): one button per authored operator
-  // event plus a current-state chip — only when the template carries an EXPLICIT machine, so
-  // ordinary templates see zero change. The graph editor itself is later work (Phase 4).
+  // The EVENT STRIP: one button per authored operator event plus a current-state chip — only
+  // when the template carries an EXPLICIT machine, so ordinary templates see zero change.
+  // Buttons wear the machine's declared control labels (Phase 5) when it carries any.
   const machineEvents = useMemo(() => {
     const data = parseAnimData(templateJs);
-    return data?.machine ? allOperatorEvents(data.machine) : null;
+    return data?.machine ? machineControls(data.machine) : null;
   }, [templateJs]);
   const [machineState, setMachineState] = useState('');
 
@@ -327,14 +327,14 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
       </button>
       {machineEvents && machineEvents.length > 0 && (
         <div className="simulator-events" data-testid="sim-events">
-          {machineEvents.map((event) => (
+          {machineEvents.map((e) => (
             <button
-              key={event}
-              onClick={() => sendEvent(event)}
-              title={`Dispatch the "${event}" event (fires only where the graph allows it)`}
-              data-testid={`sim-event-${event}`}
+              key={e.event}
+              onClick={() => sendEvent(e.event)}
+              title={`Dispatch the "${e.event}" event (fires only where the graph allows it)`}
+              data-testid={`sim-event-${e.event}`}
             >
-              ⚡ {event}
+              ⚡ {e.label}
             </button>
           ))}
           <span className="simulator-state mono" title="The machine's current state" data-testid="sim-state-chip">

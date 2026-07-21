@@ -112,6 +112,89 @@ test('live data: a published CSV drives the graphic (mocked sheet)', async ({ pa
   await expect(frame.locator('#f1')).toHaveText('From The Sheet');
 });
 
+// ── Phase 5: the state machine's side of the panel ──────────────────────────
+// A template with an explicit machine grows event buttons GENERATED from it — labels and
+// sections from the machine's own `controls` metadata, legality from the graph.
+
+test('the Control tab renders labeled event buttons from the machine and fires them', async ({ page }) => {
+  await createProject(page, { name: 'Arena Quiz' });
+  await page.getByTestId('dock-tab-control').click();
+
+  // The quiz type's declared controls, by section, wearing their labels.
+  const section = page.locator('.ctl-event-section', { hasText: 'Answer' });
+  await expect(section.getByRole('button', { name: '⚡ Select answer' })).toBeVisible();
+  await expect(section.getByRole('button', { name: '⚡ Lock it in' })).toBeVisible();
+  await expect(section.getByRole('button', { name: '⚡ Reveal correct' })).toBeVisible();
+
+  // Play, then Select — the event rides the store into the preview's machine.
+  await page.locator('.ctl-actions').getByRole('button', { name: '▶ Play' }).click();
+  await section.getByRole('button', { name: '⚡ Select answer' }).click();
+  await expect
+    .poll(async () =>
+      page.frameLocator('iframe.preview-frame').locator('body').evaluate(() => {
+        const w = window as unknown as { noacgMachineState?: () => { groups: Record<string, string> } };
+        return w.noacgMachineState?.().groups.main ?? null;
+      }),
+    )
+    .toBe('selected');
+});
+
+test('round-trip: the exported panel fires machine events, greys illegal ones, and shows the state', async ({ page, context }) => {
+  await createProject(page, { name: 'Arena Quiz' });
+  await page.getByTestId('dock-tab-export').click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /Validate & download/ }).click(),
+  ]);
+  const zip = await JSZip.loadAsync(readFileSync(await download.path()));
+  const files = new Map<string, string>();
+  for (const n of Object.keys(zip.files)) {
+    if (!zip.files[n].dir) files.set(n.replace(/^arena_quiz\//, ''), await zip.file(n)!.async('string'));
+  }
+  const serve = (route: Route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
+    const body = files.get(path);
+    if (body == null) return route.fulfill({ status: 404, body: 'nf' });
+    const ct = path.endsWith('.css') ? 'text/css' : path.endsWith('.js') ? 'application/javascript' : 'text/html';
+    return route.fulfill({ status: 200, contentType: ct, body });
+  };
+
+  const graphic = await context.newPage();
+  await graphic.route('http://cp-machine.local/**', serve);
+  await graphic.goto('http://cp-machine.local/index.html', { waitUntil: 'load' });
+
+  const panel = await context.newPage();
+  await panel.route('http://cp-machine.local/**', serve);
+  await panel.goto('http://cp-machine.local/controlpanel.html', { waitUntil: 'load' });
+
+  const select = panel.getByRole('button', { name: '⚡ Select answer' });
+  const lock = panel.getByRole('button', { name: '⚡ Lock it in' });
+
+  // The hello answer arrives with the resting state: everything machine-side is illegal.
+  await expect(panel.locator('#state-chip')).toBeVisible();
+  await expect(select).toBeDisabled();
+  await expect(lock).toBeDisabled();
+
+  // Play → the walk enters the question waypoint; select becomes legal, lock stays out
+  // (its only arrow leaves `selected`) — the structural guard, mirrored as greying.
+  await panel.getByRole('button', { name: '▶ Play' }).click();
+  await expect(select).toBeEnabled();
+  await expect(lock).toBeDisabled();
+
+  // Stage an answer with Live OFF, then Select: the value must land ONLY as the event's
+  // payload (the atomic multi-part change), never as a live update.
+  await panel.locator('#live').uncheck();
+  await panel.locator('.field', { hasText: 'Selected answer' }).locator('select').selectOption('C');
+  await expect(graphic.locator('#f6')).not.toHaveText('C');
+  await select.click();
+  await expect(graphic.locator('#f6')).toHaveText('C');
+  await expect(lock).toBeEnabled();
+  await expect(panel.locator('#state-chip')).toContainText('selected');
+
+  await panel.close();
+  await graphic.close();
+});
+
 test('round-trip: the exported control panel drives the exported graphic over the channel', async ({ page, context }) => {
   await createScoreboard(page);
   await page.getByTestId('dock-tab-export').click();

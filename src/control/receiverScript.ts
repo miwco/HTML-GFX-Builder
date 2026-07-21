@@ -8,18 +8,38 @@ export function controlReceiverScript(templateName: string, channelName: string)
   return `<script id="spx-control-receiver">
 /* Control receiver — ${templateName}.
    A control panel on the same machine (controlpanel.html) posts messages here; we forward
-   them to the graphic's own update()/play()/stop()/next(). Remove this block to opt out. */
+   them to the graphic's own update()/play()/stop()/next() — and, when this graphic carries a
+   state machine, 'event' and 'snap' to noacgDispatch()/noacgSnap() (the machine cues a
+   generated control page sends). After every handled message the receiver answers with the
+   machine state, and a lightweight watcher reports timer-driven changes too, so the panel's
+   state chip stays honest. Remove this block to opt out. */
 (function () {
   if (typeof BroadcastChannel === 'undefined') return;
   try {
     var ch = new BroadcastChannel('${channelName}');
+    var lastSent = '';
+    function reply(force) {
+      if (typeof noacgMachineState !== 'function') return;
+      try {
+        var state = noacgMachineState();
+        var key = JSON.stringify(state);
+        if (!force && key === lastSent) return;
+        lastSent = key;
+        ch.postMessage({ t: 'state', state: state });
+      } catch (e) { /* state unavailable — the panel just shows no chip */ }
+    }
     ch.onmessage = function (ev) {
       var m = ev.data || {};
       if (m.t === 'update' && typeof update === 'function') update(JSON.stringify(m.data || {}));
       else if (m.t === 'play' && typeof play === 'function') play();
       else if (m.t === 'stop' && typeof stop === 'function') stop();
       else if (m.t === 'next' && typeof next === 'function') next();
+      else if (m.t === 'event' && typeof noacgDispatch === 'function') noacgDispatch(m.event, m.payload);
+      else if (m.t === 'snap' && typeof noacgSnap === 'function') noacgSnap(m.snap || null);
+      reply(m.t === 'hello');
     };
+    // Timers advance the machine with no message to answer — a cheap watcher reports those.
+    if (typeof noacgMachineState === 'function') setInterval(function () { reply(false); }, 1000);
   } catch (e) { /* channel unavailable — the graphic still works, just not remotely driven */ }
 })();
 </script>`;

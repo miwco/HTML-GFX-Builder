@@ -174,11 +174,34 @@ export interface AnimGroup {
   transitions: AnimTransition[];
 }
 
+/** How a control surface presents one operator event (Phase 5): the button's label, its
+ *  grouping, and the field ids whose CURRENT values ride the event as its payload. ADDITIVE
+ *  OPTIONAL (no version bump): absent means "a plain button named after the event", and only
+ *  control surfaces read it — the interpreter ignores it entirely. It lives IN the template
+ *  so an exported control page keeps its labels with no registry to ask. */
+export interface MachineControl {
+  /** The operator event this button fires (must match an authored transition to do anything). */
+  event: string;
+  /** Button text; defaults to the event name. */
+  label?: string;
+  /** Sort key within the surface; unordered entries keep declaration order after ordered ones. */
+  order?: number;
+  /** Groups buttons on a control surface ('Clock', 'Answer'). */
+  section?: string;
+  /** Field ids (fN) whose current values are sent WITH the event — applied only if the
+   *  machine accepts it, which is what makes a multi-part change atomic. */
+  payload?: string[];
+  /** Style the button as consequential (a lock, a final call). */
+  destructive?: boolean;
+}
+
 /** The optional state machine. groups[0] is the main (default-path) group — order is
  *  meaning. When absent, the graphic IS the implicit one-group linear machine derived from
  *  `steps` (blocks/animMachine.ts deriveMachine) — derived on read, never persisted. */
 export interface AnimMachine {
   groups: AnimGroup[];
+  /** Control-surface presentation of the operator events (Phase 5). ADDITIVE OPTIONAL. */
+  controls?: MachineControl[];
 }
 
 export interface AnimData {
@@ -425,10 +448,31 @@ function isMachineShape(raw: unknown, stepCount: number): raw is AnimMachine {
       } else if (t.after !== undefined) {
         return false;
       }
-      // Reserved Phase-4 styling fields: type-checked only, consumed by nothing yet.
+      // Transition-style fields: an unknown style name degrades (entry timeline plays), but
+      // a wrong TYPE is off-shape like everywhere else.
       if (t.style !== undefined && typeof t.style !== 'string') return false;
       if (t.duration !== undefined && (typeof t.duration !== 'number' || !(t.duration > 0))) return false;
       if (t.ease !== undefined && typeof t.ease !== 'string') return false;
+    }
+  }
+  if (m.controls !== undefined) {
+    if (!Array.isArray(m.controls)) return false;
+    const events = new Set<string>();
+    for (const c of m.controls) {
+      if (!c || typeof c !== 'object') return false;
+      // One entry per event — a control surface renders each event as exactly one button.
+      if (typeof c.event !== 'string' || !ANIM_CALL_NAME_RE.test(c.event) || events.has(c.event)) return false;
+      events.add(c.event);
+      if (c.label !== undefined && typeof c.label !== 'string') return false;
+      if (c.order !== undefined && (typeof c.order !== 'number' || !Number.isFinite(c.order))) return false;
+      if (c.section !== undefined && typeof c.section !== 'string') return false;
+      if (c.payload !== undefined) {
+        if (!Array.isArray(c.payload)) return false;
+        for (const key of c.payload) {
+          if (typeof key !== 'string' || !key) return false;
+        }
+      }
+      if (c.destructive !== undefined && typeof c.destructive !== 'boolean') return false;
     }
   }
   return true;
@@ -592,10 +636,11 @@ function serializeGroup(group: AnimGroup, indent: string): string[] {
 /**
  * Serialize the data canonically. Deterministic by construction: fixed key order
  * (version/root/speed/steps/machine; name/duration/ease/reveals/hides/calls/dynamics/loops/
- * layers; time/value/ease; id/initial/defaultPath/states/transitions; id/name/at/timeline;
- * from/to/trigger/event/after/style/duration/ease), fixed 2-space indentation, keyframes,
- * calls, dynamics, states and transitions one per line, all sorted, numbers rounded to 3
- * decimals.
+ * layers; time/value/ease; groups/controls; id/initial/defaultPath/states/transitions;
+ * id/name/at/timeline; from/to/trigger/event/after/style/duration/ease;
+ * event/label/order/section/payload/destructive), fixed 2-space indentation, keyframes,
+ * calls, dynamics, states, transitions and controls one per line, all sorted, numbers
+ * rounded to 3 decimals.
  * serialize(parse(serialize(x))) === serialize(x) — a fixed point — so a small visual edit
  * only ever touches the lines it changed. Always writes the CURRENT version: the first edit
  * of a version-1 document is its migration moment (a one-line diff).
@@ -613,6 +658,7 @@ export function serializeAnimData(data: AnimData): string {
   });
   lines.push(data.machine ? '  ],' : '  ]');
   if (data.machine) {
+    const controls = data.machine.controls;
     lines.push('  "machine": {');
     lines.push('    "groups": [');
     data.machine.groups.forEach((group, gi) => {
@@ -620,7 +666,27 @@ export function serializeAnimData(data: AnimData): string {
       if (gi < data.machine!.groups.length - 1) groupLines[groupLines.length - 1] += ',';
       lines.push(...groupLines);
     });
-    lines.push('    ]');
+    if (controls && controls.length > 0) {
+      // Ordered entries first (by their sort key), unordered ones after in event order — a
+      // content-only sort, so the fixed-point proof holds.
+      const sorted = [...controls].sort(
+        (a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.event.localeCompare(b.event),
+      );
+      lines.push('    ],');
+      lines.push('    "controls": [');
+      sorted.forEach((c, ci) => {
+        const parts = [`"event": ${JSON.stringify(c.event)}`];
+        if (c.label !== undefined) parts.push(`"label": ${JSON.stringify(c.label)}`);
+        if (c.order !== undefined) parts.push(`"order": ${round(c.order)}`);
+        if (c.section !== undefined) parts.push(`"section": ${JSON.stringify(c.section)}`);
+        if (c.payload !== undefined) parts.push(`"payload": [${c.payload.map((k) => JSON.stringify(k)).join(', ')}]`);
+        if (c.destructive !== undefined) parts.push(`"destructive": ${c.destructive}`);
+        lines.push(`      { ${parts.join(', ')} }${ci < sorted.length - 1 ? ',' : ''}`);
+      });
+      lines.push('    ]');
+    } else {
+      lines.push('    ]');
+    }
     lines.push('  }');
   }
   lines.push('}');

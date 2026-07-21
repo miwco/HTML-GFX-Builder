@@ -10,12 +10,29 @@
 
 import type { SpxField } from '../model/types';
 import type { FieldDescriptor } from '../model/fieldModel';
-import { controlChannelName, fieldDescriptors } from './controlModel';
+import { parseAnimData } from '../blocks/animData';
+import { controlChannelName, eventButtons, fieldDescriptors } from './controlModel';
 import type { RemoteControlConfig } from './realtimeControl';
 import { isImageAsset } from '../assets/assetUtils';
 
 interface EmittedControl extends FieldDescriptor {
   value: string;
+}
+
+/** Which states each event fires from, per group — the panel greys a button the machine
+ *  would drop (same structural guard, precomputed so the page needs no graph code). */
+function emitLegality(js: string): Record<string, Record<string, string[]>> {
+  const machine = parseAnimData(js)?.machine;
+  const legal: Record<string, Record<string, string[]>> = {};
+  if (!machine) return legal;
+  for (const group of machine.groups) {
+    for (const t of group.transitions) {
+      if (t.trigger !== 'operator' || !t.event) continue;
+      const perGroup = (legal[t.event] ??= {});
+      (perGroup[group.id] ??= []).push(t.from);
+    }
+  }
+  return legal;
 }
 
 /** The descriptors + their current values, serialized into the page's generic renderer. */
@@ -38,12 +55,14 @@ function jsonForScript(value: unknown): string {
  * data: URL is the only value that resolves at both ends.
  */
 export function renderControlPanelHtml(
-  template: { name: string; fields: SpxField[]; assets: { path: string; data?: unknown }[] },
+  template: { name: string; fields: SpxField[]; js: string; assets: { path: string; data?: unknown }[] },
   remote?: RemoteControlConfig | null,
   opts?: { inlineAssets?: boolean },
 ): string {
   const channel = controlChannelName(template.name);
   const controls = emitControls(template.fields);
+  const events = eventButtons(template.js);
+  const legality = emitLegality(template.js);
   const images = template.assets
     .filter((a) => isImageAsset(a.path))
     .map((a) => {
@@ -70,7 +89,16 @@ export function renderControlPanelHtml(
   header { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:12px; }
   header h1 { font-size:16px; margin:0; }
   header .status { margin-left:auto; font-size:12px; color:var(--dim); }
+  header .state-chip { font-size:12px; color:var(--accent); border:1px solid var(--line); border-radius:999px; padding:2px 10px; display:none; }
   main { max-width:640px; margin:0 auto; padding:18px; }
+  .events { padding:12px 0; border-bottom:1px solid var(--line); }
+  .events h2 { font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); margin:10px 0 6px; font-weight:600; }
+  .events .btns { display:flex; flex-wrap:wrap; gap:8px; }
+  .events button { min-width:96px; }
+  .events button:disabled { opacity:.4; cursor:default; }
+  .events button:disabled:hover { border-color:var(--line); }
+  .events button.destructive { border-color:#8a4a2a; background:#2d1c12; }
+  .events button.destructive:hover { border-color:#e0763a; }
   .row { display:flex; gap:8px; align-items:center; }
   .field { padding:10px 0; border-bottom:1px solid var(--line); }
   .field > label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); margin-bottom:6px; }
@@ -90,9 +118,13 @@ export function renderControlPanelHtml(
 <body>
 <header>
   <h1>${template.name}</h1>
+  <span class="state-chip" id="state-chip" title="The graphic's current machine state"></span>
   <span class="status" id="status">connecting…</span>
 </header>
-<main id="fields"></main>
+<main>
+  <div id="events"></div>
+  <div id="fields"></div>
+</main>
 <div class="actions">
   <label class="live"><input type="checkbox" id="live" checked style="width:auto" /> live</label>
   <button class="primary" id="play">▶ Play</button>
@@ -102,6 +134,8 @@ export function renderControlPanelHtml(
 </div>
 <script>
 var CONTROLS = ${jsonForScript(controls)};
+var EVENTS = ${jsonForScript(events)};       // machine event buttons: {event,label,section?,payload?,destructive?}
+var LEGAL = ${jsonForScript(legality)};      // event -> group -> the states it fires from (the structural guard)
 var IMAGES = ${jsonForScript(images)};
 var CHANNEL = ${jsonForScript(channel)};
 var REMOTE = ${jsonForScript(remote ?? null)};   // {ref,key,topic} when remote control is enabled, else null
@@ -221,6 +255,66 @@ function buildControl(c) {
 var host = document.getElementById('fields');
 CONTROLS.forEach(function (c) { host.appendChild(buildControl(c)); });
 if (CONTROLS.length === 0) host.appendChild(el('p', {}, ['This template has no editable fields.']));
+
+// ── Machine event buttons (generated from the graphic's state machine) ──
+// Grouped by section; a button carries its payload fields' CURRENT values, applied only if
+// the machine accepts the event (that is what makes a multi-part change atomic). While we
+// know the graphic's state (it answers on the channel), a button the machine would drop is
+// greyed; before the first answer everything is enabled and the structural guard decides.
+var machineState = null;
+var eventBtns = [];
+function legalNow(ev) {
+  if (!machineState) return true;
+  var perGroup = LEGAL[ev];
+  if (!perGroup) return false;
+  for (var gid in perGroup) {
+    if (perGroup[gid].indexOf(machineState.groups[gid]) !== -1) return true;
+  }
+  return false;
+}
+function paintState() {
+  var chip = document.getElementById('state-chip');
+  if (machineState) {
+    var parts = [];
+    var many = Object.keys(machineState.groups).length > 1;
+    for (var gid in machineState.groups) parts.push((many ? gid + ': ' : '') + machineState.groups[gid]);
+    chip.textContent = parts.join(' · ');
+    chip.style.display = 'inline-block';
+  }
+  eventBtns.forEach(function (entry) { entry.btn.disabled = !legalNow(entry.event); });
+}
+function sendEvent(e) {
+  var payload = null;
+  (e.payload || []).forEach(function (key) {
+    if (state[key] !== undefined) { payload = payload || {}; payload[key] = state[key]; }
+  });
+  post(payload ? { t: 'event', event: e.event, payload: payload } : { t: 'event', event: e.event });
+}
+if (EVENTS.length > 0) {
+  var evHost = document.getElementById('events');
+  var sections = {};
+  EVENTS.forEach(function (e) {
+    var name = e.section || 'Events';
+    if (!sections[name]) {
+      var wrap = el('div', {}, [el('h2', {}, [name])]);
+      sections[name] = el('div', { class: 'btns' });
+      wrap.appendChild(sections[name]);
+      evHost.appendChild(wrap);
+    }
+    var btn = el('button', e.destructive ? { class: 'destructive' } : {}, ['⚡ ' + e.label]);
+    btn.onclick = function () { sendEvent(e); };
+    sections[name].appendChild(btn);
+    eventBtns.push({ event: e.event, btn: btn });
+  });
+  evHost.className = 'events';
+}
+
+// The graphic answers every message (and 'hello') with its machine state.
+if (ch) ch.onmessage = function (ev) {
+  var m = ev.data || {};
+  if (m.t === 'state' && m.state) { machineState = m.state; paintState(); }
+};
+if (ch && EVENTS.length > 0) post({ t: 'hello' });
 
 document.getElementById('play').onclick = function () { sendUpdate(); post({ t: 'play' }); };
 document.getElementById('stop').onclick = function () { post({ t: 'stop' }); };

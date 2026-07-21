@@ -17,9 +17,9 @@
 // emits exactly what it emitted before. Most types are in that class, and that is the design
 // working rather than a shortcut.
 
-import type { AnimData, AnimGroup, AnimState, AnimStep, AnimTransition, AnimLayerTracks } from '../../blocks/animData';
+import type { AnimData, AnimGroup, AnimMachine, AnimState, AnimStep, AnimTransition, AnimLayerTracks, MachineControl } from '../../blocks/animData';
 import { isAnimData, parseAnimData } from '../../blocks/animData';
-import { deriveMachine, MAIN_GROUP_ID, spxSteps } from '../../blocks/animMachine';
+import { allOperatorEvents, deriveMachine, MAIN_GROUP_ID, spxSteps } from '../../blocks/animMachine';
 import { replaceDefinitionInHtml } from '../../model/spxDefinition';
 import { writeAnimData } from '../shared/animRuntime';
 import type { FieldKind, FieldOption } from '../../model/fieldModel';
@@ -398,7 +398,38 @@ export function compileMachine(
       transitions: group.states.flatMap((s) => s.edges.map((e) => toTransition(e, path))),
     });
   }
-  return { groups };
+  const machine: AnimMachine = { groups };
+  const controls = compileControls(type, machine);
+  if (controls.length > 0) machine.controls = controls;
+  return machine;
+}
+
+/**
+ * The type's control declarations, resolved into the persisted machine (Phase 5): logical
+ * payload keys become the `fN` ids they compiled to, and an entry whose event no arrow
+ * carries is dropped (its button would fire nothing). The result travels INSIDE the template,
+ * so an exported control page keeps its labels with no type registry to ask.
+ */
+function compileControls(type: GraphicType, machine: AnimMachine): MachineControl[] {
+  const authored = allOperatorEvents(machine);
+  const out: MachineControl[] = [];
+  for (const declared of type.controls) {
+    if (!authored.includes(declared.event)) continue;
+    const control: MachineControl = { event: declared.event, label: declared.label };
+    if (declared.order !== undefined) control.order = declared.order;
+    if (declared.section !== undefined) control.section = declared.section;
+    if (declared.payload !== undefined) {
+      const resolved = declared.payload.map((key) => {
+        const id = fieldIdFor(type.fields, key);
+        if (!id) throw new Error(`GraphicType "${type.id}": control "${declared.event}" names an unknown payload field "${key}".`);
+        return id;
+      });
+      if (resolved.length > 0) control.payload = resolved;
+    }
+    if (declared.destructive !== undefined) control.destructive = declared.destructive;
+    out.push(control);
+  }
+  return out;
 }
 
 /**

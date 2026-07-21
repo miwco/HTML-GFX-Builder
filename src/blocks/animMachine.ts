@@ -179,6 +179,45 @@ export function allOperatorEvents(machine: AnimMachine): string[] {
   return events;
 }
 
+/** One button of a control surface: the event plus its declared presentation, resolved. */
+export interface ControlButton {
+  event: string;
+  label: string;
+  section?: string;
+  payload?: string[];
+  destructive?: boolean;
+}
+
+/**
+ * The machine's button list — THE one merge every control surface renders (the Control tab,
+ * the standalone controlpanel.html, the simulator's event strip). Every authored operator
+ * event gets a button; a `machine.controls` entry dresses its event (label, section, payload,
+ * destructive) and sets the order, and events nobody declared follow as plain buttons named
+ * after themselves. A declared entry whose event no arrow carries is skipped here (a button
+ * must fire something) — validateMachine warns about it. An UNDECLARED `next` is skipped
+ * too: the lifecycle » Next button already fires it (the walk and any authored rejoin), so
+ * a second ⚡ button would be the same control twice.
+ */
+export function machineControls(machine: AnimMachine): ControlButton[] {
+  const authored = allOperatorEvents(machine);
+  const declared = machine.controls ?? [];
+  const byEvent = new Map(declared.map((c) => [c.event, c]));
+  // Declared order first (the serializer already sorted by `order`), then the undeclared
+  // events in authored order.
+  const events = [
+    ...declared.map((c) => c.event).filter((e) => authored.includes(e)),
+    ...authored.filter((e) => !byEvent.has(e) && e !== 'next'),
+  ];
+  return events.map((event) => {
+    const c = byEvent.get(event);
+    const button: ControlButton = { event, label: c?.label ?? event };
+    if (c?.section !== undefined) button.section = c.section;
+    if (c?.payload !== undefined) button.payload = c.payload;
+    if (c?.destructive !== undefined) button.destructive = c.destructive;
+    return button;
+  });
+}
+
 /** The group's traversal edges: the default-path walk's own edges first (they model the
  *  play/next built-ins), then authored operator + timer transitions (data-condition never
  *  fires). Shared by reachability and the canonical snap path. */
@@ -317,5 +356,15 @@ export function validateMachine(data: AnimData): { errors: string[]; warnings: s
       }
     }
   });
+  // A control entry for an event no arrow carries would render a dead button — machineControls
+  // skips it, and this says why the declared button is missing.
+  if (machine.controls) {
+    const authored = allOperatorEvents(machine);
+    for (const c of machine.controls) {
+      if (!authored.includes(c.event)) {
+        warnings.push(`Machine controls: no transition fires the event "${c.event}" — its button is not rendered.`);
+      }
+    }
+  }
   return { errors, warnings };
 }

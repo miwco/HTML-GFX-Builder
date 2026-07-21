@@ -315,6 +315,22 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
             'A transition carries a style (fade/push/wipe), but the interpreter in this template predates transition styles — re-emit the ANIMATION region (replaceRegionWithAnimData) so the styled change can play.',
         });
       }
+
+      // A control button's payload names field ids whose values ride the event — a key no
+      // field carries would send nothing and silently break the atomic-change promise.
+      if (data.machine?.controls) {
+        const fieldIds = new Set(template.fields.map((f) => f.field));
+        for (const control of data.machine.controls) {
+          for (const key of control.payload ?? []) {
+            if (!fieldIds.has(key)) {
+              warnings.push({
+                rule: 'machine',
+                message: `Machine controls: "${control.event}" sends the value of "${key}", but no field has that id.`,
+              });
+            }
+          }
+        }
+      }
     }
   }
 

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { fieldDescriptors } from '../control/controlModel';
+import { eventButtons, fieldDescriptors, type ControlButton } from '../control/controlModel';
 import SpxFieldRow from './fields/SpxFieldRow';
 import { renderControlPanelHtml } from '../control/controlPanelHtml';
 import { hasLiveData, liveDataBlock, stripLiveData } from '../control/liveData';
@@ -29,6 +29,8 @@ import { useTemplateStore, type PlayoutAction } from '../store/templateStore';
 export default function ControlPanel() {
   const template = useTemplateStore((s) => s.template);
   const sendControl = useTemplateStore((s) => s.sendControl);
+  const sendEvent = useTemplateStore((s) => s.sendEvent);
+  const sampleData = useTemplateStore((s) => s.sampleData);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const setActiveTab = useTemplateStore((s) => s.setActiveTab);
   const [live, setLive] = useState(true);
@@ -40,6 +42,26 @@ export default function ControlPanel() {
   const [chatMode, setChatMode] = useState<ChatMode>('feed');
 
   const controls = fieldDescriptors(template.fields); // operator view: hidden fields stay hidden
+  // The machine's event buttons (empty without an explicit machine — the derived linear
+  // machine's one event is `next`, which the lifecycle row already carries).
+  const events = useMemo(() => eventButtons(template.js), [template.js]);
+  const eventSections = useMemo(() => {
+    const sections = new Map<string, ControlButton[]>();
+    for (const e of events) {
+      const name = e.section ?? 'Events';
+      sections.set(name, [...(sections.get(name) ?? []), e]);
+    }
+    return [...sections.entries()];
+  }, [events]);
+  // A button's payload rides the event with the fields' CURRENT sample values — applied by
+  // the graphic only if the machine accepts the event (the atomic multi-part change).
+  const fireEvent = (e: ControlButton) => {
+    const payload: Record<string, string> = {};
+    for (const key of e.payload ?? []) {
+      if (sampleData[key] !== undefined) payload[key] = sampleData[key];
+    }
+    sendEvent(e.event, Object.keys(payload).length > 0 ? payload : undefined);
+  };
   const liveDataOn = hasLiveData(template.js);
   const remoteOn = hasRealtimeControl(template.js);
   const backendConfigured = isBackendConfigured();
@@ -131,6 +153,32 @@ export default function ControlPanel() {
       {controls.map((d) => (
         <SpxFieldRow key={d.key} descriptor={d} live={live} />
       ))}
+
+      {eventSections.length > 0 && (
+        <div className="ctl-events">
+          {eventSections.map(([section, btns]) => (
+            <div key={section} className="ctl-event-section">
+              <h4>{section}</h4>
+              <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                {btns.map((e) => (
+                  <button
+                    key={e.event}
+                    className={e.destructive ? 'ctl-event-destructive' : undefined}
+                    onClick={() => fireEvent(e)}
+                    title={
+                      e.payload?.length
+                        ? `Fires "${e.event}" with ${e.payload.join(', ')} — only where the graph allows it`
+                        : `Fires "${e.event}" — only where the graph allows it`
+                    }
+                  >
+                    ⚡ {e.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="ctl-actions">
         <button className="primary" onClick={() => drive('play')}>▶ Play</button>
