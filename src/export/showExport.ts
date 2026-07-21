@@ -14,7 +14,14 @@ import { renderShowControlPanelHtml } from '../control/controlPanelHtml';
 import { hostedReceiverConfig, hostedReceiverBlock, stripHostedReceiver } from '../control/hostedReceiver';
 import type { Show } from '../model/shows';
 
-export async function buildShowZip(show: Show): Promise<JSZip> {
+/** Optional seam for the hosted receiver's backend coordinates. Defaults to the app's own
+ *  configured backend (control/hostedReceiver.ts); the offline e2e suite — which builds with
+ *  no backend env at all — passes explicit coordinates to exercise the injection. */
+export interface ShowExportOptions {
+  hostedBackend?: { ref: string; key: string } | null;
+}
+
+export async function buildShowZip(show: Show, opts?: ShowExportOptions): Promise<JSZip> {
   const zip = new JSZip();
   const root = zip.folder(slug(show.name))!;
   const used = new Set<string>();
@@ -28,7 +35,11 @@ export async function buildShowZip(show: Show): Promise<JSZip> {
     // package is drivable from the hosted page as-is. The saved snapshot stays clean — the
     // block exists only in the export; an unpublished show exports 100% offline.
     let template = graphic.template;
-    const hosted = show.hostedSlug ? hostedReceiverConfig(show.hostedSlug, graphic.name) : null;
+    const hosted = show.hostedSlug
+      ? opts?.hostedBackend
+        ? { ...opts.hostedBackend, slug: show.hostedSlug, graphic: graphic.name }
+        : hostedReceiverConfig(show.hostedSlug, graphic.name)
+      : null;
     if (hosted) {
       const js = stripHostedReceiver(template.js).trimEnd() + '\n\n' + hostedReceiverBlock(hosted);
       template = { ...template, js };

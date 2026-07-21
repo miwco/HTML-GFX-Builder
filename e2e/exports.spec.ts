@@ -229,6 +229,81 @@ test('ograf: a valid v1 Graphic whose Web Component passes the action contract',
   expect(result.cleared).toBe(true);
 });
 
+test('ograf: the machine\'s operator events are custom actions, guarded like every surface', async ({ page }) => {
+  await createProject(page, { name: 'Arena Quiz' });
+  const zip = await downloadTarget(page, 'OGraf (EBU) export');
+
+  // The manifest declares the machine's events with their control labels + payload schemas.
+  const manifest = JSON.parse(await zip.file('arena_quiz/arena_quiz.ograf.json')!.async('string'));
+  const actions = manifest.customActions as { id: string; name: string; schema?: { properties: Record<string, unknown> } }[];
+  expect(actions.map((a) => [a.id, a.name])).toEqual([
+    ['select', 'Select answer'],
+    ['lock', 'Lock it in'],
+    ['judge', 'Reveal correct'],
+  ]);
+  expect(Object.keys(actions[0].schema!.properties)).toEqual(['f6']); // selectedAnswer rides `select`
+
+  const files = new Map<string, string>();
+  for (const name of Object.keys(zip.files)) {
+    if (!zip.files[name].dir) files.set(name.replace(/^arena_quiz\//, ''), await zip.file(name)!.async('string'));
+  }
+  await page.route('http://ograf-quiz.local/**', (route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^\//, '');
+    const body = files.get(path);
+    if (body == null) return route.fulfill({ status: 404, body: 'not found' });
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      headers: { 'access-control-allow-origin': '*' },
+      body,
+    });
+  });
+
+  const result = await page.evaluate(async () => {
+    const mod = await import('http://ograf-quiz.local/graphic.mjs');
+    customElements.define('ograf-quiz-under-test', mod.default);
+    const el = document.createElement('ograf-quiz-under-test') as HTMLElement & {
+      load(p: unknown): Promise<unknown>;
+      playAction(p: unknown): Promise<{ currentStep?: number }>;
+      customAction(p: unknown): Promise<{ statusCode: number; currentStep?: number }>;
+      dispose(): Promise<unknown>;
+    };
+    document.body.appendChild(el);
+    await el.load({ data: {} });
+    await el.playAction({}); // on air: the question waypoint
+
+    // `select` carries its payload atomically; a branch move keeps the walk pointer.
+    const selected = await el.customAction({ id: 'select', payload: { f6: 'C' } });
+    const f6 = el.querySelector('#f6')?.textContent;
+    const locked = await el.customAction({ id: 'lock' });
+    // After Lock, `select` is STRUCTURALLY illegal — the guard drops the event AND its
+    // payload (no arrow leaves `locked` for it), exactly like every other surface.
+    const late = await el.customAction({ id: 'select', payload: { f6: 'D' } });
+    const f6AfterLate = el.querySelector('#f6')?.textContent;
+    // From `locked`, `judge` rejoins the walk at the reveal waypoint — the pointer follows.
+    const judged = await el.customAction({ id: 'judge' });
+    const unknown = await el.customAction({ id: 'nonsense' });
+    await el.dispose();
+    return {
+      selected: selected.currentStep,
+      f6,
+      locked: locked.currentStep,
+      late: late.currentStep,
+      f6AfterLate,
+      judged: judged.currentStep,
+      unknownStatus: unknown.statusCode,
+    };
+  });
+
+  expect(result.selected).toBe(0);
+  expect(result.f6).toBe('C'); // the payload landed with the accepted event
+  expect(result.locked).toBe(0);
+  expect(result.late).toBe(0);
+  expect(result.f6AfterLate).toBe('C'); // the guarded-out event's payload never applied
+  expect(result.judged).toBe(1); // judge moved the machine onto the reveal waypoint
+  expect(result.unknownStatus).toBe(400);
+});
+
 // ── Fonts actually arrive ────────────────────────────────────────────────────────────────
 //
 // Generated CSS references a bundled face as url("fonts/<file>.woff2"), which a FOLDER package

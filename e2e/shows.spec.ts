@@ -161,6 +161,47 @@ test('shows and videos ride the storage seam (the sync engine sees and writes bo
   expect(result.videoListed).toBe(true);
 });
 
+test('a published show bakes the hosted receiver into its export; unpublished or offline stays clean', async ({ page }) => {
+  await page.goto('/app');
+  await page.keyboard.press('Escape');
+  const result = await page.evaluate(async () => {
+    const { variantsFor } = await import('/src/templates/catalog.ts');
+    const { buildShowZip } = await import('/src/export/showExport.ts');
+    const template = variantsFor('lower-third')[0].create({});
+    const graphic = { id: 'g-1', name: template.name, type: template.type, savedAt: '2026-01-01T00:00:00.000Z', template };
+    const base = { id: 'a0a0a0a0-b1b1-4c2c-8d3d-e4e4e4e4e4e4', name: 'Baked Show', graphics: [graphic], updatedAt: '2026-01-01T00:00:00.000Z' };
+    const backend = { ref: 'testref', key: 'sb_publishable_testkey' };
+
+    const jsOf = async (zip: Awaited<ReturnType<typeof buildShowZip>>) => {
+      const path = Object.keys(zip.files).find((n) => n.endsWith('js/template.js'))!;
+      return zip.file(path)!.async('string');
+    };
+
+    // Published + backend coordinates: the receiver block is baked, config and all.
+    const published = await jsOf(await buildShowZip({ ...base, hostedSlug: 'slug-under-test' }, { hostedBackend: backend }));
+    // Unpublished: no block, even with a backend.
+    const unpublished = await jsOf(await buildShowZip(base, { hostedBackend: backend }));
+    // Published but OFFLINE (the default resolver, and this suite builds with no backend env):
+    // the export stays 100% offline rather than baking a half-configured receiver.
+    const offline = await jsOf(await buildShowZip({ ...base, hostedSlug: 'slug-under-test' }));
+
+    return {
+      publishedHasBlock: published.includes('== HOSTED CONTROL'),
+      publishedConfig: ['"slug-under-test"', JSON.stringify(template.name), '"testref"', '"sb_publishable_testkey"']
+        .every((s) => published.includes(s)),
+      // The export baked the block; the show's SAVED snapshot must stay clean.
+      snapshotClean: !graphic.template.js.includes('== HOSTED CONTROL'),
+      unpublishedClean: !unpublished.includes('== HOSTED CONTROL'),
+      offlineClean: !offline.includes('== HOSTED CONTROL'),
+    };
+  });
+  expect(result.publishedHasBlock).toBe(true);
+  expect(result.publishedConfig).toBe(true);
+  expect(result.snapshotClean).toBe(true);
+  expect(result.unpublishedClean).toBe(true);
+  expect(result.offlineClean).toBe(true);
+});
+
 test('the rundown reorders and removes; deleting the show keeps nothing behind', async ({ page }) => {
   await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
   await addCurrentToShow(page, 'Reorder Show', true);
