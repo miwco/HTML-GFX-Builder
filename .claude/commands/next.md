@@ -51,23 +51,23 @@ quick scan, not an audit.
 
 ## Output
 
+**Write the whole response telegram-short: bullets and fragments, no prose paragraphs, no
+headers, phone-glanceable.** Terse wording never excuses vague content - every fact below
+still lands, in fewer words.
+
 ### 1. Where this session stands
 
-Two or three lines max: what the session set out to do and whether it is done, verified, and
-committed. This is the basis for everything below - if it says "done", the options section had
-better earn its existence.
+ONE line: what the session set out to do; done/verified/committed or not.
 
 ### 2. The options
 
 **Numbered 1..N (max 5), best first**, so the user can answer "1" or "do option 2" from a
-phone. Each option is 2-4 short lines:
+phone. Each option 1-2 lines, fragment style:
 
-- **`N. Imperative title`** - what it concretely is and roughly how big (must fit in the rest
-  of this session; a bigger item becomes its first well-defined slice, said explicitly).
-- **Why now + evidence** - one line, citing something specific in THIS repo (a file, commit,
-  doc line, chat moment). An option that would read true in any repository is banned.
-- **Risk / blocker** - only if there is a real one (main uncertainty, a dependency, a needed
-  env/migration). Omit the line otherwise; no ritual fields.
+- **`N. Imperative title`** - what + size (must fit rest of session; bigger item = its first
+  well-defined slice, said so). Why now + evidence citing something specific in THIS repo (a
+  file, commit, doc line, chat moment) - an option that would read true in any repository is
+  banned. Real risk/blocker appended only if one exists; no ritual fields.
 
 Sources rank in this order: session leftover > verification gap > landing the work
 (`/safe-merge` + push) > backlog (`docs/GOALS.md` / memory). Prefer product-meaningful work
@@ -83,7 +83,7 @@ is what makes it user-initiated. Never run it yourself off this command.
 labelled **(speculative)** and pitched as a maybe, not a need - grounded options never get this
 label. At most one; zero is fine and usually right.
 
-Mark exactly one option as **recommended** and say why in one line. If only one honest option
+Mark exactly one option as **recommended**, why in a few words. If only one honest option
 exists, list only that one - do not pad.
 
 When the honest options number 2-4, ALSO present them with the AskUserQuestion tool (recommended
@@ -92,9 +92,9 @@ option first, labelled "(Recommended)"), so the user can pick with one click. In
 
 ### 3. If the answer is "nothing"
 
-Skip section 2 entirely. One short paragraph: the session is complete, what evidence says so
-(build/e2e/commit state), and whether `/safe-merge` (user-initiated) or `/handoff` is the
-natural close. Do not append a consolation backlog list.
+Skip section 2 entirely. 1-2 lines: session complete, the evidence (build/e2e/commit state),
+and whether `/safe-merge` (user-initiated) or `/handoff` is the natural close. No consolation
+backlog list.
 
 ### 4. Then stop
 
