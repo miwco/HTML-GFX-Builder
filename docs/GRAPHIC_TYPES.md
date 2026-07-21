@@ -4,7 +4,9 @@ A **type** says what a graphic IS. A **design** says what it looks like. The cat
 types × designs, and Phase 3 turns that second axis into themes without the first one moving.
 
 Companion docs: `STATE_MACHINE_SCHEMA.md` (the machine a type declares),
-`DESIGN_LANGUAGE.md` (the taste bar a design is judged against).
+`DESIGN_LANGUAGE.md` (the taste bar a design is judged against), `PACK_TAXONOMY.md` (the
+packs — curated type-subsets the 60 reference formats map onto; config in
+`src/templates/packs.ts`, validated by the factory).
 
 ---
 
@@ -220,6 +222,16 @@ and `tk07` showing generic type copy instead of their own (card03's were a line 
 wizard offered the first body line as the card's heading); and the `Bars`/`Heading` vs
 `Options`/`Question` semantics signal on the four poll designs. All fixed; the loop is green at
 48/48.
+
+Beyond the six per-design gates, the loop also validates **the pack config** (`packs.ts`
+resolves against the live registry; the 60 reference formats covered exactly once — see
+`PACK_TAXONOMY.md`) and **literal token drift**: the emitted CSS of every catalog variant is
+grepped for the literal FORMS of tokens the family actually values (a hand-typed glow where
+`var(--accent-glow)` should be, a literal `backdrop-filter: blur()` where `var(--panel-blur)`
+should be). The override map cannot see those — a design hand-typing a near-miss of its
+family's value reads as *conformant* — which is how bug02/lt12/tk05/tk06 shipped near-miss
+glows (THEME_DEFAULTS_REVIEW §"The blind spot"). Scoped to families where the token has a real
+value, so sport's intentional accent halos never trip it.
 
 **Failure modes the loop has recorded (append new ones here):**
 - *A purpose-built design needs `samples` just as a promoted one does.* Any design whose own

@@ -6,6 +6,11 @@ catalog sweep for the affected category (root CLAUDE.md, "Verifying changes").
 
 blank.ts + the catalog, resolved through catalog.ts (CATALOG, variantsFor/variantById).
 
+**packs.ts** - the PACK taxonomy (docs/PACK_TAXONOMY.md): a pack is a curated type-subset in a
+default family, PURE CONFIG over the filled types x families matrix; the 60 reference formats
+each map to exactly one pack. `scripts/factory.mjs` validates the config on every run (cells
+resolve, extras exist, formats covered exactly once) - edit packs.ts and the doc together.
+
 ## Shared assemblers (every category builds on these)
 
 - **shared/base.ts** - generic assembler pieces: :root vars, zones, auto-fit, runtime scaffold.

@@ -908,6 +908,16 @@ now full: every one of the 12 types ships in all four families (noacg / glass / 
       categories, a render probe for the rest, and both catalog baselines recorded as pure
       additions. A documented non-promotion (the sport agenda's standings-vs-schedule ambiguity)
       stays recorded where the next reader looks.
+- [x] **The batch loop is a run-anytime gate** - `node scripts/factory.mjs` (dev server up)
+      derives the matrix from the live registry, runs every design through the six gates,
+      validates the pack config, and greps every variant's emitted CSS for literal forms of
+      family-valued tokens (the conformance metric's blind spot); any failure exits non-zero,
+      so it sits in CI beside `npm run build`.
+- [x] **Every reference format has its pack** - the 60 live-program formats map onto 12 packs
+      (`docs/PACK_TAXONOMY.md`; config in `src/templates/packs.ts`). A pack is PURE CONFIG over
+      the filled matrix - one entry, no new template work - which is the "catalog growth is a
+      config change" claim made true for the axis it is true on; a new THEME is deliberately
+      not config (twelve designs + a token row), and the doc records what one costs.
 
 ### Quality bar (always-on)
 - [x] `npm run build` green as the CI gate

@@ -53,7 +53,7 @@ if (!['run', 'matrix', 'check'].includes(command)) {
 
 const PROBE = `(async (onlyIds) => {
   const { TYPES } = await import('/src/templates/types/registry.ts');
-  const { HAND_WRITTEN } = await import('/src/templates/catalog.ts');
+  const { HAND_WRITTEN, CATALOG } = await import('/src/templates/catalog.ts');
   const { variantsFromType, typeFieldsToSpx, missingParts } = await import('/src/templates/types/graphicType.ts');
   const { parseAnimData } = await import('/src/blocks/animData.ts');
   const { validateMachine, spxSteps, deriveMachine, allOperatorEvents } = await import('/src/blocks/animMachine.ts');
@@ -269,7 +269,65 @@ const PROBE = `(async (onlyIds) => {
     }
   }
 
-  return { cells, candidates };
+  // ── The packs (the taxonomy config, src/templates/packs.ts) ────────────────────────────
+  // A pack is pure config over the filled matrix, so the whole taxonomy is checkable: every
+  // type id resolves, every (type, family) cell is filled, every extra exists in the merged
+  // catalog, and the 60 reference formats are covered exactly once.
+  const { PACKS, resolvePack, validatePacks } = await import('/src/templates/packs.ts');
+  const allVariantIds = [];
+  for (const list of Object.values(CATALOG)) for (const v of list ?? []) allVariantIds.push(v.id);
+  const packProblems = validatePacks(allVariantIds);
+  const packs = [];
+  for (const pack of PACKS) {
+    let resolved = [];
+    try {
+      resolved = resolvePack(pack);
+    } catch (e) {
+      packProblems.push(String(e && e.message ? e.message : e));
+    }
+    packs.push({
+      id: pack.id,
+      name: pack.name,
+      family: pack.family,
+      formats: pack.formats,
+      cells: resolved,
+      extras: pack.extras ?? [],
+    });
+  }
+
+  // ── Literal token drift (the override map's blind spot) ────────────────────────────────
+  // The conformance metric only sees values routed through the tokens: map. A design that
+  // hand-types the value a token was meant to carry reads as conformant — bug02/lt12/tk05/
+  // tk06 shipped near-miss glows that way (THEME_DEFAULTS_REVIEW §"The blind spot"). So grep
+  // the emitted CSS for the literal FORMS, scoped to families where the token has a real
+  // value (a sport accent halo is intentional; sport's accentGlow is NO_SHADOW, so it is
+  // skipped by construction). :root's own token declarations never match — the patterns
+  // require the consuming property name.
+  const { FAMILY_TOKENS, NO_SHADOW } = await import('/src/model/themeTokens.ts');
+  const literalDrift = [];
+  for (const [category, variants] of Object.entries(CATALOG)) {
+    for (const variant of variants ?? []) {
+      const tokens = FAMILY_TOKENS[variant.styleTag];
+      if (!tokens) continue;
+      let css = '';
+      try {
+        css = variant.create({}).css;
+      } catch (e) { continue; } // a creation failure is the six gates' finding, not this one's
+      const findings = [];
+      if (
+        tokens.accentGlow !== NO_SHADOW &&
+        /box-shadow:[^;]*\\b0 0 calc\\(\\d+px \\* var\\(--scale\\)\\) color-mix\\(in srgb, var\\(--accent\\)/.test(css)
+      ) {
+        findings.push('hand-typed accent glow — route it through var(--accent-glow)');
+      }
+      if (tokens.panelBlur !== 'none' && /backdrop-filter:\\s*blur\\(/.test(css)) {
+        findings.push('hand-typed backdrop blur — route it through var(--panel-blur)');
+      }
+      if (findings.length) literalDrift.push({ id: variant.id, category, family: variant.styleTag, findings });
+    }
+  }
+
+  return { cells, candidates, packs, packProblems, literalDrift };
 })`;
 
 // ── Run it ───────────────────────────────────────────────────────────────────────────────
@@ -295,7 +353,7 @@ try {
   await browser.close();
 }
 
-const { cells, candidates } = probe;
+const { cells, candidates, packs, packProblems, literalDrift } = probe;
 
 // ── The matrix report ────────────────────────────────────────────────────────────────────
 
@@ -345,8 +403,36 @@ function printGates() {
   console.log(`  failures per gate: ${byGate.length ? byGate.join(' · ') : 'none'}`);
 }
 
+// ── The packs and literal-drift reports ──────────────────────────────────────────────────
+
+function printPacks() {
+  console.log(`\nPACKS — ${packs.length} pack(s), src/templates/packs.ts`);
+  for (const p of packs) {
+    console.log(
+      `  ${p.id.padEnd(12)} ${p.family.padEnd(8)} ${String(p.cells.length).padStart(2)} types` +
+        (p.extras.length ? ` +${p.extras.length} extra(s)` : '') +
+        ` · ${p.formats.length} format(s)`,
+    );
+  }
+  const mapped = packs.reduce((n, p) => n + p.formats.length, 0);
+  console.log(`  ${mapped} reference formats mapped`);
+  for (const prob of packProblems) console.log(`  PROBLEM: ${prob}`);
+}
+
+function printLiteralDrift() {
+  if (!literalDrift.length) return;
+  console.log(`\nLITERAL TOKEN DRIFT — ${literalDrift.length} variant(s)`);
+  for (const d of literalDrift) {
+    for (const f of d.findings) console.log(`  FAIL  ${d.id.padEnd(8)} ${d.family.padEnd(8)} ${f}`);
+  }
+}
+
 if (command === 'run' || command === 'matrix') printMatrix();
-if (command === 'run' || command === 'check') printGates();
+if (command === 'run' || command === 'check') {
+  printGates();
+  printPacks();
+  printLiteralDrift();
+}
 
 if (pageErrors.length) {
   console.log('\nPage errors during the probe:');
@@ -365,6 +451,8 @@ const report = {
     perGate,
     candidates,
   },
+  packs: { total: packs.length, problems: packProblems, packs },
+  literalDrift,
 };
 
 if (jsonPath) {
@@ -374,9 +462,14 @@ if (jsonPath) {
 
 // A candidate that fails any gate fails the run. The matrix having empty cells does NOT: an
 // empty cell is work not yet done, and the whole point of the six gates is that leaving one
-// empty costs nothing while shipping a wrong design costs a lot.
-if (failing.length) {
-  console.log(`\n${failing.length} candidate(s) failed. Nothing enters the catalog on a failed gate.`);
+// empty costs nothing while shipping a wrong design costs a lot. A pack problem or a literal
+// token drift is also a failure — both are config/conformance claims this loop exists to keep
+// true.
+const otherFailures =
+  (command === 'matrix' ? 0 : packProblems.length + literalDrift.length);
+if (failing.length || otherFailures) {
+  if (failing.length) console.log(`\n${failing.length} candidate(s) failed. Nothing enters the catalog on a failed gate.`);
+  if (otherFailures) console.log(`\n${otherFailures} pack/literal-drift problem(s). See above.`);
   process.exit(1);
 }
 console.log('\nAll candidates passed their gates.');
