@@ -195,6 +195,78 @@ test('round-trip: the exported panel fires machine events, greys illegal ones, a
   await graphic.close();
 });
 
+test('staging + event log: staged data airs only on take, and refresh recovers both sides', async ({ page, context }) => {
+  await createProject(page, { name: 'Arena Quiz' });
+  await page.getByTestId('dock-tab-export').click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: /Validate & download/ }).click(),
+  ]);
+  const zip = await JSZip.loadAsync(readFileSync(await download.path()));
+  const files = new Map<string, string>();
+  for (const n of Object.keys(zip.files)) {
+    if (!zip.files[n].dir) files.set(n.replace(/^arena_quiz\//, ''), await zip.file(n)!.async('string'));
+  }
+  const serve = (route: Route) => {
+    const path = new URL(route.request().url()).pathname.replace(/^\//, '') || 'index.html';
+    const body = files.get(path);
+    if (body == null) return route.fulfill({ status: 404, body: 'nf' });
+    const ct = path.endsWith('.css') ? 'text/css' : path.endsWith('.js') ? 'application/javascript' : 'text/html';
+    return route.fulfill({ status: 200, contentType: ct, body });
+  };
+
+  const graphic = await context.newPage();
+  await graphic.route('http://cp-rec.local/**', serve);
+  await graphic.goto('http://cp-rec.local/index.html', { waitUntil: 'load' });
+  const panel = await context.newPage();
+  await panel.route('http://cp-rec.local/**', serve);
+  await panel.goto('http://cp-rec.local/controlpanel.html', { waitUntil: 'load' });
+
+  const machineStateOf = () =>
+    graphic.evaluate(() => {
+      const w = window as unknown as { noacgMachineState?: () => { groups: Record<string, string> } };
+      return w.noacgMachineState?.().groups.main ?? null;
+    });
+
+  // On air: play, then select answer C via the event payload (staged with Live off).
+  await panel.getByRole('button', { name: '▶ Play' }).click();
+  await panel.locator('#live').uncheck();
+  await panel.locator('.field', { hasText: 'Selected answer' }).locator('select').selectOption('C');
+  await expect(panel.locator('.staged-chip')).toBeVisible(); // typed ≠ aired
+  await panel.getByRole('button', { name: '⚡ Select answer' }).click();
+  await expect(graphic.locator('#f6')).toHaveText('C');
+  await expect(panel.locator('.staged-chip')).toBeHidden(); // the payload took it on air
+
+  // Stage a question edit WITHOUT taking: it must not reach the graphic.
+  const question = panel.locator('.field', { hasText: 'Question' }).locator('input[type="text"]');
+  await question.fill('Staged, not aired');
+  await expect(panel.locator('.staged-chip')).toBeVisible();
+  await expect(graphic.locator('#f0')).not.toHaveText('Staged, not aired');
+
+  // ── The graphic crashes (browser-source refresh): the panel's log rebuilds it — the
+  // aired data (answer C, not the staged question) and a snap back to `selected`.
+  await graphic.reload({ waitUntil: 'load' });
+  await expect.poll(machineStateOf).toBe('selected');
+  await expect(graphic.locator('#f6')).toHaveText('C');
+  await expect(graphic.locator('#f0')).not.toHaveText('Staged, not aired');
+
+  // Explicit take airs the staged question.
+  await panel.getByRole('button', { name: '⟳ Take' }).click();
+  await expect(graphic.locator('#f0')).toHaveText('Staged, not aired');
+  await expect(panel.locator('.staged-chip')).toBeHidden();
+
+  // ── The PANEL refreshes: it resumes from its log — sent values in the fields, the last
+  // known state on the chip, legality right (lock is legal from `selected`).
+  await panel.reload({ waitUntil: 'load' });
+  await expect(panel.locator('.field', { hasText: 'Selected answer' }).locator('select')).toHaveValue('C');
+  await expect(panel.locator('.field', { hasText: 'Question' }).locator('input[type="text"]')).toHaveValue('Staged, not aired');
+  await expect(panel.locator('.state-chip')).toContainText('selected');
+  await expect(panel.getByRole('button', { name: '⚡ Lock it in' })).toBeEnabled();
+
+  await panel.close();
+  await graphic.close();
+});
+
 test('round-trip: the exported control panel drives the exported graphic over the channel', async ({ page, context }) => {
   await createScoreboard(page);
   await page.getByTestId('dock-tab-export').click();

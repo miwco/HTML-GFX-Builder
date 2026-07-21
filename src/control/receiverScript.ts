@@ -40,6 +40,9 @@ export function controlReceiverScript(templateName: string, channelName: string)
     };
     // Timers advance the machine with no message to answer — a cheap watcher reports those.
     if (typeof noacgMachineState === 'function') setInterval(function () { reply(false); }, 1000);
+    // Announce the boot: a control panel that kept an event log hears this and rebuilds a
+    // refreshed graphic (latest data, then snap to the last known state) — crash recovery.
+    ch.postMessage({ t: 'graphic-online' });
   } catch (e) { /* channel unavailable — the graphic still works, just not remotely driven */ }
 })();
 </script>`;

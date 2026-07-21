@@ -96,9 +96,13 @@ export type ControlMessage =
   | { t: 'snap'; snap: Record<string, string> | null }
   | { t: 'hello' };
 
-/** What the graphic answers on the same channel: its machine state after every handled
- *  message (and on `hello`), so a panel can show the current state and grey illegal buttons. */
-export type ControlReply = { t: 'state'; state: { groups: Record<string, string> } };
+/** What the graphic sends back on the same channel: its machine state after every handled
+ *  message (and on `hello`), so a panel can show the current state and grey illegal buttons —
+ *  and `graphic-online` once at boot, so a panel can rebuild a refreshed graphic from its
+ *  event log (send the latest data, then snap to the last known state). */
+export type ControlReply =
+  | { t: 'state'; state: { groups: Record<string, string> } }
+  | { t: 'graphic-online' };
 
 /** The channel name a template's control panel and graphic share (derived from its name). */
 export function controlChannelName(templateName: string): string {

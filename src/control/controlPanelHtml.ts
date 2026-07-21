@@ -158,6 +158,7 @@ function renderPanelPage(title: string, graphics: EmittedGraphic[]): string {
   .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
   .card > h2 { font-size:14px; margin:0 0 4px; display:flex; align-items:center; gap:10px; }
   .state-chip { font-size:12px; font-weight:400; color:var(--accent); border:1px solid var(--line); border-radius:999px; padding:1px 10px; display:none; }
+  .staged-chip { font-size:12px; font-weight:400; color:#e8b34a; display:none; }
   .row { display:flex; gap:8px; align-items:center; }
   .field { padding:10px 0; border-bottom:1px solid var(--line); }
   .field:last-child { border-bottom:none; }
@@ -211,9 +212,37 @@ function clamp(c, n) {
 // graphics independently (the bug stays up while the lower third changes hands).
 var connected = 0;
 GRAPHICS.forEach(function (g) {
-  // State: current value per field, seeded from the definition defaults.
+  // ── The EVENT LOG (Phase 5): every command this panel sends, timestamped, in
+  // localStorage per channel. It is what makes refresh survivable in both directions:
+  // a reloaded PANEL seeds its fields and state chip from the log instead of the
+  // definition defaults, and a reloaded GRAPHIC announces itself ('graphic-online') and
+  // is rebuilt from it — the latest data first, then a snap to the last known state
+  // (reset is two operations, and recovery is both). The log keeps a capped history of
+  // sent commands (transition history; later undo) plus the merged latest data and the
+  // last state the graphic reported.
+  var logKey = 'noacg-log-' + g.channel;
+  var log = null;
+  try { log = JSON.parse(localStorage.getItem(logKey) || 'null'); } catch (e) { /* fresh */ }
+  if (!log || log.v !== 1) log = { v: 1, seq: 0, sent: [], data: null, state: null };
+  function persistLog() { try { localStorage.setItem(logKey, JSON.stringify(log)); } catch (e) { /* full — the show goes on un-logged */ } }
+  function record(msg) {
+    log.seq++;
+    log.sent.push({ seq: log.seq, at: new Date().toISOString(), msg: msg });
+    if (log.sent.length > 200) log.sent.splice(0, log.sent.length - 200);
+    if (msg.t === 'update') log.data = Object.assign({}, log.data || {}, msg.data);
+    // An accepted event applies its payload through the same field path as an update, so
+    // the log's "latest data" must carry it or recovery would rebuild pre-event values.
+    // (If the guard dropped the event the merge is slightly ahead of the graphic — the
+    // greyed buttons make that the rare case, and recovery stays self-consistent.)
+    if (msg.t === 'event' && msg.payload) log.data = Object.assign({}, log.data || {}, msg.payload);
+    persistLog();
+  }
+
+  // State: current value per field — the definition defaults, overlaid with the log's
+  // latest sent data so a reloaded panel resumes where the operator left off.
   var state = {};
   g.controls.forEach(function (c) { state[c.key] = c.value; });
+  if (log.data) { for (var k in log.data) { if (state[k] !== undefined) state[k] = log.data[k]; } }
 
   // Transport 1: BroadcastChannel to a graphic on the SAME machine.
   var ch = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel(g.channel) : null;
@@ -231,9 +260,25 @@ GRAPHICS.forEach(function (g) {
     }).catch(function () { /* offline / blocked — the local BroadcastChannel path still works */ });
   }
 
-  function post(msg) { if (ch) ch.postMessage(msg); sendRemote(msg); }
-  function sendUpdate() { post({ t: 'update', data: state }); }
-  function onChange(field, value) { state[field] = value; if (live()) sendUpdate(); }
+  function post(msg) { if (ch) ch.postMessage(msg); sendRemote(msg); if (msg.t !== 'hello') record(msg); }
+  // PREPARED vs PUBLISHED: with Live off, edits stay in this panel (staged — the badge
+  // says so) and go on air only on an explicit ⟳ Take / ▶ Play. Nothing airs merely
+  // because it was typed.
+  var lastSent = {};
+  for (var sk in state) lastSent[sk] = state[sk];
+  var stagedChip = null;
+  function paintStaged() {
+    if (!stagedChip) return;
+    var dirty = false;
+    for (var dk in state) { if (state[dk] !== lastSent[dk]) { dirty = true; break; } }
+    stagedChip.style.display = dirty && !live() ? 'inline' : 'none';
+  }
+  function sendUpdate() {
+    post({ t: 'update', data: state });
+    for (var uk in state) lastSent[uk] = state[uk];
+    paintStaged();
+  }
+  function onChange(field, value) { state[field] = value; if (live()) sendUpdate(); else paintStaged(); }
 
   function buildControl(c) {
     var wrap = el('div', { class: 'field' }, [el('label', {}, [c.label])]);
@@ -309,14 +354,15 @@ GRAPHICS.forEach(function (g) {
 
   // ── The card ──
   var chip = el('span', { class: 'state-chip', title: "The graphic's current machine state" });
-  var card = el('div', { class: 'card' }, [el('h2', {}, [g.name, chip])]);
+  stagedChip = el('span', { class: 'staged-chip', title: 'Edits staged in this panel — not on air until you Take' }, ['● staged']);
+  var card = el('div', { class: 'card' }, [el('h2', {}, [g.name, chip, stagedChip])]);
 
   // Machine event buttons, grouped by section. A button carries its payload fields' CURRENT
   // values, applied only if the machine accepts the event (the atomic multi-part change).
   // While we know the graphic's state (it answers on the channel), a button the machine
   // would drop is greyed; before the first answer everything is enabled and the structural
   // guard decides.
-  var machineState = null;
+  var machineState = log.state; // last known — honest until the live graphic answers hello
   var eventBtns = [];
   function legalNow(ev) {
     if (!machineState) return true;
@@ -343,6 +389,8 @@ GRAPHICS.forEach(function (g) {
       if (state[key] !== undefined) { payload = payload || {}; payload[key] = state[key]; }
     });
     post(payload ? { t: 'event', event: e.event, payload: payload } : { t: 'event', event: e.event });
+    // The payload just aired those fields — they are no longer merely staged.
+    if (payload) { for (var pk in payload) lastSent[pk] = payload[pk]; paintStaged(); }
   }
   if (g.events.length > 0) {
     var evHost = el('div', { class: 'events' });
@@ -370,7 +418,7 @@ GRAPHICS.forEach(function (g) {
 
   var play = el('button', { class: 'primary' }, ['▶ Play']);
   var stop = el('button', {}, ['■ Stop']);
-  var upd = el('button', {}, ['⟳ Update']);
+  var upd = el('button', { title: 'Take the staged values on air' }, ['⟳ Take']);
   var next = el('button', {}, ['» Next']);
   play.onclick = function () { sendUpdate(); post({ t: 'play' }); };
   stop.onclick = function () { post({ t: 'stop' }); };
@@ -379,13 +427,23 @@ GRAPHICS.forEach(function (g) {
   card.appendChild(el('div', { class: 'actions' }, [play, stop, upd, next]));
 
   document.getElementById('cards').appendChild(card);
+  paintState();
+  paintStaged();
 
-  // The graphic answers every message (and 'hello') with its machine state.
   if (ch) ch.onmessage = function (ev) {
     var m = ev.data || {};
-    if (m.t === 'state' && m.state) { machineState = m.state; paintState(); }
+    // The graphic answers every message (and 'hello') with its machine state.
+    if (m.t === 'state' && m.state) { machineState = m.state; log.state = m.state; persistLog(); paintState(); }
+    // A rebooted graphic (browser-source refresh, crash) announces itself: rebuild it from
+    // the log — the latest data first (the data half of reset), then snap to the last known
+    // state (the visual half; timers arm, recovery semantics). First boot has nothing
+    // logged and replays nothing.
+    else if (m.t === 'graphic-online') {
+      if (log.data) post({ t: 'update', data: log.data });
+      if (log.state) post({ t: 'snap', snap: log.state.groups });
+    }
   };
-  if (ch && g.events.length > 0) post({ t: 'hello' });
+  if (ch) post({ t: 'hello' });
 });
 
 document.getElementById('status').textContent =
