@@ -4,7 +4,13 @@
 import { parseDefinition } from '../model/spxDefinition';
 import { animDataFault, parseAnimData } from '../blocks/animData';
 import { allTimelines, validateMachine } from '../blocks/animMachine';
-import { dataUsesTransitionStyles, hasMachineRuntime, hasTransitionStyleRuntime } from '../templates/shared/animRuntime';
+import {
+  dataUsesCutStyle,
+  dataUsesTransitionStyles,
+  hasCutStyleRuntime,
+  hasMachineRuntime,
+  hasTransitionStyleRuntime,
+} from '../templates/shared/animRuntime';
 import { DATA_FTYPES, type SpxTemplate } from '../model/types';
 
 export interface ValidationIssue {
@@ -312,7 +318,14 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
         errors.push({
           rule: 'machine',
           message:
-            'A transition carries a style (fade/push/wipe), but the interpreter in this template predates transition styles — re-emit the ANIMATION region (replaceRegionWithAnimData) so the styled change can play.',
+            'A transition carries a style (cut/fade/push/wipe), but the interpreter in this template predates transition styles — re-emit the ANIMATION region (replaceRegionWithAnimData) so the styled change can play.',
+        });
+      } else if (dataUsesCutStyle(data) && !hasCutStyleRuntime(template.js)) {
+        // 'cut' landed after the first style runtime — the same pairing failure one step on.
+        errors.push({
+          rule: 'machine',
+          message:
+            "A transition carries the 'cut' style, but the interpreter in this template predates it — re-emit the ANIMATION region (replaceRegionWithAnimData) so the cut can play.",
         });
       }
 

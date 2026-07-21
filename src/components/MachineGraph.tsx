@@ -8,8 +8,11 @@ import {
   type AnimGroup,
   type AnimTransition,
 } from '../blocks/animData';
-import { deriveMachine, isWalkEdge } from '../blocks/animMachine';
-import { renameStep } from '../blocks/animEdit';
+import { deriveMachine, isWalkEdge, spxSteps, timelineKind, timelineLayer, type TimelineKind } from '../blocks/animMachine';
+import { addStep, deleteStep, renameStep } from '../blocks/animEdit';
+import { createStepFromLayer } from '../blocks/layerTimeline';
+import { getTemplateParts } from '../model/structure';
+import { replaceDefinitionInHtml } from '../model/spxDefinition';
 import { EASINGS } from '../model/easings';
 import {
   addGroup,
@@ -48,6 +51,11 @@ interface StateBox {
   initial: boolean;
   /** The state's default-path position (steps[pathIndex] is its timeline), or null off-path. */
   pathIndex: number | null;
+  /** What the state's content IS (derived, animMachine timelineKind): a LAYER timeline
+   *  (one element's animation — Name In), a GRAPHIC timeline (a complete look), or a pose. */
+  kind: TimelineKind;
+  /** The layer a 'layer' timeline animates (its registry selector), for the tooltip. */
+  layerSelector: string | null;
   x: number;
   y: number;
   w: number;
@@ -184,6 +192,7 @@ function buildModel(data: AnimData): GraphModel {
         const pi = path.indexOf(id);
         const badge =
           pi < 0 ? (id === group.initial ? '○' : null) : pi === 0 ? '▶' : pi === path.length - 1 ? '■' : '»';
+        const timeline = isMain && pi >= 0 ? data.steps[pi] : state.timeline ?? null;
         const box: StateBox = {
           groupId: group.id,
           id,
@@ -192,6 +201,8 @@ function buildModel(data: AnimData): GraphModel {
           poseOnly: pi < 0 && !state.timeline,
           initial: id === group.initial,
           pathIndex: isMain && pi >= 0 ? pi : null,
+          kind: timelineKind(timeline),
+          layerSelector: timelineLayer(timeline),
           x,
           y,
           w: boxWidth(name),
@@ -315,6 +326,18 @@ function buildModel(data: AnimData): GraphModel {
   };
 }
 
+/** Operator-facing names for the arrow styles ('cut' is the broadcast hard cut). */
+const STYLE_LABELS: Record<string, string> = {
+  cut: 'Cut — instant',
+  fade: 'Fade',
+  'push-left': 'Push left',
+  'push-right': 'Push right',
+  'push-up': 'Push up',
+  'push-down': 'Push down',
+  'wipe-left': 'Wipe left',
+  'wipe-right': 'Wipe right',
+};
+
 const ARROW_CLASS: Record<Arrow['kind'], string> = {
   walk: 'mg-arrow-walk',
   'walk-stop': 'mg-arrow-walk mg-arrow-stop',
@@ -369,6 +392,60 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
     return true;
   };
 
+  /** A STRUCTURAL step edit from the graph (add/delete a waypoint): the same write plus the
+   *  SPX `steps` definition sync the timeline's own structural edits perform. */
+  const applyStepData = (next: AnimData | null) => {
+    if (!next) return false;
+    const js = writeAnimData(template.js, next);
+    if (!js) return false;
+    const settings = { ...template.settings, steps: String(spxSteps(next)) };
+    const html = replaceDefinitionInHtml(template.html, settings, template.fields);
+    applyTemplate({ ...template, js, html, settings });
+    return true;
+  };
+
+  const parts = useMemo(() => getTemplateParts(template.html, template.fields), [template.html, template.fields]);
+  const channelOf = (selector: string) => parts.find((p) => p.selector === selector)?.channel ?? ('rise' as const);
+
+  /** Delete a default-path waypoint = delete its bound STEP (the positional binding). The
+   *  entrance and Out never go; a revealed layer folds back into the entrance. */
+  const deleteWaypoint = (pathIndex: number) => applyStepData(deleteStep(data, pathIndex, channelOf));
+
+  /** "Create timeline from layer": a new waypoint named after the layer, whose reveal the
+   *  layer moves into — the composed transform shared with the Inspector. */
+  const addStepFromLayer = (selector: string) => {
+    const next = createStepFromLayer(template, parts, selector);
+    if (next) applyTemplate(next);
+    return !!next;
+  };
+
+  // Keyboard: Delete removes the selection (arrow, off-path state, or a waypoint via its
+  // step) — never while typing in one of the cards' inputs.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (!sel) return;
+      const machine = data.machine ?? deriveMachine(data);
+      const group = machine.groups.find((g) => g.id === sel.groupId);
+      if (!group) return;
+      e.preventDefault();
+      if (sel.kind === 'arrow') {
+        if (applyData(removeTransition(data, sel.groupId, sel.tIndex))) setSel(null);
+        return;
+      }
+      const pathIndex = group === machine.groups[0] ? (group.defaultPath ?? []).indexOf(sel.id) : -1;
+      if (pathIndex > 0 && pathIndex < (group.defaultPath ?? []).length - 1) {
+        if (deleteWaypoint(pathIndex)) setSel(null);
+      } else if (pathIndex < 0 && sel.id !== group.initial) {
+        if (applyData(deleteState(data, sel.groupId, sel.id))) setSel(null);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
   // The live current-state pointers — the same cheap poll the simulator's chip uses (the
   // sandboxed iframe has no subscription surface). null until the runtime answers, which
   // also tells us whether snap-on-click can work (a saved template's frozen interpreter may
@@ -403,6 +480,8 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
   const suppressClickRef = useRef(false);
   const [moveDraft, setMoveDraft] = useState<{ groupId: string; id: string; x: number; y: number } | null>(null);
   const [wireDraft, setWireDraft] = useState<{ groupId: string; fromId: string; x: number; y: number } | null>(null);
+  /** Which lane's "+ state" menu is open (the main lane's three-way add). */
+  const [addMenu, setAddMenu] = useState<string | null>(null);
 
   const canvasPoint = (e: PointerEvent | React.PointerEvent) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -527,7 +606,11 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
         className="mg-canvas"
         style={{ width: model_.width, height: model_.height }}
         onPointerDown={(e) => {
-          if (e.target === e.currentTarget) setSel(null); // empty canvas clears, like the stage
+          // Empty canvas clears the selection, like the stage. The wires SVG covers the
+          // whole canvas, so a press on it (not on a hit path/label, which stop at their
+          // own handlers) counts as empty too.
+          const t = e.target as Element;
+          if (t === e.currentTarget || t.classList.contains('mg-wires')) setSel(null);
         }}
       >
         <svg className="mg-wires" width={model_.width} height={model_.height}>
@@ -589,8 +672,16 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
             <button
               type="button"
               className="mg-lane-btn"
-              title="Add a state to this group"
+              title={
+                li === 0
+                  ? 'Add a state — a branch pose, a step on the path, or a layer’s own timeline'
+                  : 'Add a state to this group'
+              }
               onClick={() => {
+                if (li === 0) {
+                  setAddMenu((open) => (open === lane.group.id ? null : lane.group.id));
+                  return;
+                }
                 // Below the group's lowest box: never under the detail card (top-right),
                 // and visibly "a branch", not another waypoint.
                 const groupBoxes = model_.boxes.filter((b) => b.groupId === lane.group.id);
@@ -606,6 +697,57 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
             >
               + state
             </button>
+            {li === 0 && addMenu === lane.group.id && (
+              <span className="mg-add-menu" data-testid="mg-add-menu">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddMenu(null);
+                    const groupBoxes = model_.boxes.filter((b) => b.groupId === lane.group.id);
+                    const x = groupBoxes.reduce((a, b) => Math.min(a, b.x), PAD_X);
+                    const bottom = groupBoxes.reduce((a, b) => Math.max(a, b.y + b.h), lane.y + LANE_PAD_TOP);
+                    const next = addState(data, lane.group.id, 'New state', [x, bottom + ROW_GAP]);
+                    if (next && applyData(next)) {
+                      const group = next.machine!.groups.find((g) => g.id === lane.group.id)!;
+                      setSel({ kind: 'state', groupId: lane.group.id, id: group.states[group.states.length - 1].id });
+                    }
+                  }}
+                  title="A pose-only branch state — entering it plays nothing (Off, Paused, a hold)"
+                  data-testid="mg-add-pose"
+                >
+                  ○ Pose state
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddMenu(null);
+                    applyStepData(addStep(data));
+                  }}
+                  title="A new » step on the default path, just before Out — a graphic timeline to fill with keyframes"
+                  data-testid="mg-add-step"
+                >
+                  ◇ Step on the path
+                </button>
+                <span className="mg-add-menu-sep" />
+                <span className="mg-add-menu-label">▤ Timeline from layer:</span>
+                {parts
+                  .filter((p) => p.kind !== 'root')
+                  .map((p) => (
+                    <button
+                      key={p.selector}
+                      type="button"
+                      onClick={() => {
+                        setAddMenu(null);
+                        addStepFromLayer(p.selector);
+                      }}
+                      title={`A new step named "${p.label} In" that this layer's reveal moves into — its own separately editable timeline on the path`}
+                      data-testid={`mg-add-layer-${p.selector.replace(/[^a-z0-9-]/gi, '')}`}
+                    >
+                      ▤ {p.label}
+                    </button>
+                  ))}
+              </span>
+            )}
             {li > 0 && (
               <button
                 type="button"
@@ -644,6 +786,18 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
             data-testid={`mg-state-${box.groupId}-${box.id}`}
           >
             {box.badge && <span className="mg-badge">{box.badge}</span>}
+            {box.kind !== 'pose' && (
+              <span
+                className={`mg-kind mg-kind-${box.kind}`}
+                title={
+                  box.kind === 'layer'
+                    ? `Layer timeline — animates one layer${box.layerSelector ? ` (${box.layerSelector})` : ''}`
+                    : 'Graphic timeline — a complete look (several layers together)'
+                }
+              >
+                {box.kind === 'layer' ? '▤' : '◇'}
+              </span>
+            )}
             <span className="mg-name">{box.name}</span>
             <span
               className="mg-port"
@@ -680,6 +834,7 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
           data={data}
           onOpenStep={onOpenStep}
           applyData={applyData}
+          onDeleteWaypoint={deleteWaypoint}
           onDeleted={() => setSel(null)}
         />
       )}
@@ -709,12 +864,15 @@ function StateCard({
   data,
   onOpenStep,
   applyData,
+  onDeleteWaypoint,
   onDeleted,
 }: {
   box: StateBox;
   data: AnimData;
   onOpenStep: (stepIndex: number) => void;
   applyData: (next: AnimData | null) => boolean;
+  /** Delete a default-path waypoint (its bound step) — the graph's Delete on the spine. */
+  onDeleteWaypoint: (pathIndex: number) => boolean;
   onDeleted: () => void;
 }) {
   const [name, setName] = useState(box.name);
@@ -729,13 +887,23 @@ function StateCard({
         : renameOffPathState(data, box.groupId, box.id, name);
     if (!applyData(next)) setName(box.name);
   };
+  const kindWord =
+    box.kind === 'layer'
+      ? `▤ layer timeline${box.layerSelector ? ` (${box.layerSelector})` : ''}`
+      : box.kind === 'graphic'
+        ? '◇ graphic timeline'
+        : 'pose only — entering plays nothing';
   const content =
     box.pathIndex !== null
-      ? `step ${box.pathIndex + 1} of the default path`
+      ? `${kindWord} · step ${box.pathIndex + 1} of the default path`
       : box.poseOnly
-        ? 'pose only — entering plays nothing'
-        : 'its own inline timeline';
+        ? kindWord
+        : `${kindWord} · its own inline timeline`;
   const deletable = box.pathIndex === null && !box.initial;
+  // The entrance and Out anchor the walk; the middle waypoints can go (their bound step
+  // goes with them — the positional binding, same as the clip's Delete on the timeline).
+  const waypointDeletable =
+    box.pathIndex !== null && box.pathIndex > 0 && box.pathIndex < data.steps.length - 1;
   return (
     <div className="mg-card" data-testid="mg-state-card">
       <div className="mg-card-title">
@@ -759,8 +927,18 @@ function StateCard({
           ≡ Open its timeline
         </button>
       )}
-      {box.pathIndex !== null && (
-        <div className="mg-card-row">waypoints are added and deleted on the timeline</div>
+      {waypointDeletable && (
+        <button
+          type="button"
+          className="mg-card-action"
+          onClick={() => {
+            if (onDeleteWaypoint(box.pathIndex!)) onDeleted();
+          }}
+          title="Delete this step from the default path (its timeline goes with it; a revealed layer folds back into the entrance). Undo with Ctrl+Z — or press Delete."
+          data-testid="mg-delete-waypoint"
+        >
+          ✕ Delete step
+        </button>
       )}
       {deletable && (
         <button
@@ -769,7 +947,7 @@ function StateCard({
           onClick={() => {
             if (applyData(deleteState(data, box.groupId, box.id))) onDeleted();
           }}
-          title="Delete this state and every arrow touching it (undo with Ctrl+Z)"
+          title="Delete this state and every arrow touching it (undo with Ctrl+Z — or press Delete)"
           data-testid="mg-delete-state"
         >
           ✕ Delete state
@@ -878,18 +1056,18 @@ function TransitionCard({
             <select
               value={t.style ?? ''}
               onChange={(e) => applyData(setTransitionStyle(data, groupId, tIndex, e.target.value || null))}
-              title="What the change looks like: the target state's own timeline, or the arrow's styled change (fade / push / wipe between the two poses)"
+              title="What the change looks like: the target state's own timeline, an instant cut, or the arrow's styled change (fade / push / wipe between the two poses)"
               data-testid="mg-style"
             >
-              <option value="">state timeline</option>
+              <option value="">state timeline (animated)</option>
               {TRANSITION_STYLES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {STYLE_LABELS[s] ?? s}
                 </option>
               ))}
             </select>
           </label>
-          {t.style !== undefined && (
+          {t.style !== undefined && t.style !== 'cut' && (
             <>
               <label className="mg-card-row">
                 duration (s)

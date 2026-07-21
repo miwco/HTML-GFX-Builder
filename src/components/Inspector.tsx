@@ -29,6 +29,7 @@ import { applyPresetData, presetDonor } from '../blocks/presetApply';
 import { swappablePresetsForType, anyPresetById } from '../blocks/presetRegistry';
 import { isSlidePreset } from '../templates/lowerThirds/animPresets';
 import { activationStep, animatedProps, resolveValue, stepSeconds } from '../blocks/animEval';
+import { createStepFromLayer } from '../blocks/layerTimeline';
 import type { AnimPresetId } from '../model/wizard';
 import { EASINGS, resolveEasing, type EasingId } from '../model/easings';
 import { phaseIdOf } from './StepTimeline';
@@ -558,6 +559,28 @@ export default function Inspector() {
 
       {activeInspectorTab === 'animations' && (
         <div className="inspector-body" data-testid="inspector-animations">
+          {/* CREATE TIMELINE FROM LAYER (docs/STATE_MACHINE_SCHEMA.md): give this layer its
+              own default-path step — a separately editable LAYER TIMELINE the states graph
+              shows as its own ▤ node. The composed transform (blocks/layerTimeline.ts) is
+              the same one the graph's "+ from layer" uses. */}
+          {native && part.kind !== 'root' && activationStep(native, part.selector) === 0 && (
+            <div className="inspector-preset" style={{ marginBottom: 10 }}>
+              <button
+                className="inspector-preset-apply"
+                onClick={() => {
+                  const next = createStepFromLayer(template, parts, part.selector);
+                  if (next) {
+                    applyTemplate(next);
+                    setPresetMsg(`✓ "${part.label} In" is now its own timeline — see it on the timeline and in ◇ States.`);
+                  }
+                }}
+                title={`Add a "${part.label} In" step to the default path and move this layer's reveal into it — its own separately editable timeline, one » press of its own`}
+                data-testid="inspector-create-layer-timeline"
+              >
+                ▤ Create timeline from layer
+              </button>
+            </div>
+          )}
           {/* Phase 5 — presets as keyframe generators (data templates): pick a motion
               style, choose the direction, Apply writes ordinary keyframes. The whole
               graphic when the root is selected; just this layer otherwise ("In" targets

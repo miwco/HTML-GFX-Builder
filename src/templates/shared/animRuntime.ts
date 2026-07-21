@@ -351,7 +351,7 @@ function noacgApplyPayload(payload) {
 function noacgStyleTimeline(group, edge) {
   var style = edge.style;
   var root = document.querySelector(NOACG_ANIM.root);
-  var known = { fade: 1, 'push-left': 1, 'push-right': 1, 'push-up': 1, 'push-down': 1, 'wipe-left': 1, 'wipe-right': 1 };
+  var known = { cut: 1, fade: 1, 'push-left': 1, 'push-right': 1, 'push-up': 1, 'push-down': 1, 'wipe-left': 1, 'wipe-right': 1 };
   if (!style || !root || !known[style]) return null;
   var speed = NOACG_ANIM.speed || 1;
   var half = ((edge.duration || 0.6) / speed) / 2;
@@ -391,6 +391,13 @@ function noacgStyleTimeline(group, edge) {
     noacgFireCalls(noacgStepFor(group, edge.to));
   };
   var tl = gsap.timeline();
+  // CUT: the broadcast hard cut — the pose swap alone, no tween on either side. A
+  // zero-duration timeline whose one call runs the swap; duration/ease are ignored.
+  if (style === 'cut') {
+    tl.call(swap);
+    tl.__noacgSwap = swap;
+    return tl;
+  }
   // Phase 1: the old pose leaves.
   if (style === 'fade') {
     tl.to(root, { opacity: 0, duration: half, ease: ease });
@@ -745,9 +752,21 @@ export function hasTransitionStyleRuntime(js: string): boolean {
   return /function noacgStyleTimeline/.test(js);
 }
 
+/** The 'cut' style landed after the first style runtime: a frozen interpreter with styles
+ *  but no cut would silently play the entry timeline instead, so a cut-bearing write must
+ *  re-emit the region. The emitted `known` map is the marker. */
+export function hasCutStyleRuntime(js: string): boolean {
+  return hasTransitionStyleRuntime(js) && /\bcut: 1\b/.test(js);
+}
+
 /** Does any arrow carry a transition style (the reserved fields, now consumed)? */
 export function dataUsesTransitionStyles(data: AnimData): boolean {
   return (data.machine?.groups ?? []).some((g) => g.transitions.some((t) => t.style !== undefined));
+}
+
+/** Does any arrow carry the 'cut' style specifically (the newer pairing check)? */
+export function dataUsesCutStyle(data: AnimData): boolean {
+  return (data.machine?.groups ?? []).some((g) => g.transitions.some((t) => t.style === 'cut'));
 }
 
 /**
@@ -762,6 +781,7 @@ export function dataUsesTransitionStyles(data: AnimData): boolean {
 export function writeAnimData(js: string, data: AnimData): string | null {
   if (data.machine && !hasMachineRuntime(js)) return replaceRegionWithAnimData(js, data);
   if (dataUsesTransitionStyles(data) && !hasTransitionStyleRuntime(js)) return replaceRegionWithAnimData(js, data);
+  if (dataUsesCutStyle(data) && !hasCutStyleRuntime(js)) return replaceRegionWithAnimData(js, data);
   return spliceAnimData(js, data);
 }
 

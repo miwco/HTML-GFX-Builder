@@ -31,9 +31,27 @@ Holds ONE VideoProject + the video editor's UI state, mirroring templateStore's 
 - **busy** - the in-flight AI stage label; blocks concurrent sends.
 - **replayNonce / previewError / activePanel** - UI state, no history.
 
+## saveActions.ts
+
+The SAVE/OPEN semantics over the graphics library (model/library.ts), plus `useSaveUi` (the
+save dialog + the unsaved-changes guard). `saveCurrentGraphic()` writes the linked GraphicDoc
+('needs-name' → the first-save dialog); `saveGraphicAs(name, dest)` mints a record standalone
+/ into a package / into a new package; `openGraphicDoc` loads a record as the working
+document (applies its ACTIVE control entry into sample data) and re-links. Every path calls
+`persistLink()` so the slot's `graphicId`/`dirty` survive a reload even when no template
+change follows. `requestSwitch(proceed, cancel?)` is THE guard: any action that REPLACES the
+working document (open another graphic, create new) goes through it; navigating to
+Home/control/video never does (nothing is lost there).
+
 ## templateStore.ts
 
 templateStore.ts (zustand) holds the template plus editor UI state.
+
+- **saved** - the save LINK `{ graphicId, dirty, status }` (docs/SAVED_CONTENT_MODEL.md §2):
+  the autosave subscription flips `dirty` on any template change; a whole-project swap
+  (applyTemplate with resetSampleData) SEVERS the link (graphicId null) so a fresh creation
+  can never overwrite the previously open record - saveActions re-links after opening a
+  saved graphic. Rendered by components/save/SaveControls (topbar Save + status + Ctrl+S).
 
 - **applyTemplate(next, opts)** - THE mutation choke point: snapshots the previous template for
   undo. Blocks, AI, panels, gallery, and canvas gestures all flow through it.

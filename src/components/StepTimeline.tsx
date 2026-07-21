@@ -18,7 +18,7 @@ import {
   setLayerHide,
   setStepEase,
 } from '../blocks/animEdit';
-import { spxSteps } from '../blocks/animMachine';
+import { spxSteps, timelineKind } from '../blocks/animMachine';
 import { EASINGS } from '../model/easings';
 import { replaceRegionWithAnimData, writeAnimData } from '../templates/shared/animRuntime';
 import { activationStep, animatedProps, hideStep, stepSeconds } from '../blocks/animEval';
@@ -124,18 +124,31 @@ export default function TimelineDock({ iframeRef }: Props) {
       )}
       <span className="timeline-dock-chips">
         {native !== null && (
-          <button
-            className="timeline-dock-toggle"
-            onClick={() => setSurface((s) => (s === 'machine' ? 'timeline' : 'machine'))}
-            title={
-              surface === 'machine'
-                ? 'Back to the step timeline'
-                : 'Show the state graph — states as boxes, transitions as arrows, click a state to snap the preview there'
-            }
-            data-testid="timeline-surface-toggle"
-          >
-            {surface === 'machine' ? '≡ timeline' : '◇ states'}
-          </button>
+          // The Timeline/States switch — SEGMENTED so both surfaces are always visible and
+          // the active one is obvious (docs/SAVED_CONTENT_MODEL companion: the user must
+          // always know whether they are editing the timeline or the state graph).
+          <span className="timeline-surface-switch" role="tablist" aria-label="Editing surface">
+            <button
+              className={surface === 'timeline' ? 'active' : ''}
+              role="tab"
+              aria-selected={surface === 'timeline'}
+              onClick={() => setSurface('timeline')}
+              title="The step timeline — clips, layers, keyframes"
+              data-testid="timeline-surface-timeline"
+            >
+              ≡ Timeline
+            </button>
+            <button
+              className={surface === 'machine' ? 'active' : ''}
+              role="tab"
+              aria-selected={surface === 'machine'}
+              onClick={() => setSurface('machine')}
+              title="The state graph — states as boxes, transitions as arrows; what plays next lives here"
+              data-testid="timeline-surface-toggle"
+            >
+              ◇ States
+            </button>
+          </span>
         )}
         {native === null && data && (
           <button
@@ -1218,7 +1231,20 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
                       setMenu({ x: e.clientX, y: e.clientY, step: seg.i });
                     }}
                   >
-                    <span className="tlv2-cue">{cueOf(seg)}</span> {seg.step.name}
+                    <span className="tlv2-cue">{cueOf(seg)}</span>{' '}
+                    <span
+                      className={`tlv2-clip-kind tlv2-clip-kind-${timelineKind(seg.step)}`}
+                      title={
+                        timelineKind(seg.step) === 'layer'
+                          ? 'Layer timeline — this step animates one layer'
+                          : timelineKind(seg.step) === 'graphic'
+                            ? 'Graphic timeline — this step animates the whole look'
+                            : 'Pose — this step animates nothing yet'
+                      }
+                    >
+                      {timelineKind(seg.step) === 'layer' ? '▤' : timelineKind(seg.step) === 'graphic' ? '◇' : '·'}
+                    </span>{' '}
+                    {seg.step.name}
                     <span className="tlv2-clip-dur"> {stepSeconds(data, seg.i).toFixed(2)}s</span>
                     {editable && (
                       <span

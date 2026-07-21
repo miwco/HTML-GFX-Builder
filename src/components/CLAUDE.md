@@ -192,8 +192,15 @@ in src/blocks/CLAUDE.md.
   `out` = N ms setting by scheduling the exit after the entrance settles + the hold - cancelled
   by any manual play/stop/next/scrub.
 - **MachineGraph** - the NODE EDITOR (Phase 4, docs/STATE_MACHINE_SCHEMA.md §6a): the machine
-  graph surface toggling with the step timeline in the bottom dock (the `◇ states` chip,
-  data-block templates only). States as boxes (default path = the amber spine, badges match
+  graph surface toggling with the step timeline in the bottom dock (the SEGMENTED
+  `≡ Timeline | ◇ States` switch - both surfaces always visible, active highlighted;
+  data-block templates only). Boxes carry the ▤ layer / ◇ graphic timeline badge
+  (animMachine `timelineKind`, derived never stored); the main lane's "+ state" is a
+  three-way menu (pose / step on the path / ▤ timeline from layer via
+  blocks/layerTimeline.ts, shared with the Inspector's Animations-tab button); Delete
+  removes the selection (arrow / branch state / middle waypoint through the step mutators +
+  the SPX `steps` sync) and a press on empty canvas (incl. the wires SVG) clears it;
+  transition styles now include **Cut — instant** (duration/ease hidden for it). States as boxes (default path = the amber spine, badges match
   the timeline's cue markers, ▶ » ■ · ○ rest), transitions as labelled arrows, parallel groups
   as lanes, the preview's live state highlighted via the simulator chip's poll. Click a state
   = snap the preview there, parked; cards edit names (a path state renames through
@@ -394,11 +401,34 @@ e2e/layout.spec.ts.
   `needsSignIn` like AI does. Its measured In/Hold/Out breakdown re-runs when the template or
   sample data changes; job state lives in src/render/renderJobStore.ts (sessionStorage resume).
   Contracts in src/render/CLAUDE.md; specs in e2e/render.spec.ts (stubbed API).
-- **PacketManager** (📦 topbar modal), **CommunityGallery** (🌐), **ModerationQueue** (🛡),
-  **SyncStatus**, **Homebase** (THE PROFILE - signed-in dashboard: saved graphics across
-  packets, video projects, shows with their hosted control-page links, community
-  submissions; one store with 📦 Packets), **SettingsDialog** (AI key/model + workflow
-  defaults from model/prefs.ts).
+- **CommunityGallery** (🌐), **ModerationQueue** (🛡), **SyncStatus**, **SettingsDialog**
+  (AI key/model + workflow defaults from model/prefs.ts).
+
+## Save + Home (docs/SAVED_CONTENT_MODEL.md)
+
+PacketManager and the Homebase modal are RETIRED - packages are managed through Save and
+Home, both routed (src/app/router.ts) so browser Back/Forward walk between surfaces.
+
+- **save/SaveControls** - the topbar Save button + honest status (Not saved / Unsaved
+  changes / Saving… / Saved / Save failed) + the ▾ menu (Save As, open saved) + global
+  Ctrl/Cmd+S (capture phase, works inside Monaco, stands down under modals).
+- **save/SaveDialogs** - the first-save/Save-As dialog (name + standalone / package / new
+  package) and the unsaved-changes guard (Save & continue / Save first… / Discard /
+  Cancel), mounted once per shell; both declare useModalGate.
+- **home/HomePage** - `#/home[/<section>]` + `#/package/<id>`: recent work, the graphics
+  library (search, open, 🎛 control panel, rename, duplicate, move-to-package, two-step
+  delete), packages (create/rename/export via buildGraphicsZip/delete - deleting a package
+  KEEPS its graphics as standalone), control panels, videos, brand looks (absorbed from
+  PacketManager). Local-first, no auth gate - sign-in only adds sync.
+- **home/GraphicControlPage** - `#/control/<graphicId>`: the saved graphic's operator
+  panel - live preview iframe + transport + machine event buttons + ENTRIES (named data
+  rows: add/duplicate/rename/delete/select-active, ▶ Play with an entry, ★ make an entry
+  the template's default data via setFieldDefault) + the downloadable controlpanel.html
+  with entries baked in (control/controlPanelHtml.ts opts.entries renders an entry
+  switcher). Entry mutations compose through a read-fresh `patch(cur => …)` - two edits in
+  one tick must never overwrite each other.
+- **AuthStatus** now routes 🏠 Home from the account menu (initials avatar fallback); the
+  topbar's always-visible 🏠 Home button is the no-account door to the same place.
 
 ## Video editor shell (video/)
 
@@ -462,11 +492,25 @@ preview), draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.
 which generates the complete, commented template. FIVE entry cards: template, Create with AI,
 video, Import graphic, blank.
 
-**Import graphic** (mode 'design', steps/ImportDesignStep + steps/PrepareDesignStep) is a
-SETUP flow, not a second editor: Start -> Design (drop the image - any raster format the
-browser decodes: PNG, JPEG, WebP, GIF, AVIF, rejecting only a file with no intrinsic pixel
-size, since every downstream number comes from that measurement; live preview from the moment
-it lands; Create here is the FAST PATH, byte-identical bare fixed-mode) -> Prepare -> Create.
+**Import graphic** (mode 'design', steps/ImportDesignStep + PrepareDesignStep +
+PlaceFieldsStep + the shared AnimationStep) is a SETUP flow, not a second editor:
+Start -> Design (drop the image - any raster format the browser decodes: PNG, JPEG, WebP,
+GIF, AVIF, rejecting only a file with no intrinsic pixel size, since every downstream number
+comes from that measurement; live preview from the moment it lands; Create is available from
+here on - every later step is an optional stop) -> Prepare -> Text -> Animation -> Create.
+The **Text step** (PlaceFieldsStep) places editable fields ON the artwork: T = click point
+text, ⬚ = drag a wrapping area box; move/resize/Delete; per-field name, preview text, and
+typography (family / size / weight / color / align / line-height / tracking) with a live
+styled render on the placement canvas. Specs live in `draft.designFields` (DESIGN px) and
+become REAL placed fields at build - draft.ts `withDesignFieldSpecs` runs addPlacedLine +
+setLineTextStyle + setLineFit, so wizard placement, editor, preview, and export agree by
+construction (browser-verified pixel-exact). The **FontPicker** (wizard/FontPicker.tsx,
+searchable) offers the bundled OFL library, upload (woff2/woff/ttf/otf -> CustomFont,
+embedded in template.assets + every export), and - Chromium only, permission-gated - Local
+Font Access, where a picked installed font is EMBEDDED exactly like an upload so playout
+never depends on the machine's fonts. The **Animation step** is the standard one
+(imported-design's fade/slide/pop/blur cards + in/out direction + speed + easing + the
+full-lifecycle demo).
 The **Prepare step** carries the two artwork decisions: ERASE baked-in text (source-px rects
 drawn on DesignPrepCanvas -> assets/eraseRegion flat-fill; flat verdicts apply immediately,
 non-flat holds behind "Use it anyway"). Marks ACCUMULATE into `draft.designErases` - a design

@@ -32,8 +32,16 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   context), and motion feel (it lives in the NOACG_ANIM block, not in CSS).
 - **brand.ts** - ProjectBrand save/load (localStorage 'spx-gfx-brand'), captured on every wizard
   Create.
-- **packets.ts** - packet manager data layer: graphics collections 'spx-gfx-packets' + brand
-  looks 'spx-gfx-looks' + captureLookFromTemplate/applyLookToTemplate.
+- **library.ts** - the GRAPHICS LIBRARY (docs/SAVED_CONTENT_MODEL.md): every durably saved
+  graphic is ONE `GraphicDoc` with a STABLE uuid ('spx-gfx-graphics', sync kind 'graphic',
+  supabase migration 0009) - template + baseline + `packageId` (null = standalone) + the
+  control panel's `entries` (`ControlEntry` named data rows) + `activeEntryId`. Packet
+  conventions (updatedAt LWW, tombstones). `migrateEmbeddedGraphics` extracts v1 packets'
+  embedded graphics into the library UNDER THEIR OWN ids (convergent across devices) and
+  rewrites the packet as version 2; it runs on every loadAllGraphics.
+- **packets.ts** - PACKAGES (v2: folders over the library - graphics point back via
+  packageId; the legacy `graphics` array stays a real empty array so older builds never
+  crash) + brand looks 'spx-gfx-looks' + captureLookFromTemplate/applyLookToTemplate.
 - **shows.ts** - the RUNDOWN unit (docs/CONTROL_LAYER.md): an ORDERED set of graphics that run
   together, one aggregated control page. Packet conventions ('spx-gfx-shows', updatedAt LWW,
   tombstones), sync kind 'show'; `hostedSlug` records the published control page's capability.
@@ -42,7 +50,9 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
 - **defaultTemplate.ts** - the fallback template.
 - **project.ts** - the current working project, autosaved to localStorage 'spx-gfx-project' so a
   reload restores the last graphic. One slot: creating a new graphic overwrites it (durable saves
-  go to Packets). Soft-delete tombstone for cloud-sync parity.
+  go to the LIBRARY via the Save button). Carries the save LINK - `graphicId` (which library
+  record this document IS) + `dirty` - so a reload keeps an honest Saved/Unsaved badge.
+  Soft-delete tombstone for cloud-sync parity.
 - **importTemplate.ts** - import an EXISTING template (.html file or SPX-style zip) and split it
   into the editor's three panes; foreign templates rarely follow the house contracts, so the
   Style/Motion panels degrade gracefully, validation shows what's missing, and the AI panel's

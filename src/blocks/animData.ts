@@ -109,8 +109,10 @@ export const RESERVED_EVENTS = ['play', 'stop'] as const;
 
 /** The transition-style vocabulary the interpreter's noacgStyleTimeline plays (the node
  *  editor's arrow styles). An unknown name round-trips untouched and the entry timeline
- *  plays instead — degradation, never a crash. */
+ *  plays instead — degradation, never a crash. 'cut' is the instant change: the pose swap
+ *  with no tween at all (the broadcast hard cut); duration/ease are ignored on it. */
 export const TRANSITION_STYLES = [
+  'cut',
   'fade',
   'push-left',
   'push-right',

@@ -42,8 +42,12 @@ test('the dock toggles between the step timeline and the machine graph', async (
   await expect(page.getByTestId('mg-state-main-off')).toBeVisible();
   await expect(page.getByTestId('mg-state-main-selected')).toBeVisible();
   await expect(page.locator('.mg-derived-chip')).toHaveCount(0);
-  await page.getByTestId('timeline-surface-toggle').click();
+  // The switch is SEGMENTED (both surfaces always visible, active one highlighted):
+  // the Timeline segment returns; re-clicking the active States segment is a no-op.
+  await expect(page.getByTestId('timeline-surface-toggle')).toHaveClass(/active/);
+  await page.getByTestId('timeline-surface-timeline').click();
   await expect(page.locator('.tlv2-body')).toBeVisible();
+  await expect(page.getByTestId('timeline-surface-timeline')).toHaveClass(/active/);
 });
 
 test('a machine-less template shows its derived walk, honestly labelled', async ({ page }) => {
@@ -171,8 +175,11 @@ test('branch states and parallel groups add and delete; a dragged box parks and 
   await createProject(page, { category: 'quiz' });
   await openGraph(page);
 
-  // A new branch state, born selected; deleting it drops its arrows with it.
-  await awaitPreviewRebuild(page, () => page.getByTestId('mg-add-state-main').click());
+  // A new branch state, born selected; deleting it drops its arrows with it. The main
+  // lane's + state opens a MENU (pose / step on the path / from a layer) — pose is the
+  // classic branch add.
+  await page.getByTestId('mg-add-state-main').click();
+  await awaitPreviewRebuild(page, () => page.getByTestId('mg-add-pose').click());
   expect(await templateJs(page)).toContain('"id": "new-state"');
   await page.getByTestId('mg-delete-state').click();
   await awaitPreviewRebuild(page);
@@ -253,4 +260,79 @@ test('a style write under a pre-styles interpreter re-emits the region (the pair
   });
   expect(result.reEmitted).toBe(true);
   expect(result.pairingError).toBe(true);
+});
+
+test('a layer gets its own timeline from the graph: ▤ step, cut style, Delete restores by undo', async ({ page }) => {
+  await createProject(page, { category: 'lower-third', index: 0 });
+  await openGraph(page);
+
+  // "+ state" on the main lane opens the three-way menu; "from layer: Name" adds a
+  // "Name In" waypoint whose reveal the layer moves into (the LAYER TIMELINE, badged ▤).
+  await page.getByTestId('mg-add-state-main').click();
+  await expect(page.getByTestId('mg-add-menu')).toBeVisible();
+  await awaitPreviewRebuild(page, () => page.getByTestId('mg-add-layer-f0').click());
+  const nameIn = page.locator('.mg-state', { hasText: 'Name In' });
+  await expect(nameIn).toBeVisible();
+  await expect(nameIn.locator('.mg-kind-layer')).toBeVisible();
+  const js = await templateJs(page);
+  expect(js).toContain('"Name In"');
+  expect(js).toMatch(/"reveals": \[\s*"#f0"\s*\]/);
+
+  // The walk's enter → Name In arrow takes the CUT style: instant change, no duration knob.
+  // (The invisible hit path needs a forced click — same geometry the pointer really uses.)
+  await page.getByTestId('mg-arrow-main-walk-1').click({ force: true });
+  await page.getByTestId('mg-style').selectOption('cut');
+  await awaitPreviewRebuild(page);
+  expect(await templateJs(page)).toContain('"style": "cut"');
+  await expect(page.getByTestId('mg-style-duration')).toHaveCount(0);
+
+  // Delete removes the selected waypoint (its step goes with it); Ctrl+Z restores both.
+  // A press on the empty canvas first clears the arrow selection, so its floating card
+  // no longer overlaps the boxes.
+  await page.locator('.mg-canvas').click({ position: { x: 8, y: 8 } });
+  await expect(page.getByTestId('mg-transition-card')).toHaveCount(0);
+  await nameIn.click();
+  await awaitPreviewRebuild(page, () => page.keyboard.press('Delete'));
+  expect(await templateJs(page)).not.toContain('"Name In"');
+  await awaitPreviewRebuild(page, () => page.keyboard.press('Control+z'));
+  expect(await templateJs(page)).toContain('"Name In"');
+});
+
+test('the timeline clips and the switch carry the layer/graphic vocabulary', async ({ page }) => {
+  await createProject(page, { category: 'lower-third', index: 0 });
+  // The segmented switch names both surfaces; the clip strip badges each step's kind.
+  await expect(page.getByTestId('timeline-surface-timeline')).toHaveText(/Timeline/);
+  await expect(page.getByTestId('timeline-surface-toggle')).toHaveText(/States/);
+  await expect(page.locator('.tlv2-clip-kind').first()).toBeVisible();
+});
+
+test('two complete graphic timelines chain on the path (the ◇ > ◇ rundown case)', async ({ page }) => {
+  await createProject(page, { category: 'lower-third', index: 0 });
+  // Duplicate the entrance (the clip context menu's action, applied at the mutator seam):
+  // the copy is a second COMPLETE-GRAPHIC timeline standing after the first.
+  await awaitPreviewRebuild(page, () =>
+    page.evaluate(async () => {
+      const { useTemplateStore } = await import('/src/store/templateStore.ts');
+      const { parseAnimData } = await import('/src/blocks/animData.ts');
+      const { duplicateStep, renameStep } = await import('/src/blocks/animEdit.ts');
+      const { spxSteps } = await import('/src/blocks/animMachine.ts');
+      const { writeAnimData } = await import('/src/templates/shared/animRuntime.ts');
+      const { replaceDefinitionInHtml } = await import('/src/model/spxDefinition.ts');
+      const s = useTemplateStore.getState();
+      const data = parseAnimData(s.template.js)!;
+      let next = duplicateStep(data, 0)!;
+      next = renameStep(next, 0, 'Presenter Lower Third')!;
+      next = renameStep(next, 1, 'Guest Lower Third')!;
+      const js = writeAnimData(s.template.js, next)!;
+      const settings = { ...s.template.settings, steps: String(spxSteps(next)) };
+      const html = replaceDefinitionInHtml(s.template.html, settings, s.template.fields);
+      s.applyTemplate({ ...s.template, js, html, settings });
+    }),
+  );
+  // Both clips badge as ◇ GRAPHIC timelines on the timeline strip…
+  await expect(page.locator('.tlv2-clip-kind-graphic')).toHaveCount(3); // two chained + Out
+  // …and as ◇ boxes chained on the graph's spine.
+  await openGraph(page);
+  await expect(page.locator('.mg-state', { hasText: 'Presenter Lower Third' }).locator('.mg-kind-graphic')).toBeVisible();
+  await expect(page.locator('.mg-state', { hasText: 'Guest Lower Third' }).locator('.mg-kind-graphic')).toBeVisible();
 });

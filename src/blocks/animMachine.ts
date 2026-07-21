@@ -96,6 +96,30 @@ export function freshStateId(group: AnimGroup, name: string): string {
   return id;
 }
 
+/**
+ * What KIND of timeline a state's content is — DERIVED from the code, never stored (the
+ * one-source-of-truth rule): a LAYER timeline moves exactly one element (Box In, Name In),
+ * a GRAPHIC timeline moves several (a complete graphic's entrance, a composite change), a
+ * POSE has no timeline at all. The timeline dock and the node editor badge with this so the
+ * two levels stay visually distinct everywhere.
+ */
+export type TimelineKind = 'layer' | 'graphic' | 'pose';
+export function timelineKind(step: AnimStep | null | undefined): TimelineKind {
+  if (!step) return 'pose';
+  if ((step.dynamics?.length ?? 0) > 0) return 'graphic'; // measured motion reads as whole-graphic
+  const touched = new Set(Object.keys(step.layers));
+  for (const sel of step.reveals ?? []) touched.add(sel);
+  for (const sel of step.hides ?? []) touched.add(sel);
+  if (touched.size === 0) return 'pose';
+  return touched.size === 1 ? 'layer' : 'graphic';
+}
+
+/** The single layer a LAYER timeline animates (its selector), or null for other kinds. */
+export function timelineLayer(step: AnimStep | null | undefined): string | null {
+  if (!step || timelineKind(step) !== 'layer') return null;
+  return Object.keys(step.layers)[0] ?? step.reveals?.[0] ?? step.hides?.[0] ?? null;
+}
+
 /** Every timeline a template can play: the default path's steps plus every state's inline
  *  timeline. Anything that must consider ALL of a graphic's motion (the validator's dangling
  *  reference guards, the bench's measured-motion exemptions) calls this rather than reading

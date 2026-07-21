@@ -127,13 +127,22 @@ Directories marked * have their own CLAUDE.md with the binding per-area contract
 
 ```
 src/
+  app/         router.ts - HASH ROUTING for /app (docs/SAVED_CONTENT_MODEL.md §3): #/home,
+               #/package/<id>, #/graphic/<id>, #/control/<id>, #/video, #/new - real history
+               (Back/Forward walk surfaces, refresh restores); ?control=/?chat= query routes
+               stay in App.tsx
   model/ *     SpxTemplate types, SPX parse/serialize, catalog data, fonts, brand, packets;
-               shows.ts (the RUNDOWN unit - docs/CONTROL_LAYER.md); structure.ts (element
-               identity) + fieldModel.ts (the FieldDescriptor contract)
+               library.ts (the GRAPHICS LIBRARY - docs/SAVED_CONTENT_MODEL.md: GraphicDoc
+               stable-id records + control ENTRIES + the packet v1->v2 migration; sync kind
+               'graphic', supabase migration 0009); shows.ts (the RUNDOWN unit -
+               docs/CONTROL_LAYER.md); structure.ts (element identity) + fieldModel.ts (the
+               FieldDescriptor contract)
   templates/ * the wizard catalog: shared assemblers + 11 categories; :root style contract;
                types/ = the GRAPHIC TYPE registry (docs/GRAPHIC_TYPES.md) - what a graphic IS,
                independent of its look; compiles into catalog variants, replacing by id
   store/ *     templateStore.ts (zustand) - applyTemplate/undo choke point + editor UI state
+               + the save LINK (`saved`); saveActions.ts - Save/Save As/open + the
+               unsaved-changes guard over the library (useSaveUi)
   preview/     composeDocument.ts - inlines CSS + GSAP + JS + assets into the iframe srcdoc
   editor/      Monaco VIEW-only helpers, shared by the SPX and video code panes: comment
                visibility (normal/dimmed/hidden) as tokenizer-derived DECORATIONS - it never
@@ -161,8 +170,11 @@ src/
                feature-detection point (unset env = pure offline mode); auth, sync, assets
   community/   shared templates (signed-in only), validated + benched at publish AND import;
                showchat/ is audience send-in (SendIn page, ModerationPanel, chatGraphicBlock)
-  components/ * the React app: AppShell, CodeEditor, canvas, timeline dock, Inspector, the
-               five-tab SidePanel, wizard/, auth/, and video/ (the PARALLEL video shell)
+  components/ * the React app: AppShell (topbar Save controls + 🏠 Home), CodeEditor, canvas,
+               timeline dock, Inspector, the five-tab SidePanel, wizard/, auth/, save/
+               (SaveControls + the save/guard dialogs), home/ (the routed HomePage +
+               GraphicControlPage - packages, entries, per-graphic operator panel), and
+               video/ (the PARALLEL video shell, topbar Graphics/Home escape hatches)
 public/fonts/  the 7 bundled woff2 fonts (served at /fonts, copied into exports); src/assets/ has
                the bundled gsap.min.js, lottie.min.js, OFL.txt (the ONE licence source -
                src/export/CLAUDE.md) + data-URL asset helpers, src/teach/ the Monaco tooltips
@@ -189,11 +201,14 @@ show chat, and AI (hosted mode). Offline builds (no Supabase env) must grow **ze
 New projects go through the **CreationWizard** (Entry -> Category -> Template -> Fields -> Style
 -> Animation, persistent live preview); `variant.create(options)` generates the complete, commented
 template, applied with `resetSampleData: true` so a project starts from its own field defaults.
-Four entry cards: templates, **"Create with AI"** (a brief plus optional images and/or an existing
-.html/.zip - every AI result runs the harness with the runtime bench injected, and the no-AI "Open
-as code" import stays one click away, never gated on sign-in), **"Video or animation with AI"**
-(the parallel VIDEO project kind, engine chosen at create - creating/opening a video flips the
-persisted doc-kind switch and every SPX create path flips it back), and blank. After creation, code
+The Entry step leads with **Continue working** (recent library graphics + the door to Home),
+then the broadcast-graphics cards: templates, **"Create with AI"** (a brief plus optional images
+and/or an existing .html/.zip - every AI result runs the harness with the runtime bench injected,
+and the no-AI "Open as code" import stays one click away, never gated on sign-in),
+**"Import graphic"** (manual: artwork -> erase/scale -> PLACE text fields -> fonts -> in/out
+animation), and blank; **"Video or animation with AI"** sits in its own visually separated
+strip marked Beta (the parallel VIDEO project kind, engine chosen at create - creating/opening
+a video flips the persisted doc-kind switch and every SPX create path flips it back). After creation, code
 is the source of truth and two **live panels** keep working via deterministic patches: the **Style
 panel** writes the `:root` style contract and **the step timeline** touches ONLY the marked
 ANIMATION region - user code outside the markers is never modified. The timeline dock picks its

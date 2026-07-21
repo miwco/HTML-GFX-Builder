@@ -88,7 +88,10 @@ so auto-advance is deterministic; one `(from, event)` pair per group, so dispatc
 ambiguous.
 
 **`style` / `duration` / `ease` on a transition** are the node editor's TRANSITION STYLES
-(`fade`, `push-left/right/up/down`, `wipe-left/right` — `TRANSITION_STYLES` in animData.ts):
+(`cut`, `fade`, `push-left/right/up/down`, `wipe-left/right` — `TRANSITION_STYLES` in
+animData.ts; `cut` is the broadcast hard cut — the pose swap with no tween, duration/ease
+ignored, its own pairing check `hasCutStyleRuntime` since it postdates the first style
+runtime):
 the arrow's own animated change, played by the interpreter's `noacgStyleTimeline` INSTEAD of
 the target state's entry timeline. Two phases on the root around an instant pose swap composed
 by the SNAP recipe (clear, then replay each group's canonical route with suppressed callbacks),
@@ -236,13 +239,22 @@ The machine GRAPH surface, toggling with the step timeline in the bottom dock (R
   Clicking a state SNAPS the preview there, parked (`{ timers: false }`).
 - **Editing:** port-drag draws an operator arrow (minted unique event, selected for renaming);
   cards edit trigger / event / timer delay / transition style; states and groups add and
-  delete; boxes drag to `at` positions. Deleting the only arrow behind a default-path edge is
-  REFUSED (judged by validateMachine — one of two parallel arrows may still go). Every write
-  goes mutator → `writeAnimData` → ONE applyTemplate; illegal edits return null and the UI
-  reverts in place.
-- **Waypoints belong to the timeline.** The positional binding means a path state and its clip
-  are one thing, so the graph never adds or deletes waypoints — the card says so and offers
-  "Open its timeline" (surface swap, playhead parked at the step).
+  delete; boxes drag to `at` positions; Delete removes the selection (arrow, branch state, or
+  a middle waypoint — routed through the step mutators, entrance/Out never go) and Ctrl+Z
+  restores it. Deleting the only arrow behind a default-path edge is REFUSED (judged by
+  validateMachine — one of two parallel arrows may still go). Every write goes mutator →
+  `writeAnimData` → ONE applyTemplate; illegal edits return null and the UI reverts in place.
+- **Waypoints and the timeline are one thing (the positional binding).** The main lane's
+  "+ state" is a three-way menu: a pose branch state, a "◇ step on the path" (animEdit
+  addStep + the SPX `steps` sync), or "▤ timeline from layer" — blocks/layerTimeline.ts
+  `createStepFromLayer`, shared with the Inspector's Animations-tab button: a new waypoint
+  named after the layer whose reveal the layer's activation moves into. Deleting a middle
+  waypoint deletes its bound step the same way the clip's Delete does.
+- **Two timeline LEVELS, derived never stored** (`animMachine.ts timelineKind`): a state whose
+  content animates exactly ONE layer is a ▤ LAYER timeline (Name In); several layers make a
+  ◇ GRAPHIC timeline (a complete look); no timeline is a pose. The graph boxes, the state
+  card, and the step clips all badge with the same classifier, so the two levels stay
+  visually distinct everywhere without a second stored model.
 - **Break fearlessly:** the topbar ↺ Reset restores the create-time `baseline` snapshot.
 
 Pinned by `e2e/machine-graph.spec.ts` (the goals doc's acceptance walk, the styled-change pose
