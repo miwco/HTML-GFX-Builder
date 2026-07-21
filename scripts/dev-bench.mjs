@@ -25,10 +25,17 @@
 
 import { spawn } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+// Resolved, not `root/node_modules/vite/...` hardcoded: a linked worktree has no node_modules
+// of its own (resolution walks up to the main checkout), so the literal path does not exist.
+const viteBin = join(
+  dirname(createRequire(join(root, 'package.json')).resolve('vite/package.json')),
+  'bin/vite.js',
+);
 const LOG = join(root, 'dev-bench.log');
 const stamp = () => new Date().toISOString();
 
@@ -47,7 +54,7 @@ const log = (text) => {
 
 log(`\n=== ${stamp()} dev:bench starting (pid ${process.pid}) ===\n`);
 
-const child = spawn(process.execPath, [join(root, 'node_modules/vite/bin/vite.js'), '--mode', 'bench'], {
+const child = spawn(process.execPath, [viteBin, '--mode', 'bench'], {
   cwd: root,
   stdio: ['inherit', 'pipe', 'pipe'],
 });
