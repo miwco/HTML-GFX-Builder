@@ -131,6 +131,7 @@ src/
   preview/     composeDocument.ts - inlines CSS + GSAP + JS + assets into the iframe srcdoc
   blocks/ *    deterministic transforms: block registry, field editing, the Timeline v2 engine,
                animMachine.ts (the STATE MACHINE's graph seam - docs/STATE_MACHINE_SCHEMA.md)
+               + machineEdit.ts (the NODE EDITOR's mutators; UI = components/MachineGraph.tsx)
   ai/ *        the SPX GENERATION HARNESS: catalog-fit briefs assemble deterministically through
                the wizard assemblers; off-catalog briefs go to the coder + a 2-round repair loop
   ai/video/    the VIDEO motion harness: skills + reference cards -> Motion Director -> the

@@ -1,9 +1,10 @@
 # The state-machine model (NOACG_ANIM version 2)
 
 The contract for how a graphic's STATES live in the code. Phase 1 of the template-library /
-state-machine / control-layer stage: the model exists in the schema, the runtime, the
-serializer and the validator; the node editor (Phase 4) and the generated control pages
-(Phase 5) are built on top of it later.
+state-machine / control-layer stage put the model in the schema, the runtime, the serializer
+and the validator; Phase 4 added the NODE EDITOR on top (the machine graph surface,
+`src/components/MachineGraph.tsx` + `src/blocks/machineEdit.ts` — see §6a); the generated
+control pages (Phase 5) come later.
 
 Companion docs: `TIMELINE_V2_PLAN.md` (the step/keyframe model this extends),
 `TIMELINE_INTERACTION_MODEL.md` (the timeline's interaction contract),
@@ -84,8 +85,21 @@ canonically, warns in validation, and never fires. At most one timer transition 
 so auto-advance is deterministic; one `(from, event)` pair per group, so dispatch is never
 ambiguous.
 
-**`style` / `duration` / `ease` on a transition** are reserved for the node editor's transition
-styles (fade, push, wipe). They are type-checked and round-tripped; nothing consumes them yet.
+**`style` / `duration` / `ease` on a transition** are the node editor's TRANSITION STYLES
+(`fade`, `push-left/right/up/down`, `wipe-left/right` — `TRANSITION_STYLES` in animData.ts):
+the arrow's own animated change, played by the interpreter's `noacgStyleTimeline` INSTEAD of
+the target state's entry timeline. Two phases on the root around an instant pose swap composed
+by the SNAP recipe (clear, then replay each group's canonical route with suppressed callbacks),
+so a styled entry and a snap agree on every pose — including pose-only branch states, whose
+look lives on the route rather than on the target. `duration` is the change's total
+speed-relative seconds (default 0.6), `ease` each half's GSAP ease (default power2.inOut). An
+unknown style round-trips untouched, warns in validation, and the entry timeline plays instead.
+The PAIRING RULE (§5) covers styles: a styled arrow under an interpreter without
+`noacgStyleTimeline` is an export-blocking error, and `writeAnimData` re-emits the region
+rather than splice into one.
+
+**`at` on a state** is the node editor's box position `[x, y]` — additive optional (no version
+bump), read by nothing but the graph view; absent means auto-layout.
 
 **Reserved events.** `play` and `stop` are built-in and never authorable. `next` is NOT
 reserved - it is an ordinary event name, conventionally the default path's arrows, and a branch
@@ -193,20 +207,42 @@ land under an interpreter that predates the machine engine: check
 
 ---
 
-## 6. What Phase 1 deliberately does not do
+## 6. What the model deliberately does not do (yet)
 
-- **No node editor.** The only machine UI is the simulator's event strip (one button per
-  authored operator event + a state chip), shown only for explicit machines.
 - **No control-layer generation.** All three transports still speak `update|play|stop|next` and
   funnel into the four globals - which is exactly why the queue lives INSIDE the template: the
   serial guarantee holds identically in the editor, in an exported overlay, and under SPX.
-- **No machine-aware structural mutators.** Under an explicit machine, the step-adding /
-  -deleting / activation edits return `null` (the positional binding would desync) and the
-  timeline hides those affordances. Phase 2 ships the machine-aware versions before any wizard
-  template carries an explicit machine.
+  Phase 5's seam.
 - **Dynamic collections, data-condition triggers, interruption priorities, external feeds,
   operator permissions, nested machines** - all consciously deferred. The schema does not block
   any of them.
+
+## 6a. The node editor (Phase 4 — shipped)
+
+The machine GRAPH surface, toggling with the step timeline in the bottom dock (Rive-style):
+`src/components/MachineGraph.tsx` over the pure mutators in `src/blocks/machineEdit.ts`.
+
+- **One generic editor for every graphic.** A template without an authored machine shows its
+  DERIVED machine, labelled "derived from the steps"; the first graph edit MATERIALIZES exactly
+  that machine into the literal (`machineEdit.ts withExplicitMachine`), inside the same
+  undoable apply — behaviourally a no-op at the moment it happens.
+- **Reading:** default path as the amber spine (badged ▶ » ■ like the timeline's cue markers,
+  the un-authored edge into the final waypoint dashed as stop's), branches as labelled arrows,
+  parallel groups as lanes, the preview's live state highlighted (the simulator chip's poll).
+  Clicking a state SNAPS the preview there, parked (`{ timers: false }`).
+- **Editing:** port-drag draws an operator arrow (minted unique event, selected for renaming);
+  cards edit trigger / event / timer delay / transition style; states and groups add and
+  delete; boxes drag to `at` positions. Deleting the only arrow behind a default-path edge is
+  REFUSED (judged by validateMachine — one of two parallel arrows may still go). Every write
+  goes mutator → `writeAnimData` → ONE applyTemplate; illegal edits return null and the UI
+  reverts in place.
+- **Waypoints belong to the timeline.** The positional binding means a path state and its clip
+  are one thing, so the graph never adds or deletes waypoints — the card says so and offers
+  "Open its timeline" (surface swap, playhead parked at the step).
+- **Break fearlessly:** the topbar ↺ Reset restores the create-time `baseline` snapshot.
+
+Pinned by `e2e/machine-graph.spec.ts` (the goals doc's acceptance walk, the styled-change pose
+landing, and the styles pairing rule).
 
 ---
 
@@ -214,12 +250,15 @@ land under an interpreter that predates the machine engine: check
 
 | File | Role |
 |---|---|
-| `src/blocks/animData.ts` | The contract: types, normalizing parse + `migrateAnimData`, shape gate, canonical serializer. |
+| `src/blocks/animData.ts` | The contract: types, normalizing parse + `migrateAnimData`, shape gate, canonical serializer, `TRANSITION_STYLES`. |
 | `src/blocks/animMachine.ts` | The graph seam: `deriveMachine`, `spxSteps`, `canonicalPath`, `operatorEvents`, `validateMachine`. |
-| `src/templates/shared/animRuntime.ts` | The emitted ES5 interpreter: the version-1 statements verbatim + the machine engine (queue, dispatch, timers, snap, introspection) + `hasMachineRuntime`. |
-| `src/validation/validateTemplate.ts` | Semantic machine errors/warnings + the pairing-rule error. |
+| `src/blocks/machineEdit.ts` | The node editor's pure mutators: materialization, transitions (trigger/event/timer/style), states, groups, box positions. |
+| `src/components/MachineGraph.tsx` | The graph surface (§6a): boxes, arrows, lanes, cards, port-drag, live state. |
+| `src/templates/shared/animRuntime.ts` | The emitted ES5 interpreter: the version-1 statements verbatim + the machine engine (queue, dispatch, timers, snap, introspection, `noacgStyleTimeline`) + `hasMachineRuntime` / `hasTransitionStyleRuntime` + the pairing-safe `writeAnimData`. |
+| `src/validation/validateTemplate.ts` | Semantic machine errors/warnings + the pairing-rule errors (machine, styles). |
 | `src/components/PlayoutSimulator.tsx` | `event` / `snap` commands, the event strip. |
 | `src/store/templateStore.ts` | `sendEvent` / `sendSnap`. |
 | `e2e/_machines.ts` + `e2e/state-machine.spec.ts` | The five acceptance criteria, hand-written. |
+| `e2e/machine-graph.spec.ts` | The node editor's acceptance walk (Phase 4). |
 
 `settings.steps` stays DERIVED, through one function: `animMachine.ts spxSteps(data)`.

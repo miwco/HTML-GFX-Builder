@@ -144,6 +144,21 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   its first edit, a one-line diff). Additive optional fields never bump the version; a
   BREAKING shape change bumps it and ships its migration here the same commit; an unknown
   version degrades to hand-crafted, never a crash.
+- **machineEdit.ts** - the NODE EDITOR's pure mutators (Phase 4; the UI is
+  components/MachineGraph.tsx). Same contract as animEdit: `(data) => data | null`, caller
+  applies via `writeAnimData` + ONE applyTemplate. Every mutator starts from
+  `withExplicitMachine` - a machine-less template's first graph edit MATERIALIZES the derived
+  machine into the literal (behaviourally a no-op at that moment). Legality is delegated to
+  the ONE shape gate (`isAnimData`) so the editor can never write a machine the parser would
+  refuse - which is how event uniqueness, reserved names and the single-timer rule are
+  enforced without a second rulebook - plus `validateMachine` where shape can't see the
+  problem: `removeTransition` refuses an edit that ADDS validation errors (deleting the only
+  arrow behind a default-path edge disconnects the walk; deleting one of two parallel arrows
+  stays legal). Transitions: trigger switch (minting a unique event / defaulting the delay),
+  event, timer delay, STYLE + duration + ease (TRANSITION_STYLES); structure: addTransition
+  (port-drag), addState/deleteState (OFF-PATH only - waypoints belong to the timeline, and
+  the initial state never goes), addGroup/removeGroup (main never goes), setStatePosition
+  (the additive `at` field).
 - **animMachine.ts** - the machine's editor-side seam (animData owns the literal, this owns the
   GRAPH questions). `deriveMachine` builds the implicit ONE-GROUP linear machine for data with
   no `machine` key - states named after the steps, a synthesized pose-only `off`, a `next` arrow
@@ -161,10 +176,11 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   `isAnimData`).
   THE POSITIONAL BINDING, the one thing to hold onto: `defaultPath[i]`'s timeline IS `steps[i]`.
   No stored indices to go stale - and it is why every timeline surface keeps working under a
-  machine. Its price: edits that add, remove or reorder steps (`addStep`, `deleteStep`,
-  `duplicateStep`, `setLayerActivation`) return null under an explicit machine and the timeline
-  hides those affordances; the machine-aware versions arrive in Phase 2, before any wizard
-  template carries a machine.
+  machine. Its consequence: step-structural edits (`addStep`, `deleteStep`, `duplicateStep`,
+  `setLayerActivation`, `renameStep`) are MACHINE-AWARE - they move the bound waypoint with the
+  step (insert inherits the split arrow's event via `reconnectPath`, names sync one way via
+  `syncWaypointNames`) - and they are the ONLY way waypoints are added or removed: the node
+  editor deliberately edits off-path structure and arrows, never the walk itself.
 - **animEdit.ts** - pure keyframe mutators; every editing surface routes through these, then
   spliceAnimData + one applyTemplate makes the edit real, undoable code. setKeyframe /
   deleteKeyframe (per property), moveLayerKeyframes / deleteLayerKeyframes (the aggregate

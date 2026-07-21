@@ -184,6 +184,25 @@ in src/blocks/CLAUDE.md.
   state (e.g. a Blur exit's filter into a Slide entrance that never resets it). Honors the SPX
   `out` = N ms setting by scheduling the exit after the entrance settles + the hold - cancelled
   by any manual play/stop/next/scrub.
+- **MachineGraph** - the NODE EDITOR (Phase 4, docs/STATE_MACHINE_SCHEMA.md §6a): the machine
+  graph surface toggling with the step timeline in the bottom dock (the `◇ states` chip,
+  data-block templates only). States as boxes (default path = the amber spine, badges match
+  the timeline's cue markers, ▶ » ■ · ○ rest), transitions as labelled arrows, parallel groups
+  as lanes, the preview's live state highlighted via the simulator chip's poll. Click a state
+  = snap the preview there, parked; cards edit names (a path state renames through
+  `renameStep` so the bound step label can never fork), trigger/event/timer, and TRANSITION
+  STYLES (fade/push/wipe + duration/ease); port-drag draws arrows (same group only, minted
+  unique event, selected for renaming — the persisted index is found via a serialize→parse
+  round trip because the canonical serializer SORTS transitions); boxes drag to positions
+  persisted as the additive `at` field. A machine-less template shows its DERIVED machine
+  ("derived from the steps" chip) and the first edit materializes it in the same undoable
+  apply. Waypoints stay the timeline's to add/delete (positional binding); the card links
+  there ("Open its timeline" parks the playhead at the step). Every write is a
+  blocks/machineEdit.ts mutator → `writeAnimData` → ONE applyTemplate; illegal edits (reserved
+  or duplicate event, deleting the walk's only edge) return null and the control reverts.
+  Gotcha: the box button must NOT have `overflow: hidden` — it would clip the connect port
+  half off the right edge and eat its pointerdown (the name span does its own ellipsis).
+  Pinned by e2e/machine-graph.spec.ts.
 - **TimelineDock / StepTimeline** (Timeline v2, both in StepTimeline.tsx) - the dock picks the
   timeline surface from the CODE, never from the category (which is what lets a template saved
   years ago still open correctly): a NOACG_ANIM data region gets the clip-style STEP TIMELINE,

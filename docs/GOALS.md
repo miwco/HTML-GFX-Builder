@@ -925,6 +925,49 @@ now full: every one of the 12 types ships in all four families (noacg / glass / 
       config change" claim made true for the axis it is true on; a new THEME is deliberately
       not config (twelve designs + a token row), and the doc records what one costs.
 
+### The node editor (2026-07-21 — Phase 4 of the template-library stage)
+
+The visual state-machine editor beneath the canvas (`src/components/MachineGraph.tsx`): one
+generic graph surface for every graphic — what differs between templates is the graph inside
+it, never the editor. Optimized for inspect-and-tweak first, authoring-from-blank second.
+
+- [x] **The graph surface toggles with the step timeline** (Rive-style, in the bottom dock):
+      states as boxes badged with the timeline's cue vocabulary (▶ » ■ · ○ rest), the default
+      path as the amber spine (the walk `play`/`next`/`stop` really follow, with the edge into
+      the final waypoint honestly dashed as stop's when no next arrow is authored), authored
+      branches as labelled arrows, parallel groups as lanes, and the preview's LIVE state
+      highlighted. Clicking a state snaps the preview there — parked, no timers.
+- [x] **A machine-less template shows its DERIVED machine**, labelled "derived from the
+      steps", and the first graph edit MATERIALIZES exactly that machine into the literal
+      inside the same undoable apply — so the editor is never empty, never lies, and never
+      forks a second model.
+- [x] **Inspect-and-tweak cards** — a state's card renames it (a path state through
+      `renameStep`, so the bound step label can never fork) and opens its timeline parked at
+      its step; a transition's card switches trigger, renames its event, sets a timer delay —
+      every commit one undoable apply through the shape gate, so an illegal edit (reserved or
+      duplicate event, non-positive delay) reverts in place.
+- [x] **Structural editing** — drag from a state's port to draw a real operator arrow
+      (selected for immediate renaming); delete an arrow from its card, refused only when it
+      is the sole edge behind a default-path step (the walk must stay connected — judged by
+      the validator, so deleting one of two parallel arrows stays legal); add and delete
+      branch states and parallel groups; drag boxes to positions persisted as the additive
+      `at` field (no format bump). Waypoints stay the TIMELINE's to add and delete — the
+      positional binding means the state and its clip are one thing.
+- [x] **Transition styles are consumed, not reserved** — an arrow may carry `fade`,
+      `push-left/right/up/down` or `wipe-left/right` with duration and ease, played by the
+      interpreter INSTEAD of the target state's entry timeline: two phases on the root around
+      an instant pose swap composed by the SNAP recipe, so a styled entry and a snap agree on
+      every pose (including pose-only branch states, whose look lives on the route). The
+      frozen-interpreter pairing rule extends to styles: `writeAnimData` re-emits the region
+      under a pre-styles interpreter, and validation blocks a hand-spliced mismatch at export.
+- [x] **Break fearlessly** — the topbar ↺ Reset (the create-time `baseline` snapshot,
+      persisted with the project) restores the shipped template after any machine surgery,
+      undoably; pinned by the acceptance spec.
+- [x] **The acceptance walk passes as a spec** (`e2e/machine-graph.spec.ts`, 9 tests): open a
+      shipped template, see its graph, restyle a transition, draw and delete arrows, add
+      states and groups, break something, restore the shipped state — plus the styled-change
+      pose landing and the pairing rule, driven end-to-end.
+
 ### Quality bar (always-on)
 - [x] `npm run build` green as the CI gate
 - [x] Playwright E2E for core UI flows
