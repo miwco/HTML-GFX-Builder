@@ -6,6 +6,7 @@
 
 import type { User } from '@supabase/supabase-js';
 import { getSupabase } from './supabase';
+import { resetSyncBookmark } from './sync';
 
 export type AuthStatus = 'loading' | 'signed-out' | 'signed-in';
 
@@ -54,6 +55,9 @@ export async function signUpWithEmail(email: string, password: string): Promise<
 export async function signOut(): Promise<void> {
   const sb = await getSupabase();
   await sb?.auth.signOut();
+  // The next sign-in may be a DIFFERENT account: its first pass must re-reconcile from scratch,
+  // not inherit this account's bookmark or per-record pending debts.
+  resetSyncBookmark();
 }
 
 /**

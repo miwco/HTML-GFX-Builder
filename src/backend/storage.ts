@@ -36,6 +36,22 @@ import {
 /** The kinds of records that sync. */
 export type SyncKind = 'packet' | 'look' | 'brand' | 'project' | 'show' | 'video';
 
+// ── denied puts ──────────────────────────────────────────────────────────────
+// A put() the backend rejected for OWNERSHIP (Supabase RLS: the row id belongs to another
+// account) is the one put failure retrying can never fix. The provider marks it; the sync
+// engine resolves it permanently (re-mint the id / drop the tombstone) instead of retrying
+// forever. A plain property marker (not a subclass) so the check survives duplicate module
+// instances (e.g. cache-busted dynamic imports in specs).
+
+export function markPutDenied<E extends Error>(e: E): E {
+  (e as E & { putDenied?: boolean }).putDenied = true;
+  return e;
+}
+
+export function isPutDenied(e: unknown): boolean {
+  return e instanceof Error && (e as Error & { putDenied?: boolean }).putDenied === true;
+}
+
 /** Per-user singleton kinds: at most one per user, so the sync engine reconciles them by KIND
  *  (not id) and never makes a "(conflicted copy)". The cloud row uses a per-user deterministic id. */
 export const SINGLETON_KINDS: SyncKind[] = ['brand', 'project'];

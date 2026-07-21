@@ -81,7 +81,19 @@ export async function syncNow(): Promise<void> {
     } catch {
       // Never fail a sync on cleanup.
     }
-    setState({ phase: 'synced', last: result });
+    if (result.failures.length > 0) {
+      // The pass completed and the bookmark advanced, but some records could not be applied —
+      // surface them (SyncStatus shows the detail as its tooltip). They retry next pass.
+      const shown = result.failures.slice(0, 3).map((f) => `${f.kind} "${f.name}": ${f.message}`);
+      const extra = result.failures.length > shown.length ? '; …' : '';
+      setState({
+        phase: 'error',
+        detail: `${result.failures.length} record${result.failures.length === 1 ? '' : 's'} failed to sync — ${shown.join('; ')}${extra}`,
+        last: result,
+      });
+    } else {
+      setState({ phase: 'synced', last: result });
+    }
   } catch (e) {
     setState({ phase: 'error', detail: e instanceof Error ? e.message : String(e) });
   } finally {
