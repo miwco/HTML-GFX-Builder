@@ -58,9 +58,19 @@ export interface ReferenceAxes {
  *
  * See docs/BROADCAST_DESIGN_SYSTEM_RESEARCH.md §8.3f and scripts/reference-select-simulate.mjs.
  * Typed wide so every branch stays live for the compiler.
+ *
+ * SHIPPING ON `legacy`, DELIBERATELY - do not flip this to run an experiment and forget it.
+ * `contrast` is measured but not justified: it concentrates 62% of companion slots onto two
+ * cards no brief ever matches, and the free proxy that appeared to endorse it is maximised by
+ * exactly that concentration (§8.3f). The paid pass (§8.3h) withdrew the claim that the
+ * concentration produces visibly WRONG output, but it vindicated nothing - the Motion Director
+ * filtered the companion out entirely, so what it measured was the Director, not the cards.
+ * `padded` is untested for output quality in either direction. The part of this work that
+ * earned its place is the reference POOL (6 cards -> 14), which every arm benefits from.
+ * Flipping this line changes what every user's video generation is prompted with.
  */
 export type SelectionMode = 'contrast' | 'padded' | 'legacy';
-export const SELECTION_MODE: SelectionMode = 'contrast';
+export const SELECTION_MODE: SelectionMode = 'legacy';
 
 // Ordinal axes: distance is how far apart the steps are, not merely whether they differ.
 const COLOR_ORDER = ['restrained', 'committed', 'full-palette', 'drenched'] as const;

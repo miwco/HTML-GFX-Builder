@@ -1075,6 +1075,16 @@ metric (a count of visually distinct designs, which N=7 unblinded cannot support
 reinstate contrast selection. §8.3f's concentration finding and its proxy-invalidity argument
 both survive intact, and they remain the reasons the mechanism is not shipped.
 
+**What actually ships, so the code and this document cannot drift apart.**
+`SELECTION_MODE = 'legacy'` (`referenceSelect.ts`). The live video path calls
+`selectReferenceCards`, which on `legacy` is the keyword pick byte for byte - the behaviour that
+was already in production. What this work ships is therefore the part that earned it: the
+reference POOL grows from 6 cards to 14, so briefs that previously matched nothing now get a
+relevant card at all (§8.3c), and the §2.3 motion principles. `contrast` and `padded` stay in the
+tree as runnable arms behind the same constant, because the sweep and the simulator need them -
+not because either is queued to ship. Anyone flipping that line is changing production prompting
+and should read §8.3f, §8.3g and this section first.
+
 ### 8.4 Explicitly out of scope for the PoC
 
 Generating a library of graphics. Touching the SPX harness. Adding a critique model call.
