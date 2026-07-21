@@ -102,7 +102,9 @@ const LANE_PAD_TOP = 40; // lane label + above-box bows
 const LANE_PAD_BOTTOM = 34; // below-box bows
 const PAD_X = 26;
 
-const boxWidth = (name: string) => Math.min(180, Math.max(76, 26 + name.length * 7.5));
+// Room for the cue badge + the ▤/◇ kind icon + the name — sized so "Name In" and
+// "Title In" read whole, not as "Na…" (the acceptance screenshots caught exactly that).
+const boxWidth = (name: string) => Math.min(200, Math.max(96, 44 + name.length * 7.5));
 
 /** Cubic bezier path + its midpoint (t = 0.5) for the label. */
 function bezier(

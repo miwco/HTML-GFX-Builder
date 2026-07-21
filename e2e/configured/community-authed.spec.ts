@@ -16,16 +16,21 @@ test.describe('community (configured / signed-in)', () => {
   });
 
   test('publish a graphic, then import it back from the gallery', async ({ page }) => {
-    // Publish a lower third.
+    // Publish a lower third: save it into the library, then 🌐 from its Home row
+    // (publishing moved to Home with the packet manager's retirement).
     await createGraphic(page, 'Lower thirds', 'Hairline');
-    await page.getByRole('button', { name: /Packets/ }).click();
-    await page.getByRole('button', { name: /Publish this graphic/ }).click();
+    await page.getByTestId('save-graphic').click();
+    await page.getByTestId('save-name').fill('Hairline');
+    await page.getByTestId('save-confirm').click();
+    await page.getByTestId('open-home').click();
+    await page.getByTestId('home-nav-graphics').click();
+    await page.locator('.pk-graphic', { hasText: 'Hairline' }).getByTestId('publish-graphic').click();
     await page.getByPlaceholder(/One-line description/).fill('E2E round-trip');
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
-    await expect(page.locator('.pk-modal .status-ok')).toContainText('Published');
-    // "My submissions" shows it live.
-    await expect(page.locator('.pk-modal .pk-graphic', { hasText: 'Hairline' })).toContainText('live');
-    await page.locator('.gallery-close').click();
+    await expect(page.getByTestId('publish-sheet')).toHaveCount(0);
+    // "My community templates" shows it live.
+    await expect(page.locator('.pk-graphic', { hasText: 'Hairline' }).last()).toContainText('live');
+    await page.getByTestId('home-continue-editing').click();
 
     // Switch the editor to a DIFFERENT graphic so the import is observable.
     await page.getByRole('button', { name: '+ New project' }).click();
@@ -49,11 +54,15 @@ test.describe('community (configured / signed-in)', () => {
       const st = useTemplateStore.getState();
       st.setHtml(st.template.html + '\n<script src="https://cdn.jsdelivr.net/npm/x/y.js"></script>');
     });
-    await page.getByRole('button', { name: /Packets/ }).click();
-    await page.getByRole('button', { name: /Publish this graphic/ }).click();
+    await page.getByTestId('save-graphic').click();
+    await page.getByTestId('save-name').fill('Hairline');
+    await page.getByTestId('save-confirm').click();
+    await page.getByTestId('open-home').click();
+    await page.getByTestId('home-nav-graphics').click();
+    await page.locator('.pk-graphic', { hasText: 'Hairline' }).getByTestId('publish-graphic').click();
 
     // The sheet shows the blocking error and disables Publish.
-    await expect(page.locator('.pk-modal .status-bad')).toContainText(/External dependency/i);
+    await expect(page.locator('[data-testid="publish-sheet"] .status-bad')).toContainText(/External dependency/i);
     await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeDisabled();
   });
 });

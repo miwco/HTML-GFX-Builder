@@ -36,14 +36,18 @@ test.describe('community moderation (configured / moderator)', () => {
   test('a moderator removes a published item from the gallery', async ({ page }) => {
     expect(uid, 'resolved the test account uid').toBeTruthy();
 
-    // Publish something to moderate.
+    // Publish something to moderate — save into the library, 🌐 from its Home row.
     await createGraphic(page, 'Lower thirds', 'Hairline');
-    await page.getByRole('button', { name: /Packets/ }).click();
-    await page.getByRole('button', { name: /Publish this graphic/ }).click();
+    await page.getByTestId('save-graphic').click();
+    await page.getByTestId('save-name').fill('Hairline');
+    await page.getByTestId('save-confirm').click();
+    await page.getByTestId('open-home').click();
+    await page.getByTestId('home-nav-graphics').click();
+    await page.locator('.pk-graphic', { hasText: 'Hairline' }).getByTestId('publish-graphic').click();
     await page.getByPlaceholder(/One-line description/).fill('E2E moderation');
     await page.getByRole('button', { name: 'Publish', exact: true }).click();
-    await expect(page.locator('.pk-modal .status-ok')).toContainText('Published');
-    await page.locator('.gallery-close').click();
+    await expect(page.getByTestId('publish-sheet')).toHaveCount(0);
+    await page.getByTestId('home-continue-editing').click();
 
     // The 🛡 Moderate button is present (granted in beforeAll). Open the queue, review, remove.
     await page.getByRole('button', { name: /Moderate/ }).click();

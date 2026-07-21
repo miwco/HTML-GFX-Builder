@@ -3,41 +3,59 @@ import { createProject } from './_create';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
-// The packet manager: graphics collections (save / open / export as one zip) and named
-// brand looks (capture / apply / share).
+// Packages over the graphics LIBRARY (docs/SAVED_CONTENT_MODEL.md — the successor of the
+// packet manager modal): graphics save into packages through the Save dialog, reopen from
+// Home, and a package exports as one zip with a Starter folder per graphic. Brand looks
+// live in Home's Brand looks section. library.spec.ts covers the save-status/guard flows;
+// this file pins the PACKAGE AGGREGATION and the LOOKS round trip.
 
 async function create(page: Page, categoryName: string, variantName: string) {
   await createProject(page, { category: categoryName, name: variantName });
 }
 
-test('packets: save two graphics, reopen one, export the whole packet as one zip', async ({ page }) => {
+async function saveInto(page: Page, name: string, opts: { newPackage?: string } = {}) {
+  await page.getByTestId('save-graphic').click();
+  await page.getByTestId('save-name').fill(name);
+  if (opts.newPackage) {
+    await page.getByTestId('save-dest').selectOption('new');
+    await page.getByTestId('save-new-package').fill(opts.newPackage);
+  } else {
+    // The one existing package is preselected by picking the first non-standalone option.
+    const value = await page
+      .getByTestId('save-dest')
+      .locator('option')
+      .nth(1)
+      .getAttribute('value');
+    await page.getByTestId('save-dest').selectOption(value!);
+  }
+  await page.getByTestId('save-confirm').click();
+  await expect(page.getByTestId('save-status')).toHaveText('Saved');
+}
+
+test('packages: save two graphics into one, reopen one, export the package as one zip', async ({ page }) => {
   await page.goto('/app');
   await create(page, 'Lower thirds', 'Hairline');
+  await saveInto(page, 'Hairline', { newPackage: 'Friday Show' });
 
-  // Save the lower third into a new packet.
-  await page.getByRole('button', { name: '📦 Packets' }).click();
-  await page.locator('.pk-modal select').selectOption('new');
-  await page.getByPlaceholder(/Show name/).fill('Friday Show');
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.pk-modal .status-ok')).toContainText('Saved "Hairline"');
-  await page.locator('.gallery-close').click();
-
-  // Make a second graphic and save it into the same packet.
-  await page.getByRole('button', { name: '+ New project' }).click();
+  // A second graphic into the SAME package (picked from the Save dialog's list).
   await create(page, 'Tickers', 'News Strip');
-  await page.getByRole('button', { name: '📦 Packets' }).click();
-  await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.locator('.pk-packet h3')).toContainText('Friday Show (2)');
+  await saveInto(page, 'News Strip');
 
-  // Reopen the lower third from the packet.
+  // Home shows the package with both graphics; reopening one loads it.
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-packages').click();
+  await expect(page.locator('[data-testid^="package-row-"]', { hasText: 'Friday Show' })).toContainText('2 graphics');
+  await page.getByTestId('open-package').click();
   await page.locator('.pk-graphic', { hasText: 'Hairline' }).getByRole('button', { name: 'Open' }).click();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Hairline');
 
-  // Export the whole packet: one zip, one Starter folder per graphic.
-  await page.getByRole('button', { name: '📦 Packets' }).click();
+  // Export the whole package: one zip, one Starter folder per graphic.
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-packages').click();
+  await page.getByTestId('open-package').click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: '⬇ Export packet' }).click(),
+    page.getByTestId('export-package').click(),
   ]);
   const zip = await JSZip.loadAsync(readFileSync(await download.path()));
   const names = Object.keys(zip.files);
@@ -47,22 +65,22 @@ test('packets: save two graphics, reopen one, export the whole packet as one zip
   expect(names).toContain('friday_show/README.md');
 });
 
-test('looks: capture the current look, apply it to another graphic, survive reload', async ({ page }) => {
+test('looks: capture the current look in Home, apply it to another graphic, survive reload', async ({ page }) => {
   await page.goto('/app');
   await create(page, 'Lower thirds', 'Hairline');
 
-  // Tweak the accent through the Style panel, then capture the look.
+  // Tweak the accent through the Style panel, then capture the look in Home.
   await page.getByTestId('dock-tab-style').click();
   await page
     .locator('.field-row', { hasText: '--accent' })
     .first()
     .locator('input.grow')
     .fill('#12e29a');
-  await page.getByRole('button', { name: '📦 Packets' }).click();
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-looks').click();
   await page.getByPlaceholder(/Look name/).fill('Mint look');
   await page.getByRole('button', { name: 'Save current look' }).click();
   await expect(page.locator('.pk-graphic', { hasText: 'Mint look' })).toBeVisible();
-  await page.locator('.gallery-close').click();
 
   // The look survives a full reload (localStorage) and applies to a FRESH graphic. A fresh
   // graphic matters for determinism too: whether the autosave (800 ms debounce) caught the
@@ -70,8 +88,10 @@ test('looks: capture the current look, apply it to another graphic, survive relo
   // applying a look that is already active changes nothing, so nothing would highlight.
   await page.reload();
   await create(page, 'Lower thirds', 'Hairline'); // the wizard opens on load — make the fresh graphic
-  await page.getByRole('button', { name: '📦 Packets' }).click();
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-looks').click();
   await page.locator('.pk-graphic', { hasText: 'Mint look' }).getByRole('button', { name: 'Apply', exact: true }).click();
+  // Apply returns to the editor (the look retints the OPEN graphic).
   const css = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     return useTemplateStore.getState().template.css;

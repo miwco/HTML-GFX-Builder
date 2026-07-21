@@ -22,11 +22,15 @@ test('offline: no community affordances anywhere', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Community/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Moderate/ })).toHaveCount(0);
 
-  // The Packets modal shows no "Share to community" section and no publish buttons.
-  await page.getByRole('button', { name: '📦 Packets' }).click();
-  await expect(page.locator('.pk-modal')).toBeVisible();
-  await expect(page.getByRole('heading', { name: /Share to community/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /Publish this graphic/ })).toHaveCount(0);
+  // Home's graphics list (where publishing lives now) grows no publish buttons offline.
+  await page.getByTestId('save-graphic').click();
+  await page.getByTestId('save-name').fill('Hairline');
+  await page.getByTestId('save-confirm').click();
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-graphics').click();
+  await expect(page.locator('.pk-graphic', { hasText: 'Hairline' })).toBeVisible();
+  await expect(page.getByTestId('publish-graphic')).toHaveCount(0);
+  await expect(page.getByTestId('publish-sheet')).toHaveCount(0);
 });
 
 test('the publish gate passes a real template and blocks an unsafe one', async ({ page }) => {

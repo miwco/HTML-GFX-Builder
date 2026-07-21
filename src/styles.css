@@ -2281,6 +2281,8 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   top: 26px;
   right: 12px;
   width: 210px;
+  max-height: calc(100% - 34px); /* a short dock scrolls the card, never clips it */
+  overflow: auto;
   padding: 10px 12px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -2948,6 +2950,11 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .save-status-ok { color: #5fb26a; }
 .save-status-ok::before { content: '✓ '; }
 .save-status-bad { color: #e0763a; }
+/* A tight laptop topbar keeps the button; the status word is the first thing to go
+   (the button's primary/quiet styling still signals dirty vs saved). */
+@media (max-width: 1120px) {
+  .save-status { display: none; }
+}
 .save-btn { white-space: nowrap; }
 .save-menu-btn { padding: 4px 6px; }
 .save-menu { top: calc(100% + 8px); left: auto; right: 0; }

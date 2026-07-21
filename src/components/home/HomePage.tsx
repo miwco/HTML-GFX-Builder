@@ -35,6 +35,17 @@ import {
 import { useDocKindStore } from '../../store/docKindStore';
 import { buildGraphicsZip } from '../../export/packetExport';
 import { slug } from '../../export/common';
+import { isBackendConfigured } from '../../backend/config';
+import { subscribeAuth } from '../../backend/auth';
+import {
+  listMySubmissions,
+  publishGraphic,
+  unpublish,
+  type MySubmission,
+} from '../../community/communityData';
+import { publishGate } from '../../community/gate';
+import type { ValidationResult } from '../../validation/validateTemplate';
+import type { SpxTemplate } from '../../model/types';
 import BrandLogo from '../BrandLogo';
 import AuthStatus from '../auth/AuthStatus';
 import SyncStatus from '../SyncStatus';
@@ -78,6 +89,19 @@ export default function HomePage({ route }: { route: Route }) {
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
   const filtered = q ? graphics.filter((g) => g.name.toLowerCase().includes(q)) : graphics;
+
+  // Community publishing (moved here from the retired packet manager): only surfaces with a
+  // configured backend AND a signed-in account — the offline app grows zero community UI.
+  const backendConfigured = isBackendConfigured();
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => subscribeAuth((s) => setSignedIn(s.status === 'signed-in' && !!s.user)), []);
+  const communityOn = backendConfigured && signedIn;
+  const [publish, setPublish] = useState<{ name: string; template: SpxTemplate; gate: ValidationResult } | null>(null);
+  const [mySubs, setMySubs] = useState<MySubmission[]>([]);
+  useEffect(() => {
+    if (communityOn) void listMySubmissions().then(setMySubs).catch(() => {});
+    else setMySubs([]);
+  }, [communityOn, rev]);
 
   const section: Section =
     route.view === 'home' && SECTIONS.some((s) => s.id === route.section)
@@ -148,6 +172,15 @@ export default function HomePage({ route }: { route: Route }) {
         </nav>
 
         <main className="home-content">
+          {publish && (
+            <PublishSheet
+              target={publish}
+              onDone={(note) => {
+                setPublish(null);
+                if (note) refresh();
+              }}
+            />
+          )}
           {packageView ? (
             <PackageView
               packet={packageView}
@@ -207,7 +240,30 @@ export default function HomePage({ route }: { route: Route }) {
                     packageName={packageName}
                     onOpen={openGraphic}
                     onChanged={refresh}
+                    onPublish={communityOn ? (g) => setPublish({ name: g.name, template: g.template, gate: publishGate(g.template) }) : undefined}
                   />
+                  {communityOn && mySubs.length > 0 && (
+                    <div className="panel-section" style={{ marginTop: 14 }}>
+                      <h3>🌐 My community templates</h3>
+                      {mySubs.map((s) => (
+                        <div className="pk-graphic" key={s.id}>
+                          <strong>{s.name}</strong>
+                          <span className="muted">{s.kind} · {s.status}</span>
+                          <div className="spacer" />
+                          <button
+                            onClick={() => {
+                              const url = `${window.location.origin}${window.location.pathname}?template=${encodeURIComponent(s.slug)}`;
+                              void navigator.clipboard?.writeText(url);
+                            }}
+                            title="Copy a share link"
+                          >
+                            🔗
+                          </button>
+                          <button onClick={() => { void unpublish(s.id).then(refresh); }} title="Remove from the community">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -277,6 +333,58 @@ export default function HomePage({ route }: { route: Route }) {
   );
 }
 
+/** The publish sheet (moved from the retired packet manager): the automated gate first,
+ *  then a one-line summary, then the share. */
+function PublishSheet({
+  target,
+  onDone,
+}: {
+  target: { name: string; template: SpxTemplate; gate: ValidationResult };
+  onDone: (published: boolean) => void;
+}) {
+  const [summary, setSummary] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const confirm = async () => {
+    if (!target.gate.ok) return;
+    setBusy(true);
+    const res = await publishGraphic(target.template, summary);
+    setBusy(false);
+    if (res.error) setError(res.error);
+    else onDone(true);
+  };
+  return (
+    <div className="panel-section" style={{ outline: '2px solid var(--accent)', outlineOffset: 2, marginBottom: 14 }} data-testid="publish-sheet">
+      <h3 style={{ marginTop: 0 }}>Publish “{target.name}”</h3>
+      {!target.gate.ok && (
+        <div className="status-bad">
+          <strong>Fix before sharing:</strong>
+          <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+            {target.gate.errors.map((e, i) => <li key={i}>{e.message}</li>)}
+          </ul>
+        </div>
+      )}
+      <p className="hint">Shared with other signed-in users; its fonts and images travel with it. Unpublish anytime.</p>
+      <div className="row">
+        <input
+          className="grow"
+          placeholder="One-line description — what it is, when to use it"
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+          maxLength={140}
+        />
+      </div>
+      {error && <p className="status-bad">{error}</p>}
+      <div className="row">
+        <button className="primary" disabled={busy || !target.gate.ok} onClick={() => void confirm()}>
+          {busy ? 'Publishing…' : 'Publish'}
+        </button>
+        <button onClick={() => onDone(false)} disabled={busy}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 function EmptyHint({ onNew }: { onNew: () => void }) {
   return (
     <div className="panel-section">
@@ -297,12 +405,15 @@ function GraphicRow({
   packageLabel,
   onOpen,
   onChanged,
+  onPublish,
 }: {
   g: GraphicDoc;
   packages: Packet[];
   packageLabel: string | null;
   onOpen: (g: GraphicDoc) => void;
   onChanged: () => void;
+  /** Present only when community publishing is available (backend + signed in). */
+  onPublish?: (g: GraphicDoc) => void;
 }) {
   const navigate = useRouter((s) => s.navigate);
   const [renaming, setRenaming] = useState(false);
@@ -382,6 +493,9 @@ function GraphicRow({
             ⧉
           </button>
           <button onClick={() => setMoving(true)} title="Move to a package">📦</button>
+          {onPublish && (
+            <button onClick={() => onPublish(g)} title="Publish to the community" data-testid="publish-graphic">🌐</button>
+          )}
           <button
             className={deleteArmed ? 'reset-armed' : ''}
             onClick={() => {
@@ -413,12 +527,14 @@ function GraphicList({
   packageName,
   onOpen,
   onChanged,
+  onPublish,
 }: {
   graphics: GraphicDoc[];
   packages: Packet[];
   packageName: (id: string | null) => string | null;
   onOpen: (g: GraphicDoc) => void;
   onChanged: () => void;
+  onPublish?: (g: GraphicDoc) => void;
 }) {
   return (
     <>
@@ -430,6 +546,7 @@ function GraphicList({
           packageLabel={packageName(g.packageId)}
           onOpen={onOpen}
           onChanged={onChanged}
+          onPublish={onPublish}
         />
       ))}
     </>

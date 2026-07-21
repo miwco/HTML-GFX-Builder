@@ -421,9 +421,10 @@ export default function CreationWizard() {
                 }
               />
             )}
-            {step === 3 && variant && <FieldsStep variant={variant} draft={draft} onDraft={patch} />}
-            {step === 4 && variant && <StyleStep variant={variant} draft={draft} onDraft={patch} />}
-            {step === 5 && variant && (
+            {/* The catalog flow's later steps — design mode has its own step 3/4 above. */}
+            {step === 3 && mode !== 'design' && variant && <FieldsStep variant={variant} draft={draft} onDraft={patch} />}
+            {step === 4 && mode !== 'design' && variant && <StyleStep variant={variant} draft={draft} onDraft={patch} />}
+            {step === 5 && mode !== 'design' && variant && (
               <AnimationStep
                 variant={variant}
                 draft={draft}
