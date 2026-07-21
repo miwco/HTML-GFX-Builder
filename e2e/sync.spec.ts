@@ -18,9 +18,10 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
       ...extra,
     });
 
-    // In-memory StorageProvider that just stores whatever StoredRecords it's given.
+    // In-memory StorageProvider that just stores whatever StoredRecords it's given. `failPut`
+    // lets a test make individual puts fail (return an Error to throw, null to store normally).
     type Rec = { kind: string; id: string; updatedAt: string } & Record<string, unknown>;
-    const mem = (seed: Rec[] = []) => {
+    const mem = (seed: Rec[] = [], failPut?: (r: Rec) => Error | null) => {
       const store = new Map<string, Rec>(seed.map((r): [string, Rec] => [r.kind + ':' + r.id, r]));
       return {
         store,
@@ -31,6 +32,8 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
           return store.get(kind + ':' + id) ?? null;
         },
         async put(r: Rec) {
+          const e = failPut?.(r);
+          if (e) throw e;
           store.set(r.kind + ':' + r.id, r);
         },
         async remove(kind: string, id: string) {
@@ -106,12 +109,121 @@ test('sync engine: reconcile + runSync behave correctly', async ({ page }) => {
     const re = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     check('uuid() is valid v4', [uuid(), uuid(), uuid()].every((u: string) => re.test(u)));
 
+    // ── fault isolation + the pending sets (per-record carry-over) ───────────────────────────────
+
+    const readMeta = () => JSON.parse(localStorage.getItem('spx-gfx-sync') ?? '{}');
+
+    // 11. a record whose push previously FAILED counts as locally-changed regardless of the
+    //     bookmark — a later remote edit is then a true conflict, not a silent overwrite
+    const T1b = '2026-02-15T00:00:00.000Z';
+    const pNo = reconcile([rec('pp', T1)], [rec('pp', T2)], T1b);
+    p = reconcile([rec('pp', T1)], [rec('pp', T2)], T1b, { push: new Set(['packet:pp']) });
+    check(
+      'pending push forces conflict',
+      pNo.conflicts.length === 0 && pNo.toLocal.length === 1 && p.conflicts.length === 1 && p.toLocal.length === 1,
+    );
+
+    // 12. an owed "(conflicted copy)" forces the conflict branch again until it materializes
+    p = reconcile([rec('pc', T1)], [rec('pc', T2)], '2026-04-01T00:00:00.000Z', { conflict: new Set(['packet:pc']) });
+    check('owed conflict copy forces conflict branch', p.conflicts.length === 1 && p.toLocal.length === 1);
+
+    // 13. one failing put never sinks the pass: the healthy record still pushes, the failure is
+    //     surfaced, the bookmark ADVANCES, and the failed key lands in pendingPush
+    localStorage.removeItem('spx-gfx-sync');
+    const l13 = mem([rec('ok1', T1), rec('bad', T1)]);
+    const r13 = mem([], (r) => (r.id === 'bad' ? new Error('boom') : null));
+    const s13 = await runSync(l13, r13);
+    const meta13 = readMeta();
+    check(
+      'per-record isolation, bookmark advances',
+      s13.pushed === 1 &&
+        s13.failures.length === 1 &&
+        s13.failures[0].id === 'bad' &&
+        s13.failures[0].op === 'push' &&
+        r13.store.has('packet:ok1') &&
+        typeof meta13.lastSyncedAt === 'string' &&
+        meta13.lastSyncedAt > T2 &&
+        meta13.pendingPush.includes('packet:bad'),
+    );
+
+    // 14. the frozen-bookmark disaster, replayed against the fix: the failed push's record is
+    //     edited remotely before the next pass — the local edit must survive as a copy, not be
+    //     silently overwritten (and the pending debt clears once handled)
+    const T9 = '2036-01-01T00:00:00.000Z'; // after the just-saved bookmark
+    r13.store.set('packet:bad', rec('bad', T9));
+    const s14 = await runSync(l13, r13);
+    const copies14 = [...l13.store.values()].filter(
+      (x) => typeof (x.body as { name?: unknown })?.name === 'string' && String((x.body as { name: string }).name).includes('(conflicted copy)'),
+    );
+    check(
+      'failed push + later remote edit = conflict, copy kept',
+      s14.conflicts === 1 &&
+        copies14.length === 1 &&
+        l13.store.get('packet:bad')?.updatedAt === T9 &&
+        [...r13.store.values()].some((x) => String((x.body as { name?: unknown })?.name ?? '').includes('(conflicted copy)')) &&
+        readMeta().pendingPush.length === 0,
+    );
+
+    // 15. a conflict copy of a SHOW must not carry the original's hostedSlug (it would publish
+    //     over the original's hosted control page)
+    localStorage.setItem('spx-gfx-sync', JSON.stringify({ lastSyncedAt: T0 }));
+    const showRec = (id: string, t: string, name: string) => ({
+      kind: 'show' as const,
+      id,
+      updatedAt: t,
+      body: { id, name, updatedAt: t, hostedSlug: 'live-slug', graphics: [] },
+    });
+    const l15 = mem([showRec('s1', T1, 'My show')]);
+    const r15 = mem([showRec('s1', T2, 'My show (cloud)')]);
+    const s15 = await runSync(l15, r15);
+    const copy15 = [...l15.store.values()].find((x) => String((x.body as { name?: unknown })?.name ?? '').includes('(conflicted copy)'));
+    check(
+      'conflict copy strips hostedSlug',
+      s15.conflicts === 1 && !!copy15 && (copy15.body as { hostedSlug?: unknown }).hostedSlug === undefined,
+    );
+
+    // ── cross-account id collisions (RLS-denied puts) ────────────────────────────────────────────
+
+    const denied = () =>
+      Object.assign(new Error('Cloud put(packet) failed: new row violates row-level security policy'), {
+        putDenied: true,
+      });
+
+    // 16. a live record whose cloud id belongs to another account is RE-MINTED: fresh id locally,
+    //     old id gone, pushed cleanly — resolved permanently, no failure
+    localStorage.removeItem('spx-gfx-sync');
+    const l16 = mem([rec('11111111-1111-4111-8111-111111111111', T1)]);
+    const r16 = mem([], (r) => (r.id === '11111111-1111-4111-8111-111111111111' ? denied() : null));
+    const s16 = await runSync(l16, r16);
+    const minted = [...l16.store.values()].find((x) => x.id !== '11111111-1111-4111-8111-111111111111');
+    check(
+      'RLS-denied put re-mints the id',
+      s16.reminted === 1 &&
+        s16.failures.length === 0 &&
+        s16.pushed === 1 &&
+        !!minted &&
+        re.test(minted.id) &&
+        (minted.body as { id: string }).id === minted.id &&
+        r16.store.has('packet:' + minted.id) &&
+        !l16.store.has('packet:11111111-1111-4111-8111-111111111111'),
+    );
+
+    // 17. a TOMBSTONE denied by RLS deletes nothing of ours in the cloud — dropped silently,
+    //     never a failure, never a re-mint (so one foreign record can never wedge sync)
+    const l17 = mem([rec('ghost', T1, { deleted: true })]);
+    const r17 = mem([], (r) => (r.id === 'ghost' ? denied() : null));
+    const s17 = await runSync(l17, r17);
+    check(
+      'foreign tombstone dropped silently',
+      s17.failures.length === 0 && s17.reminted === 0 && s17.pushed === 0 && l17.store.has('packet:ghost'),
+    );
+
     return out;
   });
 
   const failures = results.filter((r) => !r.pass);
   expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);
-  expect(results.length).toBe(13);
+  expect(results.length).toBe(20);
 });
 
 test('asset externalization: round-trips through a Storage stub', async ({ page }) => {

@@ -12,7 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase } from './supabase';
-import { isSingleton, toStoredRecord, type StorageProvider, type StoredRecord, type SyncKind } from './storage';
+import { isSingleton, markPutDenied, toStoredRecord, type StorageProvider, type StoredRecord, type SyncKind } from './storage';
 import { externalizeAssets, rehydrateAssets, dataUrlToBlob, blobToDataUrl } from './assets';
 import { deterministicUuid } from '../model/id';
 
@@ -89,7 +89,13 @@ export class SupabaseProvider implements StorageProvider {
       deleted: Boolean(record.deleted),
     };
     const { error } = await sb.from(TABLE).upsert(row, { onConflict: 'id' });
-    if (error) throw new Error(`Cloud put(${record.kind}) failed: ${error.message}`);
+    if (error) {
+      const err = new Error(`Cloud put(${record.kind}) failed: ${error.message}`);
+      // 42501 = insufficient_privilege: RLS rejected the write — the row id is owned by another
+      // account. Marked so the sync engine resolves it permanently instead of retrying forever.
+      if (error.code === '42501' || /row-level security/i.test(error.message)) markPutDenied(err);
+      throw err;
+    }
   }
 
   /**
