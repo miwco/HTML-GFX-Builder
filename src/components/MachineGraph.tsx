@@ -1,12 +1,30 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
-import type { AnimData, AnimGroup, AnimTransition } from '../blocks/animData';
+import {
+  parseAnimData,
+  serializeAnimData,
+  TRANSITION_STYLES,
+  type AnimData,
+  type AnimGroup,
+  type AnimTransition,
+} from '../blocks/animData';
 import { deriveMachine, isWalkEdge } from '../blocks/animMachine';
 import { renameStep } from '../blocks/animEdit';
+import { EASINGS } from '../model/easings';
 import {
+  addGroup,
+  addState,
+  addTransition,
+  deleteState,
+  removeGroup,
+  removeTransition,
   renameOffPathState,
+  setStatePosition,
   setTransitionAfter,
   setTransitionEvent,
+  setTransitionStyle,
+  setTransitionStyleDuration,
+  setTransitionStyleEase,
   setTransitionTrigger,
 } from '../blocks/machineEdit';
 import { writeAnimData } from '../templates/shared/animRuntime';
@@ -54,12 +72,17 @@ interface LaneModel {
   group: AnimGroup;
   y: number;
   h: number;
+  /** Where the group label sits — the group's topmost box, so it follows dragged boxes. */
+  labelY: number;
 }
 
 interface GraphModel {
   boxes: StateBox[];
   arrows: Arrow[];
   lanes: LaneModel[];
+  /** True once any box carries a persisted position — the auto lane bands stop meaning
+   *  anything, so their separator lines are not drawn. */
+  freeform: boolean;
   width: number;
   height: number;
 }
@@ -131,8 +154,9 @@ function route(from: StateBox, to: StateBox, bow: number): { path: string; mx: n
 }
 
 /** Lay the machine out: one lane per group (main first), the default path as the top row
- *  left to right, off-path states on a second row beneath. Deterministic — same machine,
- *  same picture. */
+ *  left to right, off-path states on a second row beneath — then a state's persisted `at`
+ *  overrides its auto slot (the drag's parking spot). Deterministic — same machine, same
+ *  picture. */
 function buildModel(data: AnimData): GraphModel {
   const machine = data.machine ?? deriveMachine(data);
   const boxes: StateBox[] = [];
@@ -183,6 +207,17 @@ function buildModel(data: AnimData): GraphModel {
     layRow(row0, rowY0);
     if (row1.length > 0) layRow(row1, rowY0 + BOX_H + ROW_GAP);
 
+    // A dragged box parks where it was left — the persisted `at` wins over the auto slot
+    // (applied BEFORE the arrows route, so they follow the box).
+    for (const state of group.states) {
+      const box = byId.get(state.id);
+      if (box && state.at) {
+        box.x = state.at[0];
+        box.y = state.at[1];
+        width = Math.max(width, box.x + box.w + PAD_X);
+      }
+    }
+
     // The walk's own edges: play into the first waypoint, then waypoint to waypoint. The
     // runtime walks the path POSITIONALLY, so the spine is drawn whether or not each edge is
     // authored — an authored edge lends the arrow its event name. The edge into the final
@@ -200,7 +235,8 @@ function buildModel(data: AnimData): GraphModel {
       const intoFinal = toId === path[path.length - 1] && path.length > 1;
       const isPlay = wi === 0 && fromId === group.initial;
       const kind: Arrow['kind'] = intoFinal && !authored ? 'walk-stop' : 'walk';
-      const label = isPlay ? 'play' : authored?.event ?? (intoFinal ? 'stop' : 'next');
+      const styled = authored?.style !== undefined ? ' ≈' : '';
+      const label = (isPlay ? 'play' : authored?.event ?? (intoFinal ? 'stop' : 'next')) + styled;
       const r = route(from, to, 0);
       arrows.push({
         key: `${group.id}-walk-${wi}`,
@@ -240,7 +276,8 @@ function buildModel(data: AnimData): GraphModel {
       const r = route(from, to, bow);
       const kind: Arrow['kind'] = t.trigger === 'operator' ? 'operator' : t.trigger === 'timer' ? 'timer' : 'reserved';
       const label =
-        t.trigger === 'operator' ? (t.event ?? '') : t.trigger === 'timer' ? `⏱ ${t.after ?? 0}s` : 'reserved';
+        (t.trigger === 'operator' ? (t.event ?? '') : t.trigger === 'timer' ? `⏱ ${t.after ?? 0}s` : 'reserved') +
+        (t.style !== undefined ? ' ≈' : '');
       arrows.push({
         key: `${group.id}-t-${ti}`,
         groupId: group.id,
@@ -260,11 +297,22 @@ function buildModel(data: AnimData): GraphModel {
       BOX_H +
       (row1.length > 0 ? ROW_GAP + BOX_H : 0) +
       Math.max(LANE_PAD_BOTTOM, belowDepth);
-    lanes.push({ group, y: laneY, h: laneH });
+    const groupBoxes = boxes.filter((b) => b.groupId === group.id);
+    const labelY = Math.min(laneY + 8, ...groupBoxes.map((b) => b.y - 26));
+    lanes.push({ group, y: laneY, h: laneH, labelY });
     laneY += laneH;
   });
 
-  return { boxes, arrows, lanes, width: Math.max(width, 320), height: laneY };
+  const freeform = machine.groups.some((g) => g.states.some((s) => s.at));
+  const maxBottom = boxes.reduce((a, b) => Math.max(a, b.y + b.h), 0);
+  return {
+    boxes,
+    arrows,
+    lanes,
+    freeform,
+    width: Math.max(width, 320),
+    height: Math.max(laneY, maxBottom + 64),
+  };
 }
 
 const ARROW_CLASS: Record<Arrow['kind'], string> = {
@@ -342,27 +390,147 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
   }, [iframeRef, data]);
 
   const selectState = (box: StateBox) => {
+    if (suppressClickRef.current) return; // the click after a drag is the drag's echo
     setSel({ kind: 'state', groupId: box.groupId, id: box.id });
     if (current) sendSnap({ [box.groupId]: box.id }); // no machine runtime → inspect only
   };
 
+  // ── The two pointer gestures. MOVE: drag a box body, park it (one setStatePosition
+  //    apply on release — the model shows the live position through a temporary `at`).
+  //    CONNECT: drag from a box's port to another box of the SAME group, and the released
+  //    arrow becomes a real operator transition, selected for immediate renaming.
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const suppressClickRef = useRef(false);
+  const [moveDraft, setMoveDraft] = useState<{ groupId: string; id: string; x: number; y: number } | null>(null);
+  const [wireDraft, setWireDraft] = useState<{ groupId: string; fromId: string; x: number; y: number } | null>(null);
+
+  const canvasPoint = (e: PointerEvent | React.PointerEvent) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    return rect ? { x: e.clientX - rect.left, y: e.clientY - rect.top } : { x: 0, y: 0 };
+  };
+
+  const startMove = (box: StateBox, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    const start = canvasPoint(e);
+    const offset = { x: start.x - box.x, y: start.y - box.y };
+    let last: [number, number] | null = null;
+    const onMove = (ev: PointerEvent) => {
+      const p = canvasPoint(ev);
+      if (!last && Math.hypot(p.x - start.x, p.y - start.y) < 4) return;
+      last = [Math.max(4, p.x - offset.x), Math.max(4, p.y - offset.y)];
+      setMoveDraft({ groupId: box.groupId, id: box.id, x: last[0], y: last[1] });
+    };
+    const finish = (commit: boolean) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('keydown', onKey, true);
+      setMoveDraft(null);
+      if (commit && last) {
+        // The click that follows this pointerup is the drag's echo, not a selection.
+        suppressClickRef.current = true;
+        setTimeout(() => (suppressClickRef.current = false), 0);
+        applyData(setStatePosition(data, box.groupId, box.id, last));
+      }
+    };
+    const onUp = () => finish(true);
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        finish(false);
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('keydown', onKey, true);
+  };
+
+  const startWire = (box: StateBox, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation(); // the port is ON the box — this gesture is not a move
+    e.preventDefault();
+    const p = canvasPoint(e);
+    setWireDraft({ groupId: box.groupId, fromId: box.id, x: p.x, y: p.y });
+    const onMove = (ev: PointerEvent) => {
+      const q = canvasPoint(ev);
+      setWireDraft((d) => (d ? { ...d, x: q.x, y: q.y } : d));
+    };
+    const finish = (ev?: PointerEvent) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('keydown', onKey, true);
+      setWireDraft(null);
+      if (!ev) return;
+      const q = canvasPoint(ev);
+      const target = model.boxes.find(
+        (b) => b.groupId === box.groupId && q.x >= b.x && q.x <= b.x + b.w && q.y >= b.y && q.y <= b.y + b.h,
+      );
+      if (!target) return;
+      const next = addTransition(data, box.groupId, box.id, target.id);
+      if (next && applyData(next)) {
+        // Select the drawn arrow so its card opens for the rename. Its index must be the
+        // PERSISTED one — the canonical serializer sorts transitions, so a serialize →
+        // parse round trip is the honest way to know where the new arrow landed.
+        const group = next.machine!.groups.find((g) => g.id === box.groupId)!;
+        const minted = group.transitions[group.transitions.length - 1];
+        const applied = parseAnimData(`var NOACG_ANIM = ${serializeAnimData(next)};`);
+        const sorted = applied?.machine?.groups.find((g) => g.id === box.groupId)?.transitions ?? [];
+        const tIndex = sorted.findIndex(
+          (t) => t.from === minted.from && t.to === minted.to && t.trigger === 'operator' && t.event === minted.event,
+        );
+        if (tIndex >= 0) setSel({ kind: 'arrow', groupId: box.groupId, tIndex });
+      }
+    };
+    const onUp = (ev: PointerEvent) => finish(ev);
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') {
+        ev.stopPropagation();
+        finish();
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('keydown', onKey, true);
+  };
+
+  // While a box is being dragged, the graph renders from data with its `at` overridden —
+  // so every arrow touching it follows live, through the exact layout the release persists.
+  const displayModel = useMemo(() => {
+    if (!moveDraft) return model;
+    const patched: AnimData = JSON.parse(JSON.stringify(data)) as AnimData;
+    if (!patched.machine) patched.machine = deriveMachine(patched);
+    const state = patched.machine.groups
+      .find((g) => g.id === moveDraft.groupId)
+      ?.states.find((s) => s.id === moveDraft.id);
+    if (state) state.at = [moveDraft.x, moveDraft.y];
+    return buildModel(patched);
+  }, [model, data, moveDraft]);
+
+  const wireFrom = wireDraft
+    ? displayModel.boxes.find((b) => b.groupId === wireDraft.groupId && b.id === wireDraft.fromId) ?? null
+    : null;
+
   const selectedBox =
-    sel?.kind === 'state' ? model.boxes.find((b) => b.groupId === sel.groupId && b.id === sel.id) ?? null : null;
+    sel?.kind === 'state'
+      ? displayModel.boxes.find((b) => b.groupId === sel.groupId && b.id === sel.id) ?? null
+      : null;
   const selectedArrow =
     sel?.kind === 'arrow'
-      ? model.arrows.find((a) => a.groupId === sel.groupId && a.tIndex === sel.tIndex) ?? null
+      ? displayModel.arrows.find((a) => a.groupId === sel.groupId && a.tIndex === sel.tIndex) ?? null
       : null;
+
+  const model_ = displayModel;
 
   return (
     <div className="machine-graph" data-testid="machine-graph">
       <div
+        ref={canvasRef}
         className="mg-canvas"
-        style={{ width: model.width, height: model.height }}
+        style={{ width: model_.width, height: model_.height }}
         onPointerDown={(e) => {
           if (e.target === e.currentTarget) setSel(null); // empty canvas clears, like the stage
         }}
       >
-        <svg className="mg-wires" width={model.width} height={model.height}>
+        <svg className="mg-wires" width={model_.width} height={model_.height}>
           <defs>
             <marker id="mg-head-walk" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
               <path d="M 0 0 L 8 4 L 0 8 z" className="mg-head-walk" />
@@ -371,12 +539,13 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
               <path d="M 0 0 L 8 4 L 0 8 z" className="mg-head-dim" />
             </marker>
           </defs>
-          {model.lanes.length > 1 &&
-            model.lanes.slice(1).map((lane) => (
-              <line key={lane.group.id} x1="0" y1={lane.y} x2={model.width} y2={lane.y} className="mg-lane-line" />
+          {!model_.freeform &&
+            model_.lanes.length > 1 &&
+            model_.lanes.slice(1).map((lane) => (
+              <line key={lane.group.id} x1="0" y1={lane.y} x2={model_.width} y2={lane.y} className="mg-lane-line" />
             ))}
-          {model.arrows.map((a) => {
-            const selectable = !derived && a.tIndex !== null;
+          {model_.arrows.map((a) => {
+            const selectable = a.tIndex !== null;
             const isSel = selectedArrow === a;
             return (
               <g key={a.key} className={`${ARROW_CLASS[a.kind]}${isSel ? ' mg-arrow-selected' : ''}`}>
@@ -406,13 +575,51 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
               </g>
             );
           })}
+          {wireFrom && wireDraft && (
+            <path
+              className="mg-wire-draft"
+              d={`M ${wireFrom.x + wireFrom.w} ${wireFrom.y + wireFrom.h / 2} L ${wireDraft.x} ${wireDraft.y}`}
+              markerEnd="url(#mg-head-walk)"
+            />
+          )}
         </svg>
-        {model.lanes.map((lane) => (
-          <span key={lane.group.id} className="mg-lane-label" style={{ top: lane.y + 8 }}>
-            {lane.group.id}
+        {model_.lanes.map((lane, li) => (
+          <span key={lane.group.id} className="mg-lane-head" style={{ top: lane.labelY }}>
+            <span className="mg-lane-label">{lane.group.id}</span>
+            <button
+              type="button"
+              className="mg-lane-btn"
+              title="Add a state to this group"
+              onClick={() => {
+                // Below the group's lowest box: never under the detail card (top-right),
+                // and visibly "a branch", not another waypoint.
+                const groupBoxes = model_.boxes.filter((b) => b.groupId === lane.group.id);
+                const x = groupBoxes.reduce((a, b) => Math.min(a, b.x), PAD_X);
+                const bottom = groupBoxes.reduce((a, b) => Math.max(a, b.y + b.h), lane.y + LANE_PAD_TOP);
+                const next = addState(data, lane.group.id, 'New state', [x, bottom + ROW_GAP]);
+                if (next && applyData(next)) {
+                  const group = next.machine!.groups.find((g) => g.id === lane.group.id)!;
+                  setSel({ kind: 'state', groupId: lane.group.id, id: group.states[group.states.length - 1].id });
+                }
+              }}
+              data-testid={`mg-add-state-${lane.group.id}`}
+            >
+              + state
+            </button>
+            {li > 0 && (
+              <button
+                type="button"
+                className="mg-lane-btn"
+                title="Delete this parallel group (undo with Ctrl+Z)"
+                onClick={() => applyData(removeGroup(data, lane.group.id))}
+                data-testid={`mg-del-group-${lane.group.id}`}
+              >
+                ✕
+              </button>
+            )}
           </span>
         ))}
-        {model.boxes.map((box) => (
+        {model_.boxes.map((box) => (
           <button
             key={`${box.groupId}/${box.id}`}
             type="button"
@@ -421,11 +628,14 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
               box.initial ? 'mg-initial' : '',
               current && current[box.groupId] === box.id ? 'mg-current' : '',
               selectedBox === box ? 'mg-selected' : '',
+              wireDraft && wireDraft.groupId !== box.groupId ? 'mg-dim' : '',
+              wireDraft && wireDraft.groupId === box.groupId && wireDraft.fromId !== box.id ? 'mg-target' : '',
             ]
               .filter(Boolean)
               .join(' ')}
             style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
             onClick={() => selectState(box)}
+            onPointerDown={(e) => startMove(box, e)}
             title={
               current
                 ? `Snap the preview to "${box.name}" — instant, no animation replay`
@@ -435,25 +645,42 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
           >
             {box.badge && <span className="mg-badge">{box.badge}</span>}
             <span className="mg-name">{box.name}</span>
+            <span
+              className="mg-port"
+              title="Drag to another state of this group to draw a transition"
+              onPointerDown={(e) => startWire(box, e)}
+              data-testid={`mg-port-${box.groupId}-${box.id}`}
+            />
           </button>
         ))}
       </div>
-      {derived && (
-        <span
-          className="mg-derived-chip"
-          title="This template has no authored machine — the graph shown is the implicit linear walk derived from its steps (exactly what play/next/stop do)"
+      <span className="mg-foot-chips">
+        <button
+          type="button"
+          className="mg-lane-btn"
+          title="Add a PARALLEL group — an independent small graph (a flag, an alert, a clock), the way big graphics stay simple"
+          onClick={() => applyData(addGroup(data))}
+          data-testid="mg-add-group"
         >
-          derived from the steps
-        </span>
-      )}
+          + parallel group
+        </button>
+        {derived && (
+          <span
+            className="mg-derived-chip"
+            title="This template has no authored machine — the graph shown is the implicit linear walk derived from its steps (exactly what play/next/stop do). The first graph edit writes it into the code."
+          >
+            derived from the steps
+          </span>
+        )}
+      </span>
       {selectedBox && (
         <StateCard
           key={`${selectedBox.groupId}/${selectedBox.id}`}
           box={selectedBox}
           data={data}
-          derived={derived}
           onOpenStep={onOpenStep}
           applyData={applyData}
+          onDeleted={() => setSel(null)}
         />
       )}
       {selectedArrow && sel?.kind === 'arrow' && (
@@ -464,6 +691,7 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
           tIndex={sel.tIndex}
           data={data}
           applyData={applyData}
+          onDeleted={() => setSel(null)}
         />
       )}
     </div>
@@ -473,19 +701,21 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
 /** The selected state's detail card: identity, what its content is, and the way into its
  *  timeline (a default-path state's step). Renaming an off-path state edits its label; a
  *  path state's name IS its step's name, renamed through the same mutator the timeline uses
- *  so the two can never fork. */
+ *  so the two can never fork. Waypoints are added and deleted on the TIMELINE (the
+ *  positional binding: the state and its clip are one thing); the graph deletes only
+ *  off-path states. */
 function StateCard({
   box,
   data,
-  derived,
   onOpenStep,
   applyData,
+  onDeleted,
 }: {
   box: StateBox;
   data: AnimData;
-  derived: boolean;
   onOpenStep: (stepIndex: number) => void;
   applyData: (next: AnimData | null) => boolean;
+  onDeleted: () => void;
 }) {
   const [name, setName] = useState(box.name);
   const commitName = () => {
@@ -505,31 +735,44 @@ function StateCard({
       : box.poseOnly
         ? 'pose only — entering plays nothing'
         : 'its own inline timeline';
+  const deletable = box.pathIndex === null && !box.initial;
   return (
     <div className="mg-card" data-testid="mg-state-card">
       <div className="mg-card-title">
         {box.badge && <span className="mg-badge">{box.badge}</span>} State
       </div>
-      {derived ? (
-        <div className="mg-card-name">{box.name}</div>
-      ) : (
-        <input
-          className="mg-card-input"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-            if (e.key === 'Escape') setName(box.name);
-          }}
-          data-testid="mg-state-name"
-        />
-      )}
+      <input
+        className="mg-card-input"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={commitName}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') setName(box.name);
+        }}
+        data-testid="mg-state-name"
+      />
       <div className="mg-card-row">{content}</div>
       {box.initial && <div className="mg-card-row">the rest state (off air, and after reset)</div>}
       {box.pathIndex !== null && (
         <button type="button" className="mg-card-action" onClick={() => onOpenStep(box.pathIndex!)} data-testid="mg-open-step">
           ≡ Open its timeline
+        </button>
+      )}
+      {box.pathIndex !== null && (
+        <div className="mg-card-row">waypoints are added and deleted on the timeline</div>
+      )}
+      {deletable && (
+        <button
+          type="button"
+          className="mg-card-action"
+          onClick={() => {
+            if (applyData(deleteState(data, box.groupId, box.id))) onDeleted();
+          }}
+          title="Delete this state and every arrow touching it (undo with Ctrl+Z)"
+          data-testid="mg-delete-state"
+        >
+          ✕ Delete state
         </button>
       )}
     </div>
@@ -545,16 +788,19 @@ function TransitionCard({
   tIndex,
   data,
   applyData,
+  onDeleted,
 }: {
   arrow: Arrow;
   groupId: string;
   tIndex: number;
   data: AnimData;
   applyData: (next: AnimData | null) => boolean;
+  onDeleted: () => void;
 }) {
   const t = arrow.t!;
   const [event, setEvent] = useState(t.event ?? '');
   const [after, setAfter] = useState(String(t.after ?? ''));
+  const [styleDur, setStyleDur] = useState(String(t.duration ?? ''));
   const commitEvent = () => {
     if (event.trim() === (t.event ?? '')) return;
     if (!applyData(setTransitionEvent(data, groupId, tIndex, event))) setEvent(t.event ?? '');
@@ -563,6 +809,13 @@ function TransitionCard({
     const n = Number(after);
     if (n === t.after) return;
     if (!(n > 0) || !applyData(setTransitionAfter(data, groupId, tIndex, n))) setAfter(String(t.after ?? ''));
+  };
+  const commitStyleDur = () => {
+    const n = Number(styleDur);
+    if (n === t.duration || styleDur.trim() === '') return;
+    if (!(n > 0) || !applyData(setTransitionStyleDuration(data, groupId, tIndex, n))) {
+      setStyleDur(String(t.duration ?? ''));
+    }
   };
   return (
     <div className="mg-card" data-testid="mg-transition-card">
@@ -620,6 +873,70 @@ function TransitionCard({
               />
             </label>
           )}
+          <label className="mg-card-row">
+            change
+            <select
+              value={t.style ?? ''}
+              onChange={(e) => applyData(setTransitionStyle(data, groupId, tIndex, e.target.value || null))}
+              title="What the change looks like: the target state's own timeline, or the arrow's styled change (fade / push / wipe between the two poses)"
+              data-testid="mg-style"
+            >
+              <option value="">state timeline</option>
+              {TRANSITION_STYLES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          {t.style !== undefined && (
+            <>
+              <label className="mg-card-row">
+                duration (s)
+                <input
+                  className="mg-card-input mono"
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  placeholder="0.6"
+                  value={styleDur}
+                  onChange={(e) => setStyleDur(e.target.value)}
+                  onBlur={commitStyleDur}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Escape') setStyleDur(String(t.duration ?? ''));
+                  }}
+                  data-testid="mg-style-duration"
+                />
+              </label>
+              <label className="mg-card-row">
+                easing
+                <select
+                  value={t.ease ?? 'power2.inOut'}
+                  onChange={(e) => applyData(setTransitionStyleEase(data, groupId, tIndex, e.target.value))}
+                  data-testid="mg-style-ease"
+                >
+                  <option value="power2.inOut">Smooth (default)</option>
+                  {EASINGS.map((e2) => (
+                    <option key={e2.id} value={e2.gsapIn}>
+                      {e2.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          <button
+            type="button"
+            className="mg-card-action"
+            onClick={() => {
+              if (applyData(removeTransition(data, groupId, tIndex))) onDeleted();
+            }}
+            title="Delete this arrow (undo with Ctrl+Z). The only arrow behind a default-path edge cannot go — that would disconnect the walk next() follows."
+            data-testid="mg-delete-transition"
+          >
+            ✕ Delete transition
+          </button>
         </>
       )}
     </div>

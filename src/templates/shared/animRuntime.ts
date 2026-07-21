@@ -342,6 +342,101 @@ function noacgApplyPayload(payload) {
   }
 }
 
+// A STYLED transition (the arrow's own "style": fade, push-left/right/up/down,
+// wipe-left/right): the arrow's animated change plays INSTEAD of the target state's entry
+// timeline. Two phases on the root — the old pose leaves, the target pose is composed
+// instantly (the snap recipe, suppressed callbacks), the new pose arrives — landing exactly
+// where the entry timeline would have settled, so a styled entry and a snap agree on every
+// pose. An unknown style returns null and the entry timeline plays: honest degradation.
+function noacgStyleTimeline(group, edge) {
+  var style = edge.style;
+  var root = document.querySelector(NOACG_ANIM.root);
+  var known = { fade: 1, 'push-left': 1, 'push-right': 1, 'push-up': 1, 'push-down': 1, 'wipe-left': 1, 'wipe-right': 1 };
+  if (!style || !root || !known[style]) return null;
+  var speed = NOACG_ANIM.speed || 1;
+  var half = ((edge.duration || 0.6) / speed) / 2;
+  var ease = edge.ease || 'power2.inOut';
+  var isPush = style.indexOf('push-') === 0;
+  var axis = style === 'push-left' || style === 'push-right' ? 'xPercent' : 'yPercent';
+  var sign = style === 'push-left' || style === 'push-up' ? -1 : 1;
+  var pose = { v: 0 };
+  var swapped = false;
+  // The pose swap: compose the CURRENT pointers' pose from a clean slate — the SNAP recipe
+  // (clear, then replay every group's canonical route with suppressed callbacks). Composing
+  // only the target's entry timeline would be wrong twice over: a pose-only branch state
+  // (the quiz's Selected) plays nothing, and the entrance's root reveal lives on the ROUTE,
+  // not on the target. Idempotent and exposed on the timeline (__noacgSwap): an interrupting
+  // event finishes this timeline with SUPPRESSED callbacks, which would skip a tl.call — so
+  // the interrupter runs the swap by hand and the pointer's state is always the DOM's.
+  var swap = function () {
+    if (swapped) return;
+    swapped = true;
+    noacgResetGraphic();
+    noacgStepsPlayed = 0;
+    for (var g = 0; g < noacgMachine.groups.length; g++) {
+      var gr = noacgMachine.groups[g];
+      var target = noacgCurrent[gr.id];
+      if (target === gr.initial) continue;
+      var route = noacgCanonicalPath(gr, target);
+      if (!route) continue;
+      for (var s = 0; s < route.length; s++) {
+        var enter = noacgEnterTimeline(gr, route[s]);
+        if (enter) { enter.pause(0); enter.progress(1, true); enter.kill(); }
+        if (gr === noacgMachine.groups[0]) {
+          var idx = noacgPathIndex(route[s]);
+          if (idx >= 0) noacgStepsPlayed = idx + 1;
+        }
+      }
+    }
+    noacgFireCalls(noacgStepFor(group, edge.to));
+  };
+  var tl = gsap.timeline();
+  // Phase 1: the old pose leaves.
+  if (style === 'fade') {
+    tl.to(root, { opacity: 0, duration: half, ease: ease });
+  } else if (isPush) {
+    var outVars = { duration: half, ease: ease };
+    outVars[axis] = sign * 120;
+    tl.to(root, outVars);
+  } else {
+    tl.to(root, { clipPath: style === 'wipe-left' ? 'inset(0% 100% 0% 0%)' : 'inset(0% 0% 0% 100%)', duration: half, ease: ease });
+  }
+  // The swap, plus parking the root at the IN phase's starting offset (entering from the
+  // side the old pose left toward — a continuous push, a continuous wipe).
+  tl.call(function () {
+    swap();
+    if (style === 'fade') {
+      pose.v = Number(gsap.getProperty(root, 'opacity'));
+      gsap.set(root, { opacity: 0 });
+    } else if (isPush) {
+      pose.v = Number(gsap.getProperty(root, axis)) || 0;
+      var park = {};
+      park[axis] = pose.v - sign * 120;
+      gsap.set(root, park);
+    } else {
+      gsap.set(root, { clipPath: style === 'wipe-left' ? 'inset(0% 0% 0% 100%)' : 'inset(0% 100% 0% 0%)' });
+    }
+  });
+  // Phase 2: the new pose arrives, ending on the CAPTURED pose values (function-based ends
+  // read them after the swap ran).
+  if (style === 'fade') {
+    tl.to(root, { opacity: function () { return pose.v; }, duration: half, ease: ease });
+  } else if (isPush) {
+    var inVars = { duration: half, ease: ease };
+    inVars[axis] = function () { return pose.v; };
+    tl.to(root, inVars);
+  } else {
+    tl.to(root, {
+      clipPath: 'inset(0% 0% 0% 0%)',
+      duration: half,
+      ease: ease,
+      onComplete: function () { gsap.set(root, { clearProps: 'clipPath' }); }
+    });
+  }
+  tl.__noacgSwap = swap;
+  return tl;
+}
+
 // Fire one transition: the pointer moves SYNCHRONOUSLY (an event arriving mid-animation
 // evaluates against the NEW state), the previous group timeline finishes instantly with
 // suppressed callbacks (nothing double-fires), the target state's timeline plays, and the
@@ -351,6 +446,7 @@ function noacgFire(group, edge) {
   var prev = noacgGroupTl[group.id];
   if (prev) {
     if (prev.progress() < 1) prev.progress(1, true);
+    if (prev.__noacgSwap) prev.__noacgSwap(); // a suppressed finish skipped the pose swap
     prev.kill();
     noacgGroupTl[group.id] = null;
   }
@@ -360,7 +456,7 @@ function noacgFire(group, edge) {
     var idx = noacgPathIndex(edge.to);
     if (idx >= 0) noacgStepsPlayed = idx + 1;
   }
-  var tl = noacgEnterTimeline(group, edge.to);
+  var tl = noacgStyleTimeline(group, edge) || noacgEnterTimeline(group, edge.to);
   if (tl) noacgGroupTl[group.id] = tl;
   var path = main.defaultPath || [];
   if (group === main && edge.to === path[path.length - 1]) {
@@ -642,16 +738,30 @@ export function hasMachineRuntime(js: string): boolean {
   return /function noacgDispatch/.test(js);
 }
 
+/** Same pairing idea for TRANSITION STYLES: a `style` on an arrow needs the interpreter
+ *  that consumes it (noacgStyleTimeline) — under an older one it would parse and silently
+ *  never play. */
+export function hasTransitionStyleRuntime(js: string): boolean {
+  return /function noacgStyleTimeline/.test(js);
+}
+
+/** Does any arrow carry a transition style (the reserved fields, now consumed)? */
+export function dataUsesTransitionStyles(data: AnimData): boolean {
+  return (data.machine?.groups ?? []).some((g) => g.transitions.some((t) => t.style !== undefined));
+}
+
 /**
  * THE machine-safe write — what every editing surface should use.
  *
  * `spliceAnimData` replaces only the object literal, so a saved template keeps whatever
  * interpreter it was emitted with. That is fine until the data grows a MACHINE: machine-bearing
  * data under a pre-machine interpreter would parse and then do nothing. When that pairing would
- * break, re-emit the whole region instead (the same move the `hides` early-exit makes).
+ * break, re-emit the whole region instead (the same move the `hides` early-exit makes) — and
+ * identically when the data grows a transition STYLE the frozen interpreter cannot play.
  */
 export function writeAnimData(js: string, data: AnimData): string | null {
   if (data.machine && !hasMachineRuntime(js)) return replaceRegionWithAnimData(js, data);
+  if (dataUsesTransitionStyles(data) && !hasTransitionStyleRuntime(js)) return replaceRegionWithAnimData(js, data);
   return spliceAnimData(js, data);
 }
 

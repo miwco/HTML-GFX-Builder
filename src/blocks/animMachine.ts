@@ -8,6 +8,7 @@
 
 import {
   RESERVED_EVENTS,
+  TRANSITION_STYLES,
   type AnimData,
   type AnimGroup,
   type AnimMachine,
@@ -296,6 +297,13 @@ export function validateMachine(data: AnimData): { errors: string[]; warnings: s
     for (const t of group.transitions) {
       if (t.trigger === 'data-condition') {
         warnings.push(`Group "${group.id}": "${t.from}" → "${t.to}" uses the reserved data-condition trigger — it never fires in this version.`);
+      }
+      // An unknown style round-trips and the entry timeline plays instead — worth saying,
+      // because the author expected a styled change and will get the classic one.
+      if (t.style !== undefined && !(TRANSITION_STYLES as readonly string[]).includes(t.style)) {
+        warnings.push(
+          `Group "${group.id}": "${t.from}" → "${t.to}" carries an unknown transition style "${t.style}" — the target state's entry timeline will play instead.`,
+        );
       }
       // A timer arms when its state's entry timeline ENDS. A timeline holding endless motion
       // (a repeat:-1 loop, or a measured builder that returns one) never ends, so the timer

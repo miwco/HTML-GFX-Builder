@@ -107,8 +107,23 @@ export type TriggerType = 'operator' | 'timer' | 'data-condition';
  *  and a branch state may author its own `next` edge as the rejoin arrow. */
 export const RESERVED_EVENTS = ['play', 'stop'] as const;
 
+/** The transition-style vocabulary the interpreter's noacgStyleTimeline plays (the node
+ *  editor's arrow styles). An unknown name round-trips untouched and the entry timeline
+ *  plays instead — degradation, never a crash. */
+export const TRANSITION_STYLES = [
+  'fade',
+  'push-left',
+  'push-right',
+  'push-up',
+  'push-down',
+  'wipe-left',
+  'wipe-right',
+] as const;
+
 /** One arrow of a state graph. The animated change is the TARGET state's timeline (entering a
- *  state plays its content; re-entry — including a self-transition — replays it). */
+ *  state plays its content; re-entry — including a self-transition — replays it), unless the
+ *  arrow carries a `style` — then the styled change (fade/push/wipe between the two poses)
+ *  plays instead. */
 export interface AnimTransition {
   from: string;
   /** May equal `from` — a self-transition replays the state (a ticker's cycle beat). */
@@ -118,12 +133,12 @@ export interface AnimTransition {
   event?: string;
   /** timer only: speed-relative seconds after the from-state's entry timeline settles. */
   after?: number;
-  /** RESERVED for the node editor's transition styles (fade/push/wipe) — carried and
-   *  round-tripped canonically, consumed by nothing yet. */
+  /** The arrow's own animated change (TRANSITION_STYLES) — replaces the target state's
+   *  entry timeline for this arrow. Absent = the classic entry-timeline change. */
   style?: string;
-  /** Reserved with `style`. */
+  /** style only: the styled change's total seconds (speed-relative; default 0.6). */
   duration?: number;
-  /** Reserved with `style`. */
+  /** style only: the GSAP ease of each half (default power2.inOut). */
   ease?: string;
 }
 
@@ -137,6 +152,9 @@ export interface AnimState {
   id: string;
   /** Display label; defaults to the id. */
   name?: string;
+  /** The node editor's box position `[x, y]` on the graph canvas. ADDITIVE OPTIONAL (no
+   *  version bump): absent means auto-layout, and nothing but the graph view reads it. */
+  at?: [number, number];
   timeline?: AnimStep;
 }
 
@@ -355,6 +373,12 @@ function isMachineShape(raw: unknown, stepCount: number): raw is AnimMachine {
       if (typeof s.id !== 'string' || !s.id || stateIds.has(s.id)) return false;
       stateIds.add(s.id);
       if (s.name !== undefined && typeof s.name !== 'string') return false;
+      if (
+        s.at !== undefined &&
+        (!Array.isArray(s.at) || s.at.length !== 2 || !s.at.every((n) => typeof n === 'number' && Number.isFinite(n)))
+      ) {
+        return false;
+      }
       if (s.timeline !== undefined && !isAnimStepShape(s.timeline, false)) return false;
     }
     if (typeof group.initial !== 'string' || !stateIds.has(group.initial)) return false;
@@ -519,13 +543,15 @@ function serializeGroup(group: AnimGroup, indent: string): string[] {
   lines.push(`${i1}"states": [`);
   group.states.forEach((st, si) => {
     const comma = si < group.states.length - 1 ? ',' : '';
+    const at = st.at ? `, "at": [${round(st.at[0])}, ${round(st.at[1])}]` : '';
     if (!st.timeline) {
       const name = st.name !== undefined ? `, "name": ${JSON.stringify(st.name)}` : '';
-      lines.push(`${i2}{ "id": ${JSON.stringify(st.id)}${name} }${comma}`);
+      lines.push(`${i2}{ "id": ${JSON.stringify(st.id)}${name}${at} }${comma}`);
     } else {
       lines.push(`${i2}{`);
       lines.push(`${i3}"id": ${JSON.stringify(st.id)},`);
       if (st.name !== undefined) lines.push(`${i3}"name": ${JSON.stringify(st.name)},`);
+      if (st.at) lines.push(`${i3}"at": [${round(st.at[0])}, ${round(st.at[1])}],`);
       lines.push(...serializeStep(st.timeline, i3, '"timeline": '));
       lines.push(`${i2}}${comma}`);
     }
@@ -566,9 +592,10 @@ function serializeGroup(group: AnimGroup, indent: string): string[] {
 /**
  * Serialize the data canonically. Deterministic by construction: fixed key order
  * (version/root/speed/steps/machine; name/duration/ease/reveals/hides/calls/dynamics/loops/
- * layers; time/value/ease; id/initial/defaultPath/states/transitions; from/to/trigger/event/
- * after/style/duration/ease), fixed 2-space indentation, keyframes, calls, dynamics, states
- * and transitions one per line, all sorted, numbers rounded to 3 decimals.
+ * layers; time/value/ease; id/initial/defaultPath/states/transitions; id/name/at/timeline;
+ * from/to/trigger/event/after/style/duration/ease), fixed 2-space indentation, keyframes,
+ * calls, dynamics, states and transitions one per line, all sorted, numbers rounded to 3
+ * decimals.
  * serialize(parse(serialize(x))) === serialize(x) — a fixed point — so a small visual edit
  * only ever touches the lines it changed. Always writes the CURRENT version: the first edit
  * of a version-1 document is its migration moment (a one-line diff).

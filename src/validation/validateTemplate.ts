@@ -4,7 +4,7 @@
 import { parseDefinition } from '../model/spxDefinition';
 import { animDataFault, parseAnimData } from '../blocks/animData';
 import { allTimelines, validateMachine } from '../blocks/animMachine';
-import { hasMachineRuntime } from '../templates/shared/animRuntime';
+import { dataUsesTransitionStyles, hasMachineRuntime, hasTransitionStyleRuntime } from '../templates/shared/animRuntime';
 import { DATA_FTYPES, type SpxTemplate } from '../model/types';
 
 export interface ValidationIssue {
@@ -303,6 +303,16 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
           rule: 'machine',
           message:
             'The animation data declares a state machine, but the interpreter in this template predates the machine engine — re-emit the ANIMATION region (replaceRegionWithAnimData) so the machine can run.',
+        });
+      }
+
+      // The same pairing rule for transition STYLES: a styled arrow under an interpreter
+      // without noacgStyleTimeline would parse and silently play the classic change.
+      if (dataUsesTransitionStyles(data) && !hasTransitionStyleRuntime(template.js)) {
+        errors.push({
+          rule: 'machine',
+          message:
+            'A transition carries a style (fade/push/wipe), but the interpreter in this template predates transition styles — re-emit the ANIMATION region (replaceRegionWithAnimData) so the styled change can play.',
         });
       }
     }

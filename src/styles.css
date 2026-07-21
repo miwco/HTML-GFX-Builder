@@ -2090,16 +2090,47 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .mg-arrow-reserved text { fill: rgba(232, 237, 242, 0.3); }
 .mg-head-dim { fill: rgba(232, 237, 242, 0.55); }
 .mg-lane-line { stroke: rgba(232, 237, 242, 0.1); stroke-dasharray: 3 5; }
+.mg-lane-head { position: absolute; left: 10px; display: inline-flex; align-items: center; gap: 6px; }
 .mg-lane-label {
-  position: absolute;
-  left: 10px;
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-dim);
   opacity: 0.7;
-  pointer-events: none;
 }
+.mg-lane-btn {
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  padding: 0 6px;
+  line-height: 15px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  opacity: 0.85;
+}
+.mg-lane-btn:hover { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); opacity: 1; }
+/* The connect PORT — the arrow-drawing handle on a box's right edge, revealed on hover. */
+.mg-port {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid rgba(246, 166, 35, 0.6);
+  opacity: 0;
+  cursor: crosshair;
+}
+.mg-state:hover .mg-port, .mg-state.mg-selected .mg-port { opacity: 1; }
+.mg-port:hover { background: var(--amber); }
+/* A wire drag in flight: candidate targets glow faintly, other groups stand down. */
+.mg-state.mg-target { border-color: rgba(246, 166, 35, 0.45); }
+.mg-state.mg-dim { opacity: 0.35; }
+.mg-wire-draft { stroke: var(--amber); stroke-width: 1.5; stroke-dasharray: 5 4; fill: none; pointer-events: none; }
+.mg-foot-chips { position: absolute; left: 10px; bottom: 8px; display: inline-flex; align-items: center; gap: 8px; }
 /* A state box. The rest state (initial) is an outline; the current state wears the amber
    on-air ring — restrained glow, per the brand. */
 .mg-state {
@@ -2115,7 +2146,8 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   color: var(--text);
   font-size: 12px;
   cursor: pointer;
-  overflow: hidden;
+  /* No overflow:hidden here — it would clip the connect port off the right edge (the name
+     span does its own ellipsis). */
 }
 .mg-state:hover { border-color: rgba(246, 166, 35, 0.5); }
 .mg-state.mg-initial { background: transparent; border-style: dashed; color: var(--text-dim); }
@@ -2128,16 +2160,12 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .mg-state.mg-initial .mg-badge { color: var(--text-dim); }
 .mg-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mg-derived-chip {
-  position: absolute;
-  left: 10px;
-  bottom: 8px;
   font-size: 9.5px;
   letter-spacing: 0.06em;
   padding: 1px 7px;
   color: var(--text-dim);
   border: 1px solid var(--border);
   border-radius: 6px;
-  pointer-events: auto;
   cursor: help;
 }
 /* Arrow interactivity: a wide invisible twin of each authored arrow takes the clicks
