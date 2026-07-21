@@ -12,14 +12,18 @@ tool), the validate + bench gate (`src/validation/` + `src/community/gate.ts`), 
 harness (`scripts/ai-bench.mjs`), and the Era 5.5 community backend (`community_templates` + the 🛡
 moderator queue).
 
-> Status: **job A is BUILT** (2026-07-21): `.github/workflows/nightly-health.yml` runs build +
-> offline E2E + the template-factory gates (six promotion gates, pack taxonomy, literal token
-> drift — `scripts/factory.mjs`) + `npm audit` nightly, files a rolling issue on red, and holds
-> no secrets. The cron activates when it lands on main. This closes Phase 3's scheduling-harness
-> item (docs/noacg-master-goals.md). **Jobs B/C (generation + staging + the review agent) remain
-> PLAN ONLY** — they spend real API money nightly, require migration `0006`, and wait on the §10
-> decisions. Read `docs/ERA5_PLAN.md` and `docs/GOALS.md` first; this plan slots in as a new
-> operability layer on top of the shipped Era 5.5 community feature.
+> Status: **job A is BUILT, re-scoped by trigger** (2026-07-21): the commit-driven gates
+> (build + offline E2E + the template-factory gates — six promotion gates, pack taxonomy,
+> literal token drift) run in `.github/workflows/ci.yml` on every push and PR, and the
+> time-driven check (`npm audit` at the high/critical threshold + a staleness report) runs in
+> `.github/workflows/weekly-audit.yml` on a Monday cron with a rolling failure issue. A
+> scheduled repeat of the lockfile-pinned gates would only re-prove yesterday, which is why
+> job A split by what actually drifts. Both are secret-free. This closes Phase 3's
+> scheduling-harness item (docs/noacg-master-goals.md). **Jobs B/C (generation + staging + the
+> review agent) remain PLAN ONLY** — they spend real API money nightly, require migration
+> `0006`, and wait on the §10 decisions; if B lands, a nightly cadence returns with it. Read
+> `docs/ERA5_PLAN.md` and `docs/GOALS.md` first; this plan slots in as a new operability layer
+> on top of the shipped Era 5.5 community feature.
 
 ---
 

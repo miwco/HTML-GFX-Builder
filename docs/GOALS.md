@@ -913,11 +913,12 @@ now full: every one of the 12 types ships in all four families (noacg / glass / 
       validates the pack config, and greps every variant's emitted CSS for literal forms of
       family-valued tokens (the conformance metric's blind spot); any failure exits non-zero,
       so it sits in CI beside `npm run build`.
-- [x] **The gates run nightly without a human** - `.github/workflows/nightly-health.yml` (the
-      deterministic job A of docs/NIGHTLY_AUTOMATION_PLAN.md): build + offline E2E + the factory
-      gates + dependency audit on a 00:00 UTC cron, secret-free, filing a rolling issue on red.
-      Activates when it lands on main; the AI generation pipeline (jobs B/C) stays a plan behind
-      its own decisions.
+- [x] **The gates run without a human** - the commit-driven gates (build + offline E2E + the
+      factory gates) joined `.github/workflows/ci.yml` on every push and PR, and the
+      time-driven check (dependency audit + staleness) runs weekly
+      (`.github/workflows/weekly-audit.yml`, Monday cron, rolling failure issue). Job A of
+      docs/NIGHTLY_AUTOMATION_PLAN.md, split by what actually drifts; the AI generation
+      pipeline (jobs B/C) stays a plan behind its own decisions.
 - [x] **Every reference format has its pack** - the 60 live-program formats map onto 12 packs
       (`docs/PACK_TAXONOMY.md`; config in `src/templates/packs.ts`). A pack is PURE CONFIG over
       the filled matrix - one entry, no new template work - which is the "catalog growth is a

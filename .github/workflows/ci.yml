@@ -39,6 +39,35 @@ jobs:
       - name: E2E suite
         run: npm run test:e2e
 
+      # The template-factory gates (docs/GRAPHIC_TYPES.md): six promotion gates over every
+      # type design, the pack taxonomy (src/templates/packs.ts resolves, 60 formats covered
+      # exactly once), and the literal-token-drift grep. Needs the dev server up (the
+      # l3-sweep contract) — started only AFTER the suite, so Playwright's own offline-pinned
+      # webServer never finds a stale server on the port (the reuseExistingServer gotcha).
+      # The port is path-derived; scripts/factory.mjs derives the same number itself.
+      - name: Factory gates
+        run: |
+          npm run dev &
+          DEV_PID=$!
+          PORT="$(node scripts/dev-port.mjs)"
+          for i in $(seq 1 60); do
+            curl -sf "http://localhost:${PORT}/app" > /dev/null && break
+            sleep 1
+          done
+          STATUS=0
+          node scripts/factory.mjs --json factory-report.json || STATUS=$?
+          kill "$DEV_PID" || true
+          exit $STATUS
+
+      - name: Upload factory report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: factory-report
+          path: factory-report.json
+          retention-days: 7
+          if-no-files-found: ignore
+
       # The list reporter prints failures to the log; the per-test error context,
       # screenshots, and DOM snapshots land in test-results/ — keep them for debugging.
       - name: Upload failure evidence
