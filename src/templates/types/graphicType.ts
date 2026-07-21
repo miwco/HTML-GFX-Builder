@@ -271,6 +271,17 @@ export interface TypeDesign {
    * authored for the top-right safe area, and the type was moving it to the top-left.
    */
   defaultZone?: Zone9;
+  /**
+   * Why this design belongs to THIS type, when a mechanical signal says it might not.
+   *
+   * The semantics gate (docs/GRAPHIC_TYPES.md §5) is the one that cannot be automated: lt01
+   * into social-bug matched on parts, fields and count, and was still the wrong graphic. What
+   * CAN be automated is the SIGNAL — a design whose own variant labels its lines differently
+   * from the type's field labels ("Name" vs "Handle") is exactly that case.
+   * `scripts/factory.mjs` raises it; this field is the author's acknowledgement that the
+   * difference was read and is intended. Absent, a raised signal fails the batch.
+   */
+  semantics?: string;
   /** Build the template. A type reuses its category's existing assembler here — it never
    *  grows an assembly path of its own. */
   create(type: GraphicType, options?: Parameters<TemplateVariant['create']>[0]): SpxTemplate;

@@ -125,6 +125,18 @@ export const tickerType: GraphicType = {
       styleTag: 'noacg',
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
+      // The house wire's own copy. Without these the wizard offered the type's generic
+      // "Welcome to tonight's live show" while the graphic renders the newsroom lines it was
+      // written around.
+      samples: {
+        items: [
+          'Parliament passes 2026 budget after all-night session',
+          'Central bank holds rate at 3.25%',
+          'National team qualifies for the final',
+          'Storm warning issued for the coast',
+        ].join('\n'),
+        label: 'News',
+      },
       create: (_type, options) => tk07.create(options),
     },
     {

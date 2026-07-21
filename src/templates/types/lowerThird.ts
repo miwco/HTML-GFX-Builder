@@ -60,6 +60,9 @@ export const lowerThirdType: GraphicType = {
       palette: paletteById('signal'),
       fontId: 'space-grotesk',
       samples: { name: 'Marcus Chen', title: 'Senior Analyst' },
+      // The underline is the design's one accent moment, so line-reveal leads; it was never
+      // drawn for a mask-wipe, which the type's list adds.
+      animationPresets: ['line-reveal', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
       create: (_type, options) => lt02.create(options),
     },
     {
@@ -70,6 +73,10 @@ export const lowerThirdType: GraphicType = {
       palette: paletteById('volt'),
       fontId: 'oswald',
       samples: { name: 'JAKE MORRISON', title: '24 PTS · 11 AST' },
+      // The design labels its lines "Player" and "Stat line" where the type says "Name" and
+      // "Title" — but they are the same two roles: a player name is the primary identifier, a
+      // stat line is the secondary descriptor. Sport-flavoured wording for a name and a title.
+      semantics: 'Player = the name (primary identifier); stat line = the title (secondary line).',
       // The lean is painted on a pseudo-layer precisely so the stinger's skew cannot flatten
       // it; taking the type's line-reveal default would retire the preset it is drawn around.
       animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],

@@ -190,6 +190,45 @@ design. Only the wizard's suggested lines are affected — the emitted html, css
 identical either way, which is why no baseline moves and why a rendered check is the only thing
 that sees it.
 
+### The factory runs all six gates — `scripts/factory.mjs`
+
+The Phase 3 batch loop (docs/noacg-master-goals.md). It derives the type × family matrix from the
+live registry, runs every design through all six gates, classifies each failure **by the gate that
+caught it**, writes a machine-readable report (`--json`), and **exits non-zero**, so it works as a
+CI gate beside `npm run build`. `node scripts/factory.mjs` prints matrix + gates;
+`check --ids a,b` scopes it. It needs the dev server up, like `scripts/l3-sweep.mjs`.
+
+It reads the registry through the running app rather than parsing source, because a type's
+`category` is kebab-case (`corner-bug`, `info-card`) and a naive word regex silently truncates it —
+that mistake once produced a confident wrong count of what was promotable.
+
+Three of the six gates were "not mechanically checkable". All three now have a mechanical form:
+
+- **capabilities** — compares a compiled variant against the design's own PRE-MERGE catalog entry
+  (`HAND_WRITTEN`, exported from `catalog.ts` for this). Covers the whole offered set: `logo`,
+  `maxLines`, the preset vocabulary and the zone.
+- **samples** — compares the text a design renders against what the wizard would offer.
+- **semantics** — cannot be *decided* by machine, but the real failure (`lt01` into social-bug) had
+  a mechanical tell: the design's line LABELS differed from the type's field labels. The factory
+  raises that signal; the author signs it off with **`TypeDesign.semantics`**, and an
+  unacknowledged signal fails the batch.
+
+**What it caught on its first run over the full matrix — 13 of 48 designs:** the motion/zone drift
+above still un-declared on all eight agenda and poll designs (each authored for a single measured
+preset, compiled to three); `lt02` widened to a mask-wipe it was never drawn for; `card02`/`card03`
+and `tk07` showing generic type copy instead of their own (card03's were a line out of step, so the
+wizard offered the first body line as the card's heading); and the `Bars`/`Heading` vs
+`Options`/`Question` semantics signal on the four poll designs. All fixed; the loop is green at
+48/48.
+
+**Failure modes the loop has recorded (append new ones here):**
+- *A purpose-built design needs `samples` just as a promoted one does.* Any design whose own
+  suggested lines differ from the type's field defaults must declare them — the gate is about the
+  wizard's text matching the design, not about promotion.
+- *Measured-motion designs must declare `animationPresets`.* A design whose entrance IS its
+  measured builder (a bars-grow, a rows-cascade) offers exactly one preset in its own file, and a
+  type that offers three silently re-choreographs it.
+
 ---
 
 ## 6. The twelve types

@@ -59,6 +59,9 @@ export const agendaType: GraphicType = {
       styleTag: 'minimal',
       palette: paletteById('ivory'),
       fontId: 'inter',
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
       create: (_type, options) => ig06.create(options),
     },
     {
@@ -70,6 +73,9 @@ export const agendaType: GraphicType = {
       styleTag: 'noacg',
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
       create: (_type, options) => ig08.create(options),
     },
     {
@@ -82,6 +88,9 @@ export const agendaType: GraphicType = {
       palette: paletteById('frost'),
       fontId: 'manrope',
       samples: { rows: '20:00 | Doors open\n21:00 | Live set\n22:30 | DJ until late', heading: 'TONIGHT' },
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
       create: (_type, options) => ig09.create(options),
     },
     {
@@ -96,6 +105,9 @@ export const agendaType: GraphicType = {
       palette: paletteById('volt'),
       fontId: 'oswald',
       samples: { rows: '13:00 | HEAT ONE\n14:30 | SEMI FINALS\n16:00 | GRAND FINAL', heading: 'ORDER OF PLAY' },
+      // Measured motion: the cascade IS this design's entrance, which is why its own
+      // variant offers nothing else. Kept, so promotion cannot re-choreograph it.
+      animationPresets: ['rows-cascade'],
       create: (_type, options) => ig10.create(options),
     },
     // ig03 is held back pending a design call rather than rejected outright. Structurally it
@@ -144,6 +156,16 @@ export const pollType: GraphicType = {
       styleTag: 'glass',
       palette: paletteById('orchid'),
       fontId: 'manrope',
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design writes its question as a short all-caps kicker over the bars; the type's
+      // default is a full sentence. Both are questions — this one is the design's own.
+      samples: { question: 'HOW WE WATCH' },
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
       create: (_type, options) => ig02.create(options),
     },
     {
@@ -156,6 +178,13 @@ export const pollType: GraphicType = {
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
       samples: { options: 'Streaming | 78\nBroadcast | 54\nOn demand | 36', question: 'HOW WE WATCH' },
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
       create: (_type, options) => ig11.create(options),
     },
     {
@@ -168,6 +197,13 @@ export const pollType: GraphicType = {
       palette: paletteById('volt'),
       fontId: 'oswald',
       samples: { options: 'HOME | 62\nAWAY | 38', question: 'POSSESSION' },
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
       create: (_type, options) => ig12.create(options),
     },
     {
@@ -180,6 +216,13 @@ export const pollType: GraphicType = {
       palette: paletteById('ivory'),
       fontId: 'inter',
       samples: { options: 'Agree | 64\nNeutral | 22\nDisagree | 14', question: 'VIEWER POLL' },
+      // Measured motion: the bars growing to their share IS this design's entrance.
+      animationPresets: ['bars-grow'],
+      // The design names its ELEMENTS ('Bars', 'Heading'); the type names its CONTENT
+      // (options, question). A poll’s options ARE the bars and the heading over them IS the
+      // question, so the two fields mean the same thing — unlike ig01, whose two lines line up
+      // positionally and mean something else entirely.
+      semantics: 'Element names vs content names: the bars ARE the options, the heading IS the question.',
       create: (_type, options) => ig13.create(options),
     },
     // ig01 is NOT promotable here, and per-design samples cannot rescue it: this type is an

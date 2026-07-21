@@ -152,7 +152,11 @@ export const topicCardType: GraphicType = {
       styleTag: 'sport',
       palette: paletteById('volt'),
       fontId: 'oswald',
-      samples: { heading: 'MATCH STATS' },
+      samples: {
+        heading: 'MATCH STATS',
+        line1: 'SHOTS ON TARGET · 9',
+        line2: 'POSSESSION · 61%',
+      },
       // The slab's lean is painted so it survives the stinger's skew — promoting this card
       // into the type's list dropped snap-stinger entirely, the one preset it is built around.
       animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
@@ -167,7 +171,14 @@ export const topicCardType: GraphicType = {
       styleTag: 'glass',
       palette: paletteById('frost'),
       fontId: 'manrope',
-      samples: { heading: '20:00 — Opening keynote' },
+      // These were one line out of step: the heading key carried what is actually the FIRST
+      // BODY line, so the wizard offered "20:00 — Opening keynote" as the card's heading while
+      // the card itself renders "Tonight's Lineup" there. Found by the factory's samples gate.
+      samples: {
+        heading: "Tonight's Lineup",
+        line1: '20:00 — Opening keynote',
+        line2: '21:15 — Live Q&A with the hosts',
+      },
       // Glass springs and resolves out of blur; the type's line reveal is a news motion.
       animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
       create: (_type, options) => card03.create(options),
