@@ -136,6 +136,16 @@
     .lede { font-size: 19px; color: var(--dim); max-width: 640px; }
     .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; align-items: center; }
     .cta-note { font-family: var(--mono); font-size: 12px; color: var(--faint); letter-spacing: 0.04em; }
+    .beta-chip {
+      display: inline-block; padding: 2px 9px; margin-right: 10px; border-radius: 5px;
+      border: 1px solid rgba(246, 166, 35, 0.45); background: rgba(246, 166, 35, 0.09);
+      letter-spacing: 0.2em;
+    }
+
+    /* ── Beta notice ── */
+    .beta-note .sub { max-width: 680px; }
+    .beta-contact a { color: var(--amber); }
+    .beta-contact a:hover { color: var(--glow); }
 
     /* ── Platform chips ── */
     .platforms { display: flex; flex-wrap: wrap; gap: 10px; padding: 32px 0 6px; align-items: center; }
@@ -390,6 +400,7 @@
       <div class="mark" aria-hidden="true"><i></i><i></i><i></i></div>
       <a href="/" class="wordmark">Noa<span>CG</span><small>Studio</small></a>
       <nav>
+        <a class="gh" href="mailto:contact.noacg@gmail.com">Contact</a>
         <a class="gh" href="https://github.com/miwco/NoaCG-Studio">GitHub</a>
         <a class="btn btn-amber" href="/app">Open the editor</a>
       </nav>
@@ -397,7 +408,7 @@
 
     <main>
       <div class="hero">
-        <p class="kicker">Free · Browser-based · No sign-up to try</p>
+        <p class="kicker"><span class="beta-chip">Beta</span> Free · Browser-based · No sign-up to try</p>
         <!-- Each .hl is an overflow mask; the entrance slides .hl-in up through it. -->
         <h1>
           <span class="hl"><span class="hl-in">Broadcast graphics,</span></span>
@@ -690,6 +701,21 @@
           only adds cloud sync, community templates, and AI.
         </p>
       </section>
+
+      <section class="beta-note">
+        <p class="kicker" data-reveal>Currently in beta</p>
+        <h2 data-reveal>Solid today, sharper every week.</h2>
+        <p class="sub" data-reveal>
+          NoaCG Studio is in beta. The smoothest ways to make a graphic right now are the
+          template library, importing your own artwork, and AI generation — advanced custom
+          editing works, and we're still polishing it. If something feels rough, we want to
+          hear about it.
+        </p>
+        <p class="sub beta-contact" data-reveal>
+          Questions, feedback, or business inquiries:&nbsp;
+          <a href="mailto:contact.noacg@gmail.com">contact.noacg@gmail.com</a>
+        </p>
+      </section>
     </main>
   </div>
 
@@ -704,6 +730,7 @@
     <footer>
       <span class="fm">NoaCG Studio · Broadcast graphics, built in minutes</span>
       <span>
+        <a href="mailto:contact.noacg@gmail.com">contact.noacg@gmail.com</a> ·
         <a href="https://github.com/miwco/NoaCG-Studio">GitHub</a> ·
         <a href="https://github.com/miwco/NoaCG-Studio/blob/main/LICENSE">AGPL-3.0</a> ·
         Free forever for the core
