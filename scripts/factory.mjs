@@ -32,7 +32,11 @@ import { writeFileSync } from 'node:fs';
 import { devPort } from './dev-port.mjs';
 
 const argv = process.argv.slice(2);
-const command = argv.find((a) => !a.startsWith('-')) ?? 'run';
+// A flag's VALUE is not a command: `factory.mjs --json report.json` must not read
+// "report.json" as the command (the first CI run failed on exactly that).
+const VALUE_FLAGS = ['--ids', '--json'];
+const flagValueAt = new Set(argv.flatMap((a, i) => (VALUE_FLAGS.includes(a) ? [i + 1] : [])));
+const command = argv.find((a, i) => !a.startsWith('-') && !flagValueAt.has(i)) ?? 'run';
 const flag = (name) => {
   const at = argv.indexOf(name);
   return at >= 0 ? argv[at + 1] : null;
