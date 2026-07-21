@@ -10,6 +10,7 @@ import lottieSource from '../../assets/lottie.min.js?raw';
 import { inlineAssetRefs, isLottieAsset, parseDataUrl } from '../../assets/assetUtils';
 import { templateUsesLottie } from '../../assets/lottieSupport';
 import { parseAnimData } from '../../blocks/animData';
+import { eventButtons, type ControlButton } from '../../control/controlModel';
 import type { Ftype, SpxField, SpxTemplate } from '../../model/types';
 import { addReferencedFonts, slug } from '../common';
 import type { ExportTarget } from '../registry';
@@ -41,9 +42,36 @@ function dataSchema(fields: SpxField[]) {
   return { type: 'object', properties };
 }
 
+/**
+ * The state machine's operator events as OGraf custom actions (spec §2 Action). The list is
+ * the SAME merge every control surface renders (controlModel eventButtons — declared labels
+ * from `machine.controls`, plain buttons for undeclared events), so an OGraf host offers
+ * exactly what the Control tab does. An event's payload fields become the action's payload
+ * schema, titled from the template's own fields.
+ */
+function customActions(template: SpxTemplate): Array<Record<string, unknown>> {
+  const titles = new Map(template.fields.map((f) => [f.field, f.title || f.field]));
+  return eventButtons(template.js).map((button: ControlButton) => ({
+    id: button.event,
+    name: button.label,
+    ...(button.section ? { description: `${button.section} — fires the "${button.event}" event.` } : {}),
+    ...(button.payload?.length
+      ? {
+          schema: {
+            type: 'object',
+            properties: Object.fromEntries(
+              button.payload.map((key) => [key, { type: 'string', title: titles.get(key) ?? key }]),
+            ),
+          },
+        }
+      : {}),
+  }));
+}
+
 /** The .ograf.json manifest (required fields per spec §2 + the field-driven data schema). */
 export function buildOgrafManifest(template: SpxTemplate): Record<string, unknown> {
   const stepCount = Math.max(1, Number(template.settings.steps) || 1);
+  const actions = customActions(template);
   return {
     $schema: OGRAF_SCHEMA_URL,
     id: slug(template.name), // slugs never contain "/" (spec forbids it in ids)
@@ -55,6 +83,7 @@ export function buildOgrafManifest(template: SpxTemplate): Record<string, unknow
     supportsNonRealTime: false,
     schema: dataSchema(template.fields),
     stepCount,
+    ...(actions.length ? { customActions: actions } : {}),
   };
 }
 
@@ -94,12 +123,18 @@ function templateHtmlForModule(template: SpxTemplate): string {
 /** graphic.mjs: a readable Web Component wrapping the template's own runtime. */
 function graphicModule(template: SpxTemplate): string {
   const stepCount = Math.max(1, Number(template.settings.steps) || 1);
+  const machine = parseAnimData(template.js)?.machine;
   // Each state group's off-air (initial) state, so the wrapper can tell when a press took the
   // graphic off air by itself. Empty for a template with no machine — such a graphic never
   // reports off air here and behaves exactly as before.
-  const offStates = Object.fromEntries(
-    (parseAnimData(template.js)?.machine?.groups ?? []).map((g) => [g.id, g.initial]),
-  );
+  const offStates = Object.fromEntries((machine?.groups ?? []).map((g) => [g.id, g.initial]));
+  // The main group's walk + id and the manifest's custom-action ids: what customAction()
+  // accepts, and how the wrapper re-derives its step pointer after an event moved the
+  // machine (an event may land ON a waypoint — the pointer must follow the graphic).
+  const mainGroup = machine?.groups[0] ?? null;
+  const mainGroupId = mainGroup?.id ?? null;
+  const mainPath = mainGroup?.defaultPath ?? [];
+  const actionIds = customActions(template).map((a) => a.id as string);
   const usesLottie = templateUsesLottie(template);
   const ensureLottieFn = usesLottie
     ? `
@@ -148,16 +183,25 @@ const TEMPLATE_CSS = ${JSON.stringify(template.css)};
 // Each state group's off-air state. Empty when this graphic has no state machine.
 const OFF_STATES = ${JSON.stringify(offStates)};
 
+// The machine's custom-action vocabulary (the manifest's customActions[].id list), plus the
+// main group's walk — how the wrapper re-derives its step pointer after an event moved the
+// machine. All empty when this graphic has no state machine.
+const CUSTOM_ACTION_IDS = ${JSON.stringify(actionIds)};
+const MAIN_GROUP_ID = ${JSON.stringify(mainGroupId)};
+const MAIN_PATH = ${JSON.stringify(mainPath)};
+
 // initTemplate(): runs the template's own JS AFTER the markup is in the DOM and returns
 // its runtime entry points. The code inside is exactly what the editor shows.
 function initTemplate() {
 ${template.js.replace(/^/gm, '  ')}
 
   // The machine globals ride along when the template has a state machine, so the wrapper can
-  // ASK where the graphic is instead of assuming its own step pointer stayed in step.
+  // ASK where the graphic is instead of assuming its own step pointer stayed in step — and
+  // DISPATCH the operator events the manifest declares as custom actions.
   return {
     play: play, stop: stop, update: update, next: next,
-    machineState: (typeof noacgMachineState === 'function') ? noacgMachineState : null
+    machineState: (typeof noacgMachineState === 'function') ? noacgMachineState : null,
+    dispatch: (typeof noacgDispatch === 'function') ? noacgDispatch : null
   };
 }
 
@@ -239,7 +283,26 @@ class Graphic extends HTMLElement {
   }
 
   async customAction(params) {
-    return { statusCode: 400, statusMessage: 'This graphic defines no custom action "' + (params && params.id) + '".' };
+    const id = params && params.id;
+    if (!this._runtime || !this._runtime.dispatch || CUSTOM_ACTION_IDS.indexOf(id) === -1) {
+      return { statusCode: 400, statusMessage: 'This graphic defines no custom action "' + id + '".' };
+    }
+    // Fire the operator event through the template's own SERIAL queue. The payload is the
+    // flat {field: value} map the action's schema declares — applied only if the machine
+    // accepts the event (the structural guard), exactly like every other control surface.
+    this._runtime.dispatch(id, (params && params.payload) || undefined);
+    // The event may have moved the machine — follow it. On the walk, the pointer becomes
+    // that waypoint's index; off air (an arrow into the exit) it clears; a branch state
+    // keeps the last on-path pointer (the walk resumes from there).
+    if (this._runtime.machineState) {
+      if (this._offAir()) {
+        this._step = -1;
+      } else if (MAIN_GROUP_ID) {
+        const at = MAIN_PATH.indexOf(this._runtime.machineState().groups[MAIN_GROUP_ID]);
+        if (at !== -1) this._step = at;
+      }
+    }
+    return { statusCode: 200, currentStep: this._step >= 0 ? this._step : undefined };
   }
 }
 
@@ -291,7 +354,8 @@ export const ografTarget: ExportTarget = {
       'README.md',
       `# ${template.name} — OGraf Graphic\n\nGenerated by NoaCG Studio.\n\n` +
         `Load the manifest (${slug(template.name)}.ograf.json) in any OGraf v1 compatible renderer.\n` +
-        `Actions map to the embedded template runtime: load/updateAction → update(), playAction → play()/next(), stopAction → stop().\n`,
+        `Actions map to the embedded template runtime: load/updateAction → update(), playAction → play()/next(), stopAction → stop().\n` +
+        `When the graphic carries a state machine, its operator events are declared as customActions in the manifest — customAction({id, payload}) fires them through the template's own serial event queue, payload applied only if the machine accepts the event.\n`,
     );
     return zip;
   },
