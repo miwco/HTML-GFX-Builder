@@ -221,6 +221,12 @@ findings properly rather than sprinkling eslint-disable comments.
 - The preview rebuilds on a ~350 ms debounce after `applyTemplate` - never sleep it out. Use
   `awaitPreviewRebuild` (`e2e/_preview.ts`) before clicking Play or asserting inside the iframe,
   wrapping the action when anything slow sits between action and wait.
+- **A spec that presses Space (or Enter) must first say where FOCUS is.** Clicking a control leaves
+  it focused, and Space belongs to a focused button by design (spaceKey.ts) - so the press lands on
+  that button, not on the surface under test. Which one answers can even depend on a timer the spec
+  never mentions: a new field arrives selected and the Inspector's deferred reveal unmounts the
+  Data tab's `+ Add` half a second later, dropping focus to the body. Call `parkFocusOffControls`
+  (`e2e/_keys.ts`) rather than inheriting whatever the bootstrap left behind.
 - A wizard-created VIDEO project auto-runs its first generation, which lands as its own undoable
   snapshot ~0.1-2.6 s after `video-shell` appears (unbounded: the validation probe waits on the
   player host with no timeout). A spec that makes an undoable change before that lands is racing

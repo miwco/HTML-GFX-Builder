@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
 import { lowerThirdPng, framedCardPng, CARD_TEXT_RECT } from './_png';
 import { elementPoint } from './_canvas';
+import { holdKeyRepeats, parkFocusOffControls, stampTimeline, timelineState } from './_keys';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -240,41 +241,13 @@ test('canvas: holding Space pans the view and moves nothing in the document', as
   await expect(page.getByTestId('preview-stage')).not.toHaveClass(/panning/);
 });
 
-/** Mark the parked timeline (if any) so a later read can tell it from a fresh play(). */
-async function stampTimeline(page: Page): Promise<string> {
-  await page.evaluate(() => {
-    const w = (document.querySelector('iframe.preview-frame') as HTMLIFrameElement | null)
-      ?.contentWindow as unknown as { __activeTl?: { __panProbe?: number } } | null;
-    if (w?.__activeTl) w.__activeTl.__panProbe = 1;
-  });
-  return timelineState(page);
-}
-
-/** 'none' = nothing running, 'parked' = the stamped one survives, 'fresh' = play() ran. */
-function timelineState(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const w = (document.querySelector('iframe.preview-frame') as HTMLIFrameElement | null)
-      ?.contentWindow as unknown as { __activeTl?: { __panProbe?: number } } | null;
-    if (!w?.__activeTl) return 'none';
-    return w.__activeTl.__panProbe === 1 ? 'parked' : 'fresh';
-  });
-}
-
-/** Real OS auto-repeat, which page.keyboard.down() never produces. */
-async function holdSpaceRepeats(page: Page, n: number): Promise<void> {
-  const cdp = await page.context().newCDPSession(page);
-  for (let i = 0; i < n; i++) {
-    await cdp.send('Input.dispatchKeyEvent', {
-      type: 'keyDown', code: 'Space', key: ' ', windowsVirtualKeyCode: 32, autoRepeat: true,
-    });
-  }
-  await cdp.detach();
-  await page.waitForTimeout(250);
-}
-
 test('canvas: an armed Space-pan does not also play the graphic', async ({ page }) => {
   await createImported(page);
   await page.keyboard.press('Escape');
+  // Adding the field left the Data tab's "+ Add" focused, and a focused button owns Space —
+  // so who answers the presses below would otherwise depend on a timer this test knows nothing
+  // about (see parkFocusOffControls).
+  await parkFocusOffControls(page);
 
   // The pan class alone would not catch a regression here: a play tween touches none of the
   // things the pan test above asserts, so this watches the running timeline itself.
@@ -288,7 +261,7 @@ test('canvas: an armed Space-pan does not also play the graphic', async ({ page 
   // AUTO-REPEAT is the real gesture: a pan lasts far longer than the OS repeat delay, and the
   // repeats are separate keydowns. A design where the pan CLAIMS the key only covers the first
   // one, which is how this bug survived its first fix — both sides must re-answer every repeat.
-  await holdSpaceRepeats(page, 8);
+  await holdKeyRepeats(page, 8);
   expect(await timelineState(page)).toBe(atRest);
   await page.keyboard.up('Space');
 
@@ -301,6 +274,7 @@ test('canvas: an armed Space-pan does not also play the graphic', async ({ page 
 test('canvas: Space follows the ACTIVE SURFACE - timeline plays even over the stage', async ({ page }) => {
   await createImported(page);
   await page.keyboard.press('Escape');
+  await parkFocusOffControls(page); // the surface owns Space here, not a leftover focused button
 
   // Working in the timeline hands Space back to Play. The pointer is then parked over the
   // stage — under the old pointer-only rule that alone would have armed the pan.
@@ -317,7 +291,7 @@ test('canvas: Space follows the ACTIVE SURFACE - timeline plays even over the st
   await stampTimeline(page);
   await page.keyboard.down('Space');
   await expect(page.getByTestId('preview-stage')).toHaveClass(/ panning/);
-  await holdSpaceRepeats(page, 6);
+  await holdKeyRepeats(page, 6);
   expect(await timelineState(page)).toBe('parked');
   await page.keyboard.up('Space');
 });
