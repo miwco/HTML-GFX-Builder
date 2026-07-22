@@ -6,6 +6,24 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 
+// Shared restriction entries for the Architecture Stage A blocks below (docs/ARCHITECTURE.md §3).
+const supabaseRestriction = {
+  name: '@supabase/supabase-js',
+  message:
+    'Only src/backend/ talks to Supabase directly — get the client via getSupabase() and feature-detect via isBackendConfigured() (docs/ARCHITECTURE.md §3, invariant 1).',
+  allowTypeImports: true,
+};
+const storeRestriction = {
+  group: ['**/store', '**/store/**'],
+  message:
+    'src/store/ is editor-UI state; processing domains take and return plain documents (docs/ARCHITECTURE.md §3, invariant 3).',
+};
+const componentsRestriction = {
+  group: ['**/components', '**/components/**'],
+  message:
+    'Nothing imports src/components/ — the UI is the top of the graph (docs/ARCHITECTURE.md §3, invariant 4).',
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -40,6 +58,77 @@ export default tseslint.config(
       // (or React Compiler adoption). The classic rules-of-hooks and exhaustive-deps stay on.
       'react-hooks/refs': 'off',
       'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+
+  // ---- Architecture Stage A (docs/ARCHITECTURE.md §3, §7) --------------------------------
+  // Machine-pins invariants 1, 3 and 4 of the architecture doc, which were verified clean when
+  // introduced — these blocks stop regressions; the full edge table stays review-time until
+  // Stage B (dependency-cruiser). Flat-config gotcha: when several blocks match one file, the
+  // LAST rule config replaces the earlier ones (options never merge), so src/ is split into
+  // disjoint regions below, each carrying the full restriction set for its region. Imports are
+  // relative (no path aliases), hence the `**/store`-style gitignore patterns.
+  //
+  //  - invariant 1: @supabase/supabase-js is value-imported only inside src/backend/ — every
+  //    other module gets the client via getSupabase() and feature-detects via
+  //    isBackendConfigured(). Type-only imports (SupabaseClient) are fine anywhere. api/ and
+  //    e2e/configured/ run server/test-side and sit outside this scope on purpose.
+  //  - invariant 3: src/store/ is the editor-UI state; only components/ and the entry files
+  //    import it. Processing domains take and return plain documents.
+  //  - invariant 4: nothing imports src/components/ — UI is the top of the graph.
+  {
+    // The default region: every src/ module that is subject to all three restrictions.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/backend/**',
+      'src/components/**',
+      'src/store/**',
+      'src/App.tsx',
+      'src/main.tsx',
+      'src/blocks/registry.ts',
+    ],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', {
+        paths: [supabaseRestriction],
+        patterns: [storeRestriction, componentsRestriction],
+      }],
+    },
+  },
+  {
+    // The UI region may import store/ and components/ freely; Supabase stays behind backend/.
+    files: ['src/components/**/*.{ts,tsx}', 'src/App.tsx', 'src/main.tsx'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', { paths: [supabaseRestriction] }],
+    },
+  },
+  {
+    // backend/ owns the Supabase client but is still below store/ and components/.
+    files: ['src/backend/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', {
+        patterns: [storeRestriction, componentsRestriction],
+      }],
+    },
+  },
+  {
+    // store/ imports itself freely; everything else still applies.
+    files: ['src/store/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', {
+        paths: [supabaseRestriction],
+        patterns: [componentsRestriction],
+      }],
+    },
+  },
+  {
+    // Grandfathered (ARCHITECTURE.md §6): blocks/registry.ts type-imports EditorTab from the
+    // store. Store restriction lifted for this one file; delete this block when that row falls.
+    files: ['src/blocks/registry.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', {
+        paths: [supabaseRestriction],
+        patterns: [componentsRestriction],
+      }],
     },
   },
 

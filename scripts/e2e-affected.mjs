@@ -62,7 +62,7 @@ const CORE = [
 ];
 
 // Files that never affect the offline e2e surface.
-const IGNORE = [/^docs\//, /\.md$/, /^scripts\/(?!.*(renderDevPlugin|build-player-host))/, /^e2e\/configured\//, /^render-worker\//, /^supabase\//, /^NoaCG-Brand-Kit\//, /^example_projects\//];
+const IGNORE = [/^docs\//, /\.md$/, /^scripts\/(?!.*(renderDevPlugin|build-player-host))/, /^e2e\/configured\//, /^render-worker\//, /^supabase\//, /^NoaCG-Brand-Kit\//, /^example_projects\//, /^\.dependency-cruiser\.cjs$/];
 
 const args = process.argv.slice(2);
 const listOnly = args.includes('--list');
