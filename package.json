@@ -15,6 +15,7 @@
     "test:e2e": "playwright test",
     "test:e2e:affected": "node scripts/e2e-affected.mjs",
     "test:e2e:live": "playwright test --config=playwright.live.config.ts",
+    "test:ports": "node --test scripts/port-registry.test.mjs",
     "postinstall": "node scripts/dev-port.mjs && node scripts/gen-video-font-css.mjs && node scripts/build-player-host.mjs"
   },
   "dependencies": {

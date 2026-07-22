@@ -39,8 +39,10 @@ shots-*/
 .render-dev/
 
 # Generated per-checkout by scripts/dev-port.mjs (postinstall): each worktree gets its own
-# dev-server port, so this file must never be shared through git.
+# dev-server port, so these files must never be shared through git. dev-port.json is the
+# published record of the port this checkout actually reserved (docs/DEV_PORTS.md).
 .claude/launch.json
+.claude/dev-port.json
 
 # Locally installed third-party agent skills (npx skills add ...) - vendor content,
 # reinstallable on demand, never committed. The skills this repo OWNS are re-included by

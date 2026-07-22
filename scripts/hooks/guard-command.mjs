@@ -14,9 +14,9 @@
 // -m / heredoc / here-string), so it is quoting-style agnostic.
 
 import { spawnSync } from 'node:child_process';
-import { connect } from 'node:net';
 import { readHookInput, deny } from './lib.mjs';
 import { devPort, livePort } from '../dev-port.mjs';
+import { isPortBusy } from '../port-probe.mjs';
 
 const input = await readHookInput();
 const command = input?.tool_input?.command;
@@ -111,7 +111,7 @@ if (isCommit) {
 if (/\btest:e2e\b/.test(command) || /\bplaywright\s+test\b/.test(command)) {
   const live = /\btest:e2e:live\b/.test(command) || /playwright\.live\.config/.test(command);
   const port = live ? livePort() : devPort();
-  if (await portInUse(port)) {
+  if (await isPortBusy(port, 750)) {
     deny(
       `Blocked: something is already listening on port ${port} - this checkout's ${live ? 'live' : 'offline'} ` +
         'e2e port. Playwright runs with reuseExistingServer:true, so it would reuse that server with ' +
@@ -130,19 +130,4 @@ function gitLines(args) {
   const res = spawnSync('git', args, { encoding: 'utf8' });
   if (res.status !== 0 || typeof res.stdout !== 'string') return []; // fail open - git itself will complain
   return res.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
-}
-
-/** True when something accepts TCP connections on localhost:port. */
-function portInUse(port) {
-  return new Promise((resolve) => {
-    const socket = connect({ port, host: '127.0.0.1' });
-    const finish = (result) => {
-      socket.destroy();
-      resolve(result);
-    };
-    socket.setTimeout(750);
-    socket.once('connect', () => finish(true));
-    socket.once('timeout', () => finish(false));
-    socket.once('error', () => finish(false));
-  });
 }

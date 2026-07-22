@@ -22,7 +22,7 @@ format, see [`docs/SPX_TEMPLATE_FORMAT.md`](docs/SPX_TEMPLATE_FORMAT.md).
 
 ```bash
 npm install
-npm run dev      # http://localhost:5174 (public landing at /, the editor at /app; a git worktree gets its own port — scripts/dev-port.mjs prints it)
+npm run dev      # http://localhost:5174 (public landing at /, the editor at /app; a git worktree reserves its own port — scripts/dev-port.mjs prints it, docs/DEV_PORTS.md explains it)
 npm run build    # typecheck + production build to dist/
 ```
 

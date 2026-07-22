@@ -40,10 +40,14 @@ npm run lint     # eslint . --max-warnings 0 (also part of build)
 ```
 
 **The dev port is per-checkout** (`scripts/dev-port.mjs`, which prints it): 5174 in the main
-checkout (5175 for the live e2e suite), a stable path-derived port in a linked worktree - Vite,
-both Playwright configs, and the dev scripts derive the same number, so parallel worktrees never
-fight over one server. `.claude/launch.json` is GENERATED with that port by postinstall
-(gitignored - never hand-edit or commit it). `DEV_PORT=n` overrides everything.
+checkout (5175 for the live e2e suite), a RESERVED port from the 5180-5298 block in a linked
+worktree - Vite, both Playwright configs, the guard hooks and the dev scripts all read the same
+number, so parallel worktrees never fight over one server. The number is preferred by a hash of
+the checkout path and then reserved through a ticket in `<git-common-dir>/noacg-dev-ports/`, so
+two worktrees that hash alike still both start (**`docs/DEV_PORTS.md`** - assignment, storage,
+troubleshooting a stuck server). `.claude/launch.json` and `.claude/dev-port.json` are GENERATED
+from that reservation (gitignored - never hand-edit or commit them). `DEV_PORT=n` overrides
+everything. `npm run test:ports` covers the allocator.
 
 **Two pages (Vite MPA):** `index.html` is the static landing at `/` (no React; carries a redirect
 shim so old root `?chat=`/`?template=` share links land on `/app` with their query); `app.html` is
@@ -178,7 +182,8 @@ src/
 public/fonts/  the 7 bundled woff2 fonts (served at /fonts, copied into exports); src/assets/ has
                the bundled gsap.min.js, lottie.min.js, OFL.txt (the ONE licence source -
                src/export/CLAUDE.md) + data-URL asset helpers, src/teach/ the Monaco tooltips
-scripts/       dev-port.mjs, l3-sweep.mjs, ai-compare.mjs + ai-bench.mjs (both SPEND TOKENS),
+scripts/       dev-port.mjs + port-registry.mjs (the per-worktree port RESERVATION - docs/
+               DEV_PORTS.md) + port-probe.mjs, l3-sweep.mjs, ai-compare.mjs + ai-bench.mjs (both SPEND TOKENS),
                render-smoke*.mjs, hooks/ (guard hooks wired in .claude/settings.json)
 api/           the render service's Vercel functions; typechecked by tsconfig.api.json
 render-worker/ the Remotion renderer and player-host/ the preview host - own exact-pinned packages

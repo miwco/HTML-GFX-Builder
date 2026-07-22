@@ -92,11 +92,21 @@ const branchLabel = branch === 'HEAD' ? 'detached HEAD' : `branch ${branch}`;
 const kind = root.toLowerCase() === roots[0].toLowerCase() ? 'primary checkout' : 'linked worktree';
 let ports = '';
 try {
-  // This checkout's copy computes the port from its own location - correct per-worktree.
+  // This checkout's copy resolves the port from its own location - correct per-worktree.
   const devPortModule = join(root, 'scripts', 'dev-port.mjs');
   if (existsSync(devPortModule)) {
-    const { devPort, livePort } = await import(pathToFileURL(devPortModule));
-    ports = ` - dev port ${devPort()}, live e2e port ${livePort()}`;
+    const { devPorts, pruneStalePorts } = await import(pathToFileURL(devPortModule));
+    // Reservations outlive the worktrees that took them (a removed worktree cannot give its
+    // own port back). Session start is where the registry gets swept, same as the folders.
+    const released = pruneStalePorts?.() ?? [];
+    if (released.length > 0) {
+      console.log(`Released dev-port reservations left by removed worktrees: ${released.map((t) => t.port).join(', ')}.`);
+    }
+    const record = devPorts();
+    ports = ` - dev port ${record.port}, live e2e port ${record.livePort}`;
+    // Say so when the deterministic preference was taken: the number is still stable, but it
+    // is not the one the path hashes to, and that is worth seeing before debugging a URL.
+    if (record.preferred !== record.port) ports += ` (preferred ${record.preferred} was taken)`;
   }
 } catch {
   // older checkout without the module - skip the port info
