@@ -10,7 +10,7 @@
 
 import { getSupabase } from '../backend/supabase';
 import type { Show } from '../model/shows';
-import { loadGraphics, entriesForSavedGraphic } from '../model/library';
+import { loadGraphics, entriesForSavedGraphic, templateForSavedGraphic } from '../model/library';
 import type { SpxField } from '../model/types';
 import { isImageAsset } from '../assets/assetUtils';
 import type { ControlMessage } from './controlModel';
@@ -67,15 +67,21 @@ export interface ControlEventRow {
  *  with a unique-name fallback, so hosted publish and show export agree on the lookup. */
 export function buildPanelSpec(show: Show): PanelGraphicSpec[] {
   const library = loadGraphics();
-  return show.graphics.map((g) => ({
-    name: g.name,
-    fields: g.template.fields,
-    js: g.template.js,
-    images: g.template.assets
-      .filter((a) => isImageAsset(a.path))
-      .map((a) => ({ value: a.path, label: a.path })),
-    entries: entriesForSavedGraphic(g, library).map((e) => ({ id: e.id, label: e.label, values: e.values })),
-  }));
+  return show.graphics.map((g) => {
+    // The LIVE template (templateForSavedGraphic), not the snapshot embedded when the graphic
+    // was added — publishing a show that carried the stale fields/js would drive the hosted
+    // operator page against a design the graphic no longer has.
+    const template = templateForSavedGraphic(g, library);
+    return {
+      name: g.name,
+      fields: template.fields,
+      js: template.js,
+      images: template.assets
+        .filter((a) => isImageAsset(a.path))
+        .map((a) => ({ value: a.path, label: a.path })),
+      entries: entriesForSavedGraphic(g, library).map((e) => ({ id: e.id, label: e.label, values: e.values })),
+    };
+  });
 }
 
 /** Normalize a stored panel row to the current shape (additive fields defaulted, never a crash). */

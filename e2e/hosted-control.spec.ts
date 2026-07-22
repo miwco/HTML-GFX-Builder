@@ -37,11 +37,11 @@ test('a saved graphic carries its entries into the show it is added to', async (
   await page.getByTestId('control-open-editor').click();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Presenter lower third');
   await page.getByTestId('dock-tab-control').click();
-  const shows = page.locator('.panel-section', { hasText: 'Shows' });
-  await shows.getByPlaceholder('New show name').fill('Evening Show');
+  const shows = page.locator('.panel-section', { hasText: 'Rundowns' });
+  await shows.getByPlaceholder('New rundown name').fill('Evening Show');
   await shows.getByRole('button', { name: 'Create', exact: true }).click();
   await shows.getByRole('button', { name: '+ Add current' }).click();
-  await expect(shows.locator('.status-ok')).toContainText('is in the show');
+  await expect(shows.locator('.status-ok')).toContainText('is in the rundown');
 
   // The show's copy records WHICH library graphic it came from — the link the panel follows
   // (a name match would pass here by luck; this pins the id).

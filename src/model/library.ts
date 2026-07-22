@@ -269,12 +269,26 @@ export function newEntry(label: string, values: Record<string, string>): Control
  * ambiguous rather than guessing which graphic the operator meant. The hosted control page
  * (control/hostedControl.ts) and the show export (export/showExport.ts) share this one lookup.
  */
-export function entriesForSavedGraphic(graphic: SavedGraphic, library: GraphicDoc[]): ControlEntry[] {
+export function resolveSavedGraphicDoc(graphic: SavedGraphic, library: GraphicDoc[]): GraphicDoc | undefined {
+  if (graphic.graphicId) return library.find((d) => d.id === graphic.graphicId);
   const byName = library.filter((d) => d.name === graphic.name);
-  const doc = graphic.graphicId
-    ? library.find((d) => d.id === graphic.graphicId)
-    : byName.length === 1
-      ? byName[0]
-      : undefined;
+  return byName.length === 1 ? byName[0] : undefined;
+}
+
+export function entriesForSavedGraphic(graphic: SavedGraphic, library: GraphicDoc[]): ControlEntry[] {
+  const doc = resolveSavedGraphicDoc(graphic, library);
   return (doc?.entries ?? []).map((e) => ({ ...e, values: { ...e.values } }));
+}
+
+/**
+ * A show/packet graphic's live TEMPLATE. A SavedGraphic embeds a snapshot of the template from
+ * when it was added, but the graphic keeps being EDITED in the library afterwards - so a
+ * published or exported show that shipped the snapshot would air a stale design. Resolve the
+ * current template out of the library (the same record entriesForSavedGraphic uses); the
+ * embedded copy is the fallback ONLY when the record is gone (deleted, another profile) or was
+ * never a library graphic (added from an unsaved working document). One authored source, re-read
+ * wherever the graphic runs - the entries seam, now for the template too.
+ */
+export function templateForSavedGraphic(graphic: SavedGraphic, library: GraphicDoc[]): SpxTemplate {
+  return resolveSavedGraphicDoc(graphic, library)?.template ?? graphic.template;
 }
