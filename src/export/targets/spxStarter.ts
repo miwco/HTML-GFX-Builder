@@ -43,12 +43,12 @@ export const spxTarget: ExportTarget = {
   label: 'SPX export',
   description: 'The plug-and-play SPX package — drops straight into your SPX templates folder.',
   successMessage: '✓ Exported. Drop the unzipped folder into your SPX templates.',
-  async build(template) {
+  async build(template, ctx) {
     const zip = new JSZip();
     // Everything lives inside one project folder, so extracting into the SPX/CasparCG
     // templates folder yields  [TemplatesFolder]/your_project/index.html + images/…
     const root = zip.folder(slug(template.name))!;
-    await buildStarterInto(root, template);
+    await buildStarterInto(root, template, { entries: ctx?.entries });
     return zip;
   },
 };

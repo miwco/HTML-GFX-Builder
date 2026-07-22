@@ -132,7 +132,10 @@ export default function HomePage({ route }: { route: Route }) {
 
   const exportPackage = async (packet: Packet) => {
     const docs = graphicsInPackage(packet.id);
-    const zip = await buildGraphicsZip(packet.name, docs.map((d) => ({ name: d.name, template: d.template })));
+    const zip = await buildGraphicsZip(
+      packet.name,
+      docs.map((d) => ({ name: d.name, template: d.template, entries: d.entries })),
+    );
     const blob = await zip.generateAsync({ type: 'blob' });
     saveAs(blob, `${slug(packet.name)}_package.zip`);
   };

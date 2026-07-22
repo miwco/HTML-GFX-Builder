@@ -5,7 +5,11 @@ packages must be plug-and-play - relative paths, bundled GSAP, no CDN references
 validation gates every export (root non-negotiables 3 and 4).
 
 - **registry.ts** - 6 targets, each with its own successMessage + ExportContext (the Data
-  panel's sampleData rides along so serverless targets can bake it).
+  panel's sampleData rides along so serverless targets can bake it, and the graphic's saved
+  control-panel `entries`, which the CALLER resolves - ExportPanel reads them out of the library
+  by the working project's `saved.graphicId`, fresh at export time, and they are simply absent
+  for a project that was never saved. Only the two targets that bundle an operator page - SPX
+  and the HTML overlay - consume them).
 - **slug.ts** - shared slug helper (lives here to avoid an import cycle).
 - **selfContained.ts** - single-file composer: inline CSS/GSAP/JS/assets/FONTS + extra body
   scripts. ASYNC, because the fonts are fetched to be embedded.
@@ -34,7 +38,9 @@ validation gates every export (root non-negotiables 3 and 4).
   AMD-guarded gsap loader. `addOgrafPackage` is reused by **targets/liveos.ts** - LiveOS's HTML5
   graphics engine is OGraf-compliant, so that target is the same package with NetOn.Live install
   steps in the README.
-- **packetExport.ts** - whole packet -> one zip, a Starter folder per graphic.
+- **packetExport.ts** - whole packet -> one zip, a Starter folder per graphic. The caller
+  already holds the library records, so each `ExportableGraphic` carries its own `entries`
+  straight through - no resolver needed here, unlike the show export.
 - **showExport.ts** - whole SHOW -> one zip: a Starter folder per graphic + ONE aggregated
   show_controlpanel.html (a card per graphic, each on its own channel). Each graphic's saved
   control-panel ENTRIES are resolved out of the LIBRARY at export time (model/library.ts

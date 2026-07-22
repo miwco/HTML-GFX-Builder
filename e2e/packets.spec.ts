@@ -49,6 +49,14 @@ test('packages: save two graphics into one, reopen one, export the package as on
   await page.locator('.pk-graphic', { hasText: 'Hairline' }).getByRole('button', { name: 'Open' }).click();
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Hairline');
 
+  // Give one record a saved entry — a package export must carry each graphic's own entries.
+  await page.evaluate(async () => {
+    const { loadGraphics, newEntry, updateGraphic } = await import('/src/model/library.ts');
+    const doc = loadGraphics().find((g) => g.name === 'Hairline')!;
+    const field = doc.template.fields[0]?.field ?? 'f0';
+    updateGraphic(doc.id, { entries: [newEntry('Anna · Presenter', { [field]: 'Anna Andersson' })] });
+  });
+
   // Export the whole package: one zip, one Starter folder per graphic.
   await page.getByTestId('open-home').click();
   await page.getByTestId('home-nav-packages').click();
@@ -63,6 +71,9 @@ test('packages: save two graphics into one, reopen one, export the package as on
   expect(names).toContain('friday_show/hairline/js/template.js');
   expect(names).toContain('friday_show/news_strip/index.html');
   expect(names).toContain('friday_show/README.md');
+  const panel = await zip.file('friday_show/hairline/controlpanel.html')!.async('string');
+  expect(panel).toContain('Anna · Presenter');
+  expect(panel).toContain('Anna Andersson');
 });
 
 test('looks: capture the current look in Home, apply it to another graphic, survive reload', async ({ page }) => {

@@ -122,7 +122,7 @@ export const htmlOverlayTarget: ExportTarget = {
     );
     // This package is ONE graphic file: there is no images/ folder beside the panel, so its
     // picker sends the embedded bytes rather than a path that resolves at neither end.
-    addControlPanel(root, template, { inlineAssets: true });
+    addControlPanel(root, template, { inlineAssets: true, entries: ctx?.entries });
     root.file('README.md', overlayReadme(template));
     return zip;
   },

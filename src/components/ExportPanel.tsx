@@ -6,6 +6,7 @@ import { loadPrefs, savePrefs } from '../model/prefs';
 import { isRenderConfigured } from '../render/config';
 import RenderPanel from './render/RenderPanel';
 import { useTemplateStore } from '../store/templateStore';
+import { graphicById } from '../model/library';
 import { validateTemplate } from '../validation/validateTemplate';
 
 /**
@@ -16,6 +17,7 @@ import { validateTemplate } from '../validation/validateTemplate';
 export default function ExportPanel() {
   const template = useTemplateStore((s) => s.template);
   const sampleData = useTemplateStore((s) => s.sampleData);
+  const graphicId = useTemplateStore((s) => s.saved.graphicId);
   const previewError = useTemplateStore((s) => s.previewError);
   const setValidation = useTemplateStore((s) => s.setValidation);
 
@@ -48,7 +50,12 @@ export default function ExportPanel() {
     try {
       // Targets with no playout server (HTML overlay) bake the Data panel's values in as
       // the on-load data — what you see in the preview is what the browser source shows.
-      const zip = await target.build(template, { sampleData });
+      // The graphic's saved ENTRIES ride along too, read from the library at export time (the
+      // same moment the show and package exports read them): an operator who built up named
+      // rows here gets them in the downloaded panel, not an empty switcher. Read fresh rather
+      // than held in state — entries are authored on the control-panel page, beside this one.
+      const entries = graphicId ? graphicById(graphicId)?.entries : undefined;
+      const zip = await target.build(template, { sampleData, entries });
       const blob = await zip.generateAsync({ type: 'blob' });
       saveAs(blob, `${slug(template.name)}_${target.id}.zip`);
       // Each target carries its own success line, so its deploy workflow reads correctly.

@@ -101,6 +101,14 @@ aggregated `show_controlpanel.html` and that graphic's own `controlpanel.html`. 
 never embedded in the `Show` record, so this is not a persisted-shape change and needs no
 migration — the show export references the library graphic and resolves entries on export.
 
+**Every export that bundles an operator page carries them.** The whole-PACKAGE export
+(`export/packetExport.ts`) takes each graphic's entries straight from the library records the
+caller already holds, and the SINGLE-GRAPHIC export (the Export panel's SPX and HTML-overlay
+targets) reads them back through `ExportContext.entries`, resolved from the working project's
+`saved.graphicId` at export time. So the panel an operator downloads has the same switcher
+wherever it came from, and a graphic that was never saved simply has no entries to carry —
+entries are authored on the RECORD, not on the code.
+
 ## 5. Versioning
 
 `GraphicDoc` carries `version: 1`; `Packet` bumps to `version: 2` with the on-read

@@ -5,11 +5,17 @@
 
 import type JSZip from 'jszip';
 import type { SpxTemplate } from '../model/types';
+import type { ControlEntry } from '../model/library';
 
 export interface ExportContext {
   /** The Data panel's sample values (field id → value) at export time — targets with no
    *  playout server (the HTML overlay) bake these in as the on-load data. */
   sampleData?: Record<string, string>;
+  /** The graphic's saved control-panel ENTRIES, resolved from the library by the caller — baked
+   *  into the bundled controlpanel.html as a data switcher (docs/SAVED_CONTENT_MODEL.md §4).
+   *  Absent when the working project has no library link (never saved), which is the only
+   *  honest answer there: entries are authored on the RECORD, not on the code. */
+  entries?: ControlEntry[];
 }
 
 export interface ExportTarget {
