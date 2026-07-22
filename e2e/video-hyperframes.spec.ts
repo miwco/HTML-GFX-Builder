@@ -207,10 +207,11 @@ test('reload restores the HyperFrames project; export offers composition.html', 
   await waitForGeneration(page);
   await expect(player(page).getByText('GAME ON')).toBeVisible({ timeout: 10_000 });
 
-  // Reload: the engine, the document, and the preview all come back.
+  // Reload: the engine, the document, and the preview all come back, straight into the
+  // shell — the startup wizard opens only when there is no work to return to.
   await page.reload();
-  await page.locator('.gallery-close').click();
   await expect(page.getByTestId('video-shell')).toBeVisible();
+  await expect(page.locator('.wz-modal')).toBeHidden();
   await expect(player(page).getByText('GAME ON')).toBeVisible({ timeout: 10_000 });
   const engine = await page.evaluate(async () => {
     const { useVideoProjectStore } = await import('/src/store/videoProjectStore.ts');

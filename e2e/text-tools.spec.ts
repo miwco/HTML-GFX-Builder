@@ -241,7 +241,9 @@ test('tool-created text survives a reload as a real field of the saved project',
     .poll(() => page.evaluate(() => localStorage.getItem('spx-gfx-project')?.includes('Persistent')))
     .toBe(true);
   await page.reload();
-  await expect(page.locator('.wz-modal')).toBeVisible(); // the wizard opens over the restored project
+  // The restored project opens directly — no wizard over a returning user's work.
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.locator('.wz-modal')).toBeHidden();
   const fields = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     return useTemplateStore.getState().template.fields.map((f) => ({ field: f.field, value: f.value }));

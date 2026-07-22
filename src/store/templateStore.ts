@@ -8,6 +8,7 @@ import type { AssetFile, SpxTemplate } from '../model/types';
 import { DATA_FTYPES } from '../model/types';
 import type { ValidationResult } from '../validation/validateTemplate';
 import { loadProject, saveProject } from '../model/project';
+import { hasCurrentVideoProject } from '../model/videoProject';
 import { PATH_TARGET, type TimelineTarget } from '../blocks/timelineLens';
 
 export type EditorTab = 'html' | 'css' | 'js';
@@ -274,8 +275,8 @@ function withParsedFields(template: SpxTemplate): SpxTemplate {
 }
 
 // Restore the last autosaved working project (Era 5.2b) so a reload doesn't lose it; fall back to
-// a fresh blank on first-ever load. The wizard still opens on top (galleryOpen below is unchanged) —
-// closing it reveals this restored graphic.
+// a fresh blank on first-ever load. Whether the wizard opens on top follows from this: a restored
+// project means a returning user, who lands straight back in their work (galleryOpen below).
 const initialProject = loadProject();
 const initialTemplate = initialProject?.template ?? createDefaultTemplate();
 // The pristine state Reset returns to: the saved baseline if we have one, else the loaded
@@ -294,7 +295,11 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   previewError: null,
   editorContext: null,
   guides: { safeAreas: false, grid: false },
-  galleryOpen: true, // Show the template chooser on first load.
+  // Show the template chooser only when there is no work to return to: a first-ever visit
+  // starts at the wizard; a returning user's reload (or a bookmarked #/graphic link) lands
+  // straight in the restored project - SPX or video, whichever shell owns the reload.
+  // "+ New project" and the #/new route still open it on demand.
+  galleryOpen: !initialProject && !hasCurrentVideoProject(),
   history: [],
   future: [],
   lastChange: null,

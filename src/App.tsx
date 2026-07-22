@@ -58,8 +58,8 @@ export default function App() {
   // it IN the app (create, ✕, Escape) rewinds the route — otherwise the still-current `#/new`
   // would immediately reopen it. The store flag stays the source the shells read; this effect
   // only keeps the two in agreement. Only a wizard the ROUTE opened is closed by leaving the
-  // route — the startup wizard (galleryOpen's initial true) must not be closed by the plain
-  // '' route on boot.
+  // route — the first-visit startup wizard (galleryOpen's initial value, true only when no
+  // autosaved project exists) must not be closed by the plain '' route on boot.
   const galleryOpen = useTemplateStore((s) => s.galleryOpen);
   const routedWizard = useRef(false);
   useEffect(() => {

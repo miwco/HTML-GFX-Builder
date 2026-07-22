@@ -292,11 +292,11 @@ test('reload restores the project; save/reopen and the SPX switch work', async (
   await createCountdownProject(page);
   await waitForGeneration(page);
 
-  // Reload: the video shell and project come back (the wizard opens on top - close it;
-  // the ✕ button's accessible name is its glyph, so target the class).
+  // Reload: the video shell and project come back straight away — the startup wizard
+  // opens only when there is no work (SPX or video) to return to.
   await page.reload();
-  await page.locator('.gallery-close').click();
   await expect(page.getByTestId('video-shell')).toBeVisible();
+  await expect(page.locator('.wz-modal')).toBeHidden();
   await waitForGeneration(page);
 
   // Explicit save, then create an SPX blank - the app switches to the SPX shell.

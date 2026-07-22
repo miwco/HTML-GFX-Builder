@@ -35,9 +35,10 @@ test('save names the graphic into a new package; the status stays honest through
   await page.keyboard.press('Control+s');
   await expect(page.getByTestId('save-status')).toHaveText('Saved');
 
-  // A reload keeps the link (the slot carries graphicId + dirty).
+  // A reload keeps the link (the slot carries graphicId + dirty) and lands straight back
+  // in the saved graphic — no startup wizard over a returning user's work.
   await page.reload();
-  await page.locator('.gallery-close').click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
   await expect(page.getByTestId('save-status')).toHaveText('Saved');
   await expect(page.locator('.tpl-name')).toHaveText('Presenter lower third');
 });

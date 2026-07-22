@@ -30,7 +30,10 @@ export interface CreateSpec {
 export async function createProject(page: Page, spec: string | CreateSpec = 'Hairline'): Promise<void> {
   const wanted: CreateSpec = typeof spec === 'string' ? { name: spec } : spec;
   await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
+  // Boot signal only — deliberately NOT the wizard: the wizard auto-opens solely on a
+  // first-ever visit (no autosaved project), so a mid-test re-bootstrap lands straight in
+  // the editor. This helper never drives the wizard UI; both shells render a `.topbar`.
+  await expect(page.locator('.topbar')).toBeVisible();
   await awaitPreviewRebuild(page, () =>
     page.evaluate(async (s: CreateSpec) => {
       const { CATALOG, variantsFor } = await import('/src/templates/catalog.ts');

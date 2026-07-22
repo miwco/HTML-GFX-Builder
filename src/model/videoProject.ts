@@ -56,6 +56,19 @@ function normalizeVideoProject(p: VideoProject): VideoProject {
 
 // ── Current slot ─────────────────────────────────────────────────────────────
 
+/**
+ * Whether an autosaved video project exists - an existence probe only. The slot can hold
+ * megabytes of data-URL assets, so boot-time code (the wizard's should-I-open decision)
+ * must not parse it just to learn there is work to return to.
+ */
+export function hasCurrentVideoProject(): boolean {
+  try {
+    return localStorage.getItem(CURRENT_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function loadCurrentVideoProject(): VideoProject | null {
   try {
     const raw = localStorage.getItem(CURRENT_KEY);

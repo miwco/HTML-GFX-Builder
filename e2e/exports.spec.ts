@@ -101,10 +101,11 @@ test('export target choice is remembered as the default across reloads', async (
   await createHairline(page);
   await page.getByTestId('dock-tab-export').click();
   await page.locator('.issue', { hasText: 'CasparCG export' }).click();
-  // Fresh load: the wizard opens; behind it the Export tab must preselect the remembered target.
+  // Reload: the restored project opens directly (no wizard over a returning user's work);
+  // the Export tab must preselect the remembered target.
   await page.reload();
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.keyboard.press('Escape');
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.locator('.wz-modal')).toBeHidden();
   await page.getByTestId('dock-tab-export').click();
   await expect(page.locator('.issue', { hasText: 'CasparCG export' }).locator('input[type="radio"]')).toBeChecked();
 });

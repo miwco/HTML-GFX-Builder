@@ -37,8 +37,9 @@ test('closing a panel removes its dock and widens the centre; the closed state p
   expect(centerAfter).toBeGreaterThan(centerBefore);
 
   // It stays closed across a reload, and is offered again from a dock's "+" menu.
+  // (The reload restores the project directly — no startup wizard to dismiss.)
   await page.reload();
-  await page.locator('.gallery-close').click();
+  await expect(page.locator('.topbar')).toBeVisible();
   await expect(page.getByTestId('dock-slot-left')).toHaveCount(0);
   await page.getByTestId('dock-add-right').click();
   await expect(page.locator('[data-testid="dock-right"] .dock-menu')).toContainText('Code');
@@ -60,9 +61,9 @@ test('dragging a dock divider resizes it, and the size persists', async ({ page 
   const leftAfter = (await page.getByTestId('dock-slot-left').boundingBox())!.width;
   expect(leftAfter).toBeGreaterThan(leftBefore + 40);
 
-  // The wider size survives a reload.
+  // The wider size survives a reload (which restores the project directly — no wizard).
   await page.reload();
-  await page.locator('.gallery-close').click();
+  await expect(page.getByTestId('dock-slot-left')).toBeVisible();
   const leftReload = (await page.getByTestId('dock-slot-left').boundingBox())!.width;
   expect(Math.abs(leftReload - leftAfter)).toBeLessThan(30);
 });
@@ -112,7 +113,7 @@ test('the timeline height is resizable via the centre divider, and persists', as
   expect(tlAfter).toBeGreaterThan(tlBefore + 40);
 
   await page.reload();
-  await page.locator('.gallery-close').click();
+  await expect(page.getByTestId('center-timeline')).toBeVisible();
   const tlReload = (await page.getByTestId('center-timeline').boundingBox())!.height;
   expect(Math.abs(tlReload - tlAfter)).toBeLessThan(30);
 });
