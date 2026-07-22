@@ -2793,7 +2793,17 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   .topbar .tpl-name,
   .topbar > .muted { display: none; }
   .topbar .spacer { flex-basis: 100%; height: 0; }   /* force a line break after the brand */
-  .topbar button { padding: 7px 10px; }
+  /* The desktop bar's "nothing shrinks, nothing wraps" rule is a SINGLE-ROW contract; here
+     the bar wraps instead, so it must be lifted. Otherwise one long label - Home's
+     "↩ Continue editing <graphic name>" - is a single unshrinkable item wider than the
+     screen, and the whole page scrolls sideways (e2e/library.spec.ts pins this at 390px). */
+  .topbar > * { flex: 0 1 auto; min-width: 0; }
+  .topbar button {
+    padding: 7px 10px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   /* Single-column workspace: preview + panels + collapsible code, all in the page scroll. */
   .workspace-mobile { display: flex; flex-direction: column; }
