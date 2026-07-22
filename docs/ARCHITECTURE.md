@@ -67,7 +67,7 @@ are wrong - fix the code, not the table.
 - `app` -> (nothing)
 - `components` -> any lower domain, **through its seam column in §2**
 
-Hard invariants (review-blocking today, lint-enforced later - §7):
+Hard invariants (1, 3 and 4 are lint-enforced - §7; 2 and 5 stay review-time until Stage B):
 
 1. **`@supabase/supabase-js` is value-imported only inside `backend/`** (type-only imports of
    `SupabaseClient` are fine anywhere). All client access goes through `getSupabase()`; all
@@ -136,17 +136,19 @@ the row. Do not add rows without updating §3's justification trail.
 | model <-> assets | `fonts.ts` <-> `assetUtils` | accepted - kernel siblings, both layer 0 |
 | blocks -> templates presets | `blocks/presetRegistry.ts` imports 8 preset tables | accepted - data-table aggregation, no logic cycle; revisit only if a preset ever imports blocks logic |
 
-## 7. Enforcement roadmap (proposed, not yet implemented)
+## 7. Enforcement roadmap
 
-Today every rule above is review-time prose. Two staged upgrades, each needing an explicit
-go-ahead:
-
-- **Stage A - zero new dependencies.** ESLint `no-restricted-imports` blocks (per-glob, flat
-  config) pinning invariants 1, 3, and 4 of §3 - they are already clean, so the rules land green
-  and simply stop regressions.
-- **Stage B - the full ratchet.** `dependency-cruiser` (devDependency) encoding §3's edge table
-  plus cycle detection, wired into `npm run build` next to eslint, with §6 as the explicit
-  exception list. Every debt fixed shrinks the config.
+- **Stage A - wired.** The "Architecture Stage A" blocks in `eslint.config.js` pin invariants 1,
+  3, and 4 of §3 via `@typescript-eslint/no-restricted-imports` (zero new dependencies; part of
+  `npm run lint` and the build gate). Because flat-config rule options **replace** rather than
+  merge when several blocks match a file, `src/` is split into disjoint regions, each carrying
+  the full restriction set for its region - keep it that way when editing. The one file-level
+  exemption (`src/blocks/registry.ts`) mirrors its §6 row; delete both together. Invariants 2
+  and 5 stay review-time: they need different mechanisms (`no-restricted-globals`/syntax for the
+  purity trio, a resolver-aware tool for the model layer rule).
+- **Stage B - the full ratchet (proposed, needs a go-ahead).** `dependency-cruiser`
+  (devDependency) encoding §3's edge table plus cycle detection, wired into `npm run build` next
+  to eslint, with §6 as the explicit exception list. Every debt fixed shrinks the config.
 
 Until then, `scripts/e2e-affected.mjs` remains the de-facto machine-readable domain map (its
 `CORE` list is the "shared kernel" statement); keep it in step with this doc when domains move.
