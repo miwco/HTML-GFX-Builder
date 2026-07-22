@@ -138,6 +138,63 @@ test('a saved graphic\'s control panel: entries create, play with the active ent
   await expect(page.getByTestId('home-page')).toBeVisible();
 });
 
+test('the control panel shows the graphic at rest before any take, and says how to get Home', async ({ page }) => {
+  await createProject(page, 'Hairline');
+  await saveAs(page, 'Settled at rest');
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-controls').click();
+  await page.locator('.pk-graphic', { hasText: 'Settled at rest' }).locator('button', { hasText: 'Open control panel' }).click();
+  await expect(page.getByTestId('graphic-control-page')).toBeVisible();
+
+  // A graphic is hidden until play(), so an unsettled preview is an empty black rectangle.
+  // The panel settles it on load: the operator sees what they are about to air, no take needed.
+  const frame = page.locator('.control-page-preview iframe');
+  await expect(frame.contentFrame().locator('#f0')).toBeVisible();
+  await expect
+    .poll(async () => frame.contentFrame().locator('.lower-third').evaluate((el) => getComputedStyle(el).opacity))
+    .toBe('1');
+
+  // The graphic is FITTED to the stage, not stretched: a 1920×1080 template rendered into a
+  // ~1060px panel would show a lower third at nearly twice its real share of frame, and an
+  // operator preview that lies about composition is worse than none.
+  const fit = await page.evaluate(() => {
+    const f = document.querySelector('.control-page-preview iframe') as HTMLIFrameElement;
+    const stage = document.querySelector('.control-page-stage')!.getBoundingClientRect();
+    const box = f.getBoundingClientRect();
+    // offsetWidth is the UNTRANSFORMED layout width; getBoundingClientRect is after scale.
+    return { fw: f.offsetWidth, boxW: box.width, stageW: stage.width, stageH: stage.height, boxH: box.height };
+  });
+  expect(fit.fw).toBe(1920); // the iframe carries the template's OWN resolution…
+  expect(fit.boxW).toBeLessThanOrEqual(fit.stageW + 1); // …and is scaled to fit the stage
+  expect(fit.boxH).toBeLessThanOrEqual(fit.stageH + 1);
+
+  // The frame edge is drawn on the scaled frame: over black, an operator judging headroom
+  // against a void cannot tell safe area from off-screen.
+  const edge = await page.evaluate(() => {
+    const r = document.querySelector('.control-page-frame')!.getBoundingClientRect();
+    const f = document.querySelector('.control-page-preview iframe')!.getBoundingClientRect();
+    return { dw: Math.abs(r.width - f.width), dh: Math.abs(r.height - f.height) };
+  });
+  expect(edge.dw).toBeLessThanOrEqual(2);
+  expect(edge.dh).toBeLessThanOrEqual(2);
+
+  // The cue row is an operator target, not a rehearsal control: comfortable hit areas, and
+  // "Next" reads as a word rather than a bare chevron. Size alone is not enough - a scaled
+  // preview once pushed this row clean off the bottom of the window while every button still
+  // measured 44px, so assert the operator can actually SEE it.
+  const view = page.viewportSize()!;
+  for (const id of ['control-play', 'control-update', 'control-next', 'control-stop']) {
+    const box = (await page.getByTestId(id).boundingBox())!;
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.y + box.height).toBeLessThanOrEqual(view.height);
+  }
+  await expect(page.getByTestId('control-next')).toContainText('Next');
+
+  // A leaf surface needs a labelled way back — the wordmark alone was the only route.
+  await page.getByTestId('control-home').click();
+  await expect(page.getByTestId('home-page')).toBeVisible();
+});
+
 test('a Home card shows the real graphic, parked at its settled on-air state', async ({ page }) => {
   await createProject(page, 'Hairline');
   await saveAs(page, 'Presenter lower third');

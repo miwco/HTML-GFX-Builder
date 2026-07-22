@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { composeDocument } from '../../preview/composeDocument';
+import { settleGraphicOnLoad } from '../../preview/settleGraphic';
 import { fieldDescriptors } from '../../control/controlModel';
 import type { SpxTemplate } from '../../model/types';
 
@@ -18,17 +19,6 @@ import type { SpxTemplate } from '../../model/types';
  * the composition (preview/composeDocument) and the settle recipe below are the editor's own —
  * there is no second render path.
  */
-
-/** The template globals a thumbnail drives: the SPX contract plus the house entrance builder. */
-interface ThumbTimeline {
-  pause: () => void;
-  progress: (value: number, suppressEvents?: boolean) => void;
-}
-interface ThumbWindow {
-  update?: (json: string) => void;
-  play?: () => void;
-  buildInTimeline?: () => ThumbTimeline;
-}
 
 /** Card width in CSS px; the height follows the template's own aspect ratio. Sized so a band
  *  graphic (a lower third fills a fraction of the frame) still reads as its own shape. */
@@ -104,38 +94,9 @@ export default function GraphicThumb({
     return JSON.stringify(merged);
   }, [template, values]);
 
-  /** The editor canvas's design view, small: data in, jump the entrance to its end, data again
-   *  (PlayoutSimulator.settle — suppressed callbacks skip callback-written text, so the second
-   *  update() is what makes counters and bar fills truthful). */
-  const settle = () => {
-    const w = frameRef.current?.contentWindow as ThumbWindow | null;
-    if (!w) return;
-    try {
-      w.update?.(data);
-      if (typeof w.buildInTimeline === 'function') {
-        const tl = w.buildInTimeline();
-        tl.pause();
-        tl.progress(1, true);
-        w.update?.(data);
-      } else {
-        // No builder contract (a blank, hand-written, or foreign-imported template). The editor
-        // canvas leaves those blank because it has a Play button beside it; a card does not, so
-        // it runs the template's own play() and lets the graphic come to rest on its own.
-        w.play?.();
-      }
-    } catch {
-      /* a thumbnail is best-effort — a template that throws still gets its card */
-    }
-  };
-
-  /** Settle once the document's fonts have loaded: a text graphic laid out in the fallback face
-   *  and then jumped to the end of its entrance would freeze the wrong metrics into the card. */
-  const onLoad = () => {
-    const w = frameRef.current?.contentWindow;
-    const fonts = w?.document?.fonts;
-    if (fonts?.ready) void fonts.ready.then(settle, settle);
-    else settle();
-  };
+  /** Park the card at the settled on-air state — the shared recipe, so a card and the operator
+   *  panel's preview can never disagree about what "at rest" looks like. */
+  const onLoad = () => settleGraphicOnLoad(frameRef.current, data);
 
   return (
     <div

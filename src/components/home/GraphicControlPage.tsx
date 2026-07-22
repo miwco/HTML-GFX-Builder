@@ -5,6 +5,7 @@ import { graphicById, newEntry, updateGraphic, type ControlEntry, type GraphicDo
 import { fieldDescriptors, eventButtons } from '../../control/controlModel';
 import { renderControlPanelHtml } from '../../control/controlPanelHtml';
 import { composeDocument } from '../../preview/composeDocument';
+import { settleGraphicOnLoad } from '../../preview/settleGraphic';
 import { openGraphicById, useSaveUi } from '../../store/saveActions';
 import { setFieldDefault } from '../../blocks/edit';
 import { FieldRow } from '../fields/FieldControl';
@@ -34,10 +35,32 @@ export default function GraphicControlPage({ id }: { id: string }) {
   const requestSwitch = useSaveUi((s) => s.requestSwitch);
   const [doc, setDoc] = useState<GraphicDoc | null>(() => graphicById(id));
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const [note, setNote] = useState<string | null>(null);
 
   // Re-read when the route id changes (Back/Forward between two panels).
   useEffect(() => setDoc(graphicById(id)), [id]);
+
+  // FIT THE GRAPHIC TO THE STAGE, like the editor canvas and the Home card do. A template's
+  // elements are placed in px against its own resolution, so rendering a 1920×1080 document
+  // into a ~1060px iframe would show a lower third at nearly twice its real share of frame -
+  // an operator preview that lies about composition is worse than no preview. The iframe is
+  // therefore sized to the template's OWN resolution and scaled down to fit.
+  const [stage, setStage] = useState({ w: 0, h: 0 });
+  /** Scale that fits the whole frame in the stage; 0 until measured, so nothing flashes at 1:1. */
+  const fit =
+    stage.w && stage.h && doc
+      ? Math.min(stage.w / doc.template.resolution.width, stage.h / doc.template.resolution.height)
+      : 0;
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => setStage({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [doc?.id]);
 
   const descriptors = useMemo(
     () => (doc ? fieldDescriptors(doc.template.fields, { includeHidden: false }) : []),
@@ -80,6 +103,14 @@ export default function GraphicControlPage({ id }: { id: string }) {
   };
 
   const win = () => iframeRef.current?.contentWindow as unknown as GraphicWindow | null;
+
+  /** An entry's values over the graphic's own defaults — the merge `update()` performs live,
+   *  and the same data the settled preview and Play both use. */
+  const entryData = (entry: ControlEntry | null) => {
+    const merged: Record<string, string> = {};
+    for (const d of descriptors) merged[d.key] = String(entry?.values[d.key] ?? d.defaultValue ?? '');
+    return JSON.stringify(merged);
+  };
 
   const sendUpdate = (values: Record<string, string>) => {
     // The graphic's own defaults underlie the entry, exactly as update() merges live.
@@ -163,9 +194,19 @@ export default function GraphicControlPage({ id }: { id: string }) {
         <button className="brand brand-home" onClick={() => navigate({ view: 'home', section: null })} title="Home">
           <BrandLogo size={24} />
         </button>
+        {/* The logo goes Home too, but an operator page needs a control that SAYS so: this is
+            a leaf surface reached from Home, from a package, and from a graphic, and the way
+            back was previously a bare wordmark. */}
+        <button
+          onClick={() => navigate({ view: 'home', section: null })}
+          title="Back to Home — your graphics, packages, control panels, and videos"
+          data-testid="control-home"
+        >
+          ← Home
+        </button>
         <span className="divider-dot" aria-hidden="true">·</span>
         <span className="tpl-name">🎛 {doc.name}</span>
-        <span className="mono muted" style={{ fontSize: 11, marginLeft: 6 }}>control panel</span>
+        <span className="topbar-meta mono muted">control panel</span>
         <div className="spacer" />
         <button
           onClick={() =>
@@ -188,7 +229,42 @@ export default function GraphicControlPage({ id }: { id: string }) {
 
       <div className="control-page-body">
         <section className="control-page-preview">
-          <iframe ref={iframeRef} title="Graphic preview" srcDoc={srcdoc} sandbox="allow-scripts allow-same-origin" />
+          {/* Parked at the settled on-air state on load — a graphic is hidden until play(), so
+              an unsettled preview is an empty black rectangle where the operator expects to see
+              what they are about to air. Re-settles when the active entry changes (keyed), so
+              selecting an entry shows ITS data without a take. */}
+          <div className="control-page-stage" ref={stageRef}>
+            <iframe
+              key={active?.id ?? 'defaults'}
+              ref={iframeRef}
+              title="Graphic preview"
+              srcDoc={srcdoc}
+              sandbox="allow-scripts allow-same-origin"
+              onLoad={() => settleGraphicOnLoad(iframeRef.current, entryData(active))}
+              style={{
+                width: doc.template.resolution.width,
+                height: doc.template.resolution.height,
+                // translate(-50%, -50%) re-centres the absolutely-placed frame; the scale then
+                // fits it. Scale 0 until the stage is measured, so nothing flashes at 1:1.
+                transform: `translate(-50%, -50%) scale(${fit})`,
+              }}
+            />
+            {/* WHERE THE FRAME ENDS. The graphic is transparent over black here, so without an
+                edge the operator is judging headroom against a void — they cannot see whether a
+                lower third sits in safe area or is about to hang off the bottom. Sized to the
+                SCALED frame and left untransformed, so the hairline stays one pixel at every
+                zoom. Decorative: the iframe beside it carries the content. */}
+            {fit > 0 && (
+              <div
+                className="control-page-frame"
+                aria-hidden="true"
+                style={{
+                  width: Math.round(doc.template.resolution.width * fit),
+                  height: Math.round(doc.template.resolution.height * fit),
+                }}
+              />
+            )}
+          </div>
           <div className="control-page-transport">
             <button className="primary" onClick={() => playEntry(active)} data-testid="control-play">
               ▶ Play{active ? ` “${active.label}”` : ''}
@@ -196,8 +272,12 @@ export default function GraphicControlPage({ id }: { id: string }) {
             <button onClick={() => sendUpdate(active?.values ?? {})} title="Update fields without replaying" data-testid="control-update">
               ⟳ Update
             </button>
-            <button onClick={() => win()?.next?.()} title="Advance (next)">»</button>
-            <button onClick={() => win()?.stop?.()} title="Take out" data-testid="control-stop">■ Stop</button>
+            {/* A bare "»" is not a label an operator can read under pressure — the glyph keeps
+                the SPX vocabulary, the word says what pressing it does. */}
+            <button onClick={() => win()?.next?.()} title="Advance to the next step (SPX Continue)" data-testid="control-next">
+              » Next
+            </button>
+            <button onClick={() => win()?.stop?.()} title="Take the graphic off air" data-testid="control-stop">■ Stop</button>
             {buttons.length > 0 && <span className="control-events-sep" aria-hidden="true" />}
             {buttons.map((b) => (
               <button

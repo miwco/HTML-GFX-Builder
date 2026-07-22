@@ -179,7 +179,10 @@ function renderPanelPage(title: string, graphics: EmittedGraphic[]): string {
   .events button:disabled:hover { border-color:var(--line); }
   .events button.destructive { border-color:#8a4a2a; background:#2d1c12; }
   .events button.destructive:hover { border-color:#e0763a; }
+  /* The cue row is pressed live, in a hurry, sometimes on a tablet beside the vision desk:
+     every button is a comfortable target (44px, the standard touch minimum). */
   .actions { display:flex; gap:8px; padding-top:12px; }
+  .actions button { min-height:44px; padding:10px 16px; }
   .actions .primary { background:var(--accent); color:#06131f; border-color:var(--accent); font-weight:700; flex:1; }
   .live { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); }
   .thumb { width:40px; height:40px; object-fit:contain; background:var(--bg); border:1px solid var(--line); border-radius:6px; }

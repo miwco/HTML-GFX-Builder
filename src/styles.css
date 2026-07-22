@@ -608,6 +608,10 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   padding: 14px 16px;
 }
 .hosted-card > h2 { font-size: 14px; margin: 0 0 4px; display: flex; align-items: center; gap: 10px; }
+/* The hosted page IS the operator's surface — often a tablet beside the desk — so its cue row
+   gets comfortable targets. `.ctl-actions` is shared with the editor's rehearsal dock, which
+   stays compact, hence the scope. */
+.hosted-card .ctl-actions button { min-height: 44px; padding: 10px 16px; }
 .hosted-card .field-row { padding: 8px 0; }
 .hosted-card .field-row > label {
   display: block;
@@ -3155,7 +3159,49 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 /* The per-graphic control panel page (#/control/<id>). */
 .control-page-body { display: grid; grid-template-columns: 1fr 380px; gap: 0; flex: 1; min-height: 0; }
 .control-page-preview { display: flex; flex-direction: column; min-width: 0; background: #05070b; }
-.control-page-preview iframe { flex: 1; width: 100%; border: 0; min-height: 0; }
+/* The mobile topbar hides `.tpl-name` everywhere — but an OPERATOR panel that does not say
+   which graphic it drives is unusable, and a phone or tablet is exactly where it gets used at
+   the desk. Keep the name (ellipsized), and drop the divider dot that would otherwise dangle. */
+@media (max-width: 768px) {
+  .control-page .topbar .tpl-name {
+    display: inline-block;
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .control-page .topbar .topbar-meta { display: none; }
+}
+/* The stage the graphic is FITTED into: the iframe carries the template's own resolution and
+   is scaled down to fit (GraphicControlPage), so the operator sees the real composition - a
+   lower third occupies the share of frame it will occupy on air, not the share a squeezed
+   viewport would give it. Same recipe as the editor canvas and the Home card. */
+.control-page-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+/* ABSOLUTE on purpose: `transform: scale()` shrinks what you SEE, never the layout box, so a
+   1920×1080 iframe left in flow would still claim 1080px of column and shove the cue row off
+   the bottom of the window. Out of flow, the stage is free to be whatever height is left. */
+.control-page-preview iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 0;
+  transform-origin: center center;
+}
+/* The frame edge. A hairline only — this is a reference mark, not chrome competing with the
+   graphic; it must never read as part of what goes on air. */
+.control-page-frame {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(232, 237, 242, 0.14);
+  pointer-events: none;
+}
 .control-page-transport {
   display: flex;
   flex-wrap: wrap;
@@ -3165,6 +3211,15 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   border-top: 1px solid var(--border);
   background: var(--panel);
 }
+/* An OPERATOR surface, not a rehearsal panel: these are pressed live, in a hurry, sometimes on
+   a touch screen, so every cue is a comfortable target (44px, the standard touch minimum). The
+   editor dock's own transport stays compact — it shares the workspace with everything else. */
+.control-page-transport button {
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 14px;
+}
+.control-page-transport button.primary { padding-inline: 20px; font-weight: 600; }
 .control-events-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
 .control-page-side {
   border-left: 1px solid var(--border);
