@@ -107,6 +107,14 @@ templateStore.ts (zustand) holds the template plus editor UI state.
 - **playhead / setPlayhead** - the step timeline's parked playhead `{ step, t }` (step index +
   local time in effective seconds). UI state only - no history; the Inspector stamps
   keyframes at it.
+- **timelineTarget / setTimelineTarget** - WHICH timeline the step surface is editing
+  (blocks/timelineLens.ts): the default path, or one branch state's own inline timeline. It
+  lives here rather than in the dock because the INSPECTOR resolves values and stamps
+  keyframes against the same projection - a component-local target would have it editing the
+  entrance while the timeline showed a branch. The setter clears `playhead` (a step index
+  means something different on the other side). UI state, no history; reset to the path on a
+  whole-project swap, and the dock falls back to the path when a target stops resolving (its
+  state deleted).
 - **machineGroups / setMachineGroups** - the preview's live machine pointers `{group: state}`,
   null before the graphic reports. PlayoutSimulator owns the iframe and is the only thing that
   can poll it, so it publishes here and every surface showing operator event buttons (its own

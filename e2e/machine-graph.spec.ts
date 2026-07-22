@@ -337,6 +337,96 @@ test('two complete graphic timelines chain on the path (the ◇ > ◇ rundown ca
   await expect(page.locator('.mg-state', { hasText: 'Guest Lower Third' }).locator('.mg-kind-graphic')).toBeVisible();
 });
 
+test('a branch state gets its own timeline, and it really plays', async ({ page }) => {
+  await createProject(page, { category: 'lower-third', index: 0 });
+  await openGraph(page);
+
+  // A branch off the entrance, reachable by an authored event.
+  await page.getByTestId('mg-add-state-main').click();
+  await awaitPreviewRebuild(page, () => page.getByTestId('mg-add-pose').click());
+  const port = (await page.getByTestId('mg-port-main-enter').boundingBox())!;
+  const target = (await page.getByTestId('mg-state-main-new-state').boundingBox())!;
+  await page.mouse.move(port.x + 4, port.y + 4);
+  await page.mouse.down();
+  await page.mouse.move(target.x + 40, target.y + 17, { steps: 8 });
+  await page.mouse.up();
+  await awaitPreviewRebuild(page, async () => {
+    await page.getByTestId('mg-event').fill('showBio');
+    await page.keyboard.press('Enter');
+  });
+
+  // Until it has a timeline the state holds whatever look it arrives with — which is exactly
+  // why every authorable branch used to be a copy of its predecessor.
+  await page.getByTestId('mg-state-main-new-state').click();
+  await expect(page.getByTestId('mg-state-card')).toContainText('holds the look it arrives with');
+  await awaitPreviewRebuild(page, () => page.getByTestId('mg-add-state-timeline').click());
+
+  // The dock swings onto that timeline and says so, and the affordances that only mean
+  // something on the ordered walk stand down.
+  await expect(page.getByTestId('tlv2-branch-bar')).toContainText('New state');
+  await expect(page.locator('.tlv2-clip')).toHaveCount(1);
+  await expect(page.getByTestId('tlv2-add-step')).toHaveCount(0);
+  await expect(page.getByTestId('tlv2-hold')).toHaveCount(0);
+
+  // Keyframes written through the ordinary mutators land in the STATE, not in `steps` — the
+  // lens folds the one-step projection back where it came from.
+  await awaitPreviewRebuild(page, () =>
+    page.evaluate(async () => {
+      const { useTemplateStore } = await import('/src/store/templateStore.ts');
+      const { parseAnimData } = await import('/src/blocks/animData.ts');
+      const { setKeyframe } = await import('/src/blocks/animEdit.ts');
+      const { lensRead, lensWrite } = await import('/src/blocks/timelineLens.ts');
+      const { writeAnimData } = await import('/src/templates/shared/animRuntime.ts');
+      const s = useTemplateStore.getState();
+      const doc = parseAnimData(s.template.js)!;
+      let projected = lensRead(doc, s.timelineTarget)!;
+      projected = setKeyframe(projected, 0, '.lower-third-box', 'x', 0, 0)!;
+      projected = setKeyframe(projected, 0, '.lower-third-box', 'x', 0.45, 140)!;
+      const next = lensWrite(doc, s.timelineTarget, projected)!;
+      s.applyTemplate({ ...s.template, js: writeAnimData(s.template.js, next)! });
+    }),
+  );
+  const shape = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { parseAnimData } = await import('/src/blocks/animData.ts');
+    const d = parseAnimData(useTemplateStore.getState().template.js)!;
+    const state = d.machine!.groups[0].states.find((s) => s.id === 'new-state')!;
+    return { steps: d.steps.map((s) => s.name), keyed: Object.keys(state.timeline?.layers ?? {}) };
+  });
+  expect(shape.steps).toEqual(['Enter', 'Out']); // the path is untouched
+  expect(shape.keyed).toEqual(['.lower-third-box']);
+
+  // `reveals`/`hides` are invalid on an inline timeline; the export gate has to stay green.
+  const validation = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { validateTemplate } = await import('/src/validation/validateTemplate.ts');
+    return validateTemplate(useTemplateStore.getState().template).errors;
+  });
+  expect(validation).toEqual([]);
+
+  // And the point of the whole exercise: entering the branch PLAYS its timeline.
+  const moved = await page.evaluate(async () => {
+    const w = document.querySelector<HTMLIFrameElement>('iframe.preview-frame')!.contentWindow as Window & {
+      play?: () => void;
+      noacgDispatch?: (e: string) => unknown;
+    };
+    const x = () => w.getComputedStyle(w.document.querySelector('.lower-third-box')!).transform;
+    w.play?.();
+    await new Promise((r) => setTimeout(r, 1400));
+    const before = x();
+    w.noacgDispatch?.('showBio');
+    await new Promise((r) => setTimeout(r, 900));
+    return { before, after: x() };
+  });
+  expect(moved.before).not.toContain('140');
+  expect(moved.after).toContain('140');
+
+  // Back to the graphic's own sequence.
+  await page.getByTestId('tlv2-branch-back').click();
+  await expect(page.getByTestId('tlv2-branch-bar')).toHaveCount(0);
+  await expect(page.locator('.tlv2-clip')).toHaveCount(2);
+});
+
 test('the timeline says how each step is really reached, timers included', async ({ page }) => {
   await createProject(page, { category: 'lower-third', index: 0 });
   await openGraph(page);

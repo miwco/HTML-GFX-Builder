@@ -220,7 +220,11 @@ in src/blocks/CLAUDE.md.
   persisted as the additive `at` field. A machine-less template shows its DERIVED machine
   ("derived from the steps" chip) and the first edit materializes it in the same undoable
   apply. Waypoints stay the timeline's to add/delete (positional binding); the card links
-  there ("Open its timeline" parks the playhead at the step). Every write is a
+  there ("Open its timeline" parks the playhead at the step) - and a BRANCH state's card
+  offers "+ Add a timeline" (machineEdit `setStateTimeline`) or opens the one it has, swinging
+  the dock onto it through store `timelineTarget` (blocks/timelineLens.ts). The step timeline
+  then shows that ONE clip under a bar naming the state, with the path-only affordances
+  (add/duplicate a step, the hold, the Play/Next/Stop cue) stood down. Every write is a
   blocks/machineEdit.ts mutator → `writeAnimData` → ONE applyTemplate; illegal edits (reserved
   or duplicate event, deleting the walk's only edge) return null and the control reverts.
   STRUCTURE: `.machine-graph` is a FRAME that fills the dock (`.timeline-dock` grows into the

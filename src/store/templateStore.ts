@@ -8,6 +8,7 @@ import type { AssetFile, SpxTemplate } from '../model/types';
 import { DATA_FTYPES } from '../model/types';
 import type { ValidationResult } from '../validation/validateTemplate';
 import { loadProject, saveProject } from '../model/project';
+import { PATH_TARGET, type TimelineTarget } from '../blocks/timelineLens';
 
 export type EditorTab = 'html' | 'css' | 'js';
 export type PreviewBg = 'checkerboard' | 'black' | 'video';
@@ -199,6 +200,13 @@ interface TemplateState {
    *  Editor UI state - never persisted, never written into the template. */
   machineGroups: Record<string, string> | null;
   setMachineGroups: (groups: Record<string, string> | null) => void;
+  /** WHICH timeline the step surface is editing (blocks/timelineLens.ts): the default path,
+   *  or one branch state's own inline timeline. It lives here rather than in the dock because
+   *  the INSPECTOR resolves values and stamps keyframes against the same projection - a
+   *  component-local target would have it editing the entrance while the timeline showed a
+   *  branch. UI state, no history; reset to the path on a whole-project swap. */
+  timelineTarget: TimelineTarget;
+  setTimelineTarget: (target: TimelineTarget) => void;
   /** Seek the live preview's in/out/step timeline to a time (the timeline view's scrubber). */
   sendScrub: (phase: string, time: number) => void;
   /** Select ONE element by its TemplatePart selector (null deselects) — replaces the
@@ -301,6 +309,7 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   modalCount: 0,
   playhead: null,
   machineGroups: null,
+  timelineTarget: PATH_TARGET,
   canvasGestureActive: false,
   canvasTool: 'select',
   saved: {
@@ -354,6 +363,8 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
         // Same reason: the previous graphic's machine pointers would grey the new graphic's
         // event buttons against a state it was never in, until the next poll corrected it.
         machineGroups: opts?.resetSampleData ? null : s.machineGroups,
+        // The branch a previous graphic had open cannot exist in the new one.
+        timelineTarget: opts?.resetSampleData ? PATH_TARGET : s.timelineTarget,
         // A whole-project swap severs the save link — a freshly created project must never
         // inherit the previous document's library id (Save would overwrite that graphic).
         // Opening a SAVED graphic re-links right after (store/saveActions.ts openGraphicDoc).
@@ -414,6 +425,8 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
   // re-render on a real state change, not on the tick.
   setMachineGroups: (groups) =>
     set((s) => (JSON.stringify(s.machineGroups) === JSON.stringify(groups) ? {} : { machineGroups: groups })),
+
+  setTimelineTarget: (timelineTarget) => set({ timelineTarget, playhead: null }),
 
   sendScrub: (phase, time) => set((s) => ({ scrubCommand: { phase, time, nonce: (s.scrubCommand?.nonce ?? 0) + 1 } })),
 

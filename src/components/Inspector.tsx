@@ -23,6 +23,7 @@ import type { SpxTemplate } from '../model/types';
 import { parseAnimData, type AnimData } from '../blocks/animData';
 import { writeAnimData } from '../templates/shared/animRuntime';
 import { importAnimData } from '../blocks/animImport';
+import { lensRead, lensWrite } from '../blocks/timelineLens';
 import { deleteKeyframe, setFilterComponent, setKeyframe } from '../blocks/animEdit';
 import { filterComponent } from '../blocks/filterTrack';
 import { applyPresetData, presetDonor } from '../blocks/presetApply';
@@ -175,7 +176,17 @@ export default function Inspector() {
   }, [placedDesign]);
   // A native data block is editable; legacy regions convert through the importer for a
   // read view only. Null = blank/imported/hand-crafted — identity still shows.
-  const native = useMemo(() => parseAnimData(template.js), [template.js]);
+  // Both are read through the TIMELINE LENS (blocks/timelineLens.ts): whichever timeline the
+  // step surface has open is the one whose values this resolves and whose keyframes it
+  // stamps. Sharing the target through the store is the whole point — resolving against the
+  // document while the timeline showed a branch would put the Inspector on a different clip
+  // from the playhead it reads.
+  const nativeDoc = useMemo(() => parseAnimData(template.js), [template.js]);
+  const timelineTarget = useTemplateStore((s) => s.timelineTarget);
+  const native = useMemo(
+    () => (nativeDoc ? lensRead(nativeDoc, timelineTarget) : null),
+    [nativeDoc, timelineTarget],
+  );
   const data = useMemo(() => native ?? importAnimData(template), [native, template]);
   // Placed fields (an imported design's lines and slots): their look is DESIGN CSS, not
   // motion, so a selected one gets the Style tab below (blocks/designLayout.ts).
@@ -258,12 +269,19 @@ export default function Inspector() {
     return kfs.some((k) => Math.abs(k.time - at.tRel) < 0.005);
   };
 
-  /** One undoable apply, then re-park the preview at the playhead after the rebuild. */
-  const applyData = (next: AnimData) => {
+  /** One undoable apply, then re-park the preview at the playhead after the rebuild. The lens
+   *  folds a branch state's projection back into the state it came from, so every animEdit
+   *  mutator above keeps addressing `steps[at.step]` unchanged. */
+  const applyData = (projected: AnimData) => {
+    const next = nativeDoc ? lensWrite(nativeDoc, timelineTarget, projected) : projected;
+    if (!next) return;
     const js = writeAnimData(template.js, next);
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
-    if (playhead && data) setTimeout(() => sendScrub(phaseIdOf(data, playhead.step), playhead.t), 650);
+    // A branch state is on none of the walk's scrub phases; the preview stays snapped to it.
+    if (playhead && data && timelineTarget.kind === 'path') {
+      setTimeout(() => sendScrub(phaseIdOf(data, playhead.step), playhead.t), 650);
+    }
   };
 
   const stamp = (row: (typeof PROP_ROWS)[number]) => {

@@ -161,7 +161,24 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   event, timer delay, STYLE + duration + ease (TRANSITION_STYLES); structure: addTransition
   (port-drag), addState/deleteState (OFF-PATH only - waypoints belong to the timeline, and
   the initial state never goes), addGroup/removeGroup (main never goes), setStatePosition
-  (the additive `at` field).
+  (the additive `at` field), and **setStateTimeline** - give an off-path state its own inline
+  timeline or take it away. That one is what lets a branch LOOK different from the state
+  before it: a pose's look is composed by replaying the route to it, so before this every
+  authorable branch was by construction a copy of its predecessor. `addState` deliberately
+  still creates a POSE (Off and a hold are legitimate states); attaching content is an
+  explicit act, from the state card.
+- **timelineLens.ts** - WHICH timeline the step surface is editing. Motion lives in two places:
+  the default path's `steps`, and a branch state's own `state.timeline`. Every animEdit mutator
+  takes a step INDEX and both the timeline and the Inspector read `data.steps[i]`, so rather
+  than teaching each of them a second address we PROJECT: `lensRead(data, target)` returns the
+  document itself for the path, or a ONE-STEP AnimData carrying that state's timeline (with
+  `machine` dropped, so the walk's cue markers and `spxSteps` cannot describe a branch as if it
+  sat on the path); `lensWrite` folds the edited step back, taking every TOP-LEVEL field from
+  the edit (a speed change made while a branch was open is still a change) and `steps` from the
+  original. It STRIPS `reveals`/`hides` on the way in - they are the ordered walk's mechanics
+  and `isAnimStepShape(_, false)` refuses them on an inline timeline. The target lives in
+  templateStore, never here: the Inspector resolves values against the same projection, and a
+  component-local target would have it editing the entrance while the timeline showed a branch.
 - **animMachine.ts** - the machine's editor-side seam (animData owns the literal, this owns the
   GRAPH questions). `deriveMachine` builds the implicit ONE-GROUP linear machine for data with
   no `machine` key - states named after the steps, a synthesized pose-only `off`, a `next` arrow

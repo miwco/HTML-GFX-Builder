@@ -19,6 +19,7 @@ import {
   setStepEase,
 } from '../blocks/animEdit';
 import { deriveMachine, spxSteps, timelineKind, walkEntry } from '../blocks/animMachine';
+import { lensRead, lensWrite, PATH_TARGET, targetState } from '../blocks/timelineLens';
 import { EASINGS } from '../model/easings';
 import { replaceRegionWithAnimData, writeAnimData } from '../templates/shared/animRuntime';
 import { activationStep, animatedProps, hideStep, stepSeconds } from '../blocks/animEval';
@@ -89,7 +90,17 @@ export default function TimelineDock({ iframeRef }: Props) {
   const setPlayhead = useTemplateStore((s) => s.setPlayhead);
   const native = useMemo(() => parseAnimData(template.js), [template.js]);
   const imported = useMemo(() => (native ? null : importAnimData(template)), [native, template]);
-  const data = native ?? imported;
+  const doc = native ?? imported;
+  // WHICH timeline is open (blocks/timelineLens.ts): the default path, or one branch state's
+  // own. A branch target that no longer resolves — its state deleted, the project swapped —
+  // falls back to the path rather than rendering nothing.
+  const timelineTarget = useTemplateStore((s) => s.timelineTarget);
+  const setTimelineTarget = useTemplateStore((s) => s.setTimelineTarget);
+  const branch = useMemo(() => (doc ? targetState(doc, timelineTarget) : null), [doc, timelineTarget]);
+  const data = useMemo(() => (doc ? lensRead(doc, timelineTarget) : null), [doc, timelineTarget]);
+  useEffect(() => {
+    if (doc && timelineTarget.kind === 'state' && !data) setTimelineTarget(PATH_TARGET);
+  }, [doc, data, timelineTarget, setTimelineTarget]);
   // The bottom dock's surface (Phase 4, Rive-style): the step TIMELINE or the machine GRAPH.
   // A workspace choice, not a document property — it holds across template switches; a
   // template without a readable data block has no graph and falls back to the timeline path.
@@ -112,15 +123,23 @@ export default function TimelineDock({ iframeRef }: Props) {
             iframeRef={iframeRef}
             data={native}
             onOpenStep={(step) => {
-              // "Open its timeline": swap back to the step surface parked at that step —
-              // the playhead is where the Inspector stamps keyframes, so the state's
-              // content is immediately editable.
+              // "Open its timeline" for a WAYPOINT: swap back to the step surface parked at
+              // that step — the playhead is where the Inspector stamps keyframes, so the
+              // state's content is immediately editable.
+              setTimelineTarget(PATH_TARGET);
               setPlayhead({ step, t: 0 });
+              setSurface('timeline');
+            }}
+            onOpenStateTimeline={(groupId, stateId) => {
+              // The same door for a BRANCH state: the surfaces re-project onto its own
+              // inline timeline instead of the path.
+              setTimelineTarget({ kind: 'state', groupId, stateId });
+              setPlayhead({ step: 0, t: 0 });
               setSurface('timeline');
             }}
           />
         ) : (
-          <StepTimeline iframeRef={iframeRef} data={data} editable={native !== null} />
+          <StepTimeline iframeRef={iframeRef} data={data} editable={native !== null} branch={branch} />
         )
       ) : (
         <LegacyTimeline iframeRef={iframeRef} />
@@ -175,8 +194,24 @@ export function phaseIdOf(data: AnimData, stepIndex: number): string {
   return `step-${stepIndex + 1}`;
 }
 
-function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; editable: boolean }) {
+function StepTimeline({
+  iframeRef,
+  data,
+  editable,
+  branch,
+}: Props & {
+  data: AnimData;
+  editable: boolean;
+  /** The branch state whose own timeline is open, or null on the default path. In branch
+   *  mode `data` is a ONE-STEP projection (blocks/timelineLens.ts), so the affordances that
+   *  only mean something on the ordered walk stand down: there is no Play/Next/Stop cue to
+   *  give it, no hold before an Out, no step to add or delete beside it, and `reveals` /
+   *  `hides` are invalid on an inline timeline by the shape gate. */
+  branch: { id: string; name: string } | null;
+}) {
   const template = useTemplateStore((s) => s.template);
+  const setTimelineTarget = useTemplateStore((s) => s.setTimelineTarget);
+  const timelineTarget = useTemplateStore((s) => s.timelineTarget);
   const sendScrub = useTemplateStore((s) => s.sendScrub);
   const sendControl = useTemplateStore((s) => s.sendControl);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
@@ -205,7 +240,9 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
     const out: { step: AnimData['steps'][number]; i: number; isOut: boolean; x: number; w: number; holdX: number | null }[] = [];
     let x = 0;
     for (let i = 0; i < data.steps.length; i++) {
-      const isOut = i === data.steps.length - 1;
+      // A branch's ONE clip is not the walk's exit, whatever its index says: no Out, and so
+      // no hold before one (the hold is the SPX `out` setting, a property of the path).
+      const isOut = !branch && i === data.steps.length - 1;
       if (isOut) x += holdW; // the hold sits just before Out
       const w =
         clipDrag && clipDrag.i === i ? clipDrag.w : Math.max(56, stepSeconds(data, i) * pxPerSec);
@@ -213,7 +250,7 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
       x += w;
     }
     return out;
-  }, [data, pxPerSec, holdW, clipDrag]);
+  }, [data, pxPerSec, holdW, clipDrag, branch]);
   const canvasW = segs.length ? segs[segs.length - 1].x + segs[segs.length - 1].w : 0;
   // Live refs for the rAF playhead tick (its effect deps deliberately exclude geometry).
   const segsRef = useRef(segs);
@@ -309,15 +346,27 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
     setHead(place);
     setPlayhead(place); // the Inspector stamps keyframes at the parked playhead
     setScrubbing(true);
-    sendScrub(phaseIdOf(data, place.step), place.t);
+    // The preview's scrub protocol addresses the WALK's phases ('in' / 'out' / 'step-N'), and
+    // a branch state is on none of them. Clicking the state already snapped the preview onto
+    // it, which is the right resting pose, so the playhead here parks for the Inspector's
+    // keyframes rather than driving playback. (Live scrubbing inside a branch needs the
+    // runtime to address a state's timeline — a separate piece of work.)
+    if (!branch) sendScrub(phaseIdOf(data, place.step), place.t);
     const seg = segs[place.step];
     if (seg) followScroll(seg.x + Math.min(place.t, stepSeconds(data, place.step)) * pxPerSec);
   };
 
   /** ONE undoable apply per edit, then re-park the preview at the playhead once the
    *  debounced rebuild settles. Structural edits (duplicate/delete/add a step) change the
-   *  Continue count, so the SPX `steps` setting stays derived — same invariant as always. */
-  const applyData = (next: AnimData) => {
+   *  Continue count, so the SPX `steps` setting stays derived — same invariant as always.
+   *
+   *  In BRANCH mode `next` is the one-step projection: the lens folds it back into the state
+   *  it came from, so every animEdit mutator above keeps addressing `steps[0]` and none of
+   *  them had to learn a second address. */
+  const applyData = (projected: AnimData) => {
+    const doc = parseAnimData(template.js);
+    const next = doc ? lensWrite(doc, timelineTarget, projected) : projected;
+    if (!next) return;
     const js = writeAnimData(template.js, next);
     if (!js || js === template.js) return;
     const steps = String(spxSteps(next));
@@ -1088,6 +1137,10 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
   const entryOf = (seg: (typeof segs)[number]) => (walkGroup ? walkEntry(walkGroup, seg.i) : null);
 
   const cueOf = (seg: (typeof segs)[number]) => {
+    // A branch's timeline is not on the walk, so it has no Play/Next/Stop cue to wear — and
+    // the bar above already names it. The clip keeps its ▤/◇ kind badge, which is the part
+    // that still says something.
+    if (branch) return '';
     if (seg.i === 0) return '▶';
     const entry = entryOf(seg);
     if (entry?.trigger === 'timer') return '⏱';
@@ -1096,6 +1149,7 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
 
   /** What the clip's tooltip says about when it plays — the same answer the States tab gives. */
   const playsOn = (seg: (typeof segs)[number]) => {
+    if (branch) return `Plays when the graphic enters “${branch.name}”`;
     if (seg.i === 0) return 'Plays on ▶ Play';
     const entry = entryOf(seg);
     if (!entry) return seg.isOut ? 'Plays on ■ Stop' : `Plays on press ${seg.i} of » Next`;
@@ -1115,6 +1169,25 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
       // Working in the timeline hands Space back to Play; a press on the stage takes it again.
       onPointerDownCapture={() => useTemplateStore.getState().setActiveSurface('timeline')}
     >
+      {branch && (
+        // WHICH timeline is open. Without this the strip looks like the graphic's own
+        // sequence with the steps mysteriously gone.
+        <div className="tlv2-branch-bar" data-testid="tlv2-branch-bar">
+          <button
+            type="button"
+            className="tlv2-branch-back"
+            onClick={() => setTimelineTarget(PATH_TARGET)}
+            title="Back to the graphic's own sequence (the default path)"
+            data-testid="tlv2-branch-back"
+          >
+            ‹ Sequence
+          </button>
+          <span className="tlv2-branch-name">
+            ◇ {branch.name}
+          </span>
+          <span className="tlv2-branch-note">a branch state’s own timeline</span>
+        </div>
+      )}
       <div className="tlv2-body">
         {/* Left: layer names — the shared-selection handles, same as the classic strip.
             A ▸ caret expands a layer into its property sub-rows. */}
@@ -1569,7 +1642,7 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
           >
             +
           </button>
-          {editable && (
+          {editable && !branch && (
             <button
               className="timeline-zoom-btn tlv2-add-step"
               onClick={() => {
@@ -1622,17 +1695,21 @@ function StepTimeline({ iframeRef, data, editable }: Props & { data: AnimData; e
             />
           ) : (
             <>
-              <button
-                className="tlv2-menu-item"
-                data-testid="tlv2-menu-duplicate"
-                onClick={() => {
-                  const next = duplicateStep(data, menu.step);
-                  setMenu(null);
-                  if (next) applyData(next);
-                }}
-              >
-                Duplicate step
-              </button>
+              {/* Duplicating means "another step beside this one", which only exists on the
+                  path — a branch state has exactly one timeline, its own. */}
+              {!branch && (
+                <button
+                  className="tlv2-menu-item"
+                  data-testid="tlv2-menu-duplicate"
+                  onClick={() => {
+                    const next = duplicateStep(data, menu.step);
+                    setMenu(null);
+                    if (next) applyData(next);
+                  }}
+                >
+                  Duplicate step
+                </button>
+              )}
               <button
                 className="tlv2-menu-item"
                 data-testid="tlv2-menu-rename"

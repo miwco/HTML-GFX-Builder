@@ -11,7 +11,15 @@
 // the caller's one undoable apply. Nothing changes behaviourally at materialization: the
 // persisted machine is byte-for-byte the one the runtime was already deriving.
 
-import { isAnimData, TRANSITION_STYLES, type AnimData, type AnimGroup, type AnimState, type TriggerType } from './animData';
+import {
+  isAnimData,
+  TRANSITION_STYLES,
+  type AnimData,
+  type AnimGroup,
+  type AnimState,
+  type AnimStep,
+  type TriggerType,
+} from './animData';
 import { deriveMachine, freshStateId, validateMachine } from './animMachine';
 
 /** Deep clone — AnimData is strict JSON by contract, so this is exact. */
@@ -174,6 +182,34 @@ export function addState(data: AnimData, groupId: string, name: string, at?: [nu
   const state: AnimState = { id: freshStateId(group, trimmed), name: trimmed };
   if (at) state.at = at;
   group.states.push(state);
+  return gated(next);
+}
+
+/**
+ * Give an OFF-PATH state its own inline timeline, or take it away (`step` null).
+ *
+ * This is what makes a branch able to LOOK different from the state before it. Without one a
+ * branch is pose-only, and a pose's look is composed by replaying the route to it — so every
+ * branch a user could author was, by construction, a copy of its predecessor.
+ *
+ * Refused on a default-path state: a waypoint's timeline is `steps[i]` by the positional
+ * binding, and the shape gate rejects a path state carrying one. `reveals`/`hides` are the
+ * ordered walk's mechanics and are invalid here too — blocks/timelineLens.ts strips them on
+ * the way in, and the gate below is the proof.
+ */
+export function setStateTimeline(
+  data: AnimData,
+  groupId: string,
+  stateId: string,
+  step: AnimStep | null,
+): AnimData | null {
+  const next = withExplicitMachine(data);
+  const group = groupById(next, groupId);
+  if (!group || group.defaultPath?.includes(stateId)) return null;
+  const state = group.states.find((s) => s.id === stateId);
+  if (!state) return null;
+  if (step) state.timeline = step;
+  else delete state.timeline;
   return gated(next);
 }
 

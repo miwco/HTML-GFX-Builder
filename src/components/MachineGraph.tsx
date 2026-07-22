@@ -36,8 +36,10 @@ import {
   setTransitionStyle,
   setTransitionStyleDuration,
   setTransitionStyleEase,
+  setStateTimeline,
   setTransitionTrigger,
 } from '../blocks/machineEdit';
+import { emptyStateTimeline } from '../blocks/timelineLens';
 import { writeAnimData } from '../templates/shared/animRuntime';
 import type { SpxWindow } from './PlayoutSimulator';
 
@@ -361,6 +363,8 @@ interface Props {
   data: AnimData;
   /** Open the step timeline parked at a default-path state's step (the dock swaps surface). */
   onOpenStep: (stepIndex: number) => void;
+  /** Open a BRANCH state's own inline timeline — the same door, the other kind of state. */
+  onOpenStateTimeline: (groupId: string, stateId: string) => void;
 }
 
 type Selection =
@@ -373,7 +377,7 @@ type Selection =
  *  an authored arrow to inspect and edit the transition (trigger, event, timer delay). A
  *  DERIVED machine is read-only: its graph is a description of the steps, and editing it
  *  first materializes an explicit machine (a later step of the phase). */
-export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
+export default function MachineGraph({ iframeRef, data, onOpenStep, onOpenStateTimeline }: Props) {
   const template = useTemplateStore((s) => s.template);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
   const sendSnap = useTemplateStore((s) => s.sendSnap);
@@ -865,6 +869,7 @@ export default function MachineGraph({ iframeRef, data, onOpenStep }: Props) {
           box={selectedBox}
           data={data}
           onOpenStep={onOpenStep}
+          onOpenStateTimeline={onOpenStateTimeline}
           applyData={applyData}
           onDeleteWaypoint={deleteWaypoint}
           onDeleted={() => setSel(null)}
@@ -922,12 +927,14 @@ function StateCard({
   box,
   data,
   onOpenStep,
+  onOpenStateTimeline,
   applyData,
   onDeleteWaypoint,
   onDeleted,
 }: {
   box: StateBox;
   data: AnimData;
+  onOpenStateTimeline: (groupId: string, stateId: string) => void;
   onOpenStep: (stepIndex: number) => void;
   applyData: (next: AnimData | null) => boolean;
   /** Delete a default-path waypoint (its bound step) — the graph's Delete on the spine. */
@@ -972,6 +979,34 @@ function StateCard({
       {box.initial && <div className="mg-card-row">the rest state (off air, and after reset)</div>}
       {box.pathIndex !== null && (
         <button type="button" className="mg-card-action" onClick={() => onOpenStep(box.pathIndex!)} data-testid="mg-open-step">
+          ≡ Open its timeline
+        </button>
+      )}
+      {/* A BRANCH state's own timeline — the thing that lets it look different from the state
+          before it. Attaching one is an explicit act: a pose-only state is a legitimate thing
+          (Off, a hold), so `addState` keeps making one and this is how it grows content. */}
+      {box.pathIndex !== null || box.initial ? null : box.poseOnly ? (
+        <button
+          type="button"
+          className="mg-card-action"
+          onClick={() => {
+            const step = emptyStateTimeline(box.name);
+            if (applyData(setStateTimeline(data, box.groupId, box.id, step))) {
+              onOpenStateTimeline(box.groupId, box.id);
+            }
+          }}
+          title="Give this branch its own timeline, then open it. Until it has one the state holds whatever look it arrives with — which is why a branch could only ever look like the state before it."
+          data-testid="mg-add-state-timeline"
+        >
+          + Add a timeline
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="mg-card-action"
+          onClick={() => onOpenStateTimeline(box.groupId, box.id)}
+          data-testid="mg-open-state-timeline"
+        >
           ≡ Open its timeline
         </button>
       )}

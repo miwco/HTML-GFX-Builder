@@ -1916,6 +1916,29 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   border-top: none;
 }
 .timeline-dock-toggle:hover { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
+/* WHICH timeline is open. Shown only for a branch state's own timeline — without it the strip
+   reads as the graphic's own sequence with its steps mysteriously missing. */
+.tlv2-branch-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.tlv2-branch-back {
+  font-size: 11px;
+  padding: 2px 8px;
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.tlv2-branch-back:hover { color: var(--amber); border-color: rgba(246, 166, 35, 0.4); }
+.tlv2-branch-name { font-size: 12.5px; color: var(--text); }
+.tlv2-branch-name::first-letter { color: var(--amber); }
+.tlv2-branch-note { font-size: 10.5px; letter-spacing: 0.05em; color: var(--text-dim); }
+
 .tlv2-body { display: flex; align-items: stretch; gap: 8px; margin-top: 2px; }
 /* The v2 editing scale: wider labels + larger type than the classic strip — this is the
    primary motion surface and its targets earn real estate (the classic strip keeps its

@@ -257,6 +257,17 @@ The machine GRAPH surface, toggling with the step timeline in the bottom dock (R
   state that does nothing AT ALL on entry: it holds the look it arrives with. The graph boxes,
   the state card, and the step clips all badge with the same classifier, so the two levels stay
   visually distinct everywhere without a second stored model.
+- **A branch state can have its own timeline, and the editor can write it** (`machineEdit.ts
+  setStateTimeline`, surfaced as the state card's "+ Add a timeline" / "Open its timeline").
+  The step timeline and the Inspector reach it through the TIMELINE LENS
+  (`blocks/timelineLens.ts` + store `timelineTarget`): a branch target projects the state's
+  timeline as a ONE-STEP AnimData, so every keyframe mutator keeps addressing `steps[i]` and
+  none of them learned a second address; the write folds it back, stripping the `reveals` /
+  `hides` the shape gate forbids there. In that mode the surface stands down the affordances
+  that only exist on the ordered walk (add/duplicate a step, the hold, the Play/Next/Stop
+  cue). KNOWN LIMIT: the preview's scrub protocol addresses `in` / `out` / `step-N`, so there
+  is no phase to scrub inside a branch - clicking the state snaps the preview there and the
+  playhead parks for the Inspector rather than driving playback.
 - **Break fearlessly:** the topbar ↺ Reset restores the create-time `baseline` snapshot.
 
 Pinned by `e2e/machine-graph.spec.ts` (the goals doc's acceptance walk, the styled-change pose
