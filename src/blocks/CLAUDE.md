@@ -17,7 +17,15 @@ applied to the element) and **GSAP** (tween injected into `play()/stop()`).
 
 ## edit.ts
 
-Field/definition editing helpers: nextFieldId, addFieldToDefinition, setFieldDefault, …
+Field/definition editing helpers: nextFieldId, addFieldToDefinition, setFieldDefault, … plus
+`addCatalogLine` - the Data panel's add-field on a STANDARD-CONTRACT catalog template.
+Code-derived gate (never category): the `{p}-mask` + `{p}-name|-title|-extra` line idiom; the
+new line is CLONED from the last one's exact markup (id/class/text swapped), classed by the
+assembler's lineClassFor ladder with a fallback to the last line's class when the design
+ships no rule for the canonical one. Fixed contracts (scoreboard cells, quiz rows) and
+data-driven categories (hidden textarea sources) fail the gate and keep the definition-only
+add - a field no element answers, which on a catalog line template was the silent on-air
+no-op this exists to end.
 
 ## assetOps.ts - the Assets panel's transforms
 

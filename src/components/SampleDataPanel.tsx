@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { type Ftype, type SpxField } from '../model/types';
 import { fieldDescriptors } from '../control/controlModel';
 import SpxFieldRow from './fields/SpxFieldRow';
-import { addFieldToDefinition, nextFieldId } from '../blocks/edit';
+import { addCatalogLine, addFieldToDefinition, nextFieldId } from '../blocks/edit';
 import { addPlacedImageSlot, addPlacedLine, designBoxInfo } from '../blocks/designLayout';
 import { useTemplateStore } from '../store/templateStore';
 
@@ -44,17 +44,20 @@ export default function SampleDataPanel() {
 
   // Add a field. On a placed-design template a single-line field becomes a REAL placed line
   // and an image field a REAL placed slot — element + placement rule + DataField in one
-  // undoable apply (blocks/designLayout.ts), then the new layer is selected so the canvas and
-  // Inspector pick it up straight away. Everything else appends to the SPX definition only
-  // (the editor highlights the new entry) — the field is definition-only until it's wired to
-  // an element; AI modify does that in one prompt.
+  // undoable apply (blocks/designLayout.ts); on a standard-contract CATALOG template a
+  // single-line field lands as a real line in the assembler's own mask idiom
+  // (blocks/edit.ts addCatalogLine) — both code-derived gates, and in both cases the new
+  // layer is selected so the canvas and Inspector pick it up straight away. Everything else
+  // appends to the SPX definition only (the editor highlights the new entry) — the field is
+  // definition-only until it's wired to an element; AI modify does that in one prompt.
   const addField = () => {
     const title = newTitle.trim() || 'New field';
     if (newType === 'textfield' || newType === 'number' || newType === 'filelist') {
       const added =
         newType === 'filelist'
           ? addPlacedImageSlot(template, { title })
-          : addPlacedLine(template, { title, ftype: newType });
+          : (addPlacedLine(template, { title, ftype: newType }) ??
+            addCatalogLine(template, { title, ftype: newType }));
       if (added) {
         applyTemplate(added.template);
         setSelectedPart(`#${added.fieldId}`); // the new layer — selectable, draggable, animatable

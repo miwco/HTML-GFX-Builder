@@ -52,21 +52,56 @@ test('export: validation shows inline and gates the download on a broken templat
 });
 
 
-test('data: add-field appends to the SPX definition and highlights the HTML', async ({ page }) => {
+test('data: add-field lands as a REAL line on a catalog template, in the assembler\'s own idiom', async ({ page }) => {
   await createHairline(page);
   await page.getByTestId('dock-tab-data').click();
   await page.getByPlaceholder(/Label the operator sees/).fill('Sponsor');
-  await page.getByRole('button', { name: '+ Add' }).click();
+  await awaitPreviewRebuild(page, () => page.getByRole('button', { name: '+ Add' }).click());
   // The field landed in the definition (f2 after the two lines)…
-  await expect(page.locator('.field-row', { hasText: 'Sponsor' })).toBeVisible();
   const html = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     return useTemplateStore.getState().template.html;
   });
   expect(html).toContain('"title": "Sponsor"');
+  // …and — the part the definition-only add used to skip — as a REAL element in the
+  // standard line idiom, so update() has somewhere to write. It renders in the preview and
+  // arrives selected, like any wizard-made line (that selection reveals the Inspector, which
+  // is why the Data panel is re-opened before its row is asserted).
+  expect(html).toMatch(/<span id="f2" class="lower-third-[a-z]+">Sponsor<\/span>/);
+  await expect(frame(page).locator('#f2')).toHaveText('Sponsor');
+  const selected = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    return useTemplateStore.getState().selectedPart;
+  });
+  expect(selected).toBe('#f2');
+  await page.getByTestId('dock-tab-data').click();
+  await expect(page.locator('.field-row', { hasText: 'Sponsor' })).toBeVisible();
   // …the editor switched to HTML and highlighted the change.
   await expect(page.locator('.tabs .tab.active')).toHaveText('HTML');
   await expect(page.locator('.editor-host .changed-line').first()).toBeVisible();
+});
+
+test('data: the catalog-line add is gated on the standard line SHAPE, never the category', async ({ page }) => {
+  await page.goto('/app');
+  await page.keyboard.press('Escape');
+  const result = await page.evaluate(async () => {
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { addCatalogLine } = await import('/src/blocks/edit.ts');
+    const tryAdd = (id: string) =>
+      addCatalogLine(variantById(id)!.create({}), { title: 'Extra', ftype: 'textfield' }) !== null;
+    return {
+      lowerThird: tryAdd('lt01'),
+      infoCard: tryAdd('card01'),
+      // Fixed contracts and data-driven categories fail the shape gate and keep the
+      // definition-only fallback: a scoreboard's cells are a grid ({p}-team / {p}-score,
+      // not the line ladder), a quiz's rows are their own shape, a ticker's lines live in
+      // one hidden textarea source.
+      scoreboard: tryAdd('sb01'),
+      quiz: tryAdd('qz01'),
+      ticker: tryAdd('tk01'),
+    };
+  });
+  expect(result).toEqual({ lowerThird: true, infoCard: true, scoreboard: false, quiz: false, ticker: false });
 });
 
 test('wizard: direction control mixes a different exit preset at create', async ({ page }) => {

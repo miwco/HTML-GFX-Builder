@@ -396,8 +396,11 @@ e2e/layout.spec.ts.
   a real input value like a countdown's duration, so it must be testable here) + add-field. On a
   placed-design template (designBoxInfo, code-derived) a text/number add goes through
   blocks/designLayout.ts addPlacedLine and an Image add through addPlacedImageSlot - a REAL
-  placed field on the artwork, selected on arrival so the Inspector reveals; long text (and
-  off-shape templates) keep the definition-only add.
+  placed field on the artwork; on a standard-contract CATALOG template a text/number add goes
+  through blocks/edit.ts addCatalogLine - a real line in the assembler's own mask idiom, right
+  after the last one. Both gates are code-derived, and both select the new layer on arrival so
+  the Inspector reveals. Long text, images off-design, and off-shape templates (fixed
+  contracts, data-driven categories) keep the definition-only add.
 - **ControlPanel** - operator view from the control/ engine (the same shared field rows, `live`
   on, hidden fields skipped as SPX skips them); live-drives the preview via store.sendControl ->
   simulator; renders the state machine's EVENT BUTTONS (controlModel eventButtons - labels/

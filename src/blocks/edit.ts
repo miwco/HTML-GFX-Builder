@@ -2,6 +2,7 @@
 // Blocks return readable, well-commented code so users learn from the result.
 
 import { replaceDefinitionInHtml } from '../model/spxDefinition';
+import { lineClassFor } from '../templates/shared/standard';
 import type { SpxField, SpxTemplate, TemplateLayer } from '../model/types';
 
 /** Next free field id (f0, f1, f2...) given the current fields. */
@@ -42,6 +43,66 @@ export function addFieldToDefinition(template: SpxTemplate, field: SpxField): Sp
 /** Minimal HTML text escaping for content written into an element's body. */
 function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** One catalog-line add: the patched template plus the minted field id (the caller selects
+ *  the new layer with it). */
+export interface CatalogLineAdd {
+  template: SpxTemplate;
+  fieldId: string;
+}
+
+/**
+ * The Data panel's add-field on a CATALOG template. Detected from the CODE, never the
+ * category: the standard contract's line idiom is
+ * `<div class="{p}-mask"><span id="fN" class="{p}-name|-title|-extra">…</span></div>`, and a
+ * template carrying it gets a REAL line in exactly that shape, right after the last one — so
+ * update() has an element to write into and the canvas, timeline and Inspector pick the new
+ * layer up like any wizard-made line (the definition-only add used to leave a field no
+ * element answered, a silent on-air no-op).
+ *
+ * The class follows the assembler's own ladder (lineClassFor); when the design ships no rule
+ * for that class — a two-line design gaining its first `-extra` — the new line borrows the
+ * LAST line's class so it is never unstyled. The span class must speak the ladder's
+ * vocabulary, which is what keeps fixed contracts out: a scoreboard's cells share the mask
+ * wrapper but are `{p}-team`/`{p}-score`, a quiz's rows are their own shape, and data-driven
+ * categories (tickers, credits) keep their hidden textarea sources. All of those return null
+ * here and the caller falls back to the definition-only add.
+ */
+export function addCatalogLine(
+  template: SpxTemplate,
+  opts: { title: string; ftype: 'textfield' | 'number' },
+): CatalogLineAdd | null {
+  // Designs lay the same idiom out one-per-line or with the span on its own line — the
+  // match tolerates both, and the NEW line is cloned from the last one's exact markup, so
+  // it lands in whichever layout the file already speaks.
+  const lineRe =
+    /([ \t]*)<div class="([a-z0-9-]+)-mask">\s*<span id="f\d+" class="(\2-(?:name|title|extra))">[^<]*<\/span>\s*<\/div>/g;
+  const matches = [...template.html.matchAll(lineRe)];
+  if (matches.length === 0) return null;
+  const last = matches[matches.length - 1];
+  const prefix = last[2];
+  // One graphic per template — every line mask must agree on the prefix, or the shape is
+  // not the one this transform knows.
+  if (matches.some((m) => m[2] !== prefix)) return null;
+  const indent = last[1];
+  const fieldId = nextFieldId(template.fields);
+  const canonical = lineClassFor(prefix, matches.length);
+  const cls = new RegExp(`\\.${escapeRe(canonical)}\\s*[,{]`).test(template.css) ? canonical : last[3];
+  const sample = opts.ftype === 'number' ? '0' : opts.title;
+  // `--` would close the HTML comment early; the definition (JSON) keeps the exact title.
+  const commentTitle = opts.title.replace(/--/g, '-');
+  const insertAt = last.index! + last[0].length;
+  const line = last[0]
+    .replace(/id="f\d+"/, `id="${fieldId}"`)
+    .replace(/(<span\b[^>]*class=")[^"]*(")/, `$1${cls}$2`)
+    .replace(/>[^<]*(<\/span>)/, `>${escapeHtml(sample)}$1`);
+  const snippet =
+    `\n${indent}<!-- ${commentTitle} (${fieldId}) — SPX writes this field's value straight into the element. -->` +
+    `\n${line}`;
+  const html = template.html.slice(0, insertAt) + snippet + template.html.slice(insertAt);
+  const field: SpxField = { field: fieldId, ftype: opts.ftype, title: opts.title, value: sample };
+  return { template: addFieldToDefinition({ ...template, html }, field), fieldId };
 }
 
 /**
