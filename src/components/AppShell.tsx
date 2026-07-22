@@ -330,7 +330,7 @@ export default function AppShell() {
         </button>
         <span className="divider-dot" aria-hidden="true">·</span>
         <span className="tpl-name">{template.name}</span>
-        <span className="mono muted" style={{ fontSize: 11, marginLeft: 6 }}>
+        <span className="topbar-meta mono muted">
           {template.resolution.width}×{template.resolution.height} · {template.fps}&thinsp;fps
         </span>
         <SaveControls />
@@ -366,7 +366,7 @@ export default function AppShell() {
           </button>
         )}
         <button
-          className={resetArmed ? 'reset-armed' : ''}
+          className={resetArmed ? 'reset-btn reset-armed' : 'reset-btn'}
           onClick={() => {
             if (resetArmed) {
               if (resetTimer.current) clearTimeout(resetTimer.current);
@@ -387,7 +387,7 @@ export default function AppShell() {
           data-testid="reset-project"
           title={resetArmed ? 'Click again to restore the original — undoable' : 'Restore this graphic to how it was first created — undoable'}
         >
-          {resetArmed ? '↺ Confirm reset?' : '↺ Reset'}
+          <span>{resetArmed ? '↺ Confirm reset?' : '↺ Reset'}</span>
         </button>
         <button
           onClick={() => useSaveUi.getState().requestSwitch(() => navigate({ view: 'new' }))}

@@ -125,7 +125,20 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
   flex: 0 0 auto;
 }
 .topbar .brand { display: inline-flex; align-items: center; }
-.topbar .tpl-name { color: var(--text-dim); font-size: 13px; }
+/* One row, always (>=1100px): no control shrinks or wraps mid-label — only the project name
+   gives way, ellipsizing. The spacer keeps its flex:1 (higher specificity below). */
+.topbar > * { flex: 0 0 auto; }
+.topbar button { white-space: nowrap; }
+.topbar .tpl-name {
+  color: var(--text-dim);
+  font-size: 13px;
+  flex: 0 1 auto;
+  min-width: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar .topbar-meta { font-size: 11px; margin-left: 6px; white-space: nowrap; }
 .topbar .divider-dot { color: #3d4756; margin: 0 -2px; user-select: none; }
 .topbar .spacer { flex: 1; }
 /* Armed Reset — the amber on-air accent signals the pending confirm (Brand Manual §5). */
@@ -133,6 +146,22 @@ label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 
   color: var(--amber);
   border-color: rgba(246, 166, 35, 0.55);
   background: rgba(246, 166, 35, 0.12);
+}
+/* Reset reserves its armed "Confirm reset?" width up front (a hidden CSS sizer under the
+   label), so arming never reflows the bar and the confirm press lands on unmoved UI. */
+.reset-btn { display: inline-grid; }
+.reset-btn > span,
+.reset-btn::after { grid-area: 1 / 1; justify-self: center; white-space: nowrap; }
+.reset-btn::after { content: '↺ Confirm reset?'; visibility: hidden; }
+/* Laptop widths: progressively tighter chrome keeps the single row down to 1100px. */
+@media (max-width: 1520px) {
+  .topbar { gap: 8px; }
+}
+@media (max-width: 1300px) {
+  .topbar { gap: 6px; }
+  .topbar .topbar-meta { display: none; }
+  .topbar button { padding: 6px 9px; }
+  .topbar button.brand-home { padding: 3px 4px; }
 }
 
 /* ---------- Brand mark + lockup (Brand Manual §2) ---------- */

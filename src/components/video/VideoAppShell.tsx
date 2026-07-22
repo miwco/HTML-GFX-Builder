@@ -164,7 +164,7 @@ export default function VideoAppShell() {
         </span>
         <span className="divider-dot" aria-hidden="true">·</span>
         <span className="tpl-name">{project.name}</span>
-        <span className="mono muted" style={{ fontSize: 11, marginLeft: 6 }}>
+        <span className="topbar-meta mono muted">
           {project.width}×{project.height} · {project.fps}&thinsp;fps ·{' '}
           {(project.durationInFrames / project.fps).toFixed(1)}&thinsp;s
         </span>
