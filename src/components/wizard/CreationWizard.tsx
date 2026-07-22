@@ -223,7 +223,9 @@ export default function CreationWizard() {
         pressedOnBackdrop.current = false;
       }}
     >
-      <div className="wz-modal">
+      {/* `.wz-modal` is shared styling — the save dialogs wear it too — so the wizard carries
+          its own test id for anything that must name THIS dialog and not one of those. */}
+      <div className="wz-modal" data-testid="creation-wizard">
         {/* Header: title + step dots */}
         <div className="wz-header">
           <div className="wz-title">

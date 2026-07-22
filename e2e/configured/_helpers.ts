@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { startNewProject } from '../_create';
 
 // Shared setup for the configured-mode (authenticated) community specs. Credentials come from env so
 // the public repo carries no secrets; `haveCreds` gates the whole suite off when they're unset.
@@ -27,8 +28,7 @@ export async function signIn(page: Page): Promise<void> {
   // The dialog closes itself on session; the account appears in the topbar.
   await expect(page.locator('.auth-status')).toBeVisible({ timeout: 20_000 });
   // Restore the state downstream helpers expect (wizard open, as on a fresh load).
-  await page.getByRole('button', { name: '+ New project' }).click();
-  await expect(page.locator('.wz-modal')).toBeVisible();
+  await startNewProject(page);
 }
 
 /** Create a project through the wizard (which opens on load). */

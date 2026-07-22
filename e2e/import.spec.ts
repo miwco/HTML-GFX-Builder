@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { startNewProject } from './_create';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -96,7 +97,7 @@ test('import round-trip: an exported Starter zip re-imports as the same code', a
   await JSZip.loadAsync(zipBuffer); // sanity: it is a real zip
 
   // Re-import the zip through the wizard (inside "Create with AI", no AI involved).
-  await page.getByRole('button', { name: '+ New project' }).click();
+  await startNewProject(page);
   await page.locator('[data-entry="ai"]').click();
   await page.locator('.wz-drop input[type="file"]').setInputFiles({
     name: 'hairline_spx.zip',

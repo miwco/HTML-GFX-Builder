@@ -58,11 +58,11 @@ test('import graphic: the wizard is a setup flow — create lands in the editor,
   await expect(page.locator('.wz-step')).toContainText('Frame-sized');
   await expect(page.locator('.wz-side')).toBeVisible();
 
-  // Three steps — Design, then the optional Prepare (erase baked-in text, scaling mode) —
-  // and Create is available already on the Design step: the FAST PATH for a design that
-  // needs no preparation. There is still no wizard field, style, or animation stage
-  // (the editor owns all of that).
-  await expect(page.locator('.wz-dots .wz-dot')).toHaveCount(3);
+  // Five rail stops — Start, Design, then the optional Prepare (erase baked-in text,
+  // scaling mode), Text (place the fields) and Animation — with Create available already
+  // on the Design step: the FAST PATH for a design that needs no preparation, which is
+  // what the rest of this test walks.
+  await expect(page.locator('.wz-dots .wz-dot')).toHaveCount(5);
   await expect(page.getByRole('button', { name: 'Next ›' })).toHaveCount(1);
 
   // Creating HERE (never visiting Prepare) must yield exactly the bare fixed-mode

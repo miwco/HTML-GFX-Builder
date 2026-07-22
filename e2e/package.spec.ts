@@ -1,5 +1,6 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { startNewProject } from './_create';
 
 // The broadcast-package flows: custom colors, imported fonts, the project brand,
 // and the first-wave categories (info cards, end credits, tickers).
@@ -83,7 +84,7 @@ test('project brand: match toggle carries the look to another variant', async ({
   await create(page);
 
   // Second creation, different family: the brand accent applies via the match toggle.
-  await page.getByRole('button', { name: '+ New project' }).click();
+  await startNewProject(page);
   await page.locator('[data-entry="template"]').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
   await page.locator('.wz-variant', { hasText: 'Frosted Card' }).click();
