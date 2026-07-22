@@ -24,6 +24,7 @@
 
 import { fileURLToPath } from 'node:url';
 import { primaryCheckout } from './reattach-main.mjs';
+import { pruneStalePorts } from './dev-port.mjs';
 import {
   git,
   normalize,
@@ -181,7 +182,7 @@ export function assess(cwd) {
 }
 
 function apply(plan, cwd) {
-  const done = { removedWorktrees: [], deletedBranches: [], pruned: false, sweep: null, errors: [] };
+  const done = { removedWorktrees: [], deletedBranches: [], pruned: false, sweep: null, releasedPorts: [], errors: [] };
 
   for (const w of plan.worktrees.filter((x) => x.action === 'remove')) {
     const res = git(['worktree', 'remove', w.path], plan.primaryRoot); // never --force
@@ -212,6 +213,15 @@ function apply(plan, cwd) {
     registeredRoots: worktreeRoots(plan.primaryRoot),
     protect: [cwd],
   });
+
+  // A removed worktree cannot hand its dev-port reservation back itself, so give it back here -
+  // otherwise the port stays held until some later allocation happens to land on it
+  // (docs/DEV_PORTS.md). Only reservations whose worktree is gone are touched.
+  try {
+    done.releasedPorts = pruneStalePorts().map((t) => t.port);
+  } catch (err) {
+    done.errors.push(`dev-port reservations: ${err.message}`);
+  }
 
   return done;
 }
@@ -281,6 +291,14 @@ function report(plan, done) {
     for (const d of nonEmpty) L.push(`  - ${d} [NON-EMPTY - manual review, not deleted]`);
   } else {
     L.push('  (swept only under --apply)');
+  }
+
+  L.push('');
+  L.push('## Dev-port reservations');
+  if (done) {
+    L.push(done.releasedPorts.length === 0 ? '  (none to release)' : `  - released ${done.releasedPorts.join(', ')}`);
+  } else {
+    L.push('  (released only under --apply)');
   }
 
   if (plan.otherMerged.length > 0) {

@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -25,6 +26,7 @@ import {
   releaseReservation,
   ticketPath,
 } from './port-registry.mjs';
+import { isPortBusy } from './port-probe.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -227,6 +229,37 @@ describe('simultaneous allocation', () => {
     const results = await Promise.all([0, 1, 2].map(() => allocateInChild({ registry, root, startAt })));
     assert.equal(new Set(results.map((r) => r.port)).size, 1, 'a worktree must not end up with two ports');
     assert.equal(listTickets(registry).length, 1);
+  });
+});
+
+describe('port probe', () => {
+  /** Listen on ONE loopback family and hand back its port. */
+  function listenOn(host) {
+    return new Promise((resolvePromise, rejectPromise) => {
+      const server = createServer();
+      server.once('error', rejectPromise);
+      server.listen(0, host, () => resolvePromise({ server, port: server.address().port }));
+    });
+  }
+
+  // Vite binds [::1] and nothing on 127.0.0.1, so a v4-only probe reported every running dev
+  // server as free - the allocator would hand out an occupied port and the e2e preflight guard
+  // would wave through the server it exists to catch.
+  for (const host of ['127.0.0.1', '::1']) {
+    it(`sees a server listening only on ${host}`, async () => {
+      const { server, port } = await listenOn(host);
+      try {
+        assert.equal(await isPortBusy(port), true);
+      } finally {
+        server.close();
+      }
+    });
+  }
+
+  it('reports a free port as free', async () => {
+    const { server, port } = await listenOn('127.0.0.1');
+    await new Promise((done) => server.close(done));
+    assert.equal(await isPortBusy(port), false);
   });
 });
 
