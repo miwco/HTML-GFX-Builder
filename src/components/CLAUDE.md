@@ -425,6 +425,16 @@ Home, both routed (src/app/router.ts) so browser Back/Forward walk between surfa
   delete), packages (create/rename/export via buildGraphicsZip/delete - deleting a package
   KEEPS its graphics as standalone), control panels, videos, brand looks (absorbed from
   PacketManager). Local-first, no auth gate - sign-in only adds sync.
+- **home/GraphicThumb** - a card's THUMBNAIL: the real graphic rendered small through
+  preview/composeDocument and parked at its settled on-air state (the PlayoutSimulator settle
+  recipe - update, buildInTimeline().progress(1, true), update again; a template with no builder
+  contract falls back to its own play(), since a card has no Play button beside it). A LIVE
+  render, deliberately not a picture stored on GraphicDoc: no persisted-format change, no
+  migration, nothing extra to sync, and it can never disagree with the template it previews.
+  The iframe mounts only when the card scrolls into view (IntersectionObserver), so a library
+  of a hundred graphics parses GSAP for the rows a user can actually see. The box is fixed-width
+  and the iframe is the template's OWN resolution scaled into it, so a non-16:9 graphic keeps
+  its shape.
 - **home/GraphicControlPage** - `#/control/<graphicId>`: the saved graphic's operator
   panel - live preview iframe + transport + machine event buttons + ENTRIES (named data
   rows: add/duplicate/rename/delete/select-active, ▶ Play with an entry, ★ make an entry

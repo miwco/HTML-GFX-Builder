@@ -137,6 +137,35 @@ test('a saved graphic\'s control panel: entries create, play with the active ent
   await expect(page.getByTestId('home-page')).toBeVisible();
 });
 
+test('a Home card shows the real graphic, parked at its settled on-air state', async ({ page }) => {
+  await createProject(page, 'Hairline');
+  await saveAs(page, 'Presenter lower third');
+
+  await page.getByTestId('open-home').click();
+  const row = page.locator('.pk-graphic', { hasText: 'Presenter lower third' });
+  await expect(row.getByTestId('graphic-thumb')).toBeVisible();
+
+  // The card is a LIVE render, not a stored picture — the template's own fields are inside it,
+  // carrying the graphic's data. A stale or blank thumbnail fails right here.
+  const thumb = row.locator('.gfx-thumb iframe').contentFrame();
+  await expect(thumb.locator('#f0')).not.toBeEmpty();
+
+  // And the entrance is parked at its END: an unsettled card would still be at opacity 0
+  // (every house entrance reveals the CSS-hidden root as its first beat).
+  await expect(async () => {
+    const opacity = await thumb.locator('#f0').evaluate((el) => getComputedStyle(el).opacity);
+    expect(Number(opacity)).toBeGreaterThan(0.9);
+  }).toPass();
+
+  // It follows the graphic rather than a snapshot: renaming leaves the same live render in place.
+  await row.getByTitle('Rename').click();
+  await page.getByTestId('rename-input').fill('Anchor lower third');
+  await page.getByTestId('rename-input').press('Enter');
+  const renamed = page.locator('.pk-graphic', { hasText: 'Anchor lower third' });
+  await expect(renamed.getByTestId('graphic-thumb')).toBeVisible();
+  await expect(renamed.locator('.gfx-thumb iframe').contentFrame().locator('#f0')).not.toBeEmpty();
+});
+
 test('video and graphics stay separate but connected: #/video, back to graphics, never trapped', async ({ page }) => {
   await createProject(page, 'Hairline');
   await page.evaluate(() => {

@@ -51,6 +51,12 @@ import AuthStatus from '../auth/AuthStatus';
 import SyncStatus from '../SyncStatus';
 import SignInDialog from '../auth/SignInDialog';
 import SaveDialogs from '../save/SaveDialogs';
+import GraphicThumb from './GraphicThumb';
+
+/** A saved graphic's thumbnail shows the data an operator last selected, when there is one. */
+function activeValues(g: GraphicDoc): Record<string, string> | undefined {
+  return g.entries.find((e) => e.id === g.activeEntryId)?.values;
+}
 
 type Section = 'recent' | 'graphics' | 'packages' | 'controls' | 'videos' | 'looks';
 
@@ -448,6 +454,7 @@ function GraphicRow({
 
   return (
     <div className="pk-graphic" data-testid={`graphic-row-${g.id}`}>
+      <GraphicThumb template={g.template} values={activeValues(g)} label={g.name} />
       {renaming ? (
         <input
           autoFocus
@@ -672,6 +679,7 @@ function PackageView({
       <div style={{ marginTop: 10 }}>
         {graphics.map((g) => (
           <div className="pk-graphic" key={g.id}>
+            <GraphicThumb template={g.template} values={activeValues(g)} label={g.name} />
             <strong>{g.name}</strong>
             <span className="muted">{g.type} · {new Date(g.updatedAt).toLocaleDateString()}</span>
             <div className="spacer" />
