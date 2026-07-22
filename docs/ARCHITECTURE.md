@@ -67,8 +67,8 @@ are wrong - fix the code, not the table.
 - `app` -> (nothing)
 - `components` -> any lower domain, **through its seam column in §2**
 
-Hard invariants (1, 3 and 4 are lint-enforced, 5 and the whole edge table are
-dependency-cruiser-enforced - §7; only 2 stays review-time):
+Hard invariants (all machine-enforced - 1-4 by eslint, 5 and the whole edge table by
+dependency-cruiser; §7):
 
 1. **`@supabase/supabase-js` is value-imported only inside `backend/`** (type-only imports of
    `SupabaseClient` are fine anywhere). All client access goes through `getSupabase()`; all
@@ -144,9 +144,11 @@ the row. Do not add rows without updating §3's justification trail.
   `npm run lint` and the build gate). Because flat-config rule options **replace** rather than
   merge when several blocks match a file, `src/` is split into disjoint regions, each carrying
   the full restriction set for its region - keep it that way when editing. The one file-level
-  exemption (`src/blocks/registry.ts`) mirrors its §6 row; delete both together. Invariants 2
-  and 5 stay review-time: they need different mechanisms (`no-restricted-globals`/syntax for the
-  purity trio, a resolver-aware tool for the model layer rule).
+  exemption (`src/blocks/registry.ts`) mirrors its §6 row; delete both together. Invariant 2 is
+  pinned by the purity-trio block in the same file: `no-restricted-globals` (DOM/environment
+  globals) plus `no-restricted-syntax` (query-suffix imports, `import.meta`) scoped to exactly
+  `render/manifest.ts`, `schedule.ts`, and `limits.ts` - different rule names than the Stage A
+  regions, so they compose instead of replacing each other's options.
 - **Stage B - wired.** `dependency-cruiser` (devDependency) runs in `npm run build` next to
   eslint (`npm run depcruise` standalone). `.dependency-cruiser.cjs` is default-deny: its
   `allowed` array IS §3's edge table, so a new cross-domain edge edits the doc and the config in
@@ -155,8 +157,8 @@ the row. Do not add rows without updating §3's justification trail.
   cycles containing an `import type` edge are tolerated - they are erased at compile time, and
   the registry/type-hub patterns in `export/`, `ai/`, and `templates/shared` depend on them.
   Scope is `src/` only: `api/`, `render-worker/`, and `player-host/` are separate programs whose
-  sanctioned imports into `src/render` live outside this graph. This subsumes invariant 5;
-  invariant 2 (the purity trio's no-DOM/`?raw`/`import.meta` rule) remains review-time.
+  sanctioned imports into `src/render` live outside this graph. This subsumes invariant 5 -
+  with the purity trio in Stage A, every §3 invariant is now machine-enforced.
 
 Until then, `scripts/e2e-affected.mjs` remains the de-facto machine-readable domain map (its
 `CORE` list is the "shared kernel" statement); keep it in step with this doc when domains move.

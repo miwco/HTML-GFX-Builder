@@ -132,6 +132,41 @@ export default tseslint.config(
     },
   },
 
+  // Invariant 2 (docs/ARCHITECTURE.md §3): the render purity trio. api/ and render-worker/
+  // compile these exact files, and src/render/CLAUDE.md declares them PURE - no DOM, no
+  // Vite-isms (?raw / ?url / ?inline suffixes), no import.meta, no wall-clock/frame timing.
+  // These rule names differ from the Stage A no-restricted-imports blocks, so they compose
+  // with them instead of replacing their options.
+  {
+    files: ['src/render/manifest.ts', 'src/render/schedule.ts', 'src/render/limits.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...['window', 'document', 'navigator', 'location', 'localStorage', 'sessionStorage',
+          'fetch', 'XMLHttpRequest', 'requestAnimationFrame', 'cancelAnimationFrame',
+          'performance'].map((name) => ({
+          name,
+          message: `The render purity trio is environment-free - '${name}' breaks the render-worker/api build (docs/ARCHITECTURE.md §3, invariant 2).`,
+        })),
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportDeclaration[source.value=/[?]/]',
+          message: 'No Vite query-suffix imports (?raw/?url/?inline) in the render purity trio - the render-worker webpack build cannot resolve them (docs/ARCHITECTURE.md §3, invariant 2).',
+        },
+        {
+          selector: 'ImportExpression[source.value=/[?]/]',
+          message: 'No Vite query-suffix imports (?raw/?url/?inline) in the render purity trio - the render-worker webpack build cannot resolve them (docs/ARCHITECTURE.md §3, invariant 2).',
+        },
+        {
+          selector: "MetaProperty[meta.name='import']",
+          message: 'No import.meta in the render purity trio - it is a bundler-specific construct the render-worker/api builds do not share (docs/ARCHITECTURE.md §3, invariant 2).',
+        },
+      ],
+    },
+  },
+
   // Node scripts (dev tooling). Browser globals too: the Playwright sweeps run code inside
   // page.evaluate callbacks, which execute in the page.
   {

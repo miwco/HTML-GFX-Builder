@@ -30,7 +30,9 @@ either kind.
 `manifest.ts`, `schedule.ts`, and `limits.ts` are PURE - no DOM, no `?raw`, no
 `import.meta`. The Remotion composition in render-worker/ imports them relatively and
 webpack-compiles them, and the api/ functions import them under Node. Vite-isms in these
-three files break the renderer build. Browser-only modules (composeRenderDocument,
+three files break the renderer build. Lint-enforced: the purity-trio block in
+eslint.config.js (docs/ARCHITECTURE.md §3, invariant 2) fails the build on DOM globals,
+query-suffix imports, and `import.meta` in these files. Browser-only modules (composeRenderDocument,
 measure, buildManifest, config) may use anything the app uses.
 
 - **manifest.ts** - RenderManifest (the versioned job contract), RENDER_FORMATS metadata,
