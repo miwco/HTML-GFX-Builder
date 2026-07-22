@@ -79,3 +79,23 @@ export async function createProject(page: Page, spec: string | CreateSpec = 'Hai
   );
   await expect(page.locator('.wz-modal')).toBeHidden();
 }
+
+/**
+ * Open the creation wizard from the topbar's "+ New project", clearing the unsaved-changes
+ * guard when it interposes.
+ *
+ * Creating REPLACES the working document, so the SPX topbar routes that button through
+ * `requestSwitch` (store/saveActions.ts) and a DIRTY project asks first - which is every
+ * project a spec just created, since a wizard create marks the fresh document unsaved. A spec
+ * whose subject is not the save flow discards, the same choice library.spec.ts makes for the
+ * other switch route; library.spec.ts owns proving that the guard appears at all. A clean
+ * project (or the video shell, which never guards) goes straight to the wizard.
+ */
+export async function startNewProject(page: Page): Promise<void> {
+  await page.getByRole('button', { name: '+ New project' }).click();
+  const guard = page.getByTestId('confirm-switch');
+  const wizard = page.getByTestId('creation-wizard');
+  await expect(guard.or(wizard)).toBeVisible();
+  if (await guard.isVisible()) await guard.getByTestId('switch-discard').click();
+  await expect(wizard).toBeVisible();
+}

@@ -712,6 +712,7 @@ function VideoList({
 function LooksSection({ looks, onChanged, onDone }: { looks: SavedLook[]; onChanged: () => void; onDone: () => void }) {
   const template = useTemplateStore((s) => s.template);
   const applyTemplate = useTemplateStore((s) => s.applyTemplate);
+  const setActiveTab = useTemplateStore((s) => s.setActiveTab);
   const [newLookName, setNewLookName] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const importInput = useRef<HTMLInputElement>(null);
@@ -770,6 +771,7 @@ function LooksSection({ looks, onChanged, onDone }: { looks: SavedLook[]; onChan
           <button
             onClick={() => {
               applyTemplate(applyLookToTemplate(template, look.brand));
+              setActiveTab('css'); // land on the retinted :root vars, highlighted like any patch
               setNote(`✓ Applied "${look.name}" to the open graphic — back in the editor now.`);
               onDone();
             }}

@@ -5,6 +5,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { expectOfflineAi } from './_video';
+import { startNewProject } from './_create';
 
 /** The player host iframe's content (Playwright reaches into sandboxed frames). */
 function player(page: Page) {
@@ -300,7 +301,7 @@ test('reload restores the project; save/reopen and the SPX switch work', async (
 
   // Explicit save, then create an SPX blank - the app switches to the SPX shell.
   await page.getByTestId('video-save').click();
-  await page.getByRole('button', { name: '+ New project' }).click();
+  await startNewProject(page);
   await page.getByRole('button', { name: 'Blank project' }).click();
   // Blank creation is ASYNC and the click does not wait for it: startBlank fires applyGenerated
   // without awaiting, and that formats the new template through Prettier - five lazy dynamic
@@ -323,7 +324,8 @@ test('reload restores the project; save/reopen and the SPX switch work', async (
 
   // Reopen the saved video from the wizard's reopen strip (the ▶-prefixed chip; the ↩
   // Continue chip for the autosaved slot also appears - both open the same project here).
-  await page.getByRole('button', { name: '+ New project' }).click();
+  // Back in the SPX shell now, holding a freshly created Blank - so this one raises the guard.
+  await startNewProject(page);
   await page.getByRole('button', { name: 'Video or animation with AI' }).click();
   await expect(page.getByTestId('video-step')).toBeVisible();
   // The chip is labelled with the project's own brief, so match the countdown example's

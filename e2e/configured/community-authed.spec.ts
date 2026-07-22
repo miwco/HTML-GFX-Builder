@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createGraphic, haveCreds, signIn, wipeMySubmissions } from './_helpers';
+import { startNewProject } from '../_create';
 
 // Authenticated community flows against the configured Supabase backend. Skips unless E2E_EMAIL /
 // E2E_PASSWORD are set (see playwright.live.config.ts). Each test cleans up the account's rows.
@@ -33,7 +34,7 @@ test.describe('community (configured / signed-in)', () => {
     await page.getByTestId('home-continue-editing').click();
 
     // Switch the editor to a DIFFERENT graphic so the import is observable.
-    await page.getByRole('button', { name: '+ New project' }).click();
+    await startNewProject(page);
     await createGraphic(page, 'Tickers', 'News Strip');
     await expect(page.locator('.topbar .tpl-name')).toHaveText('News Strip');
 
