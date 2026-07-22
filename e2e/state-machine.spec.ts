@@ -84,8 +84,13 @@ test('schema: migration on read, canonical fixed point over machines, shape reje
     const v1 = { version: 1, root: '.x', speed: 1, steps: quiz.steps.slice(0, 2) };
     const migrated = parseAnimData('var NOACG_ANIM = ' + JSON.stringify(v1) + ';');
 
-    // The canonical serializer is a FIXED POINT over machine-bearing data too.
-    const once = serializeAnimData(migrateAnimData({ ...quiz }));
+    // The canonical serializer is a FIXED POINT over machine-bearing data too. The fixed
+    // point holds over the PARSED shape: parsing normalizes (v1 migration, and injecting
+    // the materialised lifecycle play/stop edges into a machine that lacks them), so raw
+    // authored data first gains its edges — the migration-moment pattern — and is stable
+    // from then on.
+    const onceData = parseAnimData('var NOACG_ANIM = ' + JSON.stringify(migrateAnimData({ ...quiz })) + ';');
+    const once = serializeAnimData(onceData);
     const twice = serializeAnimData(parseAnimData('var NOACG_ANIM = ' + once + ';'));
 
     // Splicing machine data touches only the literal — interpreter + engine survive.

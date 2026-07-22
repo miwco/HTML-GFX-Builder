@@ -1144,7 +1144,8 @@ function StepTimeline({
     if (seg.i === 0) return '▶';
     const entry = entryOf(seg);
     if (entry?.trigger === 'timer') return '⏱';
-    return seg.isOut && !entry ? '■' : '»';
+    // The materialised stop edge IS "reached by ■ Stop" — same answer as no arrow at all.
+    return seg.isOut && (!entry || entry.trigger === 'lifecycle') ? '■' : '»';
   };
 
   /** What the clip's tooltip says about when it plays — the same answer the States tab gives. */
@@ -1152,7 +1153,9 @@ function StepTimeline({
     if (branch) return `Plays when the graphic enters “${branch.name}”`;
     if (seg.i === 0) return 'Plays on ▶ Play';
     const entry = entryOf(seg);
-    if (!entry) return seg.isOut ? 'Plays on ■ Stop' : `Plays on press ${seg.i} of » Next`;
+    if (!entry || entry.trigger === 'lifecycle') {
+      return seg.isOut ? 'Plays on ■ Stop' : `Plays on press ${seg.i} of » Next`;
+    }
     if (entry.trigger === 'timer') {
       return `Plays by itself, ${entry.after ?? 0}s after the previous step settles`;
     }

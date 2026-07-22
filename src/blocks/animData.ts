@@ -96,15 +96,20 @@ export interface AnimStep {
   layers: Record<string, AnimLayerTracks>;
 }
 
-/** How a transition fires. `data-condition` is RESERVED (parses, is never fired by the
- *  runtime) — the schema keeps the door open without building the feature. */
-export type TriggerType = 'operator' | 'timer' | 'data-condition';
+/** How a transition fires. `lifecycle` is the walk's own two edges MATERIALISED — the
+ *  entrance (`play`) and the exit (`stop`) as real, selectable, stylable arrows; they are
+ *  never dispatched as events (the built-ins fire them) and never make `next()` legal.
+ *  `data-condition` is RESERVED (parses, is never fired by the runtime) — the schema keeps
+ *  the door open without building the feature. */
+export type TriggerType = 'operator' | 'timer' | 'lifecycle' | 'data-condition';
 
 /** Built-in lifecycle events — never authorable as operator transition events. `play` resets
  *  every group to its initial state and enters the default path; `stop` is legal from EVERY
- *  state (the implicit out — an operator can always take a graphic off air). `next` is NOT
- *  reserved: on the default path it fires the walk's transitions whatever their event names,
- *  and a branch state may author its own `next` edge as the rejoin arrow. */
+ *  state (the implicit out — an operator can always take a graphic off air). They ARE the
+ *  legal `event` values of a `lifecycle` transition, which is how the entrance and the exit
+ *  carry a transition style. `next` is NOT reserved: on the default path it fires the walk's
+ *  transitions whatever their event names, and a branch state may author its own `next` edge
+ *  as the rejoin arrow. */
 export const RESERVED_EVENTS = ['play', 'stop'] as const;
 
 /** The transition-style vocabulary the interpreter's noacgStyleTimeline plays (the node
@@ -131,7 +136,9 @@ export interface AnimTransition {
   /** May equal `from` — a self-transition replays the state (a ticker's cycle beat). */
   to: string;
   trigger: TriggerType;
-  /** operator only: the event name (a bare identifier, never a reserved built-in). */
+  /** operator: the event name (a bare identifier, never a reserved built-in).
+   *  lifecycle: exactly a RESERVED_EVENTS name — 'play' on the entrance edge (the group's
+   *  initial → the first waypoint), 'stop' on the exit edge (between the last two). */
   event?: string;
   /** timer only: speed-relative seconds after the from-state's entry timeline settles. */
   after?: number;
@@ -263,7 +270,55 @@ export function parseAnimData(js: string): AnimData | null {
     return null;
   }
   if ((raw as { version?: unknown }).version === 1) raw = migrateAnimData(raw);
-  return isAnimData(raw) ? raw : null;
+  if (!isAnimData(raw)) return null;
+  if (raw.machine) ensureLifecycleEdges(raw.machine);
+  return raw;
+}
+
+/** The canonical transition order (the serializer's sort): from-state's index in `states`,
+ *  then trigger, then event, then to-state's index. Shared by serializeGroup and the
+ *  lifecycle-edge injection, so an injected edge lands exactly where serialization will
+ *  keep it. */
+function transitionComparator(group: AnimGroup): (a: AnimTransition, b: AnimTransition) => number {
+  const stateIndex = new Map(group.states.map((s, i) => [s.id, i]));
+  const order = (id: string) => stateIndex.get(id) ?? group.states.length;
+  return (a, b) =>
+    order(a.from) - order(b.from) ||
+    a.trigger.localeCompare(b.trigger) ||
+    (a.event ?? '').localeCompare(b.event ?? '') ||
+    order(a.to) - order(b.to);
+}
+
+/**
+ * NORMALIZATION, the read half of materialised lifecycle edges: give the main group its
+ * `play` and `stop` transitions when nothing else already spans those two positions — the
+ * entrance (initial → the first waypoint) and the exit (between the last two waypoints).
+ * A machine authored before the edges existed thereby shows the same selectable, stylable
+ * arrows a freshly derived one does; the first edit persists them (two added lines — the
+ * migration-moment pattern). A pair already carrying an authored arrow is left alone: the
+ * author's wiring owns it (e.g. the opt-in next-drives-out arrow into the final waypoint).
+ * Each edge is inserted at its CANONICAL SORT POSITION, so a machine the serializer wrote
+ * parses into the same order it will serialize back to — a held transition index (a card's
+ * selection) survives the apply → serialize → re-parse round trip. Idempotent.
+ */
+export function ensureLifecycleEdges(machine: AnimMachine): void {
+  const main = machine.groups[0];
+  const path = main?.defaultPath;
+  if (!main || !path || path.length < 2) return;
+  const pairs: Array<{ event: 'play' | 'stop'; from: string; to: string }> = [
+    { event: 'play', from: main.initial, to: path[0] },
+    { event: 'stop', from: path[path.length - 2], to: path[path.length - 1] },
+  ];
+  const cmp = transitionComparator(main);
+  for (const { event, from, to } of pairs) {
+    if (from === to) continue; // an initial that sits on the path has no entrance edge
+    const hasLifecycle = main.transitions.some((t) => t.trigger === 'lifecycle' && t.event === event);
+    const pairTaken = main.transitions.some((t) => t.from === from && t.to === to && t.trigger !== 'data-condition');
+    if (hasLifecycle || pairTaken) continue;
+    const edge: AnimTransition = { from, to, trigger: 'lifecycle', event };
+    const at = main.transitions.findIndex((t) => cmp(edge, t) < 0);
+    main.transitions.splice(at < 0 ? main.transitions.length : at, 0, edge);
+  }
 }
 
 /** Why a NOACG_ANIM block did not parse. The distinction matters at the export gate: an
@@ -426,11 +481,12 @@ function isMachineShape(raw: unknown, stepCount: number): raw is AnimMachine {
     if (!Array.isArray(group.transitions)) return false;
     const operatorPairs = new Set<string>();
     const timerFroms = new Set<string>();
+    const lifecycleEvents = new Set<string>();
     for (const t of group.transitions) {
       if (!t || typeof t !== 'object') return false;
       if (typeof t.from !== 'string' || !stateIds.has(t.from)) return false;
       if (typeof t.to !== 'string' || !stateIds.has(t.to)) return false;
-      if (t.trigger !== 'operator' && t.trigger !== 'timer' && t.trigger !== 'data-condition') return false;
+      if (t.trigger !== 'operator' && t.trigger !== 'timer' && t.trigger !== 'lifecycle' && t.trigger !== 'data-condition') return false;
       if (t.trigger === 'operator') {
         // The event is a bare identifier and never a reserved built-in; one (from, event)
         // pair per group, so dispatch is never ambiguous.
@@ -439,6 +495,14 @@ function isMachineShape(raw: unknown, stepCount: number): raw is AnimMachine {
         const pair = `${t.from} ${t.event}`;
         if (operatorPairs.has(pair)) return false;
         operatorPairs.add(pair);
+      } else if (t.trigger === 'lifecycle') {
+        // The walk's own two edges made explicit: main group only (the default path is
+        // theirs), the event exactly a reserved built-in, at most one edge per built-in.
+        // Their POSITION is a semantic question — validateMachine judges it, not the gate.
+        if (g !== 0) return false;
+        if (typeof t.event !== 'string' || !(RESERVED_EVENTS as readonly string[]).includes(t.event)) return false;
+        if (lifecycleEvents.has(t.event)) return false;
+        lifecycleEvents.add(t.event);
       } else if (t.event !== undefined) {
         return false;
       }
@@ -603,15 +667,7 @@ function serializeGroup(group: AnimGroup, indent: string): string[] {
     }
   });
   lines.push(`${i1}],`);
-  const stateIndex = new Map(group.states.map((s, i) => [s.id, i]));
-  const order = (id: string) => stateIndex.get(id) ?? group.states.length;
-  const trans = [...group.transitions].sort(
-    (a, b) =>
-      order(a.from) - order(b.from) ||
-      a.trigger.localeCompare(b.trigger) ||
-      (a.event ?? '').localeCompare(b.event ?? '') ||
-      order(a.to) - order(b.to)
-  );
+  const trans = [...group.transitions].sort(transitionComparator(group));
   if (trans.length === 0) {
     lines.push(`${i1}"transitions": []`);
   } else {

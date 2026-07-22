@@ -6,8 +6,10 @@ import { animDataFault, parseAnimData } from '../blocks/animData';
 import { allTimelines, validateMachine } from '../blocks/animMachine';
 import {
   dataUsesCutStyle,
+  dataUsesLifecycleStyle,
   dataUsesTransitionStyles,
   hasCutStyleRuntime,
+  hasLifecycleStyleRuntime,
   hasMachineRuntime,
   hasTransitionStyleRuntime,
 } from '../templates/shared/animRuntime';
@@ -326,6 +328,14 @@ export function validateTemplate(template: SpxTemplate, options: ValidateOptions
           rule: 'machine',
           message:
             "A transition carries the 'cut' style, but the interpreter in this template predates it — re-emit the ANIMATION region (replaceRegionWithAnimData) so the cut can play.",
+        });
+      } else if (dataUsesLifecycleStyle(data) && !hasLifecycleStyleRuntime(template.js)) {
+        // The materialised entrance/exit edges are newer still: an interpreter whose
+        // play()/stop() never consult them would silently play the classic change.
+        errors.push({
+          rule: 'machine',
+          message:
+            'The entrance or exit edge carries a style, but the interpreter in this template predates the materialised play/stop edges — re-emit the ANIMATION region (replaceRegionWithAnimData) so the styled change can play.',
         });
       }
 

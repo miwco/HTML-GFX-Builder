@@ -158,7 +158,10 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   problem: `removeTransition` refuses an edit that ADDS validation errors (deleting the only
   arrow behind a default-path edge disconnects the walk; deleting one of two parallel arrows
   stays legal). Transitions: trigger switch (minting a unique event / defaulting the delay),
-  event, timer delay, STYLE + duration + ease (TRANSITION_STYLES); structure: addTransition
+  event, timer delay, STYLE + duration + ease (TRANSITION_STYLES). A LIFECYCLE edge (the
+  materialised play/stop) takes style edits only - trigger switch and delete return null on
+  it (play and stop always exist; clearing the style is the "remove" that means something).
+  Structure: addTransition
   (port-drag), addState/deleteState (OFF-PATH only - waypoints belong to the timeline, and
   the initial state never goes), addGroup/removeGroup (main never goes), setStatePosition
   (the additive `at` field), and **setStateTimeline** - give an off-path state its own inline
@@ -182,9 +185,14 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
 - **animMachine.ts** - the machine's editor-side seam (animData owns the literal, this owns the
   GRAPH questions). `deriveMachine` builds the implicit ONE-GROUP linear machine for data with
   no `machine` key - states named after the steps, a synthesized pose-only `off`, a `next` arrow
-  along the path, and NO arrow into Out (exact v1 parity: next() no-ops when only Out remains).
-  It is derived on read and NEVER persisted, which is why the whole catalog gained dispatch /
-  snap / introspection without one template file changing. `spxSteps(data)` is THE
+  along the path, and the walk's entrance/exit MATERIALISED as `lifecycle` transitions (play
+  into the first waypoint, stop between the last two - the stylable arrows; `parseAnimData`
+  injects the same pair into explicit machines where the seat is vacant). V1 parity holds
+  because next() fires OPERATOR arrows only - the stop edge never makes a press legal.
+  `lifecyclePair`/`rehomeLifecycleEdges` are the canonical-seat rule + the re-seater the step
+  mutators call so a styled stop edge survives path edits. It is derived on read and NEVER
+  persisted, which is why the whole catalog gained dispatch / snap / introspection without one
+  template file changing. `spxSteps(data)` is THE
   `settings.steps` rule (default-path length - 1; numerically identical to the historical
   `steps.length - 1` by the positional-binding invariant) - every re-sync site calls it, so the
   rule lives once. Plus `canonicalPath` (the snap route: default-path prefix for a main-group

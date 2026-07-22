@@ -6,7 +6,15 @@
 
 import type { AnimData, AnimKeyframe, AnimLayerTracks, AnimStep } from './animData';
 import { resolveValue } from './animEval';
-import { freshStateId, isWalkEdge, mainGroup, reconnectPath, stateById, syncWaypointNames } from './animMachine';
+import {
+  freshStateId,
+  isWalkEdge,
+  mainGroup,
+  reconnectPath,
+  rehomeLifecycleEdges,
+  stateById,
+  syncWaypointNames,
+} from './animMachine';
 import { filterKeysUsed, normalizeFilterTrack, withFilterComponent } from './filterTrack';
 
 /** Two stored times match within half a serializer step. */
@@ -410,6 +418,8 @@ function insertStepAt(data: AnimData, at: number, step: AnimStep): void {
   const before = main.states.findIndex((s) => s.id === main.defaultPath![at]);
   main.states.splice(before < 0 ? main.states.length : before, 0, { id, name: step.name });
   main.defaultPath.splice(at, 0, id);
+  // Inserting before Out moves the exit pair — the stop edge (and its style) moves with it.
+  rehomeLifecycleEdges(main);
   reconnectPath(main);
 }
 
@@ -429,6 +439,10 @@ function removeStepAt(data: AnimData, at: number): AnimStep | null {
   // and every deletion would demote instead of delete.
   const branchRef = main.transitions.some((t) => (t.from === gone || t.to === gone) && !isWalkEdge(main, t));
   main.defaultPath.splice(at, 1);
+  // Re-seat the lifecycle edges BEFORE transitions touching the removed waypoint are
+  // dropped: deleting the penultimate step moves the exit pair, and the stop edge — with
+  // whatever style the author gave it — must move there, not vanish with the state.
+  rehomeLifecycleEdges(main);
   if (branchRef && removed) {
     const state = stateById(main, gone);
     if (state) {

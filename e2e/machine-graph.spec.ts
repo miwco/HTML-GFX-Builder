@@ -80,8 +80,9 @@ test('the transition card edits an arrow: event rename, illegal names refused, s
   await createProject(page, { category: 'quiz' });
   await openGraph(page);
   // The lock arrow (selected → locked). dispatchEvent: the visible stroke is 1.5px and the
-  // hit twin is a curve — a center click would miss both.
-  await page.getByTestId('mg-arrow-main-t-2').dispatchEvent('click');
+  // hit twin is a curve — a center click would miss both. (Indices count the PARSED order:
+  // the injected lifecycle play/stop edges sit at their canonical sort positions, 0 and 3.)
+  await page.getByTestId('mg-arrow-main-t-4').dispatchEvent('click');
   await expect(page.getByTestId('mg-transition-card')).toContainText('Answer selected → Locked in');
 
   // Rename the event; one undoable apply lands in the code.
@@ -91,11 +92,13 @@ test('the transition card edits an arrow: event rename, illegal names refused, s
   });
   expect(await templateJs(page)).toContain('"event": "engage"');
 
-  // A reserved name is refused and the input reverts to the real value.
+  // A reserved name is refused and the input reverts to the real value. (The literal DOES
+  // carry `"event": "play"` — the materialised lifecycle entrance edge — so the assertion
+  // pins the OPERATOR shape specifically.)
   await page.getByTestId('mg-event').fill('play');
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('mg-event')).toHaveValue('engage');
-  expect(await templateJs(page)).not.toContain('"event": "play"');
+  expect(await templateJs(page)).not.toContain('"trigger": "operator", "event": "play"');
 
   // Give the arrow a styled change: push-left with a custom duration.
   await awaitPreviewRebuild(page, () => page.getByTestId('mg-style').selectOption('push-left'));
@@ -112,7 +115,7 @@ test('a styled transition plays the arrow\'s change and lands exactly on the tar
   await createProject(page, { category: 'quiz' });
   await openGraph(page);
   // Style the enter → selected arrow (fade), then fire it in the live preview.
-  await page.getByTestId('mg-arrow-main-t-1').dispatchEvent('click');
+  await page.getByTestId('mg-arrow-main-t-2').dispatchEvent('click');
   await expect(page.getByTestId('mg-transition-card')).toContainText('Enter → Answer selected');
   await awaitPreviewRebuild(page, () => page.getByTestId('mg-style').selectOption('fade'));
 
@@ -577,8 +580,8 @@ test('every "+ state" entry is reachable at the default dock size', async ({ pag
 test('the transition card is reachable and stays put while the diagram scrolls', async ({ page }) => {
   await createProject(page, { category: 'lower-third', index: 0 });
   await openGraph(page);
-  // A two-step lower third has no authored arrow at all (play and the edge into Out are the
-  // walk's own): a third waypoint is what gives the graph something to select.
+  // A two-step lower third's only arrows are the lifecycle play/stop edges, whose card has
+  // no trigger row: a third waypoint is what gives the graph an OPERATOR arrow to select.
   await page.getByTestId('mg-add-state-main').click();
   await awaitPreviewRebuild(page, () => page.getByTestId('mg-add-step').click());
   await page.getByTestId('mg-arrow-main-walk-1').dispatchEvent('click');
@@ -604,4 +607,151 @@ test('the transition card is reachable and stays put while the diagram scrolls',
   await page.locator('.mg-viewport').evaluate((v) => { v.scrollLeft = 400; });
   const after = await page.getByTestId('mg-transition-card').boundingBox();
   expect(after).toEqual(before);
+});
+
+test('the entrance and exit are real arrows: stylable, guarded, and next() keeps its no-op parity', async ({ page }) => {
+  await createProject(page, { category: 'lower-third', index: 0 });
+  await openGraph(page);
+
+  // A default two-step lower third used to have NO selectable arrow at all — play and the
+  // final-stop edge were the walk's own synthetic drawing, so Cut/Fade could never be applied
+  // to an entrance or an exit. They are now materialised lifecycle transitions with cards.
+  await page.getByTestId('mg-arrow-main-walk-0').dispatchEvent('click');
+  await expect(page.getByTestId('mg-lifecycle-note')).toContainText('the entrance');
+  // Play and stop are what they are: no trigger switch, no event rename, no delete button.
+  await expect(page.getByTestId('mg-trigger')).toHaveCount(0);
+  await expect(page.getByTestId('mg-event')).toHaveCount(0);
+  await expect(page.getByTestId('mg-delete-transition')).toHaveCount(0);
+
+  // Styling the entrance materializes the derived machine WITH the edge, style and all.
+  await awaitPreviewRebuild(page, () => page.getByTestId('mg-style').selectOption('fade'));
+  expect(await templateJs(page)).toContain('"trigger": "lifecycle", "event": "play", "style": "fade"');
+  await expect(page.locator('.mg-derived-chip')).toHaveCount(0);
+
+  // The exit edge takes the broadcast CUT (duration/ease stand down for it).
+  await page.getByTestId('mg-arrow-main-walk-1').dispatchEvent('click');
+  await expect(page.getByTestId('mg-lifecycle-note')).toContainText('the exit');
+  await awaitPreviewRebuild(page, () => page.getByTestId('mg-style').selectOption('cut'));
+  expect(await templateJs(page)).toContain('"trigger": "lifecycle", "event": "stop", "style": "cut"');
+  await expect(page.getByTestId('mg-style-duration')).toHaveCount(0);
+
+  // Delete refuses a lifecycle edge — play and stop always exist. Focus is parked off the
+  // style select first: the Delete handler stands down while a form control is focused, and
+  // asserting "nothing changed" with focus still in the select would pass vacuously.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(250);
+  expect(await templateJs(page)).toContain('"trigger": "lifecycle", "event": "stop", "style": "cut"');
+
+  // V1 PARITY in the live preview: the stop edge exists as an arrow now, yet next() must
+  // still no-op when only Out remains — and the styled stop must land the off pose.
+  const parity = await page.evaluate(async (frameSel) => {
+    const f = document.querySelector(frameSel) as HTMLIFrameElement;
+    const w = f.contentWindow as Window & {
+      play?: () => void;
+      stop?: () => void;
+      revealNextStep?: () => unknown;
+      noacgMachineState?: () => { groups: Record<string, string> };
+    };
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    w.play?.();
+    await sleep(1000); // the styled (fade) entrance settles
+    const onAir = w.noacgMachineState?.().groups.main;
+    const advanced = w.revealNextStep?.();
+    const afterNext = w.noacgMachineState?.().groups.main;
+    w.stop?.();
+    await sleep(200); // a CUT exit is instant
+    const doc = f.contentDocument!;
+    const root = doc.querySelector('.lower-third') as HTMLElement;
+    return {
+      onAir,
+      nextNoOp: advanced === null,
+      afterNext,
+      off: w.noacgMachineState?.().groups.main,
+      opacity: Number(w.getComputedStyle(root).opacity),
+    };
+  }, FRAME);
+  expect(parity.onAir).toBe('enter');
+  expect(parity.nextNoOp).toBe(true);
+  expect(parity.afterNext).toBe('enter');
+  expect(parity.off).toBe('off');
+  expect(parity.opacity).toBe(0);
+});
+
+test('the stop edge and its style survive step inserts and deletes (rehoming)', async ({ page }) => {
+  await page.goto('/app');
+  await page.keyboard.press('Escape');
+  const result = await page.evaluate(async () => {
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { parseAnimData, serializeAnimData } = await import('/src/blocks/animData.ts');
+    const { removeTransition, setTransitionStyle, setTransitionTrigger } = await import('/src/blocks/machineEdit.ts');
+    const { addStep, deleteStep } = await import('/src/blocks/animEdit.ts');
+    const { lifecyclePair } = await import('/src/blocks/animMachine.ts');
+    type Data = NonNullable<ReturnType<typeof parseAnimData>>;
+    const stopOf = (d: Data) =>
+      d.machine!.groups[0].transitions.find((t) => t.trigger === 'lifecycle' && t.event === 'stop');
+    const tpl = variantById('lt01')!.create({});
+    const data = parseAnimData(tpl.js)!;
+    // The derived two-step walk's transitions are [play, stop] — style the stop edge, which
+    // materializes the machine with the styled lifecycle edge in it.
+    const styled = setTransitionStyle(data, 'main', 1, 'fade')!;
+    // Insert a step before Out: the exit pair moved, and the styled edge must move with it.
+    const grown = addStep(styled)!;
+    const grownSeat = lifecyclePair(grown.machine!.groups[0], 'stop')!;
+    const afterGrow = stopOf(grown);
+    // Delete the inserted penultimate step again: the edge comes home, style intact — this
+    // is the case where dropping-transitions-with-the-state would have eaten the style.
+    const shrunk = deleteStep(grown, grown.steps.length - 2, () => 'rise')!;
+    const homeSeat = lifecyclePair(shrunk.machine!.groups[0], 'stop')!;
+    const afterShrink = stopOf(shrunk);
+    const once = serializeAnimData(shrunk);
+    const twice = serializeAnimData(parseAnimData('var NOACG_ANIM = ' + once + ';')!);
+    return {
+      styledAtStop: stopOf(styled)?.style === 'fade',
+      movedWithInsert:
+        afterGrow?.from === grownSeat.from && afterGrow?.to === grownSeat.to && afterGrow?.style === 'fade',
+      homeAfterDelete:
+        afterShrink?.from === homeSeat.from && afterShrink?.to === homeSeat.to && afterShrink?.style === 'fade',
+      fixedPoint: once === twice,
+      // The mutator-level guards, pinned where they cannot pass vacuously: a lifecycle edge
+      // refuses deletion and refuses being retimed to another trigger.
+      guardDelete: removeTransition(styled, 'main', 1) === null,
+      guardRetime: setTransitionTrigger(styled, 'main', 1, 'timer') === null,
+    };
+  });
+  expect(result).toEqual({
+    styledAtStop: true,
+    movedWithInsert: true,
+    homeAfterDelete: true,
+    fixedPoint: true,
+    guardDelete: true,
+    guardRetime: true,
+  });
+});
+
+test('a styled lifecycle edge under an older interpreter re-emits the region (the pairing rule, one step on)', async ({ page }) => {
+  await page.goto('/app');
+  await page.keyboard.press('Escape');
+  const result = await page.evaluate(async () => {
+    const { variantById } = await import('/src/templates/catalog.ts');
+    const { parseAnimData, spliceAnimData } = await import('/src/blocks/animData.ts');
+    const { setTransitionStyle } = await import('/src/blocks/machineEdit.ts');
+    const { writeAnimData, hasLifecycleStyleRuntime } = await import('/src/templates/shared/animRuntime.ts');
+    const { validateTemplate } = await import('/src/validation/validateTemplate.ts');
+    const tpl = variantById('lt01')!.create({});
+    // Simulate a saved template whose frozen interpreter has styles but predates the
+    // materialised play/stop edges (its play()/stop() never consult them).
+    const oldJs = tpl.js.replace(/function noacgLifecycleEdge/g, 'function noacgFrozenLifecycleEdge');
+    const data = parseAnimData(oldJs)!;
+    const styled = setTransitionStyle(data, 'main', 1, 'fade')!; // the stop edge
+    const written = writeAnimData(oldJs, styled)!;
+    const reEmitted = hasLifecycleStyleRuntime(written);
+    // …while validation catches the broken pairing if someone hand-splices instead.
+    const spliced = { ...tpl, js: spliceAnimData(oldJs, styled)! };
+    const verdict = validateTemplate(spliced);
+    const pairingError = verdict.errors.some((e) => e.message.includes('materialised play/stop edges'));
+    return { reEmitted, pairingError };
+  });
+  expect(result.reEmitted).toBe(true);
+  expect(result.pairingError).toBe(true);
 });

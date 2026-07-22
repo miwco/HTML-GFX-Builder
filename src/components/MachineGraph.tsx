@@ -10,7 +10,6 @@ import {
 } from '../blocks/animData';
 import {
   deriveMachine,
-  isWalkEdge,
   spxSteps,
   stateById,
   timelineKind,
@@ -243,10 +242,15 @@ function buildModel(data: AnimData): GraphModel {
 
     // The walk's own edges: play into the first waypoint, then waypoint to waypoint. The
     // runtime walks the path POSITIONALLY, so the spine is drawn whether or not each edge is
-    // authored — an authored edge lends the arrow its event name. The edge into the final
-    // waypoint is stop's unless the author drew the opt-in next arrow (v1 parity).
-    const authoredWalk = (from: string, to: string) =>
-      group.transitions.find((t) => t.from === from && t.to === to && t.trigger !== 'data-condition');
+    // authored — and since the play and final-stop edges are MATERIALISED as lifecycle
+    // transitions (deriveMachine emits them, parseAnimData injects them into older explicit
+    // machines), every spine arrow is normally selectable. On the entrance pair the
+    // lifecycle edge IS the spine (play() enters regardless of other arrows); into the
+    // final waypoint an authored operator arrow wins the spine (the next-drives-out opt-in
+    // is how that step is then reached — walkEntry's rule) and the stop edge bows beside it.
+    const onPair = (from: string, to: string) =>
+      group.transitions.filter((t) => t.from === from && t.to === to && t.trigger !== 'data-condition');
+    const spineDrawn = new Set<AnimTransition>();
     const walkPairs: Array<[string, string]> = [];
     if (path.length > 0 && group.initial !== path[0]) walkPairs.push([group.initial, path[0]]);
     for (let i = 0; i + 1 < path.length; i++) walkPairs.push([path[i], path[i + 1]]);
@@ -254,12 +258,23 @@ function buildModel(data: AnimData): GraphModel {
       const from = byId.get(fromId);
       const to = byId.get(toId);
       if (!from || !to) return;
-      const authored = authoredWalk(fromId, toId) ?? null;
+      const pair = onPair(fromId, toId);
+      const lifecycle = pair.find((t) => t.trigger === 'lifecycle') ?? null;
+      const other = pair.find((t) => t.trigger !== 'lifecycle') ?? null;
       const intoFinal = toId === path[path.length - 1] && path.length > 1;
       const isPlay = wi === 0 && fromId === group.initial;
-      const kind: Arrow['kind'] = intoFinal && !authored ? 'walk-stop' : 'walk';
+      const authored = (isPlay ? lifecycle ?? other : other ?? lifecycle) ?? null;
+      if (authored) spineDrawn.add(authored);
+      const kind: Arrow['kind'] = intoFinal && (!authored || authored.trigger === 'lifecycle') ? 'walk-stop' : 'walk';
       const styled = authored?.style !== undefined ? ' ≈' : '';
-      const label = (isPlay ? 'play' : authored?.event ?? (intoFinal ? 'stop' : 'next')) + styled;
+      const label =
+        (isPlay
+          ? 'play'
+          : authored?.trigger === 'lifecycle'
+            ? 'stop'
+            : authored?.trigger === 'timer'
+              ? `⏱ ${authored.after ?? 0}s`
+              : authored?.event ?? (intoFinal ? 'stop' : 'next')) + styled;
       const r = route(from, to, 0);
       arrows.push({
         key: `${group.id}-walk-${wi}`,
@@ -274,15 +289,15 @@ function buildModel(data: AnimData): GraphModel {
       });
     });
 
-    // Authored branch arrows (everything the walk didn't draw). Parallel arrows between the
-    // same pair bow at increasing depths so they never overlap; a bow below the lane's LAST
-    // row widens the lane so nothing clips at the dock's edge.
+    // Authored branch arrows (everything the walk didn't draw — including a second arrow on
+    // a walk pair, like the stop edge beside an authored next-drives-out arrow). Parallel
+    // arrows between the same pair bow at increasing depths so they never overlap; a bow
+    // below the lane's LAST row widens the lane so nothing clips at the dock's edge.
     const bowCount = new Map<string, number>();
     const lastRowY = row1.length > 0 ? rowY0 + BOX_H + ROW_GAP : rowY0;
     let belowDepth = 0;
     group.transitions.forEach((t, ti) => {
-      if (isMain && isWalkEdge(group, t)) return;
-      if (isMain && t.from === group.initial && path[0] === t.to) return; // drawn as play
+      if (spineDrawn.has(t)) return; // already on the spine
       const from = byId.get(t.from);
       const to = byId.get(t.to);
       if (!from || !to) return;
@@ -297,10 +312,20 @@ function buildModel(data: AnimData): GraphModel {
         belowDepth = Math.max(belowDepth, bow + 20);
       }
       const r = route(from, to, bow);
-      const kind: Arrow['kind'] = t.trigger === 'operator' ? 'operator' : t.trigger === 'timer' ? 'timer' : 'reserved';
+      const kind: Arrow['kind'] =
+        t.trigger === 'operator'
+          ? 'operator'
+          : t.trigger === 'timer'
+            ? 'timer'
+            : t.trigger === 'lifecycle'
+              ? 'walk-stop' // the stop edge bowed beside an authored next-drives-out spine
+              : 'reserved';
       const label =
-        (t.trigger === 'operator' ? (t.event ?? '') : t.trigger === 'timer' ? `⏱ ${t.after ?? 0}s` : 'reserved') +
-        (t.style !== undefined ? ' ≈' : '');
+        (t.trigger === 'operator' || t.trigger === 'lifecycle'
+          ? (t.event ?? '')
+          : t.trigger === 'timer'
+            ? `⏱ ${t.after ?? 0}s`
+            : 'reserved') + (t.style !== undefined ? ' ≈' : '');
       arrows.push({
         key: `${group.id}-t-${ti}`,
         groupId: group.id,
@@ -1094,17 +1119,29 @@ function TransitionCard({
         <div className="mg-card-row">reserved data-condition trigger — it never fires in this version</div>
       ) : (
         <>
-          <label className="mg-card-row">
-            fires on
-            <select
-              value={t.trigger}
-              onChange={(e) => applyData(setTransitionTrigger(data, groupId, tIndex, e.target.value as 'operator' | 'timer'))}
-              data-testid="mg-trigger"
-            >
-              <option value="operator">operator event</option>
-              <option value="timer">timer</option>
-            </select>
-          </label>
+          {/* The lifecycle edges ARE ▶ Play and ■ Stop — the walk's own entrance and exit,
+              materialised so they can carry a style. Their trigger and event are what they
+              are; the style rows below are their one editable aspect. */}
+          {t.trigger === 'lifecycle' && (
+            <div className="mg-card-row" data-testid="mg-lifecycle-note">
+              {t.event === 'play'
+                ? 'the entrance — plays on ▶ Play'
+                : 'the exit — plays on ■ Stop, from any state'}
+            </div>
+          )}
+          {t.trigger !== 'lifecycle' && (
+            <label className="mg-card-row">
+              fires on
+              <select
+                value={t.trigger}
+                onChange={(e) => applyData(setTransitionTrigger(data, groupId, tIndex, e.target.value as 'operator' | 'timer'))}
+                data-testid="mg-trigger"
+              >
+                <option value="operator">operator event</option>
+                <option value="timer">timer</option>
+              </select>
+            </label>
+          )}
           {t.trigger === 'operator' && (
             <label className="mg-card-row">
               event
@@ -1193,17 +1230,21 @@ function TransitionCard({
               </label>
             </>
           )}
-          <button
-            type="button"
-            className="mg-card-action"
-            onClick={() => {
-              if (applyData(removeTransition(data, groupId, tIndex))) onDeleted();
-            }}
-            title="Delete this arrow (undo with Ctrl+Z). The only arrow behind a default-path edge cannot go — that would disconnect the walk next() follows."
-            data-testid="mg-delete-transition"
-          >
-            ✕ Delete transition
-          </button>
+          {/* Play and stop always exist — "deleting" their edge is meaningless, and the
+              mutator refuses it; clearing the style is the edit that means something. */}
+          {t.trigger !== 'lifecycle' && (
+            <button
+              type="button"
+              className="mg-card-action"
+              onClick={() => {
+                if (applyData(removeTransition(data, groupId, tIndex))) onDeleted();
+              }}
+              title="Delete this arrow (undo with Ctrl+Z). The only arrow behind a default-path edge cannot go — that would disconnect the walk next() follows."
+              data-testid="mg-delete-transition"
+            >
+              ✕ Delete transition
+            </button>
+          )}
         </>
       )}
     </div>

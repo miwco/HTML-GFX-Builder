@@ -59,12 +59,15 @@ export function setTransitionTrigger(
   data: AnimData,
   groupId: string,
   index: number,
-  trigger: Exclude<TriggerType, 'data-condition'>,
+  trigger: Exclude<TriggerType, 'data-condition' | 'lifecycle'>,
 ): AnimData | null {
   const next = withExplicitMachine(data);
   const group = groupById(next, groupId);
   const t = group?.transitions[index];
   if (!group || !t || t.trigger === trigger) return null;
+  // The lifecycle edges ARE play and stop — retiming one to an operator event or a timer
+  // would unmake the entrance or the exit. Their one editable aspect is the style.
+  if (t.trigger === 'lifecycle') return null;
   t.trigger = trigger;
   if (trigger === 'operator') {
     delete t.after;
@@ -166,6 +169,9 @@ export function removeTransition(data: AnimData, groupId: string, index: number)
   const next = withExplicitMachine(data);
   const group = groupById(next, groupId);
   if (!group || index < 0 || index >= group.transitions.length) return null;
+  // The lifecycle edges are the walk's own entrance and exit — play and stop always exist,
+  // so "deleting" one is meaningless (clearing its style is the edit that means something).
+  if (group.transitions[index].trigger === 'lifecycle') return null;
   const before = validateMachine(next).errors.length;
   group.transitions.splice(index, 1);
   if (validateMachine(next).errors.length > before) return null;

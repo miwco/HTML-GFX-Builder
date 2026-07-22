@@ -39,9 +39,12 @@ function slugify(name: string): string {
 
 /** The machine a graphic ANSWERS TO: the explicit one when authored, else the implicit
  *  one-group linear machine derived from the step chain — states named after the steps, the
- *  synthesized pose-only `off` as initial, an operator `next` edge along the path, and (v1
- *  parity) NO next edge into the final Out: next() no-ops when only Out remains, stop()
- *  takes the graphic out. Derived on every read, never persisted. */
+ *  synthesized pose-only `off` as initial, an operator `next` edge along the path, and the
+ *  walk's own two edges MATERIALISED as `lifecycle` transitions (`play` into the first
+ *  waypoint, `stop` between the last two) so the entrance and the exit are selectable,
+ *  stylable arrows. V1 parity holds because next() only ever fires OPERATOR arrows: the
+ *  lifecycle stop edge never makes it legal, so next() still no-ops when only Out remains
+ *  and stop() takes the graphic out. Derived on every read, never persisted. */
 export function deriveMachine(data: AnimData): AnimMachine {
   if (data.machine) return data.machine;
   const used = new Set<string>([OFF_STATE_ID]);
@@ -54,13 +57,28 @@ export function deriveMachine(data: AnimData): AnimMachine {
     states.push({ id, name: step.name });
     defaultPath.push(id);
   }
+  // Emitted in the canonical serializer order (by from-state), so the transition a graph
+  // selection points at keeps its index across the first edit's materialization. Guarded on
+  // the path length because the timeline LENS projects a branch state as a ONE-step
+  // AnimData — a walk that short has no exit pair (and none of these edges to draw).
   const transitions: AnimTransition[] = [];
+  if (defaultPath.length > 0) {
+    transitions.push({ from: OFF_STATE_ID, to: defaultPath[0], trigger: 'lifecycle', event: 'play' });
+  }
   for (let i = 0; i + 2 < defaultPath.length; i++) {
     transitions.push({
       from: defaultPath[i],
       to: defaultPath[i + 1],
       trigger: 'operator',
       event: 'next',
+    });
+  }
+  if (defaultPath.length >= 2) {
+    transitions.push({
+      from: defaultPath[defaultPath.length - 2],
+      to: defaultPath[defaultPath.length - 1],
+      trigger: 'lifecycle',
+      event: 'stop',
     });
   }
   return { groups: [{ id: MAIN_GROUP_ID, initial: OFF_STATE_ID, defaultPath, states, transitions }] };
@@ -172,11 +190,39 @@ export function reconnectPath(group: AnimGroup): void {
     group.transitions.some((t) => t.from === from && t.trigger === 'operator' && t.event === event);
   for (let i = 0; i + 2 < path.length; i++) {
     const [from, to] = [path[i], path[i + 1]];
-    if (group.transitions.some((t) => t.from === from && t.to === to && t.trigger !== 'data-condition')) continue;
+    // A lifecycle edge never satisfies the walk — next() fires operator arrows only, so a
+    // (misplaced) play/stop edge on a mid pair must not suppress the reconnection.
+    if (group.transitions.some((t) => t.from === from && t.to === to && t.trigger !== 'data-condition' && t.trigger !== 'lifecycle')) continue;
     // `(from, event)` must stay unique within a group or dispatch would be ambiguous.
     let event = 'next';
     for (let n = 2; taken(from, event); n++) event = `next${n}`;
     group.transitions.push({ from, to, trigger: 'operator', event });
+  }
+}
+
+/** The canonical seat of a lifecycle edge: `play` enters the path, `stop` sits between the
+ *  last two waypoints. One rule, shared by the rehomer, the validator, and the runtime's
+ *  positional lookup (noacgLifecycleEdge). */
+export function lifecyclePair(group: AnimGroup, event: 'play' | 'stop'): { from: string; to: string } | null {
+  const path = group.defaultPath;
+  if (!path || path.length < 2) return null;
+  return event === 'play'
+    ? { from: group.initial, to: path[0] }
+    : { from: path[path.length - 2], to: path[path.length - 1] };
+}
+
+/** Re-seat the group's lifecycle edges after a structural path edit. Deleting or inserting a
+ *  step moves the exit pair, and the stop edge — with the style the author put on it — must
+ *  move with it rather than dangle from a deleted or demoted waypoint. Runs from the step
+ *  mutators BEFORE transitions touching a removed state are dropped, which is what carries
+ *  the style across. */
+export function rehomeLifecycleEdges(group: AnimGroup): void {
+  for (const event of ['play', 'stop'] as const) {
+    const pair = lifecyclePair(group, event);
+    const edge = group.transitions.find((t) => t.trigger === 'lifecycle' && t.event === event);
+    if (!pair || !edge) continue;
+    edge.from = pair.from;
+    edge.to = pair.to;
   }
 }
 
@@ -206,18 +252,19 @@ export function timerTransition(group: AnimGroup, stateId: string): AnimTransiti
  * because an operator `next` arrow says so, and once an author retimes that arrow to a timer
  * the clip has to say the graphic advances by itself.
  *
- * `null` for the entrance (play() takes it on air) and for the final waypoint when nobody
- * drew an arrow into it — v1 parity, where stop() plays the exit. Pass the DERIVED group for
- * a machine-less template and the answer is the ordinary `next` chain, unchanged.
+ * `null` for the entrance (play() takes it on air). The final waypoint's answer is usually
+ * the materialised lifecycle `stop` edge (the exit as an arrow — v1 parity, stop() plays it);
+ * an authored operator arrow into it (the next-drives-out opt-in) wins over the lifecycle
+ * edge, because that IS how the step is then reached. Pass the DERIVED group for a
+ * machine-less template and the answer is the ordinary `next` chain, unchanged.
  */
 export function walkEntry(group: AnimGroup, i: number): AnimTransition | null {
   const path = group.defaultPath ?? [];
   if (i <= 0 || i >= path.length) return null;
   const from = path[i - 1];
   const to = path[i];
-  return (
-    group.transitions.find((t) => t.from === from && t.to === to && t.trigger !== 'data-condition') ?? null
-  );
+  const onPair = group.transitions.filter((t) => t.from === from && t.to === to && t.trigger !== 'data-condition');
+  return onPair.find((t) => t.trigger !== 'lifecycle') ?? onPair[0] ?? null;
 }
 
 /** Every distinct authored operator event across the machine — the simulator's event strip. */
@@ -367,7 +414,11 @@ export function validateMachine(data: AnimData): { errors: string[]; warnings: s
       for (let i = 0; i + 1 < group.defaultPath.length; i++) {
         const from = group.defaultPath[i];
         const to = group.defaultPath[i + 1];
-        const connected = group.transitions.some((t) => t.from === from && t.to === to && t.trigger !== 'data-condition');
+        // A lifecycle edge never carries the walk (next() fires operator arrows only), so it
+        // cannot satisfy connectivity.
+        const connected = group.transitions.some(
+          (t) => t.from === from && t.to === to && t.trigger !== 'data-condition' && t.trigger !== 'lifecycle',
+        );
         // v1 parity: the edge INTO the final exit waypoint is optional (stop() plays it;
         // an authored next edge is how a template opts into next-drives-out).
         if (!connected && i + 2 < group.defaultPath.length) {
@@ -388,6 +439,19 @@ export function validateMachine(data: AnimData): { errors: string[]; warnings: s
     for (const t of group.transitions) {
       if (t.trigger === 'data-condition') {
         warnings.push(`Group "${group.id}": "${t.from}" → "${t.to}" uses the reserved data-condition trigger — it never fires in this version.`);
+      }
+      // A lifecycle edge is the walk's own entrance/exit made explicit — it only means
+      // anything at its canonical seat, and the runtime's positional lookup will not find
+      // it anywhere else. Off-seat is an authoring error, not a silent no-op.
+      if (t.trigger === 'lifecycle' && (t.event === 'play' || t.event === 'stop')) {
+        const pair = lifecyclePair(group, t.event);
+        if (!pair || t.from !== pair.from || t.to !== pair.to) {
+          errors.push(
+            `Group "${group.id}": the lifecycle "${t.event}" edge must run ${
+              t.event === 'play' ? 'from the initial state into the first waypoint' : 'between the last two waypoints'
+            } — "${t.from}" → "${t.to}" would never fire.`,
+          );
+        }
       }
       // An unknown style round-trips and the entry timeline plays instead — worth saying,
       // because the author expected a styled change and will get the classic one.

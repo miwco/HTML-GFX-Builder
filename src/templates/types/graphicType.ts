@@ -356,22 +356,30 @@ export function compileMachine(
 
   const derived = deriveMachine(data);
   const main: AnimGroup = JSON.parse(JSON.stringify(derived.groups[0]));
+  // The derived machine materialises the lifecycle play/stop edges, but a COMPILED machine
+  // must not persist them: they are fully derivable (parseAnimData injects them on read, at
+  // their canonical sort positions), and "persist a machine only when the derived one is
+  // wrong" — writing derivable edges here would be exactly the redundancy that rule forbids.
+  main.transitions = main.transitions.filter((t) => t.trigger !== 'lifecycle');
   const path = main.defaultPath ?? [];
   if (spec.main?.id) main.id = spec.main.id;
 
-  // Rename the walk's arrows to the type's own event vocabulary.
+  // Rename the walk's arrows to the type's own event vocabulary. Only OPERATOR arrows are
+  // the walk's — the derived machine also carries the materialised lifecycle play/stop
+  // edges, whose events are reserved and must never be renamed.
   const pathEvents = spec.main?.pathEvents ?? [];
   for (let i = 0; i < pathEvents.length; i++) {
     const [from, to] = [path[i], path[i + 1]];
-    const edge = main.transitions.find((t) => t.from === from && t.to === to);
+    const edge = main.transitions.find((t) => t.from === from && t.to === to && t.trigger === 'operator');
     if (edge && pathEvents[i]) edge.event = pathEvents[i];
   }
 
-  // The arrow into the exit — deriveMachine deliberately omits it (stop() plays the exit), so
-  // a type that wants `next` to take the graphic off air opts in here.
+  // The operator arrow into the exit — the derived walk deliberately has none (stop() plays
+  // the exit; the lifecycle stop edge on that pair is stop's own and never fires on next),
+  // so a type that wants `next` to take the graphic off air opts in here.
   if (spec.main?.exitOnNext && path.length >= 2) {
     const [from, to] = [path[path.length - 2], path[path.length - 1]];
-    if (!main.transitions.some((t) => t.from === from && t.to === to)) {
+    if (!main.transitions.some((t) => t.from === from && t.to === to && t.trigger !== 'lifecycle')) {
       main.transitions.push({ from, to, trigger: 'operator', event: 'next' });
     }
   }

@@ -210,9 +210,12 @@ var noacgMachine = (function () {
     states.push({ id: id, name: stepName });
     path.push(id);
   }
-  var transitions = [];
+  var transitions = [{ from: 'off', to: path[0], trigger: 'lifecycle', event: 'play' }];
   for (var j = 0; j + 2 < path.length; j++) {
     transitions.push({ from: path[j], to: path[j + 1], trigger: 'operator', event: 'next' });
+  }
+  if (path.length >= 2) {
+    transitions.push({ from: path[path.length - 2], to: path[path.length - 1], trigger: 'lifecycle', event: 'stop' });
   }
   return { groups: [{ id: 'main', initial: 'off', defaultPath: path, states: states, transitions: transitions }] };
 })();
@@ -257,6 +260,24 @@ function noacgTimerEdge(group, from) {
   for (var i = 0; i < group.transitions.length; i++) {
     var t = group.transitions[i];
     if (t.from === from && t.trigger === 'timer') return t;
+  }
+  return null;
+}
+
+// The materialised entrance/exit edge ('play' or 'stop'), looked up POSITIONALLY at its one
+// canonical seat — play: initial → the first waypoint; stop: between the last two waypoints.
+// This is how the entrance and the exit carry a transition style; a lifecycle edge anywhere
+// else never fires (the editor's validator says so out loud). next() never sees these: the
+// walk fires OPERATOR arrows only, so stop's edge never makes another press legal.
+function noacgLifecycleEdge(event) {
+  var main = noacgMachine.groups[0];
+  var path = main.defaultPath || [];
+  if (path.length < 2) return null;
+  var from = event === 'play' ? main.initial : path[path.length - 2];
+  var to = event === 'play' ? path[0] : path[path.length - 1];
+  for (var i = 0; i < main.transitions.length; i++) {
+    var t = main.transitions[i];
+    if (t.trigger === 'lifecycle' && t.event === event && t.from === from && t.to === to) return t;
   }
   return null;
 }
@@ -391,12 +412,25 @@ function noacgStyleTimeline(group, edge) {
     noacgFireCalls(noacgStepFor(group, edge.to));
   };
   var tl = gsap.timeline();
+  // Settling a timeline (progress(1, true) — the editor's parked view, thumbnails, the
+  // scrub chain) SUPPRESSES callbacks, which would skip the swap and leave the wrong pose.
+  // So the styled timeline's own progress() runs the idempotent swap whenever it is seeked
+  // to the end — every consumer of the settle recipe lands right with no caller changes.
+  var finishAware = function (built) {
+    var origProgress = built.progress;
+    built.progress = function (v) {
+      var r = origProgress.apply(this, arguments);
+      if (typeof v === 'number' && v >= 1) swap();
+      return r;
+    };
+    built.__noacgSwap = swap;
+    return built;
+  };
   // CUT: the broadcast hard cut — the pose swap alone, no tween on either side. A
   // zero-duration timeline whose one call runs the swap; duration/ease are ignored.
   if (style === 'cut') {
     tl.call(swap);
-    tl.__noacgSwap = swap;
-    return tl;
+    return finishAware(tl);
   }
   // Phase 1: the old pose leaves.
   if (style === 'fade') {
@@ -440,8 +474,7 @@ function noacgStyleTimeline(group, edge) {
       onComplete: function () { gsap.set(root, { clearProps: 'clipPath' }); }
     });
   }
-  tl.__noacgSwap = swap;
-  return tl;
+  return finishAware(tl);
 }
 
 // Fire one transition: the pointer moves SYNCHRONOUSLY (an event arriving mid-animation
@@ -560,7 +593,10 @@ function noacgDispatch(event, payload) {
 }
 
 // play() under a machine: the built-in reset-and-enter — every group to its initial state,
-// the queue cleared, the entrance played, the first waypoint's timer armed.
+// the queue cleared, the entrance played, the first waypoint's timer armed. A STYLE on the
+// materialised play edge (cut/fade/push/wipe) plays the styled change instead of the
+// entrance timeline, landing on the same settled pose (the swap composes the pointers'
+// pose, set below before the timeline runs).
 function noacgMachinePlay() {
   noacgCancelAllTimers();
   noacgQueue.length = 0;
@@ -568,8 +604,9 @@ function noacgMachinePlay() {
   noacgResetPointers();
   noacgStepsPlayed = 1;
   var main = noacgMachine.groups[0];
-  var tl = noacgEntranceTimeline();
   noacgCurrent[main.id] = (main.defaultPath || [])[0];
+  var edge = noacgLifecycleEdge('play');
+  var tl = (edge && edge.style !== undefined ? noacgStyleTimeline(main, edge) : null) || noacgEntranceTimeline();
   noacgGroupTl[main.id] = tl;
   noacgArmTimer(main, noacgCurrent[main.id], tl);
   return tl;
@@ -580,11 +617,17 @@ function noacgMachineNext() {
 }
 
 // stop() under a machine: the built-in out — legal from every state, cancels timers, flushes
-// the queue, plays the exit, and rests every group at its initial state.
+// the queue, plays the exit, and rests every group at its initial state. A STYLE on the
+// materialised stop edge plays the styled change instead of the Out timeline, from WHEREVER
+// the graphic is: the pointers rest first, so the swap composes the off pose — and the Out
+// step's lifecycle calls still run once at the swap (a clock's stopClock must not be skipped
+// just because the exit was styled).
 function noacgMachineStop() {
   noacgCancelAllTimers();
   noacgQueue.length = 0;
-  var tl = noacgExitTimeline();
+  var edge = noacgLifecycleEdge('stop');
+  var styled = edge && edge.style !== undefined ? noacgStyleTimeline(noacgMachine.groups[0], edge) : null;
+  var tl = styled || noacgExitTimeline();
   noacgGroupTl = {};
   noacgResetPointers();
   return tl;
@@ -759,9 +802,23 @@ export function hasCutStyleRuntime(js: string): boolean {
   return hasTransitionStyleRuntime(js) && /\bcut: 1\b/.test(js);
 }
 
+/** The materialised entrance/exit edges landed after the first style runtime: a styled
+ *  lifecycle edge needs the interpreter whose play()/stop() consult it (noacgLifecycleEdge) —
+ *  under an older one the style would parse and silently never play. */
+export function hasLifecycleStyleRuntime(js: string): boolean {
+  return /function noacgLifecycleEdge/.test(js);
+}
+
 /** Does any arrow carry a transition style (the reserved fields, now consumed)? */
 export function dataUsesTransitionStyles(data: AnimData): boolean {
   return (data.machine?.groups ?? []).some((g) => g.transitions.some((t) => t.style !== undefined));
+}
+
+/** Does a LIFECYCLE edge carry a style (the newest pairing check — see above)? */
+export function dataUsesLifecycleStyle(data: AnimData): boolean {
+  return (data.machine?.groups ?? []).some((g) =>
+    g.transitions.some((t) => t.trigger === 'lifecycle' && t.style !== undefined),
+  );
 }
 
 /** Does any arrow carry the 'cut' style specifically (the newer pairing check)? */
@@ -782,6 +839,7 @@ export function writeAnimData(js: string, data: AnimData): string | null {
   if (data.machine && !hasMachineRuntime(js)) return replaceRegionWithAnimData(js, data);
   if (dataUsesTransitionStyles(data) && !hasTransitionStyleRuntime(js)) return replaceRegionWithAnimData(js, data);
   if (dataUsesCutStyle(data) && !hasCutStyleRuntime(js)) return replaceRegionWithAnimData(js, data);
+  if (dataUsesLifecycleStyle(data) && !hasLifecycleStyleRuntime(js)) return replaceRegionWithAnimData(js, data);
   return spliceAnimData(js, data);
 }
 

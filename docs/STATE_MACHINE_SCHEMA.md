@@ -81,11 +81,19 @@ Where a state's timeline lives:
 confined to `steps`; an inline timeline carrying either is off-shape. A branch state's
 visibility is its own keyframes' business.
 
-**Triggers.** `operator` (an `event` name) and `timer` (`after`, speed-relative seconds from
-the state's entry timeline settling). `data-condition` is RESERVED: it parses, is round-tripped
-canonically, warns in validation, and never fires. At most one timer transition per from-state,
-so auto-advance is deterministic; one `(from, event)` pair per group, so dispatch is never
-ambiguous.
+**Triggers.** `operator` (an `event` name), `timer` (`after`, speed-relative seconds from
+the state's entry timeline settling), and `lifecycle` — the walk's own two edges MATERIALISED
+as transitions: `event: "play"` from the group's initial into the first waypoint (the
+entrance), `event: "stop"` between the last two waypoints (the exit). Lifecycle edges exist
+so the entrance and the exit are selectable, stylable arrows; they are fired by the built-ins
+alone — never dispatchable, never listed as operator actions, and **never a walk edge next()
+follows** (next() fires operator arrows only, which is what keeps the v1 no-op parity). Main
+group only, at most one per built-in (the shape gate), and only at their canonical seats
+(validateMachine errors elsewhere — the runtime's positional lookup would never find them).
+A styled `stop` edge plays for stop() from EVERY state — it is the exit's style, not one
+from-state's. `data-condition` is RESERVED: it parses, is round-tripped canonically, warns in
+validation, and never fires. At most one timer transition per from-state, so auto-advance is
+deterministic; one `(from, event)` pair per group, so dispatch is never ambiguous.
 
 **`style` / `duration` / `ease` on a transition** are the node editor's TRANSITION STYLES
 (`cut`, `fade`, `push-left/right/up/down`, `wipe-left/right` — `TRANSITION_STYLES` in
@@ -106,9 +114,11 @@ rather than splice into one.
 **`at` on a state** is the node editor's box position `[x, y]` — additive optional (no version
 bump), read by nothing but the graph view; absent means auto-layout.
 
-**Reserved events.** `play` and `stop` are built-in and never authorable. `next` is NOT
-reserved - it is an ordinary event name, conventionally the default path's arrows, and a branch
-state may author its own `next` edge as the rejoin arrow.
+**Reserved events.** `play` and `stop` are built-in and never authorable as OPERATOR events -
+they are exactly the legal `event` values of a `lifecycle` transition, which is how the
+entrance and the exit carry a style. `next` is NOT reserved - it is an ordinary event name,
+conventionally the default path's arrows, and a branch state may author its own `next` edge
+as the rejoin arrow.
 
 ---
 
@@ -175,10 +185,21 @@ carries the variation. The acceptance suite pins this.
 
 A template with no `machine` key IS a one-group linear machine, derived on read and **never
 persisted**: states named after the steps, a synthesized pose-only `off` as initial, an operator
-`next` arrow along the path, and - for exact version-1 parity - NO arrow into the final Out
-(`next()` no-ops when only Out remains; `stop()` takes the graphic out). An explicit machine MAY
-author that last arrow, which is how a hand-written template opts into "next alone drives it
-end to end".
+`next` arrow along the path, and the walk's own entrance and exit as MATERIALISED `lifecycle`
+edges (`play` into the first waypoint, `stop` between the last two - selectable, stylable
+arrows). Version-1 parity holds because `next()` fires operator arrows only: the stop edge
+never makes another press legal, so `next()` still no-ops when only Out remains and `stop()`
+takes the graphic out. An explicit machine MAY author an operator arrow into the final
+waypoint, which is how a hand-written template opts into "next alone drives it end to end" -
+that arrow then owns the pair, and `parseAnimData` does not inject a stop edge beside it.
+
+**Normalization on read:** `parseAnimData` injects the two lifecycle edges into an explicit
+machine that lacks them (only where the pair is vacant, each inserted at its canonical SORT
+position - so a machine the serializer wrote parses into the order it will serialize back
+to, and a held transition index survives the apply round trip). A machine authored before the edges existed thereby shows the same stylable
+entrance/exit arrows a derived one does; the first edit persists them - two added lines, the
+migration-moment pattern. Structural step edits re-seat the stop edge (`rehomeLifecycleEdges`)
+so its style survives inserting or deleting the penultimate step.
 
 Two implementations, one rule: `blocks/animMachine.ts deriveMachine` (editor side) and the
 interpreter's `noacgMachine` IIFE (runtime side). They must name the same states.
@@ -234,9 +255,14 @@ The machine GRAPH surface, toggling with the step timeline in the bottom dock (R
   that machine into the literal (`machineEdit.ts withExplicitMachine`), inside the same
   undoable apply — behaviourally a no-op at the moment it happens.
 - **Reading:** default path as the amber spine (badged ▶ » ■ like the timeline's cue markers,
-  the un-authored edge into the final waypoint dashed as stop's), branches as labelled arrows,
-  parallel groups as lanes, the preview's live state highlighted (the simulator chip's poll).
-  Clicking a state SNAPS the preview there, parked (`{ timers: false }`).
+  the stop edge into the final waypoint dashed), branches as labelled arrows, parallel groups
+  as lanes, the preview's live state highlighted (the simulator chip's poll). The play and
+  stop edges are REAL lifecycle transitions (materialised - §2), so even a default two-step
+  lower third has selectable arrows; their card offers the style rows only (trigger, event
+  and delete stand down - play and stop are what they are). An authored operator arrow into
+  the final waypoint takes the spine (it is how that step is then reached) and the stop edge
+  bows beside it, dashed. Clicking a state SNAPS the preview there, parked
+  (`{ timers: false }`).
 - **Editing:** port-drag draws an operator arrow (minted unique event, selected for renaming);
   cards edit trigger / event / timer delay / transition style; states and groups add and
   delete; boxes drag to `at` positions; Delete removes the selection (arrow, branch state, or

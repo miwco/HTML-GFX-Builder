@@ -209,7 +209,13 @@ in src/blocks/CLAUDE.md.
   blocks/layerTimeline.ts, shared with the Inspector's Animations-tab button); Delete
   removes the selection (arrow / branch state / middle waypoint through the step mutators +
   the SPX `steps` sync) and a press on empty canvas (incl. the wires SVG) clears it;
-  transition styles now include **Cut — instant** (duration/ease hidden for it). States as boxes (default path = the amber spine, badges match
+  transition styles now include **Cut — instant** (duration/ease hidden for it). The play and
+  final-stop edges are MATERIALISED lifecycle transitions (deriveMachine emits them,
+  parseAnimData injects them into older explicit machines), so even a default two-step lower
+  third has selectable entrance/exit arrows; their card shows the style rows only (trigger,
+  event and Delete stand down — machineEdit refuses those edits), and an authored operator
+  arrow into the final waypoint keeps the spine while the stop edge bows beside it, dashed.
+  States as boxes (default path = the amber spine, badges match
   the timeline's cue markers, ▶ » ■ · ○ rest), transitions as labelled arrows, parallel groups
   as lanes, the preview's live state highlighted via the simulator chip's poll. Click a state
   = snap the preview there, parked; cards edit names (a path state renames through
