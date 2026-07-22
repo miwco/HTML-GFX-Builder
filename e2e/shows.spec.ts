@@ -203,6 +203,53 @@ test('a published show bakes the hosted receiver into its export; unpublished or
   expect(result.offlineClean).toBe(true);
 });
 
+test("a show export bakes each graphic's saved library entries into both panels", async ({ page }) => {
+  // Entries live on the library GraphicDoc, not on the show's embedded copy — the export must
+  // resolve them out of the library (by graphicId, unique-name fallback) so the aggregated
+  // show panel AND each graphic's own controlpanel.html carry the switcher.
+  await page.goto('/app');
+  await page.keyboard.press('Escape');
+  const panels = await page.evaluate(async () => {
+    const { variantsFor } = await import('/src/templates/catalog.ts');
+    const { createGraphic, newEntry } = await import('/src/model/library.ts');
+    const { buildShowZip } = await import('/src/export/showExport.ts');
+
+    // A saved library graphic with two named entries.
+    const template = variantsFor('lower-third')[0].create({});
+    const firstField = template.fields[0]?.field ?? 'f0';
+    const { doc } = createGraphic(template, {
+      name: 'Presenter LT',
+      entries: [
+        newEntry('Anna · Presenter', { [firstField]: 'Anna Andersson' }),
+        newEntry('Björn · Reporter', { [firstField]: 'Björn Berg' }),
+      ],
+    });
+
+    // A show whose embedded copy links back to that record by graphicId (addGraphicToShow).
+    const graphic = {
+      id: 'g-entries', name: doc!.template.name, type: doc!.template.type,
+      savedAt: '2026-01-01T00:00:00.000Z', template: doc!.template, graphicId: doc!.id,
+    };
+    const show = {
+      id: 'b1b1b1b1-c2c2-4d3d-8e4e-f5f5f5f5f5f5', name: 'Entries Show',
+      graphics: [graphic], updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+    const zip = await buildShowZip(show);
+    const at = (suffix: string) => {
+      const path = Object.keys(zip.files).find((n) => n.endsWith(suffix))!;
+      return zip.file(path)!.async('string');
+    };
+    return { aggregated: await at('show_controlpanel.html'), perGraphic: await at('presenter_lt/controlpanel.html') };
+  });
+
+  for (const html of [panels.aggregated, panels.perGraphic]) {
+    expect(html).toContain('Anna · Presenter');
+    expect(html).toContain('Björn · Reporter');
+    expect(html).toContain('Anna Andersson');
+    expect(html).toContain('Björn Berg');
+  }
+});
+
 test('the rundown reorders and removes; deleting the show keeps nothing behind', async ({ page }) => {
   await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
   await addCurrentToShow(page, 'Reorder Show', true);

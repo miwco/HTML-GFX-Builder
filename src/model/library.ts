@@ -9,7 +9,7 @@
 // soft-delete tombstones, sync kind 'graphic' (supabase migration 0009).
 
 import type { SpxTemplate, TemplateType } from './types';
-import { loadAllPackets, upsertPacket, type Packet } from './packets';
+import { loadAllPackets, upsertPacket, type Packet, type SavedGraphic } from './packets';
 import { uuid } from './id';
 
 /** One named, saved data row for a graphic's control panel ("Anna Andersson — Presenter"). */
@@ -257,4 +257,24 @@ export function graphicsInPackage(packageId: string | null): GraphicDoc[] {
 
 export function newEntry(label: string, values: Record<string, string>): ControlEntry {
   return { id: uuid(), label, values: { ...values }, updatedAt: nowIso() };
+}
+
+/**
+ * A show/packet graphic's saved ENTRIES, resolved out of the library — the seam that lets a
+ * SavedGraphic copy (shows.ts / packets.ts) carry its live entries without embedding them
+ * (they stay authored in ONE place, the GraphicDoc, re-read wherever the graphic is used).
+ * A graphic added since the library landed records `graphicId`, the exact record. An older
+ * embedded copy carries none: fall back to a UNIQUE name match (a saved graphic's name IS its
+ * identity — adding the same name updates it in place), and resolve NO entries when the name is
+ * ambiguous rather than guessing which graphic the operator meant. The hosted control page
+ * (control/hostedControl.ts) and the show export (export/showExport.ts) share this one lookup.
+ */
+export function entriesForSavedGraphic(graphic: SavedGraphic, library: GraphicDoc[]): ControlEntry[] {
+  const byName = library.filter((d) => d.name === graphic.name);
+  const doc = graphic.graphicId
+    ? library.find((d) => d.id === graphic.graphicId)
+    : byName.length === 1
+      ? byName[0]
+      : undefined;
+  return (doc?.entries ?? []).map((e) => ({ ...e, values: { ...e.values } }));
 }

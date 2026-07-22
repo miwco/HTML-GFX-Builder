@@ -84,6 +84,13 @@ reaches operators on the next publish. A show's copy of a graphic records `graph
 library record it came from) so the lookup is by stable id, not by name — see
 docs/CONTROL_LAYER.md.
 
+The whole-SHOW export (`export/showExport.ts`) carries entries the same way, and through the
+same resolver (`model/library.ts` `entriesForSavedGraphic` — graphicId, unique-name fallback):
+each graphic's entries are read out of the library at export time and baked into both the
+aggregated `show_controlpanel.html` and that graphic's own `controlpanel.html`. Entries are
+never embedded in the `Show` record, so this is not a persisted-shape change and needs no
+migration — the show export references the library graphic and resolves entries on export.
+
 ## 5. Versioning
 
 `GraphicDoc` carries `version: 1`; `Packet` bumps to `version: 2` with the on-read

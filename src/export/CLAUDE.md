@@ -36,9 +36,14 @@ validation gates every export (root non-negotiables 3 and 4).
   steps in the README.
 - **packetExport.ts** - whole packet -> one zip, a Starter folder per graphic.
 - **showExport.ts** - whole SHOW -> one zip: a Starter folder per graphic + ONE aggregated
-  show_controlpanel.html (a card per graphic, each on its own channel). A PUBLISHED show
-  (hostedSlug set) bakes the hosted-control receiver block into each graphic AT EXPORT - the
-  saved snapshot stays clean, an unpublished show exports 100% offline (docs/CONTROL_LAYER.md).
+  show_controlpanel.html (a card per graphic, each on its own channel). Each graphic's saved
+  control-panel ENTRIES are resolved out of the LIBRARY at export time (model/library.ts
+  `entriesForSavedGraphic`, by graphicId with a unique-name fallback - the SAME resolver the
+  hosted control page uses) and baked into both the aggregated panel and each graphic's own
+  controlpanel.html; entries are never embedded in the show, so there is no persisted-shape
+  change to migrate (docs/SAVED_CONTENT_MODEL.md §4). A PUBLISHED show (hostedSlug set) bakes
+  the hosted-control receiver block into each graphic AT EXPORT - the saved snapshot stays
+  clean, an unpublished show exports 100% offline (docs/CONTROL_LAYER.md).
 - **common.ts** - addSharedAssets, addReferencedFonts, injectControlReceiver + addControlPanel,
   FONT_LICENSES.md.
 

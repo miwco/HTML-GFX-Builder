@@ -114,20 +114,29 @@ export function renderControlPanelHtml(
   return renderPanelPage(template.name, [emitGraphic(template, remote ?? null, opts)]);
 }
 
+/** One graphic in a show's aggregated panel: its template plus the saved entries resolved for
+ *  it (out of the library, at export time — export/showExport.ts). */
+export interface ShowPanelGraphic {
+  template: PanelTemplate;
+  entries?: EmittedEntry[];
+}
+
 /**
  * A SHOW's aggregated control page: one card per graphic, rundown order, each driving its
  * own channel. In a show package every graphic sits in its own folder, so image fields send
  * folder-relative paths prefixed with the graphic's folder — handled by the caller passing
- * per-graphic asset paths as they are (the operator runs each graphic from its folder).
+ * per-graphic asset paths as they are (the operator runs each graphic from its folder). Each
+ * graphic carries its own saved entries, so the aggregated page has the same entry switcher
+ * per card as the standalone panel does (docs/SAVED_CONTENT_MODEL.md §4).
  */
 export function renderShowControlPanelHtml(
   showName: string,
-  graphics: PanelTemplate[],
+  graphics: ShowPanelGraphic[],
   opts?: { inlineAssets?: boolean },
 ): string {
   return renderPanelPage(
     showName,
-    graphics.map((t) => emitGraphic(t, null, opts)),
+    graphics.map((g) => emitGraphic(g.template, null, { ...opts, entries: g.entries })),
   );
 }
 

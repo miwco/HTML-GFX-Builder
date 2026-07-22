@@ -5,6 +5,7 @@
 import JSZip from 'jszip';
 import { addControlPanel, addSharedAssets, ensureExternalRefs, injectControlReceiver, slug, spxReadme } from '../common';
 import type { ExportTarget } from '../registry';
+import type { ControlEntry } from '../../model/library';
 
 /**
  * template.css ships one level down (css/template.css) while assets unpack at the project
@@ -20,13 +21,20 @@ function cssForSubfolder(css: string): string {
   return css.replace(/url\(\s*(['"]?)(?:\.\/)?(images|fonts|lottie|assets)\//g, 'url($1../$2/');
 }
 
-/** Write one SPX-format template into the given zip folder (reused by packet export). */
-export async function buildStarterInto(root: JSZip, template: Parameters<ExportTarget['build']>[0]): Promise<void> {
+/** Write one SPX-format template into the given zip folder (reused by packet + show export).
+ *  `entries` are the graphic's saved control-panel data rows, resolved out of the library by
+ *  the caller — baked into the bundled operator page as a switcher (docs/SAVED_CONTENT_MODEL.md
+ *  §4). Omitted where there is no library link (a bare template export). */
+export async function buildStarterInto(
+  root: JSZip,
+  template: Parameters<ExportTarget['build']>[0],
+  opts?: { entries?: ControlEntry[] },
+): Promise<void> {
   root.file('index.html', injectControlReceiver(ensureExternalRefs(template.html), template));
   root.file('css/template.css', cssForSubfolder(template.css));
   root.file('js/template.js', template.js);
   root.file('README.md', spxReadme(template));
-  addControlPanel(root, template); // operator page — open beside the graphic to drive it
+  addControlPanel(root, template, { entries: opts?.entries }); // operator page — open beside the graphic to drive it
   await addSharedAssets(root, template);
 }
 

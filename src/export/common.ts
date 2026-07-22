@@ -9,6 +9,7 @@ import { templateUsesLottie } from '../assets/lottieSupport';
 import { fetchBundledFont, referencedFontFiles } from './bundledFonts';
 import { FONT_LICENSE_NOTE } from '../model/fonts';
 import type { SpxTemplate } from '../model/types';
+import type { ControlEntry } from '../model/library';
 import { controlChannelName } from '../control/controlModel';
 import { controlReceiverScript } from '../control/receiverScript';
 import { renderControlPanelHtml } from '../control/controlPanelHtml';
@@ -94,8 +95,13 @@ export function injectControlReceiver(html: string, template: SpxTemplate): stri
 }
 
 /** Bundle the generated controlpanel.html next to the graphic. When the graphic has the remote-
- *  control block, the panel also gets the Supabase Realtime send path (same project + topic). */
-export function addControlPanel(root: JSZip, template: SpxTemplate, opts?: { inlineAssets?: boolean }): void {
+ *  control block, the panel also gets the Supabase Realtime send path (same project + topic).
+ *  `entries` (resolved from the library by the caller) bake into the panel as a data switcher. */
+export function addControlPanel(
+  root: JSZip,
+  template: SpxTemplate,
+  opts?: { inlineAssets?: boolean; entries?: ControlEntry[] },
+): void {
   const remote = hasRealtimeControl(template.js) ? remoteControlConfig(template.name) : null;
   root.file('controlpanel.html', renderControlPanelHtml(template, remote, opts));
 }

@@ -10,8 +10,7 @@
 
 import { getSupabase } from '../backend/supabase';
 import type { Show } from '../model/shows';
-import type { SavedGraphic } from '../model/packets';
-import { loadGraphics, type GraphicDoc } from '../model/library';
+import { loadGraphics, entriesForSavedGraphic } from '../model/library';
 import type { SpxField } from '../model/types';
 import { isImageAsset } from '../assets/assetUtils';
 import type { ControlMessage } from './controlModel';
@@ -63,24 +62,9 @@ export interface ControlEventRow {
     | { t: 'live'; data?: Record<string, string>; state?: { groups: Record<string, string> } | null };
 }
 
-/**
- * A show graphic's saved ENTRIES, resolved out of the library. A graphic added to a show
- * since the library landed carries `graphicId` — the exact record. An older embedded copy
- * carries none: fall back to a UNIQUE name match (a show graphic's name IS its identity —
- * adding the same name updates it in place), and publish NO entries when the name is
- * ambiguous rather than guessing which graphic the operator meant.
- */
-function entriesFor(graphic: SavedGraphic, library: GraphicDoc[]): PanelEntry[] {
-  const byName = library.filter((d) => d.name === graphic.name);
-  const doc = graphic.graphicId
-    ? library.find((d) => d.id === graphic.graphicId)
-    : byName.length === 1
-      ? byName[0]
-      : undefined;
-  return (doc?.entries ?? []).map((e) => ({ id: e.id, label: e.label, values: { ...e.values } }));
-}
-
-/** The stored operator spec for a show — one entry per graphic, no template payload. */
+/** The stored operator spec for a show — one entry per graphic, no template payload. The
+ *  entries come from the library via the shared resolver (model/library.ts), by `graphicId`
+ *  with a unique-name fallback, so hosted publish and show export agree on the lookup. */
 export function buildPanelSpec(show: Show): PanelGraphicSpec[] {
   const library = loadGraphics();
   return show.graphics.map((g) => ({
@@ -90,7 +74,7 @@ export function buildPanelSpec(show: Show): PanelGraphicSpec[] {
     images: g.template.assets
       .filter((a) => isImageAsset(a.path))
       .map((a) => ({ value: a.path, label: a.path })),
-    entries: entriesFor(g, library),
+    entries: entriesForSavedGraphic(g, library).map((e) => ({ id: e.id, label: e.label, values: e.values })),
   }));
 }
 
