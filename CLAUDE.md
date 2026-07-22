@@ -127,7 +127,10 @@ marked ANIMATION region - no second scene model, no parallel format. Essentials:
 
 ## Architecture map
 
-Directories marked * have their own CLAUDE.md with the binding per-area contracts.
+Directories marked * have their own CLAUDE.md with the binding per-area contracts. The
+cross-domain rules - layers, allowed import edges, where new code goes, UI thinness, the
+grandfathered-debt list - are binding in **`docs/ARCHITECTURE.md`**; a change that adds a
+domain-to-domain edge updates that doc in the same PR.
 
 ```
 src/
