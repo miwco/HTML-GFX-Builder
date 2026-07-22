@@ -10,10 +10,14 @@ import JSZip from 'jszip';
 import { slug } from './common';
 import { buildStarterInto } from './targets/spxStarter';
 import type { SpxTemplate } from '../model/types';
+import type { ControlEntry } from '../model/library';
 
 export interface ExportableGraphic {
   name: string;
   template: SpxTemplate;
+  /** The graphic's saved control-panel entries, baked into its bundled operator page. The
+   *  caller already holds the library records here, so there is nothing to resolve. */
+  entries?: ControlEntry[];
 }
 
 export async function buildGraphicsZip(packageName: string, graphics: ExportableGraphic[]): Promise<JSZip> {
@@ -26,7 +30,7 @@ export async function buildGraphicsZip(packageName: string, graphics: Exportable
     let n = 2;
     while (used.has(name)) name = `${slug(graphic.name)}_${n++}`;
     used.add(name);
-    await buildStarterInto(root.folder(name)!, graphic.template);
+    await buildStarterInto(root.folder(name)!, graphic.template, { entries: graphic.entries });
   }
   root.file(
     'README.md',

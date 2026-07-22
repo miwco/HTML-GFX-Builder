@@ -67,6 +67,16 @@ returns to the package, Graphic → Control panel → Back returns to the graphi
 Video ↔ Graphics is plain history. The old Homebase modal and the topbar 📦 Packets
 button are retired; packages are managed through Save and Home.
 
+**Card thumbnails are a LIVE render, never a stored picture** (`components/home/GraphicThumb.tsx`).
+Every Home graphic card renders the real template through `preview/composeDocument`, in a small
+iframe scaled from the template's own resolution and parked at its settled on-air state (the
+editor canvas's own settle recipe: `update()` → `buildInTimeline().progress(1, true)` →
+`update()`). Nothing about the record changes: no thumbnail field on `GraphicDoc`, so no format
+version bump, no migration, and no second copy of the artwork riding every cloud sync. It also
+cannot go stale — a template edited on another device shows its new look the moment it syncs,
+which is exactly when a preview has to be trusted. The cost, re-rendering per Home visit, is paid
+down by mounting each iframe only once its card scrolls into view.
+
 ## 4. Control panel entries
 
 An **entry** is a named, saved data row for one graphic ("Anna Andersson — Presenter"):
@@ -90,6 +100,14 @@ each graphic's entries are read out of the library at export time and baked into
 aggregated `show_controlpanel.html` and that graphic's own `controlpanel.html`. Entries are
 never embedded in the `Show` record, so this is not a persisted-shape change and needs no
 migration — the show export references the library graphic and resolves entries on export.
+
+**Every export that bundles an operator page carries them.** The whole-PACKAGE export
+(`export/packetExport.ts`) takes each graphic's entries straight from the library records the
+caller already holds, and the SINGLE-GRAPHIC export (the Export panel's SPX and HTML-overlay
+targets) reads them back through `ExportContext.entries`, resolved from the working project's
+`saved.graphicId` at export time. So the panel an operator downloads has the same switcher
+wherever it came from, and a graphic that was never saved simply has no entries to carry —
+entries are authored on the RECORD, not on the code.
 
 ## 5. Versioning
 

@@ -3016,6 +3016,19 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .home-search { margin-bottom: 12px; }
 .home-search input { max-width: 420px; }
 
+/* A card's live thumbnail (home/GraphicThumb): the real graphic, scaled from its own
+   resolution and parked at rest. Inert — the row's buttons own every gesture. */
+.gfx-thumb {
+  flex: none;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #05070b;
+  pointer-events: none;
+}
+.gfx-thumb iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: top left; }
+
 /* The per-graphic control panel page (#/control/<id>). */
 .control-page-body { display: grid; grid-template-columns: 1fr 380px; gap: 0; flex: 1; min-height: 0; }
 .control-page-preview { display: flex; flex-direction: column; min-width: 0; background: #05070b; }

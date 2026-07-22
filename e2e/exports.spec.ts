@@ -22,6 +22,37 @@ async function downloadTarget(page: Page, label: string): Promise<JSZip> {
   return JSZip.loadAsync(readFileSync(await download.path()));
 }
 
+test("a saved graphic's control entries ride into its own export, not just the show's", async ({ page }) => {
+  // Entries are authored on the library RECORD (the control-panel page), never in the code, so
+  // the Export panel has to read them back out at export time — otherwise the operator who built
+  // up named rows downloads a panel with an empty switcher.
+  await createHairline(page);
+  await page.evaluate(async () => {
+    const { createGraphic, newEntry } = await import('/src/model/library.ts');
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const store = useTemplateStore.getState();
+    const field = store.template.fields[0]?.field ?? 'f0';
+    const { doc } = createGraphic(store.template, {
+      name: store.template.name,
+      entries: [
+        newEntry('Anna · Presenter', { [field]: 'Anna Andersson' }),
+        newEntry('Björn · Reporter', { [field]: 'Björn Berg' }),
+      ],
+    });
+    store.setSaved({ graphicId: doc.id, dirty: false, status: 'idle' });
+  });
+
+  // Both packages that bundle an operator page carry them (the folder one and the single-file
+  // OBS/vMix one, which inlines its assets but reads the same entries).
+  for (const label of ['SPX export', 'HTML overlay (OBS / vMix)']) {
+    const zip = await downloadTarget(page, label);
+    const path = Object.keys(zip.files).find((n) => n.endsWith('controlpanel.html'))!;
+    const html = await zip.file(path)!.async('string');
+    expect(html, label).toContain('Anna · Presenter');
+    expect(html, label).toContain('Björn Berg');
+  }
+});
+
 test('export panel offers all six targets', async ({ page }) => {
   await createHairline(page);
   await page.getByTestId('dock-tab-export').click();
