@@ -142,6 +142,15 @@
       letter-spacing: 0.2em;
     }
 
+    /* ── Video workspace note ──
+       The studio's SECOND workspace, and deliberately quieter than the pipeline above: it is
+       beta, AI-driven, and makes a FILE rather than something an operator cues live. The dashed
+       rule is the same separation the app's own creation wizard draws around its video card, so
+       the two surfaces tell one story. */
+    .video-note { border-top: 1px dashed var(--line); padding-top: 34px; }
+    .video-note .sub { max-width: 680px; }
+    .video-note .platforms { padding-top: 22px; }
+
     /* ── Beta notice ── */
     .beta-note .sub { max-width: 680px; }
     .beta-contact a { color: var(--amber); }
@@ -688,6 +697,30 @@
           <span aria-hidden="true">Animate it.</span>
           <span aria-hidden="true">Control it.</span>
           <span class="x" aria-hidden="true">Export it anywhere.</span>
+        </p>
+      </section>
+
+      <!-- The studio's second workspace. It sits after the whole live-graphics pipeline and
+           before the engineering note on purpose: a visitor should finish the on-air story
+           first, then learn there is a separate place for rendered video. -->
+      <section class="video-note" id="video">
+        <p class="kicker" data-reveal><span class="beta-chip">Beta</span> Also in the studio</p>
+        <h2 data-reveal>Need a video, not a live graphic?</h2>
+        <p class="sub" data-reveal>
+          Describe a stinger, an opening title, a logo reveal, or a countdown, and AI writes it as
+          a real composition you can edit — then render it to a file. It opens in its own Video
+          workspace, separate from the broadcast-graphics editor, because it is a different job:
+          nobody cues it live, you hand off the finished clip.
+        </p>
+        <!-- MP4 and WebM only: they are on every render tier (src/render/limits.ts). ProRes and
+             frame sequences exist but are gated, so naming them here would oversell. -->
+        <div class="platforms" data-reveal-group>
+          <span class="lbl">Renders to</span>
+          <span class="chip on">MP4</span>
+          <span class="chip on">WebM</span>
+        </div>
+        <p class="cta-note" data-reveal style="margin-top: 18px;">
+          In beta, and the one part that needs a free account — it runs on AI.
         </p>
       </section>
 
