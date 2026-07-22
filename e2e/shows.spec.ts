@@ -155,7 +155,8 @@ test('shows and videos ride the storage seam (the sync engine sees and writes bo
       videoListed: videos.some((r) => r.id === videoBody.id),
     };
   });
-  expect(result.kinds).toEqual(['packet', 'look', 'brand', 'project', 'show', 'video']);
+  // 'graphic' joined the list with the graphics library (docs/SAVED_CONTENT_MODEL.md).
+  expect(result.kinds).toEqual(['packet', 'look', 'brand', 'project', 'show', 'video', 'graphic']);
   expect(result.showListed).toBe(true);
   expect(result.showLive).toBe(true);
   expect(result.videoListed).toBe(true);
