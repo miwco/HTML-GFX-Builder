@@ -1,6 +1,31 @@
 {
   "$comment": "Emitted-code fingerprints for every catalog variant at its own defaults. Re-record with UPDATE_CATALOG_BASELINE=1 and let the diff be the review. See e2e/catalog-baseline.spec.ts.",
   "variants": {
+    "aw01": {
+      "html": "271607febdeb6df7",
+      "css": "2812bae150c7538d",
+      "js": "e54f9001b6fcd898"
+    },
+    "aw02": {
+      "html": "64207e0086fbd998",
+      "css": "739c725fa9a55719",
+      "js": "cea8136e82dd9869"
+    },
+    "aw03": {
+      "html": "f9b322b64481e884",
+      "css": "d58c4fc4874e1486",
+      "js": "ff7519a20995ea29"
+    },
+    "br01": {
+      "html": "6ef09db409951154",
+      "css": "c124d9ec2526f096",
+      "js": "88a28c6d1b2732ca"
+    },
+    "br02": {
+      "html": "d5200ef5a7dbf590",
+      "css": "026c7d4f475f789c",
+      "js": "940f34c0b5af3f08"
+    },
     "bug01": {
       "html": "79a54f39f197bc37",
       "css": "082ead8ac4335ba5",
@@ -86,6 +111,26 @@
       "css": "adf70a0f7c2f2dd0",
       "js": "0738eb4c6bcab09c"
     },
+    "es01": {
+      "html": "3a931a3aaa4f3303",
+      "css": "a0035253c2b87141",
+      "js": "dee7691efd4a040b"
+    },
+    "es02": {
+      "html": "2e1528e7544b177b",
+      "css": "cdd0bcba147b8271",
+      "js": "91be1f5bc617f521"
+    },
+    "es03": {
+      "html": "084e4170038b81a2",
+      "css": "6ca207436a064e70",
+      "js": "22be63aeb0837f17"
+    },
+    "es04": {
+      "html": "943042a3f00800c0",
+      "css": "ee1f05e20ea5939b",
+      "js": "cc648e2a59e8cb21"
+    },
     "gt01": {
       "html": "77088b50f3181775",
       "css": "fee4c650245e732a",
@@ -115,6 +160,21 @@
       "html": "b892a4daef74e059",
       "css": "0baa3a31fe6ef0fe",
       "js": "bc4c39a3a998b3d7"
+    },
+    "h201": {
+      "html": "37473d237f33612d",
+      "css": "8cbeeb82428b9bbc",
+      "js": "b304766bd663550d"
+    },
+    "h202": {
+      "html": "e9810b6112bc80b9",
+      "css": "93146df4914a8a2c",
+      "js": "d5bdb70426878e7a"
+    },
+    "h203": {
+      "html": "61d2b79f5780c578",
+      "css": "c807aae4cdb03d1a",
+      "js": "b348f222e3d0f992"
     },
     "ig01": {
       "html": "ee36f6b24e2c823d",
@@ -276,6 +336,71 @@
       "css": "7a5f401ed2eb2f00",
       "js": "9db317a5f14b6a3c"
     },
+    "mr01": {
+      "html": "934b3e8331bacec2",
+      "css": "3a0083efc1cd29bb",
+      "js": "ba63f586f50f9afd"
+    },
+    "mr02": {
+      "html": "d374ffb4bc30d967",
+      "css": "51a0342b60441260",
+      "js": "20fa41fbe3aa27b6"
+    },
+    "mr03": {
+      "html": "8f1102949b6d43d7",
+      "css": "3d8551f66980f622",
+      "js": "1131eda30cf9522d"
+    },
+    "mu01": {
+      "html": "321ad202a9278378",
+      "css": "aff8c67de0200dcb",
+      "js": "56c937d8bbc34fa0"
+    },
+    "mu02": {
+      "html": "b1ded4871d274302",
+      "css": "8e2457ae343c7d78",
+      "js": "da71f8c9e78b697f"
+    },
+    "mu03": {
+      "html": "00ea3debbf3d1b5c",
+      "css": "6662a91cb7016a5b",
+      "js": "a1e609ed60cc3807"
+    },
+    "mu04": {
+      "html": "df793a98c7b499b6",
+      "css": "acc0e1ff86030c52",
+      "js": "d3c18f9accc73760"
+    },
+    "nm01": {
+      "html": "8fed1e24c3b5fbb2",
+      "css": "aebb2f147a3e55f8",
+      "js": "02d546b1a0aa6cd4"
+    },
+    "nm02": {
+      "html": "2184bd56bbb9a73d",
+      "css": "9a529be2e38e951a",
+      "js": "71bc328f30319b2d"
+    },
+    "nm03": {
+      "html": "f27f3f49273f49f1",
+      "css": "2e5825d40a95b56d",
+      "js": "3645ea6a596210cc"
+    },
+    "pc01": {
+      "html": "05c05f913d18508d",
+      "css": "6b997739f95aab0a",
+      "js": "791f967cf01de795"
+    },
+    "pc02": {
+      "html": "d5f74c77bfc5feba",
+      "css": "7b389d78ae7a34a1",
+      "js": "0f3a14a8a374dc36"
+    },
+    "pc03": {
+      "html": "204c1bdb55e1e04b",
+      "css": "4eeb1a0d28257c25",
+      "js": "94f5826dd2b3bd8e"
+    },
     "qz01": {
       "html": "2993c9c725d84b55",
       "css": "7c492fa46181e94e",
@@ -295,6 +420,21 @@
       "html": "97d31b7217e395b9",
       "css": "400c1b7b01cff7fb",
       "js": "28f6eea0e1e2c26b"
+    },
+    "rs01": {
+      "html": "89f2fd44f53d5da3",
+      "css": "b69648d73564264e",
+      "js": "395961bdca1901cb"
+    },
+    "rs02": {
+      "html": "6013e3b606a507ce",
+      "css": "e980f32217bc4184",
+      "js": "13bf21ebe79981b5"
+    },
+    "rs03": {
+      "html": "63ff087cb327bf66",
+      "css": "7b81d3487ce01239",
+      "js": "5672a1dcc66482c1"
     },
     "sb01": {
       "html": "e8c6faed3b5d9756",
@@ -335,6 +475,26 @@
       "html": "66ed79f9ff0018ee",
       "css": "069df71e6f8ac4f8",
       "js": "a2bfdcc4229b6350"
+    },
+    "st01": {
+      "html": "95bafd16f05481d5",
+      "css": "9e30e06972e7f94b",
+      "js": "d40a4e28cf3a619b"
+    },
+    "st02": {
+      "html": "293c398ee0be70b4",
+      "css": "31ae659132c86c6b",
+      "js": "684552efcefce847"
+    },
+    "st03": {
+      "html": "e8bfe2d7692f5017",
+      "css": "253117303a6915d5",
+      "js": "8d0222688c731248"
+    },
+    "st04": {
+      "html": "989e66f3818c614b",
+      "css": "1bd7c871728a242b",
+      "js": "f4df8907aceacbef"
     },
     "tk01": {
       "html": "0ab1b0b516bf71d4",
@@ -386,6 +546,21 @@
       "css": "7cbf766a076be908",
       "js": "c22d738103fe8bd7"
     },
+    "vd01": {
+      "html": "6d69424507333de9",
+      "css": "fcfeec13c5180b7b",
+      "js": "457ca829bd3b3ff1"
+    },
+    "vd02": {
+      "html": "1c679a4ce2d3826b",
+      "css": "0f688d6bfb28464b",
+      "js": "896e2916d3419c25"
+    },
+    "vd03": {
+      "html": "4302363662a9686d",
+      "css": "2621afafe698e2ad",
+      "js": "8be365763b7e0f9d"
+    },
     "vs01": {
       "html": "b38061cab08e171b",
       "css": "1737f88a73644dd6",
@@ -395,6 +570,21 @@
       "html": "e823e942aea44e96",
       "css": "80a3f4e533799300",
       "js": "185669c58fb37dad"
+    },
+    "wn01": {
+      "html": "5e466b06db86b9ca",
+      "css": "0f3e29b493fb1ab0",
+      "js": "cbd4fb92d542c5d6"
+    },
+    "wn02": {
+      "html": "00bbbc24272bc251",
+      "css": "2934f63860286965",
+      "js": "16de48d7b84caabb"
+    },
+    "wn03": {
+      "html": "93685cfdd5b64d97",
+      "css": "91ddc134fc50ba14",
+      "js": "43cf31234bb38ab5"
     }
   }
 }

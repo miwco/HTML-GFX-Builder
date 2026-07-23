@@ -45,18 +45,27 @@ export const PACKS: TemplatePack[] = [
   {
     id: 'match-day',
     name: 'Match Day',
-    description: 'Scorebug, clock, lineup strap and full-time card — the live sports kit.',
+    description: 'Scorebug, clock, line-up, standings and the full-time card — the live sports kit.',
     family: 'sport',
-    types: ['scoreboard', 'countdown', 'lower-third', 'ticker', 'sponsor-bug', 'title-card', 'holding-screen'],
+    types: [
+      'scoreboard', 'countdown', 'lower-third', 'ticker', 'sponsor-bug', 'title-card', 'holding-screen',
+      // The competition pack's sports half (docs/COMPETITION_PACK.md).
+      'roster', 'standings', 'winner-card',
+    ],
     extras: ['vs01', 'cr03'],
     formats: ['Sports broadcast / match coverage', 'Local sports / amateur sports'],
   },
   {
     id: 'esports',
     name: 'Esports',
-    description: 'Match score, caster straps, schedule and countdown for tournament nights.',
+    description: 'Series score, maps, match-ups, brackets and the champion card for tournament nights.',
     family: 'sport',
-    types: ['scoreboard', 'lower-third', 'countdown', 'agenda', 'social-bug', 'sponsor-bug', 'holding-screen', 'title-card'],
+    types: [
+      // The competition pack leads here: a tournament night is a series, not a single match
+      // (docs/COMPETITION_PACK.md).
+      'esports-score', 'map-round', 'matchup', 'head-to-head', 'player-card', 'bracket', 'standings', 'winner-card',
+      'lower-third', 'countdown', 'agenda', 'social-bug', 'sponsor-bug', 'holding-screen', 'title-card',
+    ],
     extras: ['vs02'],
     formats: ['Esports tournament'],
   },
@@ -144,9 +153,13 @@ export const PACKS: TemplatePack[] = [
   {
     id: 'classroom',
     name: 'Classroom',
-    description: 'Quiz board, timers, lesson cards and a score table for teaching streams.',
+    description: 'Quiz board, verdicts, timers, lesson cards and a score table for teaching streams.',
     family: 'noacg',
-    types: ['quiz-board', 'countdown', 'lower-third', 'topic-card', 'agenda', 'scoreboard'],
+    types: [
+      'quiz-board', 'countdown', 'lower-third', 'topic-card', 'agenda', 'scoreboard',
+      // A ruling on an answer is the quiz board's other half (docs/COMPETITION_PACK.md).
+      'verdict-card', 'standings',
+    ],
     formats: [
       'Education / lecture livestream',
       'Student production / school TV',

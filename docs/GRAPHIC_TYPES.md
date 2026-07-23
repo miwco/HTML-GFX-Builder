@@ -243,7 +243,9 @@ value, so sport's intentional accent halos never trip it.
 
 ---
 
-## 6. The twelve types
+## 6. The types
+
+### The original twelve
 
 Counts are how many of the 60 reference formats in `live_format_graphics_needs.xlsx` ask for
 that graphic. Every type now ships in all four style families; the design named here is the
@@ -267,6 +269,32 @@ family a cell is in.
 
 The last three earn their place by what they prove rather than by frequency: parallel groups,
 timer-driven motion, and the far end of the model.
+
+### The competition pack's twelve (docs/COMPETITION_PACK.md)
+
+Esports, competition, result and reveal graphics — 38 designs over four categories. They are
+NOT frequency-driven: they answer "what does a competition need", which the reference sheet's
+gap list had already named as the next two type families (PACK_TAXONOMY §gaps).
+
+| Type | Flagship design | Machine |
+|---|---|---|
+| Esports scorebug | es02 House Series | parallel `phase` (pre/live/final) + `pause` |
+| Map / round indicator | mr02 House Maps | branches `advanced` (cursor) / `decided` |
+| Match-up | mu02 House Match-up | branches `selected` ⟳ / `neutral` / `locked` |
+| Head-to-head | h202 House Compare | branches `highlighted` ⟳ / `level` |
+| Player card | pc02 House Player | walk press `stats` + branches `mvp` / `plain` |
+| Roster | rs02 House Roster | branches `spotlight` ⟳ / `level` |
+| Standings / result table | st02 House Standings | branches `highlighted` ⟳ / `plain` / `final` |
+| Bracket | br02 House Bracket | branches `advanced` ⟳ / `crowned` |
+| Nominee reveal | nm01 House Nominees | walk press `reveal` + branch `suspense` |
+| Verdict card | vd02 House Verdict | branches `judged` ⟳ / `unjudged` |
+| Winner card | wn02 House Champion | walk press `result` + branches `celebrating` / `plain` |
+| Award / launch reveal | aw01 House Award | walk press `open` + branches `celebrating` / `settled` |
+
+Every ⟳ is the same argument the quiz board makes about answers, applied to sides, rows and
+nominees: **one state plus a field**, the value riding in as the event's payload. Their matrix
+is deliberately partial (3-4 families each rather than all four) — an unfilled cell is a
+missing design, which the factory reports and does not fail on.
 
 ### The matrix is full — and how it filled
 

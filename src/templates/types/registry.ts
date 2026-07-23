@@ -13,6 +13,10 @@ import { socialBugType, sponsorBugType } from './bugs';
 import { titleCardType, topicCardType } from './cards';
 import { agendaType, pollType } from './dataBoards';
 import { countdownType, holdingScreenType } from './clocks';
+import { esportsScoreType, mapRoundType } from './esports';
+import { headToHeadType, matchupType, playerCardType } from './matchups';
+import { bracketType, rosterType, standingsType } from './competitionBoards';
+import { awardRevealType, nomineeRevealType, verdictCardType, winnerCardType } from './reveals';
 import { quizBoardType } from './quizBoard';
 import { scoreboardType } from './scoreboard';
 import { tickerType } from './ticker';
@@ -34,6 +38,21 @@ export const TYPES: GraphicType[] = [
   tickerType,         //  8/60
   scoreboardType,     //  5/60 — but the type that proves parallel groups
   quizBoardType,      // the flagship
+  // The COMPETITION PACK (docs/COMPETITION_PACK.md) — esports, competition, result and
+  // reveal graphics. They come after the reference-frequency list because they answer a
+  // different question: not "what does every show need" but "what does a competition need".
+  esportsScoreType,
+  mapRoundType,
+  matchupType,
+  headToHeadType,
+  playerCardType,
+  rosterType,
+  standingsType,
+  bracketType,
+  nomineeRevealType,
+  verdictCardType,
+  winnerCardType,
+  awardRevealType,
 ];
 
 export function typeById(id: string): GraphicType | undefined {

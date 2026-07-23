@@ -29,14 +29,14 @@ ready for it either way.
 
 | Pack | Family | Types (curated order) | Extras |
 |---|---|---|---|
-| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen | vs01, cr03 |
-| Esports | sport | scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card | vs02 |
+| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen, roster, standings, winner-card | vs01, cr03 |
+| Esports | sport | esports-score, map-round, matchup, head-to-head, player-card, bracket, standings, winner-card, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card | vs02 |
 | Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll | — |
 | Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug | — |
 | Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown | — |
 | Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown | — |
 | Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen | — |
-| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard | — |
+| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard, verdict-card, standings | — |
 | Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda | cr01 |
 | Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker | cr02 |
 | Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug | — |
@@ -135,10 +135,13 @@ were. Roughly by how many formats ask:
   arguably a new category rather than a type.
 - **QR code** (7 formats: CTAs, donations, listings) — a small, high-value type candidate; an
   image field renders one today but a dedicated type could generate it from a URL field.
-- **Reveal moments** (winner reveal, nominee cards, before/after) — the quiz board's reveal
-  machinery generalizes; a "reveal card" type is the natural next stateful type.
-- **Lineups / brackets / leaderboards / stats panels** (sports & esports depth) — the agenda's
-  rows and the scoreboard cover the basics; the full versions are their own types.
+- ~~**Reveal moments** (winner reveal, nominee cards, before/after)~~ — **CLOSED** by the
+  competition pack (docs/COMPETITION_PACK.md): `nominee-reveal`, `winner-card`, `award-reveal`
+  and `verdict-card` generalize the quiz board's reveal machinery, exactly as predicted here.
+- ~~**Lineups / brackets / leaderboards / stats panels** (sports & esports depth)~~ — **CLOSED**
+  by the same pack: `roster`, `standings` (leaderboards and result tables are the same board
+  with different columns), `bracket`, `head-to-head` and `player-card`, plus `esports-score`
+  and `map-round` for the series itself.
 - **Lyrics / captions / surtitles** — timed-text playout is a different runtime problem; out
   of scope until external feeds exist.
 - **Replay wipes / stingers** — full-frame transition moments; the versus card's territory,

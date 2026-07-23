@@ -20,6 +20,7 @@ import { GT_PRESETS } from '../templates/gameTimers/gtPresets';
 import { IG_PRESETS } from '../templates/infographics/igPresets';
 import { VS_PRESETS } from '../templates/versus/vsPresets';
 import { QUIZ_PRESETS } from '../templates/quiz/quizPresets';
+import { COMP_PRESETS } from '../templates/competition/compPresets';
 import { DESIGN_PRESETS } from '../templates/importedDesign/designPresets';
 import type { AnimPresetId } from '../model/wizard';
 import type { SpxTemplate } from '../model/types';
@@ -46,6 +47,11 @@ export function presetsForType(type: SpxTemplate['type']): AnimPreset[] {
   if (type === 'infographic') return IG_PRESETS;
   if (type === 'fullscreen') return VS_PRESETS;
   if (type === 'quiz') return QUIZ_PRESETS;
+  // The competition pack's four categories share ONE prefix-parameterized bank, so a scorebug
+  // and an award reveal move by the same vocabulary (templates/competition/compPresets.ts).
+  if (type === 'esports-score' || type === 'matchup' || type === 'results-board' || type === 'reveal') {
+    return COMP_PRESETS;
+  }
   // An imported design is one picture: only the whole-unit presets suit it. The line presets
   // would stagger #fN out of masks the artwork was drawn around (templates/importedDesign).
   if (type === 'imported-design') return DESIGN_PRESETS;
@@ -58,6 +64,7 @@ export function presetsForType(type: SpxTemplate['type']): AnimPreset[] {
 export const ALL_PRESETS = [
   ...ANIM_PRESETS, ...CREDITS_PRESETS, ...TICKER_PRESETS,
   ...SS_PRESETS, ...GT_PRESETS, ...IG_PRESETS, ...VS_PRESETS, ...QUIZ_PRESETS, ...DESIGN_PRESETS,
+  ...COMP_PRESETS,
 ];
 
 /** Look up a preset across every category's library. */

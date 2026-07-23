@@ -221,6 +221,22 @@ Adding a measured motion to another category = add a builder to its runtime + ha
   (spxStarter cssForSubfolder; zip import strips the hop back). Contract + diagnosis:
   docs/IMPORT_MVP.md; E2E: e2e/import-graphic.spec.ts + e2e/import-prepare.spec.ts +
   e2e/import-stretch.spec.ts.
+- **competition/** - the COMPETITION PACK (docs/COMPETITION_PACK.md): 38 designs, 12 graphic
+  types, FOUR categories over ONE self-assembler (`competition/shared.ts`) - esports/ (prefix
+  'esports-score': es01-es04 series scorebugs + mr01-mr03 map/round indicators), matchup/
+  (prefix 'matchup', full-frame: mu01-mu04 match-ups with a winner pick, h201-h203 head-to-head
+  comparisons, pc01-pc03 player cards), results/ (prefix 'results-board': rs01-rs03 rosters,
+  st01-st04 standings/leaderboards/result tables, br01-br02 brackets), reveal/ (prefix
+  'reveal', full-frame: nm01-nm03 nominee reveals, vd01-vd03 verdicts, wn01-wn03 winner cards,
+  aw01-aw03 award/launch reveals). Like infographics the DESIGN owns its fields + runtime; the
+  TYPE owns the machine. Contract: `.{prefix}-box` > `-head` + `-accent` + `-body`, which is
+  exactly what compPresets.ts tweens (comp-rise / comp-impact / comp-bloom / comp-cascade - one
+  prefix-parameterized bank for all four categories, cascade STRUCTURAL because it names a
+  measured builder). compMotion.ts holds those builders (compCascade composes compBarsGrow).
+  **THE PACK'S RULE:** the moment is a state, what it is about is DATA - one `selected` state
+  plus a `winner` field, one `judged` state plus a `verdict`, one `spotlight` plus a row number.
+  A design whose Continue press fires a runtime call declares `revealSteps`, which is what keeps
+  SPX's `steps` DERIVED (the quiz precedent).
 - **quiz/** - qz01 (prefix 'quiz'; f0 question, f1-f4 options, hidden f5 correct-answer dropdown).
   DATA BLOCKS via convertToDataRegion + a refinement (§3c above): the Continue reveal is a real
   middle step that CALLS revealAnswer() (adds .quiz-correct/.quiz-dim + pops the winner;

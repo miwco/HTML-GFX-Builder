@@ -21,6 +21,12 @@ export type TemplateType =
   | 'starting-soon'
   | 'infographic'
   | 'quiz'
+  /** The competition pack (src/templates/competition — docs/COMPETITION_PACK.md): the
+   *  esports scorebug, the match-up / competitor card, the results board, and the reveal. */
+  | 'esports-score'
+  | 'matchup'
+  | 'results-board'
+  | 'reveal'
   /** A design the user made elsewhere (a flat image) with text fields placed on top. */
   | 'imported-design'
   | 'blank';

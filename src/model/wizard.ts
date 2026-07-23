@@ -39,6 +39,12 @@ export type TemplateCategory =
   | 'corner-bug'
   | 'versus'
   | 'quiz'
+  // The competition pack (docs/COMPETITION_PACK.md): esports, competition, result and
+  // reveal graphics. Four categories, one shared assembler (templates/competition).
+  | 'esports-score'
+  | 'matchup'
+  | 'results-board'
+  | 'reveal'
   | 'imported-design';
 
 export const CATEGORIES: CategoryInfo[] = [
@@ -55,6 +61,11 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 4,  available: true , description: 'Countdowns and clocks for game formats.', group: 'specials' },
   { id: 'versus',        name: 'Versus cards',            plannedCount: 2,  available: true , description: 'Full-frame match-up cards — two sides meet.', group: 'specials' },
   { id: 'quiz',          name: 'Quiz graphics',           plannedCount: 1,  available: true , description: 'Game-show questions with answer options.', group: 'specials' },
+  // The competition pack — esports, competition, result and reveal graphics.
+  { id: 'esports-score', name: 'Esports scoreboards',     plannedCount: 7,  available: true , description: 'Series scorebugs and map / round indicators.', group: 'specials' },
+  { id: 'matchup',       name: 'Match-ups & competitors', plannedCount: 10, available: true , description: 'Match-ups with a winner pick, head-to-heads, player cards.', group: 'specials' },
+  { id: 'results-board', name: 'Results & standings',     plannedCount: 9,  available: true , description: 'Rosters, standings, result tables and brackets.', group: 'specials' },
+  { id: 'reveal',        name: 'Reveals',                 plannedCount: 12, available: true , description: 'Nominees and winners, verdicts, award and launch reveals.', group: 'specials' },
   // Not browsable — reached only by importing artwork (see CategoryInfo.group).
   { id: 'imported-design', name: 'Imported design',       plannedCount: 1,  available: true , description: 'Your own artwork with text fields on top.', group: 'imported' },
 ];
@@ -161,6 +172,12 @@ export type AnimPresetId =
   // Quiz format (templates/quiz/quizPresets.ts) — Continue plays the Reveal step, which
   // calls revealAnswer() to light up the correct row:
   | 'quiz-reveal'
+  // Competition-pack motion (templates/competition/compPresets.ts) — one bank shared by the
+  // four competition categories, prefix-parameterized like the standard one:
+  | 'comp-rise'
+  | 'comp-impact'
+  | 'comp-bloom'
+  | 'comp-cascade'
   // Imported-design motion (templates/importedDesign/designPresets.ts): the artwork and its
   // text move as ONE unit, so these animate the box and never the individual lines.
   | 'design-fade'
