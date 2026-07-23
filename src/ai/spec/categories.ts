@@ -313,6 +313,34 @@ export const AI_CATEGORIES: AiCategory[] = [
       'point), the show title large, an optional countdown to air. It must look alive at minute ' +
       'five, not just second five.',
   },
+  {
+    id: 'end-credits',
+    name: 'End credits',
+    blurb: 'The closing crawl — roles and names, thanks, the production logo.',
+    templateCategory: 'end-credits',
+    fields: [
+      f(
+        'credits',
+        'Credits',
+        'lines',
+        'Directed by | Anna Laine\nProduced by | Tom Blake\n\nCamera Operator | Jonas Berg',
+        'One credit per line as "Role | Name"; a bare line is a section heading, a blank line a gap',
+      ),
+      f('year', 'Year / copyright', 'text', '© 2026 Your Production'),
+    ],
+    workflowNotes:
+      'DATA-DRIVEN, not a fixed layout: the operator writes the whole credit list into ONE ' +
+      'multiline field and the template parses it — role and name are two columns meeting at a ' +
+      'centre gutter, section headings span both, blank lines breathe. Render however many ' +
+      'credits they write, and re-parse on every update(). The travel is continuous and ' +
+      'strictly linear (ease none) — a roll eased per line reads as broken. Length comes from ' +
+      'the content, so it is MEASURED at play time, never a fixed keyframe distance. The list ' +
+      'ends on a production logo and the copyright line.',
+    machineHint:
+      'One main state; the roll runs for as long as the content needs. The measured travel is a ' +
+      'named builder called from the timeline (the platform\'s dynamics model), never inline ' +
+      'DOM math inside the animation region.',
+  },
 ];
 
 export function aiCategoryById(id: string | null | undefined): AiCategory | undefined {

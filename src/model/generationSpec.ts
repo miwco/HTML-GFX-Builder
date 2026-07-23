@@ -41,7 +41,8 @@ export type AiCategoryId =
   | 'sponsor-bug'
   | 'social-bug'
   | 'progress-goal'
-  | 'starting-soon';
+  | 'starting-soon'
+  | 'end-credits';
 
 // ── Fields ───────────────────────────────────────────────────────────────────
 
