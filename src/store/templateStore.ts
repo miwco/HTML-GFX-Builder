@@ -8,6 +8,7 @@ import type { AssetFile, SpxTemplate } from '../model/types';
 import { DATA_FTYPES } from '../model/types';
 import type { ValidationResult } from '../validation/validateTemplate';
 import { loadProject, saveProject } from '../model/project';
+import type { GenerationSpec } from '../model/generationSpec';
 import { hasCurrentVideoProject } from '../model/videoProject';
 import { PATH_TARGET, type TimelineTarget } from '../blocks/timelineLens';
 
@@ -228,6 +229,11 @@ interface TemplateState {
   setPlayhead: (playhead: { step: number; t: number } | null) => void;
   /** Set the save link/status wholesale (store/saveActions.ts owns the semantics). */
   setSaved: (saved: TemplateState['saved']) => void;
+  /** The AI generation spec this project was created from (null = not an AI creation).
+   *  Persists with the working slot and the saved GraphicDoc; cleared by a whole-project
+   *  swap unless the new document brings its own. */
+  aiSpec: GenerationSpec | null;
+  setAiSpec: (aiSpec: GenerationSpec | null) => void;
   /** Mark a canvas gesture as started/ended (see canvasGestureActive). */
   setCanvasGestureActive: (active: boolean) => void;
   /** Arm a canvas tool (see canvasTool). */
@@ -322,6 +328,7 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
     dirty: initialProject?.dirty ?? false,
     status: 'idle',
   },
+  aiSpec: initialProject?.aiSpec ?? null,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setPreviewBg: (bg) => set({ previewBg: bg }),
@@ -374,6 +381,9 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
         // inherit the previous document's library id (Save would overwrite that graphic).
         // Opening a SAVED graphic re-links right after (store/saveActions.ts openGraphicDoc).
         saved: opts?.resetSampleData ? { graphicId: null, dirty: true, status: 'idle' as const } : s.saved,
+        // The previous project's generation spec cannot describe the new document — the AI
+        // create path (and openGraphicDoc) set the right one just after the swap.
+        aiSpec: opts?.resetSampleData ? null : s.aiSpec,
         validation: null,
         galleryOpen: false,
         // Snapshot the pre-apply template so the action can be undone; a fresh edit
@@ -463,6 +473,8 @@ export const useTemplateStore = create<TemplateState>((set, get) => ({
 
   setSaved: (saved) => set({ saved }),
 
+  setAiSpec: (aiSpec) => set({ aiSpec }),
+
   setCanvasGestureActive: (canvasGestureActive) => set({ canvasGestureActive }),
 
   setCanvasTool: (canvasTool) => set({ canvasTool }),
@@ -532,6 +544,6 @@ useTemplateStore.subscribe((state, prev) => {
   if (projectSaveTimer) clearTimeout(projectSaveTimer);
   projectSaveTimer = setTimeout(() => {
     const s = useTemplateStore.getState();
-    saveProject(s.template, s.baseline, { graphicId: s.saved.graphicId, dirty: s.saved.dirty });
+    saveProject(s.template, s.baseline, { graphicId: s.saved.graphicId, dirty: s.saved.dirty }, s.aiSpec);
   }, 800);
 });

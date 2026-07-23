@@ -20,8 +20,6 @@ export const ls16: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Service Speaker',
     styleTag: 'glass',
-    roleTag: 'faith',
-    keywords: ['church', 'ceremony', 'wedding', 'funeral', 'memorial', 'graduation', 'programme', 'order of service', 'faith'],
     description: 'The moment in the order of service, with the person delivering it named beneath.',
     maxLines: 3,
     suggestedLines: [

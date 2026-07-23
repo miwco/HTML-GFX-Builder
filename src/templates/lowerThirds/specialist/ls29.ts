@@ -24,8 +24,6 @@ export const ls29: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Field Report',
     styleTag: 'noacg',
-    roleTag: 'location',
-    keywords: ['reporter', 'correspondent', 'dateline', 'location', 'live', 'clock', 'field', 'on scene', 'news'],
     description: 'A dateline and live clock on one rail, with the reporter named beneath.',
     maxLines: 3,
     suggestedLines: [

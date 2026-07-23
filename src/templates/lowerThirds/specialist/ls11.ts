@@ -20,8 +20,6 @@ export const ls11: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Team Tag',
     styleTag: 'sport',
-    roleTag: 'esports',
-    keywords: ['esports', 'gaming', 'ign', 'handle', 'roster', 'tournament', 'player', 'org', 'lan'],
     description: 'A team tag chip in front of the in-game name, with role and org beneath.',
     maxLines: 4,
     suggestedLines: [

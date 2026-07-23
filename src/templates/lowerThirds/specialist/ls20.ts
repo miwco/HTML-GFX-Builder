@@ -24,8 +24,6 @@ export const ls20: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Candidate Bar',
     styleTag: 'minimal',
-    roleTag: 'politics',
-    keywords: ['election', 'candidate', 'party', 'results', 'count', 'constituency', 'vote', 'share', 'civic'],
     description: 'A party-colour block with its short form, the candidate named, and the share right-aligned.',
     maxLines: 4,
     suggestedLines: [

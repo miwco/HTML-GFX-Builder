@@ -344,6 +344,8 @@ export function specToTemplate(spec: DesignSpec, ctx?: GenerateContext): Assembl
     ),
     palette,
     fontId: FONTS.some((f) => f.id === spec.fontId) ? spec.fontId : undefined,
+    // The user's uploaded font wins over any font id (WizardOptions' own precedence rule).
+    customFont: ctx?.customFont,
     sizeScale: clampNumber(spec.sizeScale, 0.7, 1.4),
     zone: ZONES.includes(spec.zone as Zone9) ? spec.zone : undefined,
     animation: {

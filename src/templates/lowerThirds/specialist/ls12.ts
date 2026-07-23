@@ -20,8 +20,6 @@ export const ls12: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Caster Deck',
     styleTag: 'noacg',
-    roleTag: 'esports',
-    keywords: ['caster', 'shoutcaster', 'commentator', 'analyst', 'desk', 'esports', 'handle', 'host'],
     description: 'The caster handle led large, with the human name beneath and a role chip.',
     maxLines: 3,
     suggestedLines: [

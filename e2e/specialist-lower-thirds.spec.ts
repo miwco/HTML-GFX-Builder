@@ -1,90 +1,17 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { createProject } from './_create';
 
 // The SPECIALIST lower-third pack (src/templates/lowerThirds/specialist).
 //
-// What is worth pinning here is not that 32 designs exist — the catalog sweep covers each one
-// mechanically — but the three contracts the pack introduced, each of which broke at least
-// once while it was being built:
+// Discovery is NOT this spec's subject: browse facets and search come from the one taxonomy
+// (model/taxonomy.ts + templates/templateMeta.ts), which covers the whole catalog and has its
+// own coverage. What is worth pinning here is the two contracts the pack introduced, each of
+// which broke at least once while it was being built:
 //
-//   1. DISCOVERY: a production facet (`roleTag`) and a free-text search, sharing ONE predicate
-//      with the insert dialog.
-//   2. INDEPENDENT FIELDS: a two-person strap must emit one SPX field per person per value —
-//      never one string an operator punctuates themselves.
-//   3. DEGRADATION: removing a role line must never re-read the next person's NAME as a role,
+//   1. INDEPENDENT FIELDS: a two-person strap emits one SPX field per person per value —
+//      never one string an operator has to punctuate themselves.
+//   2. DEGRADATION: removing a role line must never re-read the next person's NAME as a role,
 //      and the split rule differs between peer designs and lead/support designs.
-
-async function toTemplateStep(page: Page, category: string) {
-  await page.goto('/app');
-  await expect(page.locator('.wz-modal')).toBeVisible();
-  await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: category }).click();
-}
-
-/** Counts read from the live catalog, so the assertions track catalog growth rather than
- *  pinning totals that change whenever a design is added. */
-async function counts(page: Page) {
-  return page.evaluate(async () => {
-    const { variantsFor } = await import('/src/templates/catalog.ts');
-    const vs = variantsFor('lower-third') as { roleTag?: string; name: string }[];
-    return {
-      total: vs.length,
-      interview: vs.filter((v) => v.roleTag === 'interview').length,
-      faith: vs.filter((v) => v.roleTag === 'faith').length,
-      roleless: vs.filter((v) => !v.roleTag).length,
-    };
-  });
-}
-
-test('the production chips narrow the grid, and generalist designs carry no role', async ({ page }) => {
-  await toTemplateStep(page, 'Lower thirds');
-  const n = await counts(page);
-  const cards = page.locator('.wz-variant');
-  await expect(cards).toHaveCount(n.total);
-
-  // A role chip keeps exactly the designs drawn for that production.
-  await page.locator('[data-testid="wz-role-interview"]').click();
-  await expect(cards).toHaveCount(n.interview);
-  await expect(page.locator('.wz-variant', { hasText: 'Split Interview' })).toBeVisible();
-
-  // Picking another role replaces the first rather than intersecting with it.
-  await page.locator('[data-testid="wz-role-faith"]').click();
-  await expect(cards).toHaveCount(n.faith);
-  await expect(page.locator('.wz-variant', { hasText: 'Pulpit' })).toBeVisible();
-
-  // Clicking the active chip again clears it — the whole catalog comes back, which is also
-  // the proof that the generalist designs were never filtered OUT by carrying no role.
-  await page.locator('[data-testid="wz-role-faith"]').click();
-  await expect(cards).toHaveCount(n.total);
-  expect(n.roleless).toBeGreaterThan(0);
-});
-
-test('search matches a design by its field labels, not just its name', async ({ page }) => {
-  await toTemplateStep(page, 'Lower thirds');
-  const cards = page.locator('.wz-variant');
-  const search = page.locator('[data-testid="wz-search"]');
-
-  // "scripture" is in ls15's name and description.
-  await search.fill('scripture');
-  await expect(cards).toHaveCount(1);
-  await expect(page.locator('.wz-variant', { hasText: 'Scripture Reading' })).toBeVisible();
-
-  // "post-nominals" appears ONLY as an operator-facing field label on ls17 — the case the
-  // search predicate exists for: a user looks for the field they need, not the design's name.
-  await search.fill('post-nominals');
-  await expect(cards).toHaveCount(1);
-  await expect(page.locator('.wz-variant', { hasText: 'Lectern' })).toBeVisible();
-
-  // Terms are ANDed, so adding a word always narrows.
-  await search.fill('squad number');
-  await expect(cards).toHaveCount(1);
-  await expect(page.locator('.wz-variant', { hasText: 'Squad Number' })).toBeVisible();
-
-  await search.fill('nothingmatchesthis');
-  await expect(cards).toHaveCount(0);
-  await page.locator('.wz-filter-empty button', { hasText: 'Clear filters' }).click();
-  await expect(cards.first()).toBeVisible();
-});
 
 test('a two-person strap gives each person independent fields', async ({ page }) => {
   await createProject(page, 'Split Interview');

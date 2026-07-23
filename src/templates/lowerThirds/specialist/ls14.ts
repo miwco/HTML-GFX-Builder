@@ -21,8 +21,6 @@ export const ls14: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Pulpit',
     styleTag: 'minimal',
-    roleTag: 'faith',
-    keywords: ['church', 'pastor', 'sermon', 'worship', 'service', 'speaker', 'congregation', 'ministry', 'faith'],
     description: 'A quiet speaker strap with the role above the name — calm entrance, hairline accent.',
     maxLines: 3,
     suggestedLines: [

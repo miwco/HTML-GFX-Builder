@@ -21,8 +21,6 @@ export const ls04: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Host & Guest',
     styleTag: 'glass',
-    roleTag: 'talk',
-    keywords: ['talk show', 'panel', 'podcast', 'presenter', 'visitor', 'interview', 'two people'],
     description: 'The guest set large beside a quieter host — unequal by design, with role chips.',
     maxLines: 4,
     suggestedLines: [

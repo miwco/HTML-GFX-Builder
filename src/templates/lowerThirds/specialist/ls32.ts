@@ -21,8 +21,6 @@ export const ls32: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Stream Identity',
     styleTag: 'sport',
-    roleTag: 'creator',
-    keywords: ['streamer', 'creator', 'goal', 'subs', 'donations', 'charity', 'subathon', 'twitch', 'live', 'gaming'],
     description: 'A streamer handle with a pulsing live dot, over a goal figure in its own cell.',
     maxLines: 4,
     suggestedLines: [

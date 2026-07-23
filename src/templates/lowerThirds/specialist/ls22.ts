@@ -22,8 +22,6 @@ export const ls22: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Party Strap',
     styleTag: 'noacg',
-    roleTag: 'politics',
-    keywords: ['politician', 'party', 'minister', 'council', 'committee', 'affiliation', 'government', 'civic'],
     description: 'A politician named with their role, and their party set apart as a colour chip.',
     maxLines: 3,
     suggestedLines: [

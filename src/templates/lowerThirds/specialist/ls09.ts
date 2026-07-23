@@ -21,8 +21,6 @@ export const ls09: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Player Stats',
     styleTag: 'sport',
-    roleTag: 'sport',
-    keywords: ['player', 'stats', 'figures', 'basketball', 'football', 'season', 'athlete', 'match'],
     description: 'A compact player name over a rail of three equal stat cells.',
     maxLines: 5,
     suggestedLines: [

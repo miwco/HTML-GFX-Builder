@@ -20,8 +20,6 @@ export const ls24: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Expert Panel',
     styleTag: 'glass',
-    roleTag: 'analysis',
-    keywords: ['expert', 'specialist', 'analyst', 'panel', 'medical', 'legal', 'explainer', 'field', 'consultant'],
     description: 'The area of expertise tagged ahead of the name, with the affiliation behind it.',
     maxLines: 3,
     suggestedLines: [

@@ -21,8 +21,6 @@ export const ls21: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Debate Podium',
     styleTag: 'minimal',
-    roleTag: 'politics',
-    keywords: ['debate', 'candidate', 'party', 'election', 'podium', 'mirrored', 'town hall', 'civic'],
     description: 'A compact, symmetric candidate card — reads correctly at bottom-left or bottom-right.',
     maxLines: 3,
     suggestedLines: [

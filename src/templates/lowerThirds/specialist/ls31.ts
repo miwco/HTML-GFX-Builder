@@ -22,8 +22,6 @@ export const ls31: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Creator Stack',
     styleTag: 'noacg',
-    roleTag: 'creator',
-    keywords: ['creator', 'streamer', 'handles', 'socials', 'follow', 'twitch', 'youtube', 'platforms', 'outro'],
     description: 'A creator name over a row of handle chips — one chip per platform, each its own field.',
     maxLines: 5,
     suggestedLines: [

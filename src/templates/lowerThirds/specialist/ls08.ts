@@ -20,8 +20,6 @@ export const ls08: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Squad Number',
     styleTag: 'sport',
-    roleTag: 'sport',
-    keywords: ['player', 'squad', 'shirt number', 'football', 'basketball', 'position', 'club', 'athlete'],
     description: 'The squad number set large in an accent block, with the player named beside it.',
     maxLines: 4,
     suggestedLines: [

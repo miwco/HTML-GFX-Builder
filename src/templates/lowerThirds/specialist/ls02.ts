@@ -19,8 +19,6 @@ export const ls02: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Duo Frost',
     styleTag: 'glass',
-    roleTag: 'interview',
-    keywords: ['two people', 'double', 'dual', 'remote', 'split screen', 'two cards', 'guest'],
     description: 'Two frosted cards side by side — one per person, each with its own accent edge.',
     maxLines: 4,
     suggestedLines: [

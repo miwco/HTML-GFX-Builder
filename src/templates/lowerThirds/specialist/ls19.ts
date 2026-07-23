@@ -21,8 +21,6 @@ export const ls19: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Session Speaker',
     styleTag: 'noacg',
-    roleTag: 'academic',
-    keywords: ['conference', 'session', 'track', 'talk', 'keynote', 'symposium', 'programme', 'webinar', 'speaker'],
     description: 'The talk title as the headline, with the speaker and the track beneath.',
     maxLines: 4,
     suggestedLines: [

@@ -20,8 +20,6 @@ export const ls15: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Scripture Reading',
     styleTag: 'minimal',
-    roleTag: 'faith',
-    keywords: ['church', 'scripture', 'reading', 'bible', 'verse', 'reader', 'lectionary', 'liturgy', 'faith'],
     description: 'The reference set as the headline, with the reader named quietly beneath.',
     maxLines: 4,
     suggestedLines: [

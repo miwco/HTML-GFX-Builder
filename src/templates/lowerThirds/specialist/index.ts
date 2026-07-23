@@ -2,8 +2,9 @@
 // show (see ./shared.ts for what that means and why it is a pack rather than more lt* files).
 //
 // They are ordinary lower thirds in every mechanical sense: same category, same assembler,
-// same preset bank, same export path. What groups them is the `roleTag` each one carries,
-// which is the facet the wizard's picker and the insert dialog filter on.
+// same preset bank, same export path — and they carry no discovery metadata of their own.
+// Browse facets and search come from the ONE taxonomy (model/taxonomy.ts via
+// templates/templateMeta.ts), so these are declared there exactly like every other design.
 //
 // Ordered by production, not by style — the order someone browsing for their own show reads
 // the grid in. Within a production the designs are genuinely different graphics, not restyles

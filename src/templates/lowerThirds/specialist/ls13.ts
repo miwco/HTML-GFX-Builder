@@ -20,8 +20,6 @@ export const ls13: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Desk Duo',
     styleTag: 'sport',
-    roleTag: 'esports',
-    keywords: ['casters', 'desk', 'analysts', 'esports', 'tournament', 'two people', 'panel', 'studio'],
     description: 'Two casters side by side on an accent floor, each with their own handle.',
     maxLines: 4,
     suggestedLines: [

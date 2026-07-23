@@ -7,7 +7,7 @@
 import { useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { useTemplateStore } from '../store/templateStore';
-import { CATEGORIES, variantMatchesQuery, type TemplateVariant } from '../model/wizard';
+import { CATEGORIES, type TemplateVariant } from '../model/wizard';
 import { variantsFor } from '../templates/catalog';
 import { parseAnimData } from '../blocks/animData';
 import { buildDonor, insertBlocker, insertTemplateGraphic, type InsertPlacement } from '../blocks/templateInsert';
@@ -37,12 +37,8 @@ export default function InsertTemplateDialog() {
   const [placement, setPlacement] = useState<InsertPlacement>('start');
   const [steps, setSteps] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
 
-  const all = useMemo(() => (open ? variantsFor(catId) : []), [open, catId]);
-  // The SAME predicate the wizard's picker uses (model/wizard), so a word that finds a design
-  // in one surface finds it in the other. Filtering here also bounds the donor probe below.
-  const variants = useMemo(() => all.filter((v) => variantMatchesQuery(v, query)), [all, query]);
+  const variants = useMemo(() => (open ? variantsFor(catId) : []), [open, catId]);
   // What each card's donor would be — code-derived, never a category list. Two facts come
   // out of the ONE build: whether it CAN insert (a template whose motion needs its own
   // runtime is greyed with the reason, never hidden) and whether its design has a
@@ -102,15 +98,6 @@ export default function InsertTemplateDialog() {
                 </button>
               ))}
             </div>
-            <input
-              className="insert-tpl-search"
-              type="search"
-              value={query}
-              placeholder="Search designs…"
-              aria-label="Search designs"
-              data-testid="insert-tpl-search"
-              onChange={(e) => setQuery(e.target.value)}
-            />
             {/* The two participation choices travel together, right of the categories. */}
             <div className="insert-tpl-choices">
               <label className="insert-tpl-placement" title="When the inserted graphic shows — you can change this afterwards from its canvas chip or the Inspector's Appears row">
@@ -166,12 +153,6 @@ export default function InsertTemplateDialog() {
               );
             })}
           </div>
-          {variants.length === 0 && (
-            <p className="hint">
-              No design in this category matches “{query}”.{' '}
-              <button className="wz-filter" onClick={() => setQuery('')}>Clear the search</button>
-            </p>
-          )}
           <p className="hint">
             The graphic arrives with its fields (renumbered, marked with its name in the Data
             panel), its look scoped to itself, and its motion merged into this project's

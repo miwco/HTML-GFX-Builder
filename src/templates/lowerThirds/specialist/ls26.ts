@@ -20,8 +20,6 @@ export const ls26: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Stage Artist',
     styleTag: 'noacg',
-    roleTag: 'music',
-    keywords: ['music', 'artist', 'band', 'concert', 'festival', 'stage', 'gala', 'performance', 'live', 'set'],
     description: 'The artist billed large, with the current track and the stage beneath.',
     maxLines: 3,
     suggestedLines: [

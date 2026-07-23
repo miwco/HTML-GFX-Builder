@@ -21,8 +21,6 @@ export const ls05: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Studio Pair',
     styleTag: 'noacg',
-    roleTag: 'talk',
-    keywords: ['talk show', 'magazine', 'podcast', 'presenter', 'guest', 'with', 'two people'],
     description: 'The guest on a full row with the host folded into a thin sub-bar beneath.',
     maxLines: 4,
     suggestedLines: [

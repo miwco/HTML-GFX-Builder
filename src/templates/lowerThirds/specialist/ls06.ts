@@ -21,8 +21,6 @@ export const ls06: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Commentary Booth',
     styleTag: 'sport',
-    roleTag: 'commentary',
-    keywords: ['commentators', 'casters', 'booth', 'play-by-play', 'colour', 'callers', 'on the call'],
     description: 'A COMMENTARY header spanning two callers — the pair named as one unit.',
     maxLines: 5,
     suggestedLines: [

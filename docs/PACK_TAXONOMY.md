@@ -21,9 +21,11 @@ half of Phase 3's done-when, made true for the axis it is true on:
 - **The pack's family is a default, not a constraint.** Any pack resolves in any of the four
   families — the family field is the curated taste pick a non-technical user starts from.
 
-What a pack does NOT yet have is a wizard surface (a "start from a pack" entry). That is a
-product decision about the creation flow, left open on purpose; the taxonomy and the config are
-ready for it either way.
+What a pack does NOT yet have is a wizard surface. Its SHAPE is now decided
+(`TEMPLATE_TAXONOMY_PROPOSAL.md` §18, 2026-07-23): **a "start from a kit" ENTRY CARD, not a
+third mode inside the Browse step** - Browse produces one graphic, a kit produces several, and
+a surface that promises a single pick must not deliver something else. The taxonomy and the
+config are ready for it; only the surface is unbuilt.
 
 ## The twelve packs
 

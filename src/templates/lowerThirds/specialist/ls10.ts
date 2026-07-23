@@ -19,8 +19,6 @@ export const ls10: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Club Crest',
     styleTag: 'sport',
-    roleTag: 'sport',
-    keywords: ['player', 'crest', 'badge', 'club', 'team', 'substitution', 'squad', 'logo', 'athlete'],
     description: 'A full-height club crest against the panel, with the player named beside it.',
     maxLines: 3,
     suggestedLines: [

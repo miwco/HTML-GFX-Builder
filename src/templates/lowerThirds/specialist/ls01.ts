@@ -20,8 +20,6 @@ export const ls01: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Split Interview',
     styleTag: 'minimal',
-    roleTag: 'interview',
-    keywords: ['two people', 'double', 'dual', 'remote', 'guest', 'two-box', 'panel', 'news'],
     description: 'Two people named side by side under one drawn rule — equal billing, independent fields.',
     maxLines: 4,
     suggestedLines: [

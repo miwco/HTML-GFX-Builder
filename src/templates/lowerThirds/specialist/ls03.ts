@@ -19,8 +19,6 @@ export const ls03: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Duo Void',
     styleTag: 'noacg',
-    roleTag: 'interview',
-    keywords: ['two people', 'double', 'dual', 'house', 'guest', 'podcast', 'panel'],
     description: 'The house void panel widened for two — one amber bar, two named columns.',
     maxLines: 4,
     suggestedLines: [

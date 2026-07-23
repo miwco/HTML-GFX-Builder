@@ -19,8 +19,6 @@ export const ls18: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Faculty Card',
     styleTag: 'glass',
-    roleTag: 'academic',
-    keywords: ['university', 'institution', 'logo', 'department', 'conference', 'webinar', 'faculty', 'keynote', 'speaker'],
     description: 'The institution mark at the head of the card, with the speaker named beside it.',
     maxLines: 3,
     suggestedLines: [

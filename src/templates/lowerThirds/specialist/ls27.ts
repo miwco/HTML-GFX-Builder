@@ -20,8 +20,6 @@ export const ls27: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Track Cue',
     styleTag: 'minimal',
-    roleTag: 'music',
-    keywords: ['music', 'programme', 'setlist', 'movement', 'classical', 'recital', 'concert', 'item', 'composer'],
     description: 'A numbered programme item: the numeral in its own cell, then the title and composer.',
     maxLines: 4,
     suggestedLines: [

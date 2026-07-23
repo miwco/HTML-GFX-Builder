@@ -19,8 +19,6 @@ export const ls25: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Now Playing',
     styleTag: 'glass',
-    roleTag: 'music',
-    keywords: ['music', 'track', 'song', 'artist', 'dj', 'radio', 'now playing', 'album', 'label', 'cover'],
     description: 'Square cover artwork beside the track title, with the artist and release beneath.',
     maxLines: 3,
     suggestedLines: [

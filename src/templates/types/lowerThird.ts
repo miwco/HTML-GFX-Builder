@@ -11,6 +11,8 @@ import { lt02 } from '../lowerThirds/lt02';
 import { lt05 } from '../lowerThirds/lt05';
 import { lt11 } from '../lowerThirds/lt11';
 import { lt15 } from '../lowerThirds/lt15';
+import { lt25 } from '../lowerThirds/lt25';
+import { lt32 } from '../lowerThirds/lt32';
 import type { GraphicType } from './graphicType';
 
 export const lowerThirdType: GraphicType = {
@@ -114,6 +116,39 @@ export const lowerThirdType: GraphicType = {
       samples: { name: 'Sofia Lindqvist', title: 'Creative Director' },
       animationPresets: ['blur-in', 'pop-spring', 'line-reveal', 'fade', 'slide-down', 'flip-3d'],
       create: (_type, options) => lt15.create(options),
+    },
+    {
+      // The EDITORIAL cell. Promotable as written: a real .lower-third-accent element (the
+      // masthead rule), exactly the two lines this type declares, and no logo slot.
+      id: 'lt25',
+      name: 'Masthead',
+      description: 'A rule across the top, the name beneath it, the role as a tracked caps line.',
+      styleTag: 'editorial',
+      palette: paletteById('vermilion'),
+      fontId: 'archivo',
+      samples: { name: 'Alexandra Riva', title: 'Chief Correspondent' },
+      // The design calls line 1 "Role" where this type says "Title". Same role in the graphic:
+      // the secondary descriptor under a name. Editorial wording for a title line.
+      semantics: 'Role = the title (the secondary descriptor under the name).',
+      // The masthead rule IS the entrance, so line-reveal leads; the design was never drawn
+      // for a mask-wipe, which the type's default list adds.
+      animationPresets: ['line-reveal', 'fade', 'mask-wipe', 'slide-up', 'slide-down'],
+      create: (_type, options) => lt25.create(options),
+    },
+    {
+      // The CINEMATIC cell. Same story: a real accent element (the hairline over the name),
+      // two lines, no logo slot.
+      id: 'lt32',
+      name: 'Scrim',
+      description: 'Name and role on a scrim that fades into the shot — no panel, no edges.',
+      styleTag: 'cinematic',
+      palette: paletteById('noir'),
+      fontId: 'inter',
+      samples: { name: 'Alexandra Riva', title: 'Marine Biologist' },
+      semantics: 'Role = the title (the secondary descriptor under the name).',
+      // Cinematic motion is slow and still: a fade leads and nothing overshoots.
+      animationPresets: ['fade', 'blur-in', 'line-reveal', 'slide-up', 'mask-wipe'],
+      create: (_type, options) => lt32.create(options),
     },
     //
     // lt07 is NOT promotable here either, for a third reason worth naming: a compiled variant

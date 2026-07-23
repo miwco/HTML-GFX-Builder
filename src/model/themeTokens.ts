@@ -195,6 +195,47 @@ export const FAMILY_TOKENS: Record<StyleTag, ThemeTokens> = {
     displayWeight: '700',
     displayTracking: '-0.01em',
   },
+  // EDITORIAL — the magazine/newsroom voice. Its structure is RULES, not panels: a hairline
+  // above the block, a wide-tracked kicker, a printed-page hierarchy. Values are chosen against
+  // minimal, which it is most often confused with: minimal removes, editorial ORGANISES. So the
+  // accent is thinner than minimal's (a 2px rule reads as a printed rule, a 3px one as a bar),
+  // the label tracking is the widest of the non-cinematic families (0.24em — a masthead kicker),
+  // the label takes the ACCENT colour rather than dimming away, and the display weight steps
+  // down to 600: an editorial name is set, not shouted.
+  editorial: {
+    panelBlur: 'none',
+    panelRadius: '0',
+    panelShadow: '0 12px 36px rgba(0, 0, 0, 0.28)',
+    panelKeyline: 'inset 0 0 0 1px rgba(255, 255, 255, 0.10)',
+    accentWeight: 'calc(2px * var(--scale))',
+    accentGlow: NO_SHADOW,
+    accentInk: 'var(--panel-bg)',
+    fontLabel: 'var(--font-heading)',
+    labelTracking: '0.24em',
+    labelColor: 'var(--accent)',
+    displayWeight: '600',
+    displayTracking: '-0.015em',
+  },
+  // CINEMATIC — the documentary/title-card voice. The one family with NO panel edge: text sits
+  // on a soft scrim (each design paints its own gradient) and carries its own shadow, which is
+  // why both shadow slots are neutral here rather than "subtle". Two values are deliberately
+  // unlike every other family: the accent is a 1px hairline (the thinnest in the set), and the
+  // display tracking is POSITIVE — cinema titles open up where broadcast type tightens. The
+  // label colour dims rather than accenting: colour is the footage's job in this family.
+  cinematic: {
+    panelBlur: 'none',
+    panelRadius: '0',
+    panelShadow: NO_SHADOW,
+    panelKeyline: NO_SHADOW,
+    accentWeight: 'calc(1px * var(--scale))',
+    accentGlow: NO_SHADOW,
+    accentInk: 'var(--panel-bg)',
+    fontLabel: 'var(--font-heading)',
+    labelTracking: '0.34em',
+    labelColor: 'var(--text-dim)',
+    displayWeight: '400',
+    displayTracking: '0.06em',
+  },
   noacg: {
     panelBlur: 'blur(8px)',
     panelRadius: '0',

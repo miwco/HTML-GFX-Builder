@@ -22,8 +22,6 @@ export const ls17: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Lectern',
     styleTag: 'minimal',
-    roleTag: 'academic',
-    keywords: ['university', 'professor', 'lecture', 'conference', 'seminar', 'institution', 'faculty', 'phd', 'research'],
     description: 'A name with its own post-nominals field, over a position and a set-apart institution.',
     maxLines: 4,
     suggestedLines: [

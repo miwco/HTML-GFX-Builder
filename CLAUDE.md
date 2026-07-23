@@ -206,8 +206,11 @@ show chat, and AI (hosted mode). Offline builds (no Supabase env) must grow **ze
 
 ### The choose-first creation flow (primary UX)
 
-New projects go through the **CreationWizard** (Entry -> Category -> Template -> Fields -> Style
--> Animation, persistent live preview); `variant.create(options)` generates the complete, commented
+New projects go through the **CreationWizard** (Entry -> Browse -> Fields -> Style -> Animation,
+persistent live preview); the Browse step is a FACETED template storefront
+(docs/TEMPLATE_TAXONOMY_PROPOSAL.md: search + programme ranking + category tiles + field/style/
+capability facets over src/model/taxonomy.ts + src/templates/templateMeta.ts);
+`variant.create(options)` generates the complete, commented
 template, applied with `resetSampleData: true` so a project starts from its own field defaults.
 The Entry step leads with **Continue working** (recent library graphics + the door to Home),
 then the broadcast-graphics cards: templates, **"Create with AI"** (a brief plus optional images
@@ -279,9 +282,14 @@ findings properly rather than sprinkling eslint-disable comments.
   `Co-Authored-By` trailer or any agent co-author.** Don't commit `dist/` in feature work.
 - **`main` is only ever touched when the user asks for it, in that message - from ANY checkout.**
   Nothing lands on your own initiative: no commit made while sitting on `main`, no `git merge` into
-  main, no `git push origin main`, no `safe-merge`. Being in the primary checkout on `main` is not
+  main, no `git push origin main`. Being in the primary checkout on `main` is not
   permission to land - the user decides when work lands, *after* they know the change is safe.
   Commit verified work to the feature branch, report what you did and verified, and STOP.
+- **The one exception is `/safe-merge`.** Invoking it IS the ask: run that flow to completion for
+  the named branch - preflight, merge into `main`, push, guarded cleanup - without asking again for
+  the merge or the push. The permission is scoped to that invocation and that branch; it never
+  carries to another branch, a later turn, or any other route onto `main`. If the flow's own checks
+  fail, stop and report - permission to run the flow is not permission to land something broken.
 - **Commit messages:** clear and human-readable, explaining the actual change - understandable to an
   outside developer reading the history cold. No chat/session language, internal planning names, or
   AI-sounding phrases ("as requested", "starting era 5", "continued work"). Never mention Claude,

@@ -19,8 +19,6 @@ export const ls07: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Booth Line',
     styleTag: 'minimal',
-    roleTag: 'commentary',
-    keywords: ['commentators', 'casters', 'callers', 'rail', 'inline', 'play-by-play', 'booth'],
     description: 'One rail: the segment word in the accent, then both callers set inline.',
     maxLines: 3,
     suggestedLines: [

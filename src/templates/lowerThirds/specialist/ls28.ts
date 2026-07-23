@@ -23,8 +23,6 @@ export const ls28: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Live Remote',
     styleTag: 'minimal',
-    roleTag: 'location',
-    keywords: ['live', 'location', 'remote', 'clock', 'time', 'breaking', 'on scene', 'dateline', 'news'],
     description: 'A pulsing LIVE flag, the location, and a real ticking clock.',
     maxLines: 3,
     suggestedLines: [

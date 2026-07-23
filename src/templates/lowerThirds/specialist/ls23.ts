@@ -21,8 +21,6 @@ export const ls23: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'Analysis Kicker',
     styleTag: 'minimal',
-    roleTag: 'analysis',
-    keywords: ['analysis', 'comment', 'opinion', 'expert', 'pundit', 'correspondent', 'editorial', 'news'],
     description: 'An ANALYSIS kicker set ahead of the name — marks interpretation as interpretation.',
     maxLines: 4,
     suggestedLines: [

@@ -23,8 +23,6 @@ export const ls30: TemplateVariant = defineVariant(
     category: 'lower-third',
     name: 'World Clock',
     styleTag: 'glass',
-    roleTag: 'location',
-    keywords: ['time zone', 'world clock', 'city', 'utc', 'offset', 'markets', 'global', 'region', 'local time'],
     description: 'A city and its live local time, computed from a UTC offset the operator sets.',
     maxLines: 3,
     suggestedLines: [
