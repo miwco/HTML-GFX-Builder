@@ -38,6 +38,67 @@ async function selectAndPark(page: Page, t = 0.35) {
   await page.waitForTimeout(200);
 }
 
+test('the pasteboard is sized by the authored motion, and grows when the motion does', async ({ page }) => {
+  // A graphic whose whole reach is readable from px keyframes gets a margin that fits it,
+  // instead of the flat third-of-a-frame every template used to be handed. Kicker never pushes
+  // a layer more than a few px out; House Wire's marquee is MEASURED motion, whose travel the
+  // data cannot carry, so it keeps the honest fallback. Relative, never a hard-coded fraction.
+  // How much of the working surface is pasteboard: the overlay spans the padded document, the
+  // guides' outline is the true canvas, so their ratio IS the margin — read from the DOM.
+  const padRatio = async () => {
+    const layer = (await page.getByTestId('canvas-layer').boundingBox())!;
+    return layer.width / (await canvasBox(page)).width;
+  };
+
+  await createProject(page, 'Kicker');
+  const modest = await padRatio();
+  await createProject(page, 'House Wire');
+  expect(modest).toBeLessThan(await padRatio());
+
+  // Author an entrance that starts with the Name line fully clear of the canvas's left edge:
+  // the margin now has something to hold, so it grows — and holds it.
+  await createProject(page, 'Kicker');
+  await awaitPreviewRebuild(page, () =>
+    page.evaluate(async () => {
+      const { useTemplateStore } = await import('/src/store/templateStore.ts');
+      const { parseAnimData, spliceAnimData } = await import('/src/blocks/animData.ts');
+      const { setKeyframe } = await import('/src/blocks/animEdit.ts');
+      const { computePad } = await import('/src/components/pasteboard.ts');
+      const s = useTemplateStore.getState();
+      const data = parseAnimData(s.template.js)!;
+      // Measured from where the line SETTLES, so the push clears the edge whatever the layout:
+      // rect.left is doc px, and the pad is what separates the doc origin from the canvas.
+      const iframe = document.querySelector('iframe.preview-frame') as HTMLIFrameElement;
+      const r = iframe.contentDocument!.querySelector('#f0')!.getBoundingClientRect();
+      const settledLeft = r.left - computePad(s.template).padX; // doc px → canvas px
+      // Keyed at a MOMENT the scrub can land on exactly: between keyframes the value depends on
+      // the step's ease, and this test is about where the pasteboard holds the element, not
+      // about easing maths.
+      const at = Math.round(data.steps[0].duration * 50) / 100;
+      const next = setKeyframe(data, 0, '#f0', 'x', at, -Math.round(settledLeft + r.width + 120));
+      s.applyTemplate({ ...s.template, js: spliceAnimData(s.template.js, next)! });
+      return at;
+    }),
+  );
+  const at = await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const { parseAnimData } = await import('/src/blocks/animData.ts');
+    return Math.round(parseAnimData(useTemplateStore.getState().template.js)!.steps[0].duration * 50) / 100;
+  });
+  expect(await padRatio()).toBeGreaterThan(modest);
+  const grown = await canvasBox(page);
+
+  await page.evaluate(async (t: number) => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const s = useTemplateStore.getState();
+    s.setPlayhead({ step: 0, t });
+    s.sendScrub('in', t);
+  }, at);
+  await expect
+    .poll(async () => (await elementPoint(page, '#f0')).x, { timeout: 5000 })
+    .toBeLessThan(grown.x);
+});
+
 test('drag an element fully into the pasteboard: negative keyframe, still visible + selectable', async ({ page }) => {
   await createHairline(page);
   await selectAndPark(page);
@@ -88,7 +149,7 @@ test('the pasteboard pad never enters persisted state; export stays clipped to t
     const { composeDocument } = await import('/src/preview/composeDocument.ts');
     const { computePad } = await import('/src/components/pasteboard.ts');
     const tpl = useTemplateStore.getState().template;
-    const { padX } = computePad(tpl.resolution);
+    const { padX } = computePad(tpl);
     return {
       padX,
       // The preview/export composition WITHOUT authoring keeps the canvas clip and no pasteboard.
@@ -182,7 +243,7 @@ test('preset-authored off-canvas: a slide preset entrance renders + selects on t
     // off-canvas, inside the bottom pasteboard — regardless of the template layout.
     const ys = next.steps[0].layers['.lower-third-box']?.y;
     if (!ys || !ys.length) return { ok: false };
-    const { padY } = computePad(s.template.resolution);
+    const { padY } = computePad(s.template);
     const iframe = document.querySelector('iframe.preview-frame') as HTMLIFrameElement;
     const box = iframe.contentDocument!.querySelector('.lower-third-box')!.getBoundingClientRect();
     const settledCanvasCenterY = box.top + box.height / 2 - padY; // doc px → canvas px

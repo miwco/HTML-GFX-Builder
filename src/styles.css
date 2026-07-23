@@ -722,7 +722,14 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
 .ai-brief .hint { flex: 1; margin: 0; }
 
 /* ---------- Packet manager ---------- */
-.pk-modal { max-width: 760px; }
+/* The four sheets built on .wz-modal that are NOT the wizard — the community gallery, both
+   moderation queues, Settings — borrow its frame but not its job. The wizard is a fixed 94vh
+   workspace because it carries a live preview beside the step; these are lists and forms, so
+   they size to their content and only CAP at the wizard's height. Left fixed, Settings' short
+   form and a gallery still loading each opened a near-full-screen sheet of dead space.
+   Both classes are on the element, so the selector names both: .wz-modal is defined further down
+   the file and would otherwise win the height on source order alone. */
+.wz-modal.pk-modal { max-width: 760px; height: auto; max-height: min(880px, 90vh); }
 .pk-body { overflow-y: auto; padding: 14px 18px; min-height: 0; flex: 1; }
 .pk-body .spacer { flex: 1; }
 .pk-packet { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
@@ -735,6 +742,11 @@ body.resizing-rows { user-select: none; cursor: row-resize; }
   font-size: 13px;
 }
 .pk-graphic:first-of-type { border-top: none; }
+/* A community card carries a SUMMARY line meant to sit under the name (flex-basis: 100%, ordered
+   last). Rows don't wrap by default, so that basis was instead squeezing the row's other items:
+   the one-line "graphic · lower-third · author" broke across two lines with half the row empty
+   beside it. Let the gallery's rows wrap and the summary takes the line it was asking for. */
+.pk-modal .pk-graphic { flex-wrap: wrap; }
 /* .pk-info (name + metadata) and .pk-actions (the button cluster) are grouping wrappers for the
    phone layout below. On wider viewports they dissolve (display: contents), so every child sits
    on the row's own flex line exactly as before the wrappers existed. */
@@ -3258,7 +3270,10 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   background: #05070b;
   pointer-events: none;
 }
-.gfx-thumb iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: top left; }
+/* Anchored at the card's centre; GraphicThumb supplies the size and the transform, because the
+   framing is MEASURED per graphic (a lower third and a full-frame card want different zoom) —
+   the same arrangement the wizard's picker cards use. */
+.gfx-thumb iframe { position: absolute; top: 50%; left: 50%; border: 0; transform-origin: center center; }
 
 /* The per-graphic control panel page (#/control/<id>). */
 .control-page-body { display: grid; grid-template-columns: 1fr 380px; gap: 0; flex: 1; min-height: 0; }

@@ -5,7 +5,7 @@
 // untouched.
 
 import { isBackendConfigured } from './config';
-import { getAccessToken } from './auth';
+import { getAccessToken, subscribeAuth } from './auth';
 import { LocalStorageProvider } from './storage';
 import { SupabaseProvider } from './supabaseProvider';
 import { runSync, type SyncResult } from './sync';
@@ -115,11 +115,27 @@ function scheduleSync(): void {
 
 let started = false;
 
-/** Begin auto-sync: an initial pass, then a debounced push after every local data change. No-op in
- *  offline mode (never even attaches the listener). Idempotent. */
+/** Begin auto-sync: a pass whenever a session arrives, then a debounced push after every local
+ *  data change. No-op in offline mode (never even attaches the listener). Idempotent.
+ *
+ *  SIGNING IN IS A SYNC TRIGGER. The app mounts signed out — its own session is read
+ *  asynchronously, and a fresh browser has none at all — so the pass this used to fire at mount
+ *  always found `canSync()` false and parked the status at 'offline'. Nothing then re-ran it: a
+ *  user who signed in and made no edit saw no status chip, pushed nothing, and (on a new machine,
+ *  the reason to sign in at all) pulled none of their work back. Sign-OUT is the mirror: the
+ *  status must fall back to 'offline' rather than leave a stale "Synced" claiming an account the
+ *  session no longer has. Only a CHANGE in signed-in-ness acts — a token refresh is not a
+ *  reason to re-sync. */
 export function startAutoSync(): void {
   if (started || typeof window === 'undefined' || !isBackendConfigured()) return;
   started = true;
   window.addEventListener('spx-data-changed', scheduleSync);
-  void syncNow();
+  let wasSignedIn: boolean | null = null;
+  subscribeAuth((auth) => {
+    const signedIn = auth.status === 'signed-in' && !!auth.user;
+    if (signedIn === wasSignedIn) return;
+    wasSignedIn = signedIn;
+    if (signedIn) void syncNow();
+    else setState({ phase: 'offline' });
+  });
 }

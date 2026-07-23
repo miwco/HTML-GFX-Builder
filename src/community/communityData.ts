@@ -24,6 +24,17 @@ const BUCKET = 'community-assets';
 export type CommunityKind = 'graphic' | 'look';
 export type CommunityStatus = 'pending' | 'approved' | 'rejected' | 'removed';
 
+/** What a moderation status is CALLED in the UI. `pending`/`approved` are the table's words, and
+ *  they mean nothing to the author who published the template ("approved" by whom, and is it up
+ *  yet?). Both surfaces that show a status — the author's own list in Home and the moderator
+ *  queue — read the sentence from here, so they can never drift into two vocabularies. */
+export const STATUS_LABEL: Record<CommunityStatus, string> = {
+  pending: 'in review',
+  approved: 'live',
+  rejected: 'not accepted',
+  removed: 'taken down',
+};
+
 /** A browse card (from community_list) — never carries author_id or the body. */
 export interface CommunityCard {
   id: string;

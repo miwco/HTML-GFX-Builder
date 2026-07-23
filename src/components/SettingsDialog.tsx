@@ -12,7 +12,8 @@ interface Props {
  * Account/app settings (reached from the topbar account menu). Everything here is stored in
  * THIS browser: the AI key goes only to Anthropic, never to our backend. Style defaults live
  * where the work happens instead — the project brand (wizard "Match current project") and the
- * 📦 Packets brand looks — so this dialog stays small on purpose.
+ * brand looks in Home — so this dialog stays small on purpose, and is sized to its content
+ * (.wz-modal.pk-modal in styles.css) rather than to the wizard's full-height workspace.
  */
 export default function SettingsDialog({ onClose }: Props) {
   useModalGate(); // global editor shortcuts stand down while this is up
@@ -93,7 +94,7 @@ export default function SettingsDialog({ onClose }: Props) {
               captured on every wizard Create (reapply it with the wizard's "Use current
               project's colors &amp; font" toggle), and
               named <strong>brand looks</strong> — palette + font, shareable as files — live under
-              📦 Packets. Imported fonts and logos travel inside each graphic and its export.
+              🏠 Home ▸ Brand looks. Imported fonts and logos travel inside each graphic and its export.
             </p>
           </div>
         </div>
