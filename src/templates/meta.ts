@@ -103,11 +103,12 @@ export const VARIANT_META: Record<string, DeclaredTemplateMeta> = {
   // infographic split (§4): the fallback for the category is 'stats'.
   ig01: { category: 'stats', subtype: 'stat-panel', structures: ['single-line', 'bars'], positionalSemantics: ['headline', 'percentage'] },
   ig03: { category: 'results', subtype: 'leaderboard', structures: ['rows'], positionalSemantics: ['headline', 'items'], extraCapabilities: ['repeating'] },
-  ig04: { category: 'poll-quiz', subtype: 'poll-result', structures: ['bars'], positionalSemantics: ['question', 'percentage'], extraCapabilities: ['poll-states'] },
-  ig05: { category: 'progress', subtype: 'donation-goal', structures: ['bars'], positionalSemantics: ['headline', 'percentage'], extraCapabilities: ['progress'] },
-  ig07: { category: 'poll-quiz', subtype: 'vote', structures: ['bars'], positionalSemantics: ['headline', 'items'], extraCapabilities: ['poll-states', 'repeating'] },
-  // info-card split (§4): card04 is the remaining unclaimed card — a body-lines info card.
-  card04: { category: 'info', subtype: 'explainer', structures: ['multi-line'], positionalSemantics: ['headline', 'description', 'description', 'description', 'description'] },
+  ig04: { category: 'poll-quiz', subtype: 'poll-result', structures: ['bars'], positionalSemantics: ['percentage', 'answer', 'question'], extraCapabilities: ['poll-states'] },
+  ig05: { category: 'progress', subtype: 'donation-goal', structures: ['bars'], positionalSemantics: ['amount', 'amount', 'topic'], extraCapabilities: ['progress'] },
+  ig07: { category: 'poll-quiz', subtype: 'vote', structures: ['bars', 'rows'], positionalSemantics: ['name', 'organization', 'percentage', 'name', 'organization', 'percentage', 'name', 'organization', 'percentage'], extraCapabilities: ['poll-states'] },
+  // info-card split (§4): card04 turned out to be a QUOTE card (Quote + Name + Role) — the
+  // quote category's first catalog content, found by the factory's schema-length assertion.
+  card04: { category: 'quote', subtype: 'quote', structures: ['multi-line', 'name-role'], positionalSemantics: ['description', 'name', 'role'] },
 };
 
 // ── Per-old-category fallback (single-valued, proposal §4) ──────────────────

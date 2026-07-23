@@ -15,6 +15,14 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   registry parts (selectable, animatable, named by their field titles) while `countLines` - "how
   many lines does THIS design have", what the preset emitters size choreography from - keeps
   counting the host's only.
+- **taxonomy.ts** - the DISCOVERY facet registries (docs/TEMPLATE_TAXONOMY_PROPOSAL.md): stable
+  kebab-case ids + display labels for programme families/formats (each format carries the
+  VERBATIM workbook `sheetName` packs.ts uses), the 26 graphic categories (controlled
+  subtypes, coverage class, `relevance: 'all'`), structures, field semantics, capabilities,
+  placements, the per-preset motion intensity/style table (total over AnimPresetId — a new
+  preset without a row is a type error), style-family labels, and the search alias table
+  (aliases resolve to SETS of facet values). Pure data; derivation lives in
+  src/templates/templateMeta.ts, the browse engine in src/templates/search.ts.
 - **wizard.ts** - categories, variants, WizardOptions, palettes. A variant declares its
   CAPABILITIES - `maxLines` (1-5 line capacity), `logo: 'none' | 'optional' | 'built-in'`,
   `animationPresets` - which drive the wizard's Fields/Animation options AND the Template

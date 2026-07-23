@@ -269,6 +269,45 @@ export function allTemplateMeta(): { variant: TemplateVariant; meta: TemplateMet
   return out;
 }
 
+/**
+ * Every problem with the declared taxonomy metadata, as strings (empty = valid) — the
+ * factory's meta assertions (proposal §17 stage 2): the format registry must map the pack
+ * config's verbatim sheet names 1:1, every browsable variant must resolve a primary
+ * category, declared subtypes must come from their category's controlled list, and a
+ * positional semantics array must match its variant's compiled schema length (a field
+ * insertion fails loudly instead of silently shifting every meaning by one).
+ */
+export function validateTaxonomy(): string[] {
+  const problems: string[] = [];
+
+  // Format-id ↔ verbatim-sheet bijection against the pack config.
+  const bySheet = formatsBySheetName();
+  const packSheets = new Set(PACKS.flatMap((p) => p.formats));
+  for (const sheet of packSheets) {
+    if (!bySheet.has(sheet)) problems.push(`pack format "${sheet}" has no taxonomy format id`);
+  }
+  for (const format of FORMATS) {
+    if (!packSheets.has(format.sheetName)) {
+      problems.push(`format "${format.id}" sheetName "${format.sheetName}" is in no pack`);
+    }
+  }
+  if (bySheet.size !== FORMATS.length) problems.push('duplicate sheetName in the format registry');
+
+  for (const { variant, meta } of allTemplateMeta()) {
+    const category = graphicCategoryById(meta.category);
+    if (meta.subtype && !category.subtypes.includes(meta.subtype)) {
+      problems.push(`${variant.id}: subtype "${meta.subtype}" is not in category "${category.id}"`);
+    }
+    const declared = VARIANT_META[variant.id];
+    if (declared?.positionalSemantics && declared.positionalSemantics.length !== meta.fieldSchema.length) {
+      problems.push(
+        `${variant.id}: positional semantics length ${declared.positionalSemantics.length} != schema length ${meta.fieldSchema.length}`,
+      );
+    }
+  }
+  return problems;
+}
+
 /** Browse tiles: categories that actually have catalog content, with counts —
  *  taxonomy-ahead-of-catalog categories render no tile (proposal §4). */
 export function browsableCategories(): { category: GraphicCategoryId; name: string; count: number }[] {

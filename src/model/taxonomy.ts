@@ -239,7 +239,7 @@ export type FieldSemantic =
   | 'name' | 'role' | 'organization' | 'headline' | 'description' | 'topic'
   | 'question' | 'answer' | 'score' | 'team' | 'price' | 'discount' | 'percentage'
   | 'location' | 'date' | 'time' | 'duration' | 'url' | 'social-handle'
-  | 'qr-content' | 'image' | 'logo' | 'items' | 'source';
+  | 'qr-content' | 'image' | 'logo' | 'items' | 'source' | 'amount';
 
 export const SEMANTIC_LABELS: Record<FieldSemantic, string> = {
   name: 'Name', role: 'Role', organization: 'Organization', headline: 'Headline',
@@ -248,7 +248,7 @@ export const SEMANTIC_LABELS: Record<FieldSemantic, string> = {
   percentage: 'Percentage', location: 'Location', date: 'Date', time: 'Time',
   duration: 'Duration', url: 'URL', 'social-handle': 'Social handle',
   'qr-content': 'QR content', image: 'Image', logo: 'Logo', items: 'Items',
-  source: 'Source / platform',
+  source: 'Source / platform', amount: 'Amount / total',
 };
 
 // ── Facet E: capabilities ───────────────────────────────────────────────────
@@ -283,7 +283,7 @@ export const CAPABILITIES: CapabilityInfo[] = [
   { id: 'winner-reveal',    name: 'Winner reveal',              filter: false },
   { id: 'alert-state',      name: 'Alert state',                filter: false },
   { id: 'image-upload',     name: 'Image upload',               filter: true },
-  { id: 'logo-upload',      name: 'Logo upload',                filter: false },
+  { id: 'logo-upload',      name: 'Logo upload',                filter: true },
   { id: 'qr',               name: 'QR code',                    filter: false },
   { id: 'live-data',        name: 'Live-updating data',         filter: false },
   { id: 'sponsor-rotation', name: 'Sponsor rotation',           filter: false },

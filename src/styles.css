@@ -1234,6 +1234,32 @@ kbd {
 .wz-filter-clear { opacity: 0.8; }
 .wz-filter-empty { margin-top: 8px; }
 
+/* The Browse step — the faceted template storefront (TEMPLATE_TAXONOMY_PROPOSAL §12). */
+.wz-browse-search {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.wz-browse-programme { margin-bottom: 12px; }
+.wz-browse-programme select { min-width: 200px; }
+.wz-browse-tiles { margin-bottom: 12px; }
+.wz-browse-tiles .wz-cat { padding: 9px 12px; gap: 0; }
+.wz-filter-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+.wz-browse-more { margin: 0 0 10px; }
+.wz-browse-more summary { cursor: pointer; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.wz-browse-more .wz-filter-row { margin: 4px 0 8px; }
+.wz-browse-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.wz-browse-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wz-browse-count { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.wz-browse-section { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin: 14px 0 8px; }
+/* Result cards carry the strict info budget under the existing caption row. */
+.wz-browse-meta { display: flex; flex-direction: column; gap: 2px; padding: 0 10px 10px; font-size: 11px; color: var(--text-dim); }
+.wz-browse-cat { color: var(--accent); }
+.wz-browse-complexity { text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
+.wz-browse-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px; }
+
 .wz-anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .wz-anim { text-align: left; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
 .wz-anim.selected { border-color: var(--accent); }
