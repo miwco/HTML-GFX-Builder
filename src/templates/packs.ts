@@ -47,7 +47,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Match Day',
     description: 'Scorebug, clock, lineup strap and full-time card — the live sports kit.',
     family: 'sport',
-    types: ['scoreboard', 'countdown', 'lower-third', 'ticker', 'sponsor-bug', 'title-card', 'holding-screen'],
+    types: ['scoreboard', 'countdown', 'lower-third', 'ticker', 'sponsor-bug', 'title-card', 'holding-screen', 'now-next', 'notice-card'],
     extras: ['vs01', 'cr03'],
     formats: ['Sports broadcast / match coverage', 'Local sports / amateur sports'],
   },
@@ -56,7 +56,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Esports',
     description: 'Match score, caster straps, schedule and countdown for tournament nights.',
     family: 'sport',
-    types: ['scoreboard', 'lower-third', 'countdown', 'agenda', 'social-bug', 'sponsor-bug', 'holding-screen', 'title-card'],
+    types: ['scoreboard', 'lower-third', 'countdown', 'agenda', 'social-bug', 'sponsor-bug', 'holding-screen', 'title-card', 'now-next'],
     extras: ['vs02'],
     formats: ['Esports tournament'],
   },
@@ -65,7 +65,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Creator',
     description: 'Starting-soon, straps, topic cards and handles — the streamer starter kit.',
     family: 'noacg',
-    types: ['holding-screen', 'lower-third', 'topic-card', 'social-bug', 'sponsor-bug', 'countdown', 'poll'],
+    types: ['holding-screen', 'lower-third', 'topic-card', 'social-bug', 'sponsor-bug', 'countdown', 'poll', 'now-next', 'process-steps'],
     formats: [
       'Gaming livestream',
       'Just Chatting / personality stream',
@@ -84,7 +84,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Newsroom',
     description: 'Anchor straps, the wire ticker, headline and topic cards for news programs.',
     family: 'minimal',
-    types: ['lower-third', 'ticker', 'topic-card', 'title-card', 'agenda', 'sponsor-bug'],
+    types: ['lower-third', 'ticker', 'topic-card', 'title-card', 'headline-card', 'key-facts', 'notice-card', 'agenda', 'sponsor-bug'],
     formats: [
       'News / current affairs livestream',
       'Weather broadcast / climate update',
@@ -99,7 +99,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Election',
     description: 'Result bars, candidate straps and the count ticker for civic broadcasts.',
     family: 'minimal',
-    types: ['poll', 'lower-third', 'ticker', 'title-card', 'agenda', 'countdown'],
+    types: ['poll', 'lower-third', 'ticker', 'title-card', 'headline-card', 'key-facts', 'agenda', 'countdown'],
     formats: [
       'Election night / results program',
       'Debate / political discussion',
@@ -111,7 +111,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Talk Show',
     description: 'Guest straps, topic and question cards, polls — panels, podcasts and Q&As.',
     family: 'glass',
-    types: ['lower-third', 'topic-card', 'poll', 'agenda', 'social-bug', 'sponsor-bug', 'countdown'],
+    types: ['lower-third', 'topic-card', 'poll', 'agenda', 'key-facts', 'recap-card', 'social-bug', 'sponsor-bug', 'countdown'],
     formats: [
       'Talk show / panel discussion',
       'Podcast livestream / videocast',
@@ -127,7 +127,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Corporate Events',
     description: 'Agendas, speaker straps, session titles and polls for webinars and keynotes.',
     family: 'minimal',
-    types: ['agenda', 'lower-third', 'countdown', 'title-card', 'topic-card', 'poll', 'holding-screen'],
+    types: ['agenda', 'lower-third', 'countdown', 'title-card', 'topic-card', 'poll', 'holding-screen', 'now-next', 'process-steps', 'recap-card', 'key-facts'],
     formats: [
       'Webinar / expert presentation',
       'Conference / seminar stream',
@@ -146,7 +146,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Classroom',
     description: 'Quiz board, timers, lesson cards and a score table for teaching streams.',
     family: 'noacg',
-    types: ['quiz-board', 'countdown', 'lower-third', 'topic-card', 'agenda', 'scoreboard'],
+    types: ['quiz-board', 'countdown', 'lower-third', 'topic-card', 'agenda', 'scoreboard', 'process-steps', 'key-facts', 'recap-card'],
     formats: [
       'Education / lecture livestream',
       'Student production / school TV',
@@ -158,7 +158,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Church & Ceremony',
     description: 'Service titles, scripture cards, program schedule and a quiet countdown.',
     family: 'minimal',
-    types: ['title-card', 'lower-third', 'topic-card', 'holding-screen', 'countdown', 'agenda'],
+    types: ['title-card', 'lower-third', 'topic-card', 'statement-card', 'holding-screen', 'countdown', 'agenda', 'now-next'],
     extras: ['cr01'],
     formats: [
       'Religious service / church livestream',
@@ -172,7 +172,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Stage & Music',
     description: 'Artist straps, setlist cards, intermission screens for performances and galas.',
     family: 'glass',
-    types: ['title-card', 'lower-third', 'holding-screen', 'countdown', 'social-bug', 'agenda', 'ticker'],
+    types: ['title-card', 'lower-third', 'now-next', 'holding-screen', 'countdown', 'social-bug', 'agenda', 'ticker', 'statement-card', 'notice-card'],
     extras: ['cr02'],
     formats: [
       'Music performance / concert livestream',
@@ -188,7 +188,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Shopping',
     description: 'Product cards, deal timers and the offer ticker for live commerce.',
     family: 'noacg',
-    types: ['topic-card', 'countdown', 'lower-third', 'ticker', 'title-card', 'sponsor-bug'],
+    types: ['topic-card', 'countdown', 'lower-third', 'ticker', 'title-card', 'key-facts', 'sponsor-bug'],
     formats: [
       'Live commerce / shopping stream',
       'Cooking show / food livestream',
@@ -202,7 +202,7 @@ export const PACKS: TemplatePack[] = [
     name: 'Wellness',
     description: 'Interval timers, session titles and calm holding screens for movement and rest.',
     family: 'minimal',
-    types: ['countdown', 'holding-screen', 'topic-card', 'lower-third', 'social-bug'],
+    types: ['countdown', 'holding-screen', 'topic-card', 'process-steps', 'lower-third', 'social-bug'],
     formats: [
       'Fitness / workout class',
       'Meditation / ambient livestream',

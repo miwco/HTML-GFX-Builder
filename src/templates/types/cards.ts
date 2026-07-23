@@ -3,6 +3,19 @@
 // walks them, and SPX Continue drives the whole thing with nothing declared.
 
 import { paletteById } from '../../model/wizard';
+import {
+  CARD10_SAMPLES,
+  CARD11_SAMPLES,
+  CARD12_SAMPLES,
+  CARD13_SAMPLES,
+  CARD14_SAMPLES,
+  CARD15_SAMPLES,
+  CARD16_SAMPLES,
+  CARD17_SAMPLES,
+  TITLE_CARD_FIELDS,
+  TOPIC_CARD_FIELDS,
+} from '../pack4/content';
+import { CLEAN, FROST, HOUSE, VOLT } from '../pack4/skin';
 import { card01 } from '../infoCards/card01';
 import { card02 } from '../infoCards/card02';
 import { card03 } from '../infoCards/card03';
@@ -11,6 +24,14 @@ import { card06 } from '../infoCards/card06';
 import { card07 } from '../infoCards/card07';
 import { card08 } from '../infoCards/card08';
 import { card09 } from '../infoCards/card09';
+import { card10 } from '../infoCards/card10';
+import { card11 } from '../infoCards/card11';
+import { card12 } from '../infoCards/card12';
+import { card13 } from '../infoCards/card13';
+import { card14 } from '../infoCards/card14';
+import { card15 } from '../infoCards/card15';
+import { card16 } from '../infoCards/card16';
+import { card17 } from '../infoCards/card17';
 import type { GraphicType } from './graphicType';
 
 /** TITLE / OPENER CARD — 23 of the 60 formats open with one (episode title, session title,
@@ -30,11 +51,9 @@ export const titleCardType: GraphicType = {
       { id: 'kicker', selector: '#f1', kind: 'line', required: true },
     ],
   },
-  fields: [
-    { key: 'title', label: 'Title', kind: 'text', value: 'The Results Show', role: 'line' },
-    { key: 'kicker', label: 'Kicker', kind: 'text', value: 'Elections 2026', role: 'line' },
-    { key: 'subtitle', label: 'Subtitle', kind: 'text', value: 'Live from the studio · 20:00', role: 'line' },
-  ],
+  // Declared in templates/pack4/content.ts — shared with the pack's own title designs, so a
+  // variant's suggested lines and this type's fields cannot drift apart.
+  fields: TITLE_CARD_FIELDS,
   machine: {},
   controls: [],
   capabilities: {
@@ -95,6 +114,59 @@ export const titleCardType: GraphicType = {
       defaultZone: 'mid-center',
       create: (_type, options) => card09.create(options),
     },
+    // ── The title/topic/information pack's four openers ────────────────────────────────
+    // The type had exactly one design per family, which is enough to fill the matrix and not
+    // enough to open a show with: an episode title, a conference session, a match segment and
+    // a Sunday service are the same GRAPHIC and genuinely different designs. These four are
+    // built on one shared composition (infoCards/pack4/titles.ts) so they stay siblings.
+    {
+      id: 'card10',
+      name: 'Session Title',
+      description: 'A panel-free session opener: track kicker, session title, then time and room.',
+      styleTag: 'minimal',
+      palette: CLEAN.palette,
+      fontId: CLEAN.fontId,
+      samples: CARD10_SAMPLES,
+      animationPresets: ['line-reveal', 'mask-wipe', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-left',
+      create: (_type, options) => card10.create(options),
+    },
+    {
+      id: 'card11',
+      name: 'Keynote Title',
+      description: 'A frosted keynote opener: a soft kicker, the talk title, then who is giving it.',
+      styleTag: 'glass',
+      palette: FROST.palette,
+      fontId: FROST.fontId,
+      samples: CARD11_SAMPLES,
+      animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-center',
+      create: (_type, options) => card11.create(options),
+    },
+    {
+      id: 'card12',
+      name: 'Segment Title',
+      description: 'A square sport slab with an accent top rail: numbered kicker, huge caps title.',
+      styleTag: 'sport',
+      palette: VOLT.palette,
+      fontId: VOLT.fontId,
+      samples: CARD12_SAMPLES,
+      animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-left',
+      create: (_type, options) => card12.create(options),
+    },
+    {
+      id: 'card13',
+      name: 'Service Title',
+      description: 'The house ceremony opener: amber bar and void panel, a date kicker over the service name.',
+      styleTag: 'noacg',
+      palette: HOUSE.palette,
+      fontId: HOUSE.fontId,
+      samples: CARD13_SAMPLES,
+      animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-center',
+      create: (_type, options) => card13.create(options),
+    },
     // card04 is NOT promotable here: it supports three lines and this type declares five, and a
     // compiled variant takes the TYPE's capabilities. Promotion would offer two more lines than
     // the quote card was designed to hold. The mismatch widens rather than strips, which is why
@@ -121,12 +193,9 @@ export const topicCardType: GraphicType = {
   },
   // These are card01's own defaults, unchanged. A type describes the shape of a graphic's
   // content, not new copy for it: rewriting a promoted variant's sample text would change
-  // what every existing user of that card sees, for no gain.
-  fields: [
-    { key: 'heading', label: 'Heading', kind: 'text', value: 'The Story in Numbers', role: 'line' },
-    { key: 'line1', label: 'Line 1', kind: 'text', value: 'Renewables grew 28% this year', role: 'line' },
-    { key: 'line2', label: 'Line 2', kind: 'text', value: 'Coal at its lowest share since 1965', role: 'line' },
-  ],
+  // what every existing user of that card sees, for no gain. Declared in
+  // templates/pack4/content.ts, shared with the pack's own topic designs.
+  fields: TOPIC_CARD_FIELDS,
   machine: {},
   controls: [],
   capabilities: {
@@ -194,6 +263,58 @@ export const topicCardType: GraphicType = {
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
       create: (_type, options) => card06.create(options),
+    },
+    // ── The title/topic/information pack's four topic cards ────────────────────────────
+    // A chapter marker, a question card, a sport talking point and an explainer's key-term
+    // card: one heading and two supporting lines in every case, which is exactly this type.
+    // Shared composition in infoCards/pack4/topics.ts.
+    {
+      id: 'card14',
+      name: 'Chapter Card',
+      description: 'A quiet chapter marker: the chapter, what it covers, and when it happened.',
+      styleTag: 'minimal',
+      palette: CLEAN.palette,
+      fontId: CLEAN.fontId,
+      samples: CARD14_SAMPLES,
+      animationPresets: ['line-reveal', 'mask-wipe', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-left',
+      create: (_type, options) => card14.create(options),
+    },
+    {
+      id: 'card15',
+      name: 'Question Card',
+      description: 'A frosted question card: the question large, then what it turns on.',
+      styleTag: 'glass',
+      palette: FROST.palette,
+      fontId: FROST.fontId,
+      samples: CARD15_SAMPLES,
+      animationPresets: ['pop-spring', 'blur-in', 'slide-up', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-right',
+      create: (_type, options) => card15.create(options),
+    },
+    {
+      id: 'card16',
+      name: 'Topic Slab',
+      description: 'A sport talking point: an accent rail over a heavy caps heading and two points.',
+      styleTag: 'sport',
+      palette: VOLT.palette,
+      fontId: VOLT.fontId,
+      samples: CARD16_SAMPLES,
+      animationPresets: ['snap-stinger', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-left',
+      create: (_type, options) => card16.create(options),
+    },
+    {
+      id: 'card17',
+      name: 'Key Term',
+      description: 'The explainer key-term card: a word in the void panel, then what it means.',
+      styleTag: 'noacg',
+      palette: HOUSE.palette,
+      fontId: HOUSE.fontId,
+      samples: CARD17_SAMPLES,
+      animationPresets: ['line-reveal', 'slide-up', 'mask-wipe', 'fade', 'slide-down', 'flip-3d'],
+      defaultZone: 'mid-right',
+      create: (_type, options) => card17.create(options),
     },
   ],
 };

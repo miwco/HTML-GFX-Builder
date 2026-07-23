@@ -221,6 +221,10 @@ export interface TypeCapabilities {
   logo: LogoSupport;
   animationPresets: AnimPresetId[];
   defaultZone: Zone9;
+  /** Whether this graphic is STEPPED by construction — a numbered process, a checklist, a
+   *  reveal that only makes sense one press at a time (TemplateVariant.defaultSteps). Absent
+   *  = off, so every existing type compiles exactly what it compiled before. */
+  defaultSteps?: boolean;
 }
 
 /** One look. Phase 2 ships one per type (the house theme); Phase 3 makes this array the
@@ -271,6 +275,13 @@ export interface TypeDesign {
    * authored for the top-right safe area, and the type was moving it to the top-left.
    */
   defaultZone?: Zone9;
+  /**
+   * Whether this design starts stepped, when it differs from the type's answer. The fourth
+   * capability that is really a property of the design: a notice card and a checklist can be
+   * the same TYPE of graphic — words in a panel — while only one of them is meaningless
+   * without its presses.
+   */
+  defaultSteps?: boolean;
   /**
    * Why this design belongs to THIS type, when a mechanical signal says it might not.
    *
@@ -515,6 +526,7 @@ export function variantsFromType(type: GraphicType): TemplateVariant[] {
       defaultPalette: design.palette,
       defaultFontId: design.fontId,
       defaultZone: design.defaultZone ?? type.capabilities.defaultZone,
+      defaultSteps: design.defaultSteps ?? type.capabilities.defaultSteps,
       create(options) {
         const template = attachMachine(type, design.create(type, options));
         const missing = missingParts(type, template);

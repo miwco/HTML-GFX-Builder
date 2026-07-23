@@ -15,6 +15,14 @@ import { ig10 } from './ig10';
 import { ig11 } from './ig11';
 import { ig12 } from './ig12';
 import { ig13 } from './ig13';
+import { ig14 } from './ig14';
+import { ig15 } from './ig15';
+import { ig16 } from './ig16';
+import { ig17 } from './ig17';
+import { ig18 } from './ig18';
+import { ig19 } from './ig19';
+import { ig20 } from './ig20';
+import { ig21 } from './ig21';
 
 export const INFOGRAPHICS: TemplateVariant[] = [
   ig01, // Big stat count-up
@@ -30,6 +38,15 @@ export const INFOGRAPHICS: TemplateVariant[] = [
   ig11, // House Poll — noacg bar chart (sibling lt11 / ig08)
   ig12, // Volt Poll — sport bar chart (sibling lt06 / card02)
   ig13, // Clean Poll — minimal bar chart (sibling lt01 / ig06)
+  // ── The title / topic / information pack's two list boards ──
+  ig14, // Fact Sheet — minimal key facts (key-facts)
+  ig15, // Frost Facts — glass key facts (key-facts)
+  ig16, // Volt Facts — sport key numbers (key-facts)
+  ig17, // House Facts — house key facts (key-facts)
+  ig18, // Recap Board — minimal recap / actions (recap-card)
+  ig19, // Frost Recap — glass recap (recap-card)
+  ig20, // Volt Recap — sport half-time notes (recap-card)
+  ig21, // House Actions — house recap (recap-card)
 ];
 
 export function infographicById(id: string): TemplateVariant | undefined {
