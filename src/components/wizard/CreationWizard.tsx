@@ -14,8 +14,9 @@ import ImportStep from './steps/ImportStep';
 import ImportDesignStep from './steps/ImportDesignStep';
 import PrepareDesignStep from './steps/PrepareDesignStep';
 import PlaceFieldsStep from './steps/PlaceFieldsStep';
-import CategoryStep from './steps/CategoryStep';
 import TemplateStep from './steps/TemplateStep';
+import BrowseStep from './steps/BrowseStep';
+import { NO_BROWSE_FILTERS, type BrowseFilters } from '../../templates/search';
 import FieldsStep from './steps/FieldsStep';
 import StyleStep from './steps/StyleStep';
 import AnimationStep from './steps/AnimationStep';
@@ -29,7 +30,9 @@ import { useModalGate } from '../spaceKey';
 import { useRouter } from '../../app/router';
 import { openGraphicDoc, useSaveUi } from '../../store/saveActions';
 
-const STEP_TITLES = ['Start', 'Category', 'Template', 'Fields', 'Style', 'Animation'];
+// The catalog flow browses ONE faceted step (search + programme + category + refinements —
+// docs/TEMPLATE_TAXONOMY_PROPOSAL.md §12) instead of the old Category → Template pair.
+const STEP_TITLES = ['Start', 'Browse', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_IMPORT = ['Start', 'Images', 'Template', 'Fields', 'Style', 'Animation'];
 const STEP_TITLES_AI = ['Start', 'Create'];
 const STEP_TITLES_VIDEO = ['Start', 'Video'];
@@ -58,6 +61,9 @@ export default function CreationWizard() {
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState<'template' | 'import' | 'design' | 'ai' | 'video'>('template');
   const [draft, setDraft] = useState<WizardDraft>(initialDraft);
+  // Browse-step facet state lives here (not in the step) so Back returns with the
+  // filters intact for the wizard session; a fresh open starts clean.
+  const [browseFilters, setBrowseFilters] = useState<BrowseFilters>(NO_BROWSE_FILTERS);
   const [replayKey, setReplayKey] = useState(0);
   // Describe-it mode: the AI's current (validated) result, previewed live like any draft.
   const [aiResult, setAiResult] = useState<{ template: SpxTemplate; valid: boolean } | null>(null);
@@ -104,6 +110,7 @@ export default function CreationWizard() {
       setStep(0);
       setMode('template');
       setDraft(initialDraft());
+      setBrowseFilters(NO_BROWSE_FILTERS);
       setAiResult(null);
       setStretchDemo(null);
       const b = loadBrand();
@@ -133,9 +140,12 @@ export default function CreationWizard() {
     [variant, draft, mode],
   );
 
+  // The Animation step's index per mode: the one-step Browse flow ends at 4, the import
+  // continuation keeps the old six-step shape.
+  const animStep = mode === 'import' ? 5 : 4;
   // On the Animation step the preview demos the full lifecycle (in → hold → out → in)
   // so the exit is actually seen — unless the user is tuning the entrance only.
-  const onAnimationStep = mode === 'design' ? step === 4 : step === 5;
+  const onAnimationStep = step === animStep && mode !== 'ai' && mode !== 'video';
   const demoOut =
     onAnimationStep &&
     !!variant &&
@@ -201,11 +211,13 @@ export default function CreationWizard() {
   };
 
   const nextDisabled =
-    (step === 1 &&
-      (mode === 'import'
-        ? draft.importedImages.length === 0 || !draft.category
-        : !draft.category)) ||
-    (step === 2 && !draft.variantId);
+    mode === 'template'
+      ? step === 1 && !draft.variantId
+      : (step === 1 &&
+          (mode === 'import'
+            ? draft.importedImages.length === 0 || !draft.category
+            : !draft.category)) ||
+        (step === 2 && !draft.variantId);
 
   // Design mode previews from the moment the artwork lands, through the Prepare step —
   // the user sees the real graphic (and its default entrance) before creating.
@@ -213,6 +225,7 @@ export default function CreationWizard() {
     mode === 'ai' ? step === 1 && !!aiResult
     : mode === 'video' ? false
     : mode === 'design' ? step >= 1 && !!previewTemplate
+    : mode === 'template' ? step >= 1 && !!previewTemplate
     : step >= 2 && !!previewTemplate;
   const stepTitles =
     mode === 'ai' ? STEP_TITLES_AI
@@ -269,7 +282,7 @@ export default function CreationWizard() {
                 <button
                   key={t}
                   className={`wz-dot ${s === step ? 'active' : ''} ${s < step ? 'done' : ''}`}
-                  disabled={s > step || (s > 2 && !draft.variantId)}
+                  disabled={s > step || (s > (mode === 'template' ? 1 : 2) && !draft.variantId)}
                   onClick={() => setStep(s)}
                   title={t}
                 >
@@ -390,12 +403,29 @@ export default function CreationWizard() {
               />
             )}
             {step === 1 && mode === 'template' && (
-              <CategoryStep
-                selected={draft.category}
-                onSelect={(category) => {
-                  patch({ category });
-                  setStep(2);
-                }}
+              <BrowseStep
+                draft={draft}
+                filters={browseFilters}
+                onFilters={setBrowseFilters}
+                onDraft={patch}
+                onPickVariant={(v) =>
+                  patch({
+                    category: v.category,
+                    variantId: v.id,
+                    lines: v.suggestedLines.map((l) => ({ ...l })),
+                    zone: null,
+                    logoEnabled: null, // the logo decision belongs to the picked design
+                    animation: { presetId: null, outPresetId: null },
+                    // Matched brand carries the package look into every new graphic.
+                    ...(matchBrand && brand
+                      ? brandPatch(brand)
+                      : { paletteId: null, customPalette: null, fontId: null }),
+                  })
+                }
+                onAi={() => { setMode('ai'); setStep(1); }}
+                // Ranking context, not a filter: with the footer's brand toggle on, the
+                // package's siblings lead the results (proposal §13.3).
+                brandFamily={matchBrand && brand ? brand.styleTag : null}
               />
             )}
             {step === 3 && mode === 'design' && draft.designArt && (
@@ -434,7 +464,7 @@ export default function CreationWizard() {
                 onDemoText={setStretchDemo}
               />
             )}
-            {step === 2 && mode !== 'design' && (
+            {step === 2 && mode === 'import' && (
               <TemplateStep
                 variants={orderedVariants}
                 draft={draft}
@@ -454,10 +484,15 @@ export default function CreationWizard() {
                 }
               />
             )}
-            {/* The catalog flow's later steps — design mode has its own step 3/4 above. */}
-            {step === 3 && mode !== 'design' && variant && <FieldsStep variant={variant} draft={draft} onDraft={patch} />}
-            {step === 4 && mode !== 'design' && variant && <StyleStep variant={variant} draft={draft} onDraft={patch} />}
-            {step === 5 && mode !== 'design' && variant && (
+            {/* The catalog flow's later steps — one index earlier in the Browse flow;
+                design mode has its own step 3/4 above. */}
+            {step === (mode === 'template' ? 2 : 3) && (mode === 'template' || mode === 'import') && variant && (
+              <FieldsStep variant={variant} draft={draft} onDraft={patch} />
+            )}
+            {step === (mode === 'template' ? 3 : 4) && (mode === 'template' || mode === 'import') && variant && (
+              <StyleStep variant={variant} draft={draft} onDraft={patch} />
+            )}
+            {step === animStep && (mode === 'template' || mode === 'import') && variant && (
               <AnimationStep
                 variant={variant}
                 draft={draft}
@@ -484,7 +519,7 @@ export default function CreationWizard() {
         <div className="wz-footer">
           <div className="row" style={{ gap: 14, alignItems: 'center' }}>
             {step > 0 && <button onClick={() => goToStep(-1)}>‹ Back</button>}
-            {brand && (mode === 'ai' || mode === 'design' ? step >= 1 : step >= 2) && (
+            {brand && (mode === 'import' ? step >= 2 : step >= 1) && (
               <label className="wz-match" title="Reuse this project's palette and font so the new graphic belongs to the same package">
                 <input
                   type="checkbox"
@@ -519,9 +554,9 @@ export default function CreationWizard() {
                 Design mode: Create is available from the Design step on (a design that
                 needs no erase, fields, or animation choice creates immediately); the
                 Animation step is its last, where Create is the one CTA. */}
-            {mode !== 'ai' && mode !== 'video' && (mode === 'design' ? step >= 1 : step >= 2) && (
+            {mode !== 'ai' && mode !== 'video' && (mode === 'import' ? step >= 2 : step >= 1) && (
               <button
-                className={step === 5 || (mode === 'design' && step === 4) ? 'primary' : undefined}
+                className={step === animStep ? 'primary' : undefined}
                 disabled={!previewTemplate}
                 onClick={create}
                 title={
@@ -533,7 +568,7 @@ export default function CreationWizard() {
                 Create project
               </button>
             )}
-            {mode !== 'ai' && mode !== 'video' && (mode === 'design' ? step >= 1 && step < 4 : step > 0 && step < 5) && (
+            {mode !== 'ai' && mode !== 'video' && step > 0 && step < animStep && (
               <button className="primary wz-next" disabled={nextDisabled} onClick={() => goToStep(1)}>
                 Next ›
               </button>

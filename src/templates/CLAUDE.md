@@ -11,6 +11,32 @@ default family, PURE CONFIG over the filled types x families matrix; the 60 refe
 each map to exactly one pack. `scripts/factory.mjs` validates the config on every run (cells
 resolve, extras exist, formats covered exactly once) - edit packs.ts and the doc together.
 
+## Discovery metadata (the Browse step's facets — docs/TEMPLATE_TAXONOMY_PROPOSAL.md)
+
+- **meta.ts** - the DECLARED sliver: per-type and per-variant graphic category / subtype /
+  structures / field semantics, with a SINGLE-VALUED per-old-category fallback. Resolution
+  order: `VARIANT_META[id]` → `TYPE_META[typeId]` → `CATEGORY_DEFAULT_META[category]`.
+  `TemplateCategory` stays the ASSEMBLER/routing id; the graphic category is presentation
+  metadata on top — no file moves, no id renames.
+- **templateMeta.ts** - the DERIVED bulk, memoized per variant: field counts off the compiled
+  schema (`visible` excludes `HIDDEN_CONFIG_FIELDS`; buckets match the reachable range by
+  INTERSECTION), capabilities (declared extras ∪ schema/preset derivation), placement
+  (coverage class → placements), motion (the per-preset table in model/taxonomy.ts),
+  complexity, and pack-derived programme relevance (a format's pack contains any type whose
+  graphic CATEGORY matches — category-level so unclaimed classics rank like their typed
+  siblings; `relevance: 'all'` categories match everything, ranked below genuine hits).
+- **search.ts** - the Browse engine: strict facets AND, choices within a facet OR, programme
+  format RANKS ("Best for" / "Also works") and never hides, phrase-first alias expansion
+  (aliases may fan out across categories), field-weighted token index,
+  `mostRestrictiveFilter` for the zero-result escape. Facet values without catalog mass are
+  not offered (`offered*` helpers). `BrowseContext` is the second argument - ambient
+  RANKING input the user never chose (today: the saved brand's family, a deliberately small
+  boost that a genuine programme match always outranks), kept out of `BrowseFilters` so it
+  can never grow a chip or be cleared by Clear-all.
+- The id registries (families/formats with verbatim sheet names, 26 graphic categories,
+  structures, semantics, capabilities, placements, motion intensity/styles, style aliases)
+  live in **src/model/taxonomy.ts**; display labels there, never in stored ids.
+
 ## Shared assemblers (every category builds on these)
 
 - **shared/base.ts** - generic assembler pieces: :root vars, zones, auto-fit, runtime scaffold.
