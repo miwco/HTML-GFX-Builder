@@ -71,3 +71,14 @@ public/player-host/
 
 # Generated bundled-font CSS for the render worker (from public/fonts)
 render-worker/remotion/*.generated.ts
+
+# Reference material dropped at the repo ROOT while working - format research spreadsheets,
+# reference stills and screengrabs. Anchored with a leading / so real assets inside src/,
+# public/ and docs/ are unaffected; nothing of this kind has ever been tracked at the root.
+/*.xlsx
+/*.png
+/*.jpg
+/*.jpeg
+/*.JPG
+/*.JPEG
+/*.PNG
