@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { composeDocument } from '../preview/composeDocument';
+import { fieldDescriptors } from '../control/controlModel';
 import type { SpxTemplate } from '../model/types';
 import type { ProjectBrand } from '../model/brand';
 import {
@@ -7,6 +8,7 @@ import {
   listAllForModeration,
   listReports,
   moderate,
+  STATUS_LABEL,
   type CommunityReport,
   type ModeratorItem,
 } from '../community/communityData';
@@ -18,13 +20,6 @@ interface Props {
 
 type Filter = 'reported' | 'all';
 type Selected = ModeratorItem & { body: unknown };
-
-const STATUS_LABEL: Record<ModeratorItem['status'], string> = {
-  pending: 'in review',
-  approved: 'live',
-  rejected: 'rejected',
-  removed: 'removed',
-};
 
 // Fit the preview to the modal on a phone (the modal is ~full width there), cap it on desktop.
 const PREVIEW_W = Math.min(460, (typeof window !== 'undefined' ? window.innerWidth : 500) - 90);
@@ -195,6 +190,14 @@ function ItemPreview({ item }: { item: Selected }) {
   const tpl = item.body as SpxTemplate;
   const res = tpl.resolution ?? { width: 1920, height: 1080, label: '' };
   const scale = PREVIEW_W / res.width;
+  // The graphic's own field defaults, and the settle runs INSIDE the document: this iframe is
+  // deliberately origin-less (untrusted content), so the outside-in recipe every other preview
+  // uses cannot reach it. Without this a moderator judged a black rectangle.
+  const data = JSON.stringify(
+    Object.fromEntries(
+      fieldDescriptors(tpl.fields ?? [], { includeHidden: true }).map((d) => [d.key, String(d.defaultValue ?? '')]),
+    ),
+  );
   return (
     <div
       style={{ width: PREVIEW_W, height: res.height * scale, overflow: 'hidden', position: 'relative', background: '#111', marginTop: 6, borderRadius: 6 }}
@@ -203,7 +206,7 @@ function ItemPreview({ item }: { item: Selected }) {
         title={`preview-${item.id}`}
         // No allow-same-origin: untrusted community content runs in an opaque origin, isolated from the app.
         sandbox="allow-scripts"
-        srcDoc={composeDocument(tpl)}
+        srcDoc={composeDocument(tpl, { settleWithData: data })}
         style={{ width: res.width, height: res.height, border: 0, transform: `scale(${scale})`, transformOrigin: '0 0' }}
       />
     </div>

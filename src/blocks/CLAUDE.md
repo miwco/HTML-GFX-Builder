@@ -32,8 +32,27 @@ no-op this exists to end.
 `moveAsset(template, from, to)` - move/rename an asset path with an exact-string rewrite of
 every reference across html/css/js (the verbatim-path convention inlineAssetRefs relies on),
 plus `insertImageElement` - the drag-to-canvas drop: a commented, absolutely positioned
-`<img id="img-*" data-gfx>` + CSS rule at the drop point. Callers apply through ONE
-applyTemplate so a move (or a drop) is one undo step.
+`<img id="img-*" data-gfx>` + CSS rule at the drop point - and `insertVideoElement`, its
+video twin: a muted, looping, `playsinline` `<video id="vid-*" data-gfx>` (autoplay needs
+muted in every playout browser; .webm keeps alpha). Video assets are size-capped at import
+(assetUtils MAX_VIDEO_ASSET_BYTES - they ride the saved template as data URLs). Callers
+apply through ONE applyTemplate so a move (or a drop) is one undo step.
+
+## templateInsert.ts - "Add template graphic" (insert, never replace)
+
+`insertTemplateGraphic(current, variant, { placement })` - the pure merge behind
+components/InsertTemplateDialog.tsx: lift `variant.create()`'s visual subtree into the
+current project. Everything a naive splice would collide on is NAMESPACED: the donor class
+prefix gains a unique suffix (`lower-third-2`), donor fields renumber onto the host's next
+free `fN` (titles marked with the variant name), the donor `:root` block is RE-SCOPED onto
+the inserted root (`#gfx-*` - custom-property inheritance keeps its palette/typeface
+without retinting the host), the reset/canvas CSS and donor runtime scaffold are dropped,
+and the donor MACHINE is dropped - one document, one runtime, one timeline/state system.
+The inserted root is tagged `data-gfx` (a normal registry part, step-assignable like any
+element); donor In/Out keyframes merge into the host's entrance/exit ('start') or into a
+new named default-path step revealing the root ('new-step'), speed-normalized. `insertBlocker`
+is the honest gate: donor step `calls`/`dynamics`, or functions beyond the standard scaffold
+in the donor JS, refuse the insert with the reason - code-derived, never a category list.
 
 ## lottieInsert.ts - Lottie placement
 
@@ -310,9 +329,12 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   Applying a preset is a CLEAN SWAP (ratified): the targeted layer's tracks in that direction's
   step are cleared first, then the donor's are written - switching presets never leaves the
   previous preset's (or a hand-keyed) track behind. The Inspector passes an easing (resolved to
-  a GSAP pair, stamped onto the written keyframes so it never disturbs a shared step) and an
+  a GSAP pair, stamped onto the written keyframes so it never disturbs a shared step), an
   optional per-direction duration (sets the target step's length and scales the donor keyframes
-  to fit). 'in' is layer-relative (it targets the step where THAT layer becomes active), 'out'
+  to fit), and an optional per-direction DELAY - a hold before the motion: the written keyframes
+  shift later within the step (the interpreter applies a track's first keyframe at the step
+  start, so the layer holds its starting pose through the wait), the step grows by the hold,
+  and step-level calls/dynamics shift with it. 'in' is layer-relative (it targets the step where THAT layer becomes active), 'out'
   always targets the final step, 'both' writes both - independently editable after. Scope 'all'
   = the whole graphic adopting the donor's full choreography and the chosen/donor step duration
   and ease - skipping press-revealed layers, whose entrance belongs to their » press; it also

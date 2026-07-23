@@ -18,6 +18,8 @@ import {
   type LineTextStyle,
 } from '../blocks/designLayout';
 import { setFieldDefault, setFieldTitle } from '../blocks/edit';
+import { changePartPress } from '../blocks/stepAssign';
+import { setLayerHide } from '../blocks/animEdit';
 import { FONTS } from '../model/fonts';
 import type { SpxTemplate } from '../model/types';
 import { parseAnimData, type AnimData } from '../blocks/animData';
@@ -29,7 +31,7 @@ import { filterComponent } from '../blocks/filterTrack';
 import { applyPresetData, presetDonor } from '../blocks/presetApply';
 import { swappablePresetsForType, anyPresetById } from '../blocks/presetRegistry';
 import { isSlidePreset } from '../templates/lowerThirds/animPresets';
-import { activationStep, animatedProps, resolveValue, stepSeconds } from '../blocks/animEval';
+import { activationStep, animatedProps, hideStep, resolveValue, stepSeconds } from '../blocks/animEval';
 import { createStepFromLayer } from '../blocks/layerTimeline';
 import type { AnimPresetId } from '../model/wizard';
 import { EASINGS, resolveEasing, type EasingId } from '../model/easings';
@@ -153,6 +155,11 @@ export default function Inspector() {
   // are independent, with an optional link so "both" can be set from one field.
   const [durIn, setDurIn] = useState<string>('');
   const [durOut, setDurOut] = useState<string>('');
+  // Delay before the motion starts, in effective seconds; '' = none. The apply shifts the
+  // written keyframes later within the step (the layer holds its starting pose through the
+  // wait) — no keyframe knowledge needed to stagger an entrance or exit.
+  const [delIn, setDelIn] = useState<string>('');
+  const [delOut, setDelOut] = useState<string>('');
   const [linkDur, setLinkDur] = useState(true);
   const [presetMsg, setPresetMsg] = useState<string>('');
 
@@ -577,6 +584,85 @@ export default function Inspector() {
 
       {activeInspectorTab === 'animations' && (
         <div className="inspector-body" data-testid="inspector-animations">
+          {/* WHEN THIS LAYER IS ON AIR — "Appears" (which step reveals it, or the entrance)
+              and "Disappears" (an early exit, else the final Out) as two plain selects.
+              These write the SAME transforms the canvas chip and the timeline block edges
+              write (blocks/stepAssign changePartPress / animEdit setLayerHide), so every
+              surface stays one truth. Default path only: a branch state's inline timeline
+              has no press chain to place a layer on. */}
+          {nativeDoc &&
+            timelineTarget.kind === 'path' &&
+            (part.kind === 'line' || part.kind === 'image' || part.kind === 'accent' || part.kind === 'block') &&
+            part.selector !== parts.find((p) => p.kind === 'line')?.selector &&
+            (() => {
+              const middle = nativeDoc.steps.slice(1, -1);
+              const act = activationStep(nativeDoc, part.selector); // 0 = the entrance
+              const press = act === 0 ? -1 : act - 1;
+              const leave = hideStep(nativeDoc, part.selector);
+              const lastIdx = nativeDoc.steps.length - 1;
+              const changeAppears = (toPress: number) => {
+                if (toPress >= middle.length) {
+                  // "In a new step »" — the composed transform names the step after the
+                  // layer ("Logo In"), same as the canvas chip and the states graph.
+                  const next = createStepFromLayer(template, parts, part.selector);
+                  if (next) {
+                    applyTemplate(next);
+                    requestReplay();
+                  }
+                  return;
+                }
+                const change = changePartPress(template, parts, part.selector, press, toPress);
+                if (!change) return;
+                applyTemplate({ ...template, ...change.patch }); // one undoable apply
+                requestReplay();
+              };
+              const changeDisappears = (toStep: number) => {
+                const next = setLayerHide(nativeDoc, part.selector, toStep);
+                const js = writeAnimData(template.js, next);
+                if (!js || js === template.js) return;
+                applyTemplate({ ...template, js });
+                requestReplay();
+              };
+              return (
+                <div className="inspector-lifecycle" data-testid="inspector-lifecycle">
+                  <label>
+                    <span>Appears</span>
+                    <select
+                      value={press}
+                      onChange={(e) => changeAppears(Number(e.target.value))}
+                      title="When this layer first shows — with the entrance, in an existing step, or in a brand-new step of its own"
+                      data-testid="inspector-appears"
+                    >
+                      <option value={-1}>with ▶ Play</option>
+                      {middle.map((s, k) => (
+                        <option key={k} value={k}>{`in “${s.name}”`}</option>
+                      ))}
+                      {/* The last step's only layer moving to "a new step" would re-create
+                          the same step — hidden here exactly as on the chip and gutter. */}
+                      {!(press === middle.length - 1 && press >= 0 && (middle[press]?.reveals?.length ?? 0) === 1) && (
+                        <option value={middle.length}>in a new step »</option>
+                      )}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Disappears</span>
+                    <select
+                      value={leave}
+                      onChange={(e) => changeDisappears(Number(e.target.value))}
+                      title="When this layer leaves — animated out early in a middle step, or with the final Out"
+                      data-testid="inspector-disappears"
+                    >
+                      {middle.map((s, k) =>
+                        k + 1 > act ? (
+                          <option key={k} value={k + 1}>{`early, in “${s.name}”`}</option>
+                        ) : null,
+                      )}
+                      <option value={lastIdx}>with ■ Out</option>
+                    </select>
+                  </label>
+                </div>
+              );
+            })()}
           {/* CREATE TIMELINE FROM LAYER (docs/STATE_MACHINE_SCHEMA.md): give this layer its
               own default-path step — a separately editable LAYER TIMELINE the states graph
               shows as its own ▤ node. The composed transform (blocks/layerTimeline.ts) is
@@ -733,6 +819,42 @@ export default function Inspector() {
                     <span>Link</span>
                   </label>
                 )}
+                {showIn && (
+                  <label
+                    className="inspector-preset-field"
+                    title="Wait this long before the entrance motion starts — the element holds its starting pose through the delay"
+                  >
+                    <span>Delay&nbsp;in</span>
+                    <input
+                      className="inspector-preset-dur"
+                      type="number"
+                      min={0}
+                      step={0.05}
+                      value={delIn}
+                      placeholder="0"
+                      onChange={(e) => setDelIn(e.target.value)}
+                      data-testid="inspector-preset-delay-in"
+                    />
+                  </label>
+                )}
+                {showOut && (
+                  <label
+                    className="inspector-preset-field"
+                    title="Wait this long into the exit before this motion starts"
+                  >
+                    <span>Delay&nbsp;out</span>
+                    <input
+                      className="inspector-preset-dur"
+                      type="number"
+                      min={0}
+                      step={0.05}
+                      value={delOut}
+                      placeholder="0"
+                      onChange={(e) => setDelOut(e.target.value)}
+                      data-testid="inspector-preset-delay-out"
+                    />
+                  </label>
+                )}
               </div>
               <button
                 className="inspector-preset-apply"
@@ -745,6 +867,8 @@ export default function Inspector() {
                   const durations = {
                     inDuration: showIn && durIn.trim() ? Number(durIn) : undefined,
                     outDuration: showOut && durOut.trim() ? Number(durOut) : undefined,
+                    inDelay: showIn && delIn.trim() ? Number(delIn) : undefined,
+                    outDelay: showOut && delOut.trim() ? Number(delOut) : undefined,
                   };
                   const next = donor && applyPresetData(native, donor, presetPhase, presetScope, durations);
                   if (!next) {
@@ -772,6 +896,12 @@ export default function Inspector() {
               {presetMsg && (
                 <p className="inspector-preset-msg" data-testid="inspector-preset-msg">{presetMsg}</p>
               )}
+              {/* Which step (state entry) the apply will actually edit — no guessing. */}
+              <p className="hint inspector-preset-target" data-testid="inspector-preset-target">
+                {showIn && `In plays when “${data.steps[inStepIdx]?.name ?? 'In'}” enters`}
+                {showIn && showOut && ' · '}
+                {showOut && `Out plays when “${data.steps[data.steps.length - 1]?.name ?? 'Out'}” exits`}
+              </p>
             </div>
             );
           })()}

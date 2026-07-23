@@ -42,6 +42,7 @@ import { subscribeAuth } from '../../backend/auth';
 import {
   listMySubmissions,
   publishGraphic,
+  STATUS_LABEL,
   unpublish,
   type MySubmission,
 } from '../../community/communityData';
@@ -54,6 +55,16 @@ import SyncStatus from '../SyncStatus';
 import SignInDialog from '../auth/SignInDialog';
 import SaveDialogs from '../save/SaveDialogs';
 import GraphicThumb from './GraphicThumb';
+
+/**
+ * Copy text, answering whether it actually landed. A clipboard write can be REFUSED — permission
+ * denied, or a page served over plain http, where `navigator.clipboard` is not there at all — and
+ * a button that claims "Copied" when nothing was is worse than one that says nothing. Also keeps
+ * the refusal from surfacing as an unhandled rejection.
+ */
+function copyLink(text: string): Promise<boolean> {
+  return navigator.clipboard?.writeText(text).then(() => true, () => false) ?? Promise.resolve(false);
+}
 
 /** A saved graphic's thumbnail shows the data an operator last selected, when there is one. */
 function activeValues(g: GraphicDoc): Record<string, string> | undefined {
@@ -108,6 +119,9 @@ export default function HomePage({ route }: { route: Route }) {
   const communityOn = backendConfigured && signedIn;
   const [publish, setPublish] = useState<{ name: string; template: SpxTemplate; gate: ValidationResult } | null>(null);
   const [mySubs, setMySubs] = useState<MySubmission[]>([]);
+  // Which share link was just copied. A clipboard write is invisible — without this the button
+  // looks broken and gets pressed again.
+  const [copiedSub, setCopiedSub] = useState<string | null>(null);
   useEffect(() => {
     if (communityOn) void listMySubmissions().then(setMySubs).catch(() => {});
     else setMySubs([]);
@@ -261,16 +275,20 @@ export default function HomePage({ route }: { route: Route }) {
                       {mySubs.map((s) => (
                         <div className="pk-graphic" key={s.id}>
                           <strong>{s.name}</strong>
-                          <span className="muted">{s.kind} · {s.status}</span>
+                          <span className="muted">{s.kind} · {STATUS_LABEL[s.status]}</span>
                           <div className="spacer" />
                           <button
                             onClick={() => {
                               const url = `${window.location.origin}${window.location.pathname}?template=${encodeURIComponent(s.slug)}`;
-                              void navigator.clipboard?.writeText(url);
+                              void copyLink(url).then((ok) => {
+                                if (!ok) return;
+                                setCopiedSub(s.id);
+                                setTimeout(() => setCopiedSub((c) => (c === s.id ? null : c)), 2000);
+                              });
                             }}
                             title="Copy a share link"
                           >
-                            🔗
+                            {copiedSub === s.id ? '✓ Copied' : '🔗'}
                           </button>
                           <button onClick={() => { void unpublish(s.id).then(refresh); }} title="Remove from the community">✕</button>
                         </div>
@@ -645,6 +663,7 @@ function RundownsSection({
   onNew: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const exportRundown = async (r: Show) => {
     const zip = await buildShowZip(r);
     const blob = await zip.generateAsync({ type: 'blob' });
@@ -676,12 +695,15 @@ function RundownsSection({
           {r.hostedSlug && (
             <button
               onClick={() => {
-                void navigator.clipboard?.writeText(`${window.location.origin}/app?control=${encodeURIComponent(r.hostedSlug!)}`);
-                onChanged();
+                void copyLink(`${window.location.origin}/app?control=${encodeURIComponent(r.hostedSlug!)}`).then((ok) => {
+                  if (!ok) return;
+                  setCopiedLink(r.id);
+                  setTimeout(() => setCopiedLink((c) => (c === r.id ? null : c)), 2000);
+                });
               }}
               title="Copy the operator link (keep it private)"
             >
-              🔗 Copy link
+              {copiedLink === r.id ? '✓ Copied' : '🔗 Copy link'}
             </button>
           )}
           <button

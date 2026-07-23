@@ -171,9 +171,16 @@ in src/blocks/CLAUDE.md.
   gesture a touch screen doesn't have, and less guidance beats a wrong instruction. The chip
   is width-capped to the stage (maxWidth + a left clamp; label/hint ellipsize in CSS), so it
   can never overflow a narrow canvas. An
-  eligible selected part's chip carries the "appears on press" select - the timeline gutter's
-  control from the canvas, same conditions, same blocks/stepAssign.ts patch - and swallows its
-  own pointer events so the gesture layer under it never fires.
+  eligible selected part's chip carries the "appears" select - offered on ANY editable data
+  block, even one with no middle steps yet: existing steps are listed BY NAME and "appears in
+  a new step »" creates and names the step itself (blocks/layerTimeline.ts createStepFromLayer,
+  the same transform the Inspector and states graph use), which is how a freshly dropped asset
+  becomes the graphic's next step in one click; moves between existing steps stay the
+  blocks/stepAssign.ts patch. The chip swallows its own pointer events so the gesture layer
+  under it never fires. The canvas also owns a CONTEXT MENU (right-click; the right button
+  never starts a gesture): one action for now - "Add template graphic…", opening the same
+  InsertTemplateDialog the Assets panel's button does (its open flag is the shared
+  useInsertTemplateUi store; the dialog itself mounts once in AppShell).
 - **TEXT TOOLS** (the stage toolbar's ↖ / T / boxed-T switch, PreviewFrame; placed-design
   templates only - the designBoxInfo gate, code-derived): store `canvasTool` arms them
   ('select' | 'text' | 'area-text'; T is the keyboard shortcut, Escape disarms). The T tool
@@ -359,10 +366,17 @@ in src/blocks/CLAUDE.md.
   tab exists only while a placed field is selected (a non-placed selection falls back to
   Properties without clobbering the stored choice). A placed field's look is DESIGN, never
   keyframes - the same doctrine as its drag.
-  The Animations tab names which steps move the layer and holds the preset
-  picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
-  blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
-  blends with the previous preset), and re-parks the preview at the playhead. On an imported
+  The Animations tab leads with the layer's LIFECYCLE rows - **Appears** (with ▶ Play / an
+  existing step by name / "in a new step »" via createStepFromLayer) and **Disappears** (with
+  ■ Out / an early exit via animEdit setLayerHide) - the same transforms the canvas chip and
+  the timeline block edges write, shown for the default path only. Below them it names which
+  steps move the layer and holds the preset
+  picker (preset + In/Out/Both + easing dropdown + per-direction duration + per-direction
+  DELAY - a hold before the motion: the apply shifts the written keyframes later within the
+  step and the layer holds its first pose through the wait, no keyframe knowledge needed +
+  Apply - blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion
+  (it never blends with the previous preset), re-parks the preview at the playhead, and a
+  target line under it names WHICH step each direction will actually edit. On an imported
   design (the placed-design shape, code-derived) Animations is the DEFAULT tab - the artwork
   brought its look, so per-layer motion is what the Inspector is for there; a manual tab
   choice afterwards sticks. Legacy templates get a
@@ -449,16 +463,26 @@ e2e/layout.spec.ts.
 - **StylePanel** - reads/writes the :root style contract (src/templates/CLAUDE.md): colors,
   font swap, zone re-anchoring, post-creation font import (an imported font still lands in
   template.assets and shows in the Assets panel's list).
-- **AssetsPanel** - the template's bundled files as folder-grouped ROWS (images, Lottie .json
-  gated by looksLikeLottie, fonts): DnD file import (one addAssets = one undo step), rows are
+- **AssetsPanel** - the template's bundled files as folder-grouped ROWS (images, video loops
+  .webm/.mp4 - hard-capped at MAX_VIDEO_ASSET_BYTES since assets ride the saved template as
+  data URLs - Lottie .json gated by looksLikeLottie, fonts): DnD file import (one addAssets =
+  one undo step), rows are
   drag SOURCES (`application/x-noacg-asset`, exported as ASSET_DRAG_TYPE) for the canvas drop
   (CanvasInteraction) and for folder-header drops; folders are path segments (one level inside
   the bucket) - moving/renaming goes through blocks/assetOps.ts moveAsset, which rewrites every
   code reference in the SAME undoable apply, then patches stale sampleData values. Empty
   user-created folders are ephemeral component state on purpose (assets sync as template JSON).
-  The Information section derives name/format/dimensions/aspect/size/alpha/Lottie timing +
-  reference count per selection via src/assets/assetInfo.ts (async probe, cached) - the model
-  stays { path, data }. Pinned by e2e/assets.spec.ts.
+  Each row carries a USAGE mark (reference count > 0: ✓ / n×) so it's obvious which assets the
+  graphic actually places - re-dragging a used asset adds another element instance, never a
+  duplicate file. The Information section derives name/format/dimensions/aspect/size/alpha/
+  Lottie timing/video duration + reference count per selection via src/assets/assetInfo.ts
+  (async probe, cached) - the model stays { path, data }. The header's **"✚ Template
+  graphic…"** opens InsertTemplateDialog - the catalog browser in INSERT mode
+  (blocks/templateInsert.ts): a picked variant's graphic joins the current project (namespaced,
+  fields renumbered, :root scoped onto the inserted root, In/Out merged - one undo step) with a
+  placement choice (from the start / as a new next step); templates needing their own runtime
+  are greyed with the reason. Pinned by e2e/assets.spec.ts, e2e/asset-workflow.spec.ts +
+  e2e/template-insert.spec.ts.
 - **AIPromptPanel**; **ExportPanel** (validation inline; remembers the last-picked target via
   model/prefs.ts). Below the zip targets it mounts **render/RenderPanel** — the Video & image
   section (MP4/WebM/PNG/sequence/ProRes via the render API) — ONLY when `isRenderConfigured()`

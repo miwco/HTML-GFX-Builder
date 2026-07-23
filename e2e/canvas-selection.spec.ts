@@ -223,11 +223,15 @@ test('the chip assigns the selected part to a press — the data chain, from the
   });
   expect(reveals).toContain('.lower-third-accent');
 
-  // And back to the entrance, from the canvas too. The emptied press disappears —
-  // with no presses left, the graphic exits the steps world and the control retires.
+  // And back to the entrance, from the canvas too. The emptied press disappears from the
+  // data — but the control STAYS: "appears in a new step »" is always one click away, so a
+  // dropped-in element can become the graphic's next step without a timeline detour.
   await page.getByTestId('canvas-appears').selectOption('-1');
   await awaitPreviewRebuild(page);
-  await expect(page.getByTestId('canvas-appears')).toHaveCount(0);
+  await expect(page.getByTestId('canvas-appears')).toHaveValue('-1');
+  await expect(
+    page.getByTestId('canvas-appears').locator('option', { hasText: 'appears in a new step »' }),
+  ).toHaveCount(1);
   const data = await page.evaluate(async () => {
     const { useTemplateStore } = await import('/src/store/templateStore.ts');
     const { parseAnimData } = await import('/src/blocks/animData.ts');

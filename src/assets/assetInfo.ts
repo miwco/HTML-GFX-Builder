@@ -3,10 +3,10 @@
 // probed on demand from the data URL and cached, never written into the template.
 
 import type { AssetFile, SpxTemplate } from '../model/types';
-import { extOf, isDataUrl, isFontAsset, isImageAsset, isLottieAsset, parseDataUrl } from './assetUtils';
+import { extOf, isDataUrl, isFontAsset, isImageAsset, isLottieAsset, isVideoAsset, parseDataUrl } from './assetUtils';
 
 export interface AssetInfo {
-  kind: 'image' | 'lottie' | 'font' | 'other';
+  kind: 'image' | 'lottie' | 'font' | 'video' | 'other';
   /** Mime type from the data URL (empty when unknown). */
   mime: string;
   /** Payload size in bytes (decoded from the base64 length, or the Blob size). */
@@ -121,6 +121,26 @@ function probeLottie(asset: AssetFile, base: AssetInfo): AssetInfo {
   }
 }
 
+/** Probe a video's natural size + duration off a detached <video> element's metadata. */
+function probeVideo(asset: AssetFile, base: AssetInfo): Promise<AssetInfo> {
+  if (typeof asset.data !== 'string' || !isDataUrl(asset.data)) return Promise.resolve(base);
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.onloadedmetadata = () => {
+      resolve({
+        ...base,
+        width: video.videoWidth || undefined,
+        height: video.videoHeight || undefined,
+        aspect: video.videoWidth && video.videoHeight ? aspectOf(video.videoWidth, video.videoHeight) : undefined,
+        durationS: Number.isFinite(video.duration) ? Math.round(video.duration * 100) / 100 : undefined,
+      });
+    };
+    video.onerror = () => resolve(base);
+    video.src = asset.data as string;
+  });
+}
+
 // One probe per asset version. Keyed by path + byte length: data never changes in place
 // (a re-upload de-dupes to a new path), and the byte length breaks a same-path collision.
 const probeCache = new Map<string, Promise<AssetInfo>>();
@@ -139,11 +159,17 @@ export function probeAsset(asset: AssetFile): Promise<AssetInfo> {
       ? 'lottie'
       : isFontAsset(asset.path)
         ? 'font'
-        : 'other';
+        : isVideoAsset(asset.path)
+          ? 'video'
+          : 'other';
   const base: AssetInfo = { kind, mime, bytes };
 
   const result =
-    kind === 'image' ? probeImage(asset, base) : Promise.resolve(kind === 'lottie' ? probeLottie(asset, base) : base);
+    kind === 'image'
+      ? probeImage(asset, base)
+      : kind === 'video'
+        ? probeVideo(asset, base)
+        : Promise.resolve(kind === 'lottie' ? probeLottie(asset, base) : base);
   probeCache.set(key, result);
   return result;
 }

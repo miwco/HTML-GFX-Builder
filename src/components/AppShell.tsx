@@ -18,6 +18,7 @@ import CreationWizard from './wizard/CreationWizard';
 import BrandLogo from './BrandLogo';
 import SaveControls from './save/SaveControls';
 import SaveDialogs from './save/SaveDialogs';
+import InsertTemplateDialog from './InsertTemplateDialog';
 import { useRouter } from '../app/router';
 import { useSaveUi } from '../store/saveActions';
 import AuthStatus from './auth/AuthStatus';
@@ -485,6 +486,7 @@ export default function AppShell() {
 
       {/* Save dialogs: first-save naming + the unsaved-changes guard. */}
       <SaveDialogs />
+      <InsertTemplateDialog />
 
       {/* Community gallery overlay — browse + import shared templates (hosted mode only). */}
       {communityOpen && (
