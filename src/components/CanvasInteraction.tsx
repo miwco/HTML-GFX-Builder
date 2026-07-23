@@ -4,17 +4,21 @@ import { zoneDecls } from '../templates/shared/base';
 import { nextFieldId, setCssDeclaration, setFieldDefault } from '../blocks/edit';
 import { getCssVariable, setCssVariable } from '../blocks/cssVars';
 import type { Zone9 } from '../model/wizard';
+import type { SpxTemplate } from '../model/types';
 import { detectPrefix, getTemplateParts, type TemplatePart } from '../model/structure';
-import { parseAnimData } from '../blocks/animData';
+import { parseAnimData, type AnimData } from '../blocks/animData';
+import { lensRead, lensWrite, scrubPhase } from '../blocks/timelineLens';
 import { writeAnimData } from '../templates/shared/animRuntime';
 import { setKeyframe } from '../blocks/animEdit';
 import { activationStep } from '../blocks/animEval';
 import { changePartPress } from '../blocks/stepAssign';
+import { createStepFromLayer } from '../blocks/layerTimeline';
+import { useInsertTemplateUi } from './InsertTemplateDialog';
 import { addPlacedLine, designBoxInfo, lineFit, lineFontSize, placedLines, placeLine, placementCss, setLineFit, setLineFontSize, setSlotSize, slotSize, type LinePlacement } from '../blocks/designLayout';
-import { insertImageElement } from '../blocks/assetOps';
+import { insertImageElement, insertVideoElement } from '../blocks/assetOps';
 import { insertLottieElement } from '../blocks/lottieInsert';
 import { probeAsset } from '../assets/assetInfo';
-import { fileToDataUrl, isImageAsset, isLottieAsset, uniqueAssetPath } from '../assets/assetUtils';
+import { MAX_VIDEO_ASSET_BYTES, fileToDataUrl, isImageAsset, isLottieAsset, isVideoAsset, uniqueAssetPath } from '../assets/assetUtils';
 import { ASSET_DRAG_TYPE } from './AssetsPanel';
 import CanvasSelection, { type CanvasRect } from './CanvasSelection';
 import { partLocked } from './partLocks';
@@ -281,6 +285,18 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
    *  outlines. */
   const [selRect, setSelRect] = useState<CanvasRect | null>(null);
   const [extraRects, setExtraRects] = useState<CanvasRect[]>([]);
+  // The canvas CONTEXT MENU (right-click): screen px within the overlay. One action for
+  // now — "Add template graphic…" — the same insert flow the Assets panel's button opens.
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const openInsertTemplate = useInsertTemplateUi((s) => s.openDialog);
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCtxMenu(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [ctxMenu]);
   /** The innermost part under the pointer — the "what would a click select" preview. */
   const [hoverPart, setHoverPart] = useState<{ selector: string; label: string; rect: CanvasRect } | null>(null);
 
@@ -311,17 +327,40 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   //    same conditions (steps on, part eligible), writing the same patch (blocks/stepAssign.ts
   //    changePartPress). The code stays the one truth. A press is the middle steps' `reveals`;
   //    a legacy region has no editable press chain at all (Phase 8 — it is read-only). ──
-  const dataModel = useMemo(() => parseAnimData(template.js), [template.js]);
+  // THROUGH THE LENS, like the timeline and the Inspector (blocks/timelineLens.ts). The canvas
+  // keyframes at the playhead, and the playhead belongs to whichever timeline is OPEN — so
+  // reading the raw document here meant that, with a branch state's timeline on screen, a
+  // canvas drag wrote its x/y into the default path's step instead. The strip showed the
+  // branch, the keyframe landed on the walk, and nothing said so.
+  const timelineTarget = useTemplateStore((s) => s.timelineTarget);
+  const nativeDoc = useMemo(() => parseAnimData(template.js), [template.js]);
+  const dataModel = useMemo(
+    () => (nativeDoc ? lensRead(nativeDoc, timelineTarget) : null),
+    [nativeDoc, timelineTarget],
+  );
+  /** Fold an edited projection back into the document and emit the new js (null = no change). */
+  const projectedJs = (doc: SpxTemplate, next: AnimData): string | null => {
+    const base = parseAnimData(doc.js);
+    const folded = base ? lensWrite(base, timelineTarget, next) : next;
+    return folded ? writeAnimData(doc.js, folded) : null;
+  };
   const presses = useMemo(
     () => (dataModel ? dataModel.steps.slice(1, -1).map((s) => s.reveals ?? []) : null),
     [dataModel],
   );
-  const stepsOn = (dataModel?.steps.length ?? 0) > 2;
-  const chainGroupable = (presses?.length ?? 0) > 0;
+  /** The middle steps' NAMES, so the control speaks the timeline/states vocabulary
+   *  ("appears in 'Logo In'"), not an invented press numbering. */
+  const stepNames = useMemo(
+    () => (dataModel ? dataModel.steps.slice(1, -1).map((s) => s.name) : null),
+    [dataModel],
+  );
   const firstLine = parts.find((p) => p.kind === 'line')?.selector;
+  // Eligible on ANY editable data block — including a template that has no middle steps
+  // yet: "appears in a new step" is what CREATES the first one (setLayerActivation mints
+  // the step), which is how a freshly dropped logo becomes the graphic's next step in one
+  // click, right where it landed.
   const pressEligible =
-    stepsOn &&
-    chainGroupable &&
+    !!presses &&
     !!selectedPart &&
     (selectedPart.kind === 'line' ||
       selectedPart.kind === 'image' ||
@@ -400,11 +439,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       const y = Math.round((layer.baseY + ld.dy) * 100) / 100;
       next = setKeyframe(setKeyframe(next, at.step, layer.selector, 'x', at.tRel, x), at.step, layer.selector, 'y', at.tRel, y);
     }
-    const js = writeAnimData(template.js, next);
+    const js = projectedJs(template, next);
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
     const place = playhead;
-    if (place) setTimeout(() => sendScrub(phaseIdOf(dataModel, place.step), place.t), 650);
+    if (place) setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(dataModel, place.step)), place.t), 650);
   };
 
   /** Clear the placement drag's inline left/top previews — the stylesheet position returns. */
@@ -508,6 +547,16 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
   const changePress = (toPress: number) => {
     if (!selectedPart || !dataModel) return;
+    // "In a new step »" goes through the composed layer-timeline transform so the fresh
+    // step is NAMED after the layer ("Logo In") — the same one the Inspector and the
+    // states graph use. Moves between existing steps keep the plain press patch.
+    if (toPress >= (presses?.length ?? 0)) {
+      const next = createStepFromLayer(template, parts, selectedPart.selector);
+      if (!next) return;
+      applyTemplate(next); // one undoable apply
+      requestReplay();
+      return;
+    }
     const change = changePartPress(template, parts, selectedPart.selector, selectedPress, toPress);
     if (!change) return;
     applyTemplate({ ...template, ...change.patch }); // one undoable apply — same as the gutter
@@ -877,6 +926,10 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (editing) return; // the editor overlay handles its own events
+    // A pressed context menu closes on the next press anywhere else (its items swallow
+    // their own events); the right button never starts a gesture — it belongs to the menu.
+    setCtxMenu(null);
+    if (e.button === 2) return;
     promotedRef.current = null;
     const p = clientToDoc(e);
     // An armed TEXT TOOL claims the pointer outright — selection, drags, and the lasso all
@@ -1266,11 +1319,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     const at = keyframePlace(d.selector);
     if (!at) return;
     const next = setKeyframe(dataModel, at.step, d.selector, d.kind === 'scale' ? 'scale' : 'rotation', at.tRel, d.value);
-    const js = writeAnimData(template.js, next);
+    const js = projectedJs(template, next);
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
     const place = playhead;
-    if (place) setTimeout(() => sendScrub(phaseIdOf(dataModel, place.step), place.t), 650);
+    if (place) setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(dataModel, place.step)), place.t), 650);
   };
 
   // ── The selected placed field's SIZE handle: live preview through the same CSS channel
@@ -1368,7 +1421,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     }
     let keyed = false;
     if (burst.keyed.length > 0) {
-      const model = parseAnimData(next.js);
+      const burstDoc = parseAnimData(next.js);
+      const model = burstDoc ? lensRead(burstDoc, timelineTarget) : null;
       if (model) {
         const speed = model.speed || 1;
         let nd = model;
@@ -1380,7 +1434,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
           const y = Math.round((k.baseY + burst.dy) * 100) / 100;
           nd = setKeyframe(setKeyframe(nd, at.step, k.selector, 'x', at.tRel, x), at.step, k.selector, 'y', at.tRel, y);
         }
-        const js = writeAnimData(next.js, nd);
+        const js = projectedJs(next, nd);
         if (js && js !== next.js) {
           next = { ...next, js };
           keyed = true;
@@ -1391,9 +1445,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     s.applyTemplate(next);
     s.setActiveTab(keyed && next.css === s.template.css ? 'js' : 'css');
     if (keyed && s.playhead) {
-      const model = parseAnimData(s.template.js);
+      const doc = parseAnimData(s.template.js);
+      const model = doc ? lensRead(doc, timelineTarget) : null;
       const place = s.playhead;
-      if (model) setTimeout(() => useTemplateStore.getState().sendScrub(phaseIdOf(model, place.step), place.t), 650);
+      if (model) {
+        const phase = scrubPhase(timelineTarget, phaseIdOf(model, place.step));
+        setTimeout(() => useTemplateStore.getState().sendScrub(phase, place.t), 650);
+      }
     }
   };
 
@@ -1657,7 +1715,9 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   };
   const onAssetDrop = (e: React.DragEvent) => {
     const assetPath = e.dataTransfer.getData(ASSET_DRAG_TYPE);
-    const osFiles = Array.from(e.dataTransfer.files ?? []).filter((f) => isImageAsset(f.name));
+    const osFiles = Array.from(e.dataTransfer.files ?? []).filter(
+      (f) => isImageAsset(f.name) || (isVideoAsset(f.name) && f.size <= MAX_VIDEO_ASSET_BYTES),
+    );
     if (!assetPath && osFiles.length === 0) return;
     e.preventDefault();
     // Capture everything synchronously — the probe below is async.
@@ -1668,7 +1728,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       if (assetPath) {
         const asset = template.assets.find((a) => a.path === assetPath);
         if (!asset) return;
-        const insert = isImageAsset(assetPath) ? insertImageElement : isLottieAsset(assetPath) ? insertLottieElement : null;
+        const insert = isImageAsset(assetPath)
+          ? insertImageElement
+          : isLottieAsset(assetPath)
+            ? insertLottieElement
+            : isVideoAsset(assetPath)
+              ? insertVideoElement
+              : null;
         if (!insert) return; // fonts/other: no canvas placement
         const info = await probeAsset(asset);
         const { template: next, selector } = insert(template, {
@@ -1691,7 +1757,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
         const asset = { path: uniqueAssetPath(file.name, next.assets), data };
         next = { ...next, assets: [...next.assets, asset] };
         const info = await probeAsset(asset);
-        const placed = insertImageElement(next, {
+        const placed = (isVideoAsset(asset.path) ? insertVideoElement : insertImageElement)(next, {
           assetPath: asset.path,
           x: point.x + i * 24, // stagger a multi-file drop so the images don't pile up
           y: point.y + i * 24,
@@ -1715,6 +1781,14 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       data-testid="canvas-layer"
       onDragOver={onAssetDragOver}
       onDrop={onAssetDrop}
+      onContextMenu={(e) => {
+        e.preventDefault(); // the canvas offers its own menu, not the browser's
+        const rect = e.currentTarget.getBoundingClientRect();
+        setCtxMenu({
+          x: Math.min(e.clientX - rect.left, Math.max(0, width - 200)),
+          y: Math.min(e.clientY - rect.top, Math.max(0, height - 40)),
+        });
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -1798,7 +1872,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                     >
                       <option value={-1}>appears with ▶ Play</option>
                       {presses!.map((_, k) => (
-                        <option key={k} value={k}>{`appears on press ${k + 1}`}</option>
+                        <option key={k} value={k}>{`appears in “${stepNames![k] ?? `Step ${k + 2}`}”`}</option>
                       ))}
                       {/* The last press's only part moving to "a new press" would re-create
                           the same press — the gutter hides the option; so does the chip. */}
@@ -1806,7 +1880,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
                         selectedPress === presses!.length - 1 &&
                         selectedPress >= 0 &&
                         presses![selectedPress].length === 1
-                      ) && <option value={presses!.length}>appears on a new press</option>}
+                      ) && <option value={presses!.length}>appears in a new step »</option>}
                     </select>
                     )}
                     </>
@@ -1835,6 +1909,29 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
             style={{ left: r.left * scale, top: r.top * scale, width: r.width * scale, height: r.height * scale }}
           />
         ))}
+
+      {/* The context menu (right-click): swallows its own pointer input so the gesture
+          layer never sees the click that picks an item. */}
+      {ctxMenu && (
+        <div
+          className="canvas-context-menu"
+          data-testid="canvas-context-menu"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            onClick={() => {
+              setCtxMenu(null);
+              openInsertTemplate();
+            }}
+            title="Insert a graphic from the template catalog into this project — it joins the canvas, timeline, and states without replacing anything"
+            data-testid="canvas-ctx-insert-template"
+          >
+            ✚ Add template graphic…
+          </button>
+        </div>
+      )}
 
       {/* The area-text tool's rectangle — released, it becomes a wrapping text box. */}
       {areaDraft?.active && (

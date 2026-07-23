@@ -147,6 +147,37 @@ test('a saved graphic\'s control panel: entries create, play with the active ent
   await expect(page.getByTestId('home-page')).toBeVisible();
 });
 
+test('the control panel reports the state and greys an event the machine would drop', async ({ page }) => {
+  // Parity with the editor's Rehearse panel, the event strip and the hosted page: all three
+  // poll the runtime's pointers and grey an illegal event. This surface shipped with neither,
+  // so a live operator had no on-air indication and every button looked pressable.
+  await createProject(page, { category: 'quiz' });
+  await saveAs(page, 'Quiz board');
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-controls').click();
+  await page.locator('.pk-graphic', { hasText: 'Quiz board' }).locator('button', { hasText: 'Open control panel' }).click();
+  await expect(page.getByTestId('graphic-control-page')).toBeVisible();
+
+  // The chip names where the preview is, and it is what the greying is judged against.
+  await expect(page.getByTestId('control-state')).toContainText('enter');
+  await expect(page.getByTestId('control-event-lock')).toBeDisabled(); // no arrow out of Enter
+  await expect(page.getByTestId('control-event-select')).toBeEnabled();
+
+  await page.getByTestId('control-event-select').click();
+  await expect(page.getByTestId('control-state')).toContainText('selected');
+  await expect(page.getByTestId('control-event-lock')).toBeEnabled(); // legal from Selected
+  await expect(page.getByTestId('control-event-judge')).toBeDisabled();
+
+  // An entry's ✕ is ARMED, like Home's graphic delete — one stray click cost the whole row.
+  await page.getByTestId('add-entry').click();
+  await expect(page.locator('.control-entry')).toHaveCount(1);
+  await page.getByTestId('delete-entry').click();
+  await expect(page.getByTestId('delete-entry')).toHaveText('Delete?');
+  await expect(page.locator('.control-entry')).toHaveCount(1); // still there
+  await page.getByTestId('delete-entry').click();
+  await expect(page.locator('.control-entry')).toHaveCount(0);
+});
+
 test('the control panel shows the graphic at rest before any take, and says how to get Home', async ({ page }) => {
   await createProject(page, 'Hairline');
   await saveAs(page, 'Settled at rest');

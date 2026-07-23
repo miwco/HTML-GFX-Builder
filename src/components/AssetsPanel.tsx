@@ -8,16 +8,19 @@ import { useTemplateStore } from '../store/templateStore';
 import { moveAsset } from '../blocks/assetOps';
 import { probeAsset, referenceCount, assetBytes, type AssetInfo } from '../assets/assetInfo';
 import {
+  MAX_VIDEO_ASSET_BYTES,
   fileToDataUrl,
   isImageAsset,
   isLottieAsset,
   isFontAsset,
+  isVideoAsset,
   looksLikeLottie,
   sanitizeFolderName,
   splitAssetPath,
   uniqueAssetPath,
 } from '../assets/assetUtils';
 import type { AssetFile } from '../model/types';
+import { useInsertTemplateUi } from './InsertTemplateDialog';
 
 /** Soft per-asset size warning — big data-URL assets weigh on share/render budgets. */
 const WARN_ASSET_BYTES = 1_500_000;
@@ -25,7 +28,7 @@ const WARN_ASSET_BYTES = 1_500_000;
 const PUBLISH_MAX_ASSETS = 24;
 const PUBLISH_MAX_TOTAL = 12 * 1024 * 1024 * 0.75; // the bench caps data-URL chars; ~real bytes
 
-const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.svg,.avif,.json';
+const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.svg,.avif,.json,.webm,.mp4';
 
 /** The drag payload type the canvas drop target (CanvasInteraction) listens for. */
 export const ASSET_DRAG_TYPE = 'application/x-noacg-asset';
@@ -38,6 +41,7 @@ function badgeFor(path: string): string {
   if (isImageAsset(path)) return 'IMG';
   if (isLottieAsset(path)) return 'LOTTIE';
   if (isFontAsset(path)) return 'FONT';
+  if (isVideoAsset(path)) return 'VIDEO';
   return 'FILE';
 }
 
@@ -46,7 +50,7 @@ function dirOf(path: string): string {
   return path.slice(0, path.lastIndexOf('/'));
 }
 
-function AssetRow({ asset, selected, onSelect }: { asset: AssetFile; selected: boolean; onSelect: () => void }) {
+function AssetRow({ asset, refs, selected, onSelect }: { asset: AssetFile; refs: number; selected: boolean; onSelect: () => void }) {
   const { file } = splitAssetPath(asset.path);
   const bytes = assetBytes(asset);
   const isImage = isImageAsset(asset.path) && typeof asset.data === 'string';
@@ -62,16 +66,28 @@ function AssetRow({ asset, selected, onSelect }: { asset: AssetFile; selected: b
         e.dataTransfer.setData('text/plain', asset.path);
         e.dataTransfer.effectAllowed = 'copy';
       }}
-      title={`${asset.path} — drag onto the canvas to place it, or onto a folder to move it`}
+      title={
+        refs > 0
+          ? `${asset.path} — used ${refs}× in this graphic. Drag onto the canvas to place another copy (each placement is its own element; the file is stored once).`
+          : `${asset.path} — not placed yet. Drag onto the canvas to place it, or onto a folder to move it.`
+      }
     >
       <span className="asset-row-thumb">
         {isImage ? (
           <img src={asset.data as string} alt="" />
         ) : (
-          <span className="asset-row-icon">{isLottieAsset(asset.path) ? '✦' : isFontAsset(asset.path) ? 'Aa' : '▤'}</span>
+          <span className="asset-row-icon">
+            {isLottieAsset(asset.path) ? '✦' : isFontAsset(asset.path) ? 'Aa' : isVideoAsset(asset.path) ? '▶' : '▤'}
+          </span>
         )}
       </span>
       <span className="asset-row-name" title={file}>{file}</span>
+      {/* Which assets this graphic actually places — at a glance, per row. */}
+      {refs > 0 && (
+        <span className="asset-row-used" data-testid="asset-used" title={`Used ${refs}× in this graphic`}>
+          {refs > 1 ? `${refs}×` : '✓'}
+        </span>
+      )}
       <span className={`asset-badge asset-badge-${badgeFor(asset.path).toLowerCase()}`}>{badgeFor(asset.path)}</span>
       <span className="asset-row-size" style={bytes > WARN_ASSET_BYTES ? { color: 'var(--warn)' } : undefined}>
         {fmtBytes(bytes)}
@@ -139,6 +155,11 @@ function AssetInfoSection({
             <img src={asset.data as string} alt={file} />
           </div>
         )}
+        {isVideoAsset(asset.path) && typeof asset.data === 'string' && (
+          <div className="asset-info-preview asset-thumb">
+            <video src={asset.data} autoPlay muted loop playsInline />
+          </div>
+        )}
         <div className="asset-info-facts">
           <div className="asset-fact">
             <span className="asset-fact-key">Name</span>
@@ -200,6 +221,12 @@ function AssetInfoSection({
               <span className="asset-fact-value">{info.durationS}s · {info.fps ?? '?'} fps · {info.frames ?? '?'} frames</span>
             </div>
           )}
+          {info?.kind === 'video' && info.durationS != null && (
+            <div className="asset-fact">
+              <span className="asset-fact-key">Duration</span>
+              <span className="asset-fact-value">{info.durationS}s (plays muted on a loop)</span>
+            </div>
+          )}
           <div className="asset-fact">
             <span className="asset-fact-key">Used</span>
             <span className="asset-fact-value">{refs > 0 ? `${refs}× in the template` : 'not referenced (bloats the export)'}</span>
@@ -244,6 +271,9 @@ export default function AssetsPanel() {
   // an asset's path) once something lands in it — persisting a cosmetic empty-folder
   // list would need a new template field.
   const [pendingFolders, setPendingFolders] = useState<string[]>([]);
+  // "Add template graphic" — insert a catalog graphic into THIS project (never replacing
+  // it). The dialog itself is mounted once in AppShell; this just opens it.
+  const openInsertDialog = useInsertTemplateUi((s) => s.openDialog);
 
   const assets = template.assets;
   const selected = assets.find((a) => a.path === selectedPath) ?? null;
@@ -280,8 +310,15 @@ export default function AssetsPanel() {
           rejected.push(`"${file.name}" is not a Lottie animation`);
           continue;
         }
+      } else if (isVideoAsset(file.name)) {
+        // Videos ride the saved template as data URLs — a hard cap keeps a save/sync/share
+        // of the whole graphic from ballooning on one clip.
+        if (file.size > MAX_VIDEO_ASSET_BYTES) {
+          rejected.push(`"${file.name}" is ${fmtBytes(file.size)} — videos import up to ${fmtBytes(MAX_VIDEO_ASSET_BYTES)} (trim or compress it, .webm keeps alpha)`);
+          continue;
+        }
       } else if (!isImageAsset(file.name)) {
-        rejected.push(`"${file.name}" — only images and Lottie .json files import here (fonts: Style panel)`);
+        rejected.push(`"${file.name}" — only images, video loops (.webm/.mp4), and Lottie .json files import here (fonts: Style panel)`);
         continue;
       }
       const data = await fileToDataUrl(file);
@@ -310,7 +347,7 @@ export default function AssetsPanel() {
 
   // Group rows by directory; the buckets keep a stable, meaningful order. Pending
   // (still-empty) folders appear as empty groups under images/ until something lands.
-  const order = ['images', 'lottie', 'fonts', 'assets'];
+  const order = ['images', 'videos', 'lottie', 'fonts', 'assets'];
   const groups = new Map<string, AssetFile[]>();
   for (const a of assets) {
     const dir = dirOf(a.path);
@@ -384,8 +421,8 @@ export default function AssetsPanel() {
       <div className="panel-section">
         <h3>Assets</h3>
         <p className="hint">
-          Images and Lottie animations bundled with this graphic. Drop files anywhere here to
-          import them, then drag an asset onto the canvas to place it.
+          Images, video loops, and Lottie animations bundled with this graphic. Drop files
+          anywhere here to import them, then drag an asset onto the canvas to place it.
         </p>
         <input
           ref={fileInput}
@@ -403,6 +440,13 @@ export default function AssetsPanel() {
           <button className="primary" onClick={() => fileInput.current?.click()} data-testid="assets-import">
             + Import assets…
           </button>
+          <button
+            onClick={openInsertDialog}
+            title="Insert a graphic from the template catalog into this project — it joins the canvas, timeline, and states without replacing anything"
+            data-testid="assets-insert-template"
+          >
+            ✚ Template graphic…
+          </button>
           <button onClick={newFolder} data-testid="assets-new-folder">🗀 New folder…</button>
         </div>
         {note && <p className={note.startsWith('✗') ? 'status-bad' : 'hint'} style={{ marginTop: 8 }}>{note}</p>}
@@ -417,7 +461,13 @@ export default function AssetsPanel() {
                 <p className="hint asset-folder-empty">empty — drag an asset here (kept until reload)</p>
               ) : (
                 (groups.get(dir) as AssetFile[]).map((a) => (
-                  <AssetRow key={a.path} asset={a} selected={a.path === selectedPath} onSelect={() => setSelectedPath(a.path)} />
+                  <AssetRow
+                    key={a.path}
+                    asset={a}
+                    refs={referenceCount(template, a.path)}
+                    selected={a.path === selectedPath}
+                    onSelect={() => setSelectedPath(a.path)}
+                  />
                 ))
               )}
             </div>

@@ -42,13 +42,19 @@ export function presetDonor(
 
 export type PresetScope = 'all' | string; // 'all' = the whole graphic, else one selector
 
-/** Optional per-direction duration overrides (in EFFECTIVE seconds — what the operator
- *  sees; stored times are speed-relative, so we multiply by data.speed). */
+/** Optional per-direction duration/delay overrides (in EFFECTIVE seconds — what the
+ *  operator sees; stored times are speed-relative, so we multiply by data.speed). */
 export interface PresetDurations {
   /** Entrance length; targets the step where the scope becomes active. */
   inDuration?: number;
   /** Exit length; targets the final (Out) step. */
   outDuration?: number;
+  /** Hold before the entrance motion starts: the keyframes shift later within the step,
+   *  and the layer holds its first keyframe's pose through the wait (the interpreter
+   *  applies a track's first keyframe at the step start). The step grows to fit. */
+  inDelay?: number;
+  /** Hold before the exit motion starts (same shift, on the final step). */
+  outDelay?: number;
 }
 
 /**
@@ -67,6 +73,7 @@ function swapLayerTracks(
   chosenEffSec: number | undefined,
   speed: number,
   stepEase: string,
+  delayStored = 0,
 ): number {
   const layer: import('./animData').AnimLayerTracks = {};
   targetStep.layers[selector] = layer; // clean swap — drop whatever this step held for the layer
@@ -79,15 +86,24 @@ function swapLayerTracks(
     layer[prop] = kfs.map((k) => (k.ease ? { ...k } : { ...k, ease: stepEase }));
     for (const k of kfs) maxT = Math.max(maxT, k.time);
   }
+  let end = maxT;
   if (chosenEffSec !== undefined && Number.isFinite(chosenEffSec) && chosenEffSec > 0 && refDurStored > 0) {
     const storedD = round(chosenEffSec * speed);
     const scale = storedD / refDurStored;
     for (const prop of Object.keys(layer)) {
       layer[prop] = layer[prop].map((k) => ({ ...k, time: round(k.time * scale) }));
     }
-    return storedD;
+    end = storedD;
   }
-  return maxT;
+  // The delay is a plain time shift: the layer holds its first keyframe's pose (applied at
+  // the step start by the interpreter) until the motion begins.
+  if (delayStored > 0) {
+    for (const prop of Object.keys(layer)) {
+      layer[prop] = layer[prop].map((k) => ({ ...k, time: round(k.time + delayStored) }));
+    }
+    end = round(end + delayStored);
+  }
+  return end;
 }
 
 /**
@@ -112,6 +128,8 @@ export function applyPresetData(
     const donorStep = ph === 'in' ? donor.steps[0] : donor.steps[donor.steps.length - 1];
     const refDur = donorStep.duration;
     const chosen = ph === 'in' ? durations?.inDuration : durations?.outDuration;
+    const delayEff = ph === 'in' ? durations?.inDelay : durations?.outDelay;
+    const delay = delayEff !== undefined && Number.isFinite(delayEff) && delayEff > 0 ? round(delayEff * speed) : 0;
 
     if (scope === 'all') {
       let longest = 0;
@@ -120,20 +138,26 @@ export function applyPresetData(
         // exactly the classic rule (assigned parts drop from the intro choreography).
         if (ph === 'in' && layerPress(next, selector) !== -1) continue;
         const targetStep = ph === 'in' ? next.steps[0] : next.steps[next.steps.length - 1];
-        longest = Math.max(longest, swapLayerTracks(targetStep, selector, tracks, refDur, chosen, speed, donorStep.ease));
+        longest = Math.max(longest, swapLayerTracks(targetStep, selector, tracks, refDur, chosen, speed, donorStep.ease, delay));
         touched = true;
       }
       // The whole-graphic swap adopts one pace for the phase: the operator's choice, else
-      // the preset's designed length. Easing rides on the donor's keyframes/step ease.
+      // the preset's designed length (plus any hold before the motion). Easing rides on
+      // the donor's keyframes/step ease.
       const t = ph === 'in' ? next.steps[0] : next.steps[next.steps.length - 1];
-      t.duration = chosen !== undefined && chosen > 0 ? round(chosen * speed) : Math.max(donorStep.duration, longest);
+      t.duration =
+        chosen !== undefined && chosen > 0
+          ? round(chosen * speed + delay)
+          : Math.max(round(donorStep.duration + delay), longest);
       t.ease = donorStep.ease;
       // Lifecycle hooks are step-level, not layer motion — the whole-graphic swap replaces
       // the target phase's calls with the donor's (a clock preset carries its start/stop),
-      // scaled to the settled duration so the call keeps its place in the entrance.
-      const scale = donorStep.duration > 0 ? t.duration / donorStep.duration : 1;
+      // scaled to the settled MOTION length (the duration minus the hold) and shifted with
+      // it, so the call keeps its place in the entrance.
+      const motionDur = t.duration - delay;
+      const scale = donorStep.duration > 0 ? motionDur / donorStep.duration : 1;
       if (donorStep.calls && donorStep.calls.length > 0) {
-        t.calls = donorStep.calls.map((c) => ({ time: round(c.time * scale), call: c.call }));
+        t.calls = donorStep.calls.map((c) => ({ time: round(c.time * scale + delay), call: c.call }));
         touched = true;
       } else {
         delete t.calls;
@@ -145,7 +169,7 @@ export function applyPresetData(
       // nothing outside the marked block has to be rewritten (docs/DYNAMIC_MOTION_SCOPE.md §7).
       if (donorStep.dynamics && donorStep.dynamics.length > 0) {
         t.dynamics = donorStep.dynamics.map((d) => ({
-          time: round((d.time ?? 0) * scale),
+          time: round((d.time ?? 0) * scale + delay),
           build: d.build,
           ...(d.target ? { target: d.target } : {}),
         }));
@@ -171,10 +195,11 @@ export function applyPresetData(
       if (!tracks) continue;
       const targetIdx = ph === 'out' ? next.steps.length - 1 : activationStep(next, scope);
       const targetStep = next.steps[targetIdx];
-      const written = swapLayerTracks(targetStep, scope, tracks, refDur, chosen, speed, donorStep.ease);
+      const written = swapLayerTracks(targetStep, scope, tracks, refDur, chosen, speed, donorStep.ease, delay);
       touched = true;
-      // Honour the chosen duration; otherwise stretch so the motion never truncates.
-      if (chosen !== undefined && chosen > 0) targetStep.duration = round(chosen * speed);
+      // Honour the chosen duration (plus the hold); otherwise stretch so the delayed
+      // motion never truncates.
+      if (chosen !== undefined && chosen > 0) targetStep.duration = round(chosen * speed + delay);
       else if (targetStep.duration < written) targetStep.duration = round(written);
     }
   }

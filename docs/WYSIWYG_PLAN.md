@@ -1,5 +1,12 @@
 # WYSIWYG editor — Era 6 plan (first slices)
 
+> **STATUS 2026-07-22: HISTORICAL.** W1-W3 shipped (and were then extended well past this
+> plan: canvas selection, keyframe drags, scale/rotate handles, placed-field editing). The
+> canvas interaction contract today lives in `src/components/CLAUDE.md`; the guardrails
+> here (deterministic patches, no hidden scene model) are root non-negotiables. W4
+> "element nudges" landed as keyframe/placement nudges rather than the offset-var design
+> sketched below. Kept as the rationale record.
+
 The goal: direct manipulation ON the preview canvas — drag to position, resize, edit text in
 place — without ever betraying the core principle: **code is the single source of truth**.
 Every canvas gesture writes the SAME deterministic patch a panel would write. There is no

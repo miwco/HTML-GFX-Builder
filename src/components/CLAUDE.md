@@ -99,6 +99,12 @@ in src/blocks/CLAUDE.md.
   release, keys `scale` / `rotation` at the playhead (keyframePlace + setKeyframe + spliceAnimData,
   ONE undoable apply, re-parked) - pivoting around the layer's transform-origin (the Inspector
   pivot). Escape springs it back. The root keeps its own --scale corner handle.
+  THROUGH THE LENS: this file keyframes at the PLAYHEAD, and the playhead belongs to whichever
+  timeline is open - so its `dataModel` is `lensRead(…, timelineTarget)` and every write folds
+  back through `projectedJs` (blocks/timelineLens.ts), never raw `parseAnimData`/`writeAnimData`.
+  Reading the raw document meant that, with a branch state's timeline on screen, a canvas drag
+  wrote its x/y into the default path's step: the strip showed the branch, the keyframe landed
+  on the walk, and nothing said so.
   CANVAS POSITION KEYFRAMING (docs/TIMELINE_INTERACTION_MODEL.md, amendment 3): on a
   data-block template, dragging any SELECTED non-root layer moves the WHOLE selection (layers
   contained in another dragged layer are excluded - the parent's transform carries them) and,
@@ -158,9 +164,16 @@ in src/blocks/CLAUDE.md.
   gesture a touch screen doesn't have, and less guidance beats a wrong instruction. The chip
   is width-capped to the stage (maxWidth + a left clamp; label/hint ellipsize in CSS), so it
   can never overflow a narrow canvas. An
-  eligible selected part's chip carries the "appears on press" select - the timeline gutter's
-  control from the canvas, same conditions, same blocks/stepAssign.ts patch - and swallows its
-  own pointer events so the gesture layer under it never fires.
+  eligible selected part's chip carries the "appears" select - offered on ANY editable data
+  block, even one with no middle steps yet: existing steps are listed BY NAME and "appears in
+  a new step »" creates and names the step itself (blocks/layerTimeline.ts createStepFromLayer,
+  the same transform the Inspector and states graph use), which is how a freshly dropped asset
+  becomes the graphic's next step in one click; moves between existing steps stay the
+  blocks/stepAssign.ts patch. The chip swallows its own pointer events so the gesture layer
+  under it never fires. The canvas also owns a CONTEXT MENU (right-click; the right button
+  never starts a gesture): one action for now - "Add template graphic…", opening the same
+  InsertTemplateDialog the Assets panel's button does (its open flag is the shared
+  useInsertTemplateUi store; the dialog itself mounts once in AppShell).
 - **TEXT TOOLS** (the stage toolbar's ↖ / T / boxed-T switch, PreviewFrame; placed-design
   templates only - the designBoxInfo gate, code-derived): store `canvasTool` arms them
   ('select' | 'text' | 'area-text'; T is the keyboard shortcut, Escape disarms). The T tool
@@ -180,6 +193,12 @@ in src/blocks/CLAUDE.md.
 
 - **PlayoutSimulator** - owns the running preview timeline `__activeTl`; settles the design view
   after every rebuild (progress(1, true) + a second update()); auto-replays on replayNonce;
+  resolves the SCRUB phases, including `state:<group>:<state>` for a BRANCH timeline
+  (blocks/timelineLens.ts `scrubPhase`): snap the group to the state's canonical predecessor
+  (`branchRoute`, off animMachine's `canonicalPath`, which the interpreter's own
+  `noacgCanonicalPath` mirrors) so the segment animates FROM the right look, then hold the
+  runtime's `noacgEnterTimeline` paused. A branch used to send no scrub at all, so its timeline
+  was authored blind - the playhead moved and the picture did not;
   handles the store's `event`/`snap` commands against the template's STATE MACHINE
   (docs/STATE_MACHINE_SCHEMA.md) - snapping with `{ timers: false }`, because a parked design
   view must never auto-advance - and, ONLY for a template carrying an EXPLICIT machine, renders
@@ -241,6 +260,14 @@ in src/blocks/CLAUDE.md.
   away from what they describe. That is not cosmetic: while the diagram sized the surface, a
   two-state lower third made the card 104px around 211px of content, putting the whole
   Cut/Fade picker below an invisible fold, and hid every "▤ timeline from layer" entry.
+  PROBLEM MARKS: a box whose state `validateMachine` has something to say about (animMachine
+  `stateProblems` — unreachable, or a timer on a timeline that never ends) wears a coloured
+  dot, and its card carries the finding phrased as the NEXT MOVE rather than the export
+  report's verdict (`problemAdvice`). The finding used to reach only the Export panel, so a
+  branch could carry a whole hand-built timeline and never be entered with nothing said where
+  it was authored. `boxWidth` takes an allowance for the dot — without it a two-word state
+  ellipsizes exactly when its name matters most. An off-path POSE now wears ○ like the rest
+  state; it was previously the one box on the graph with no mark at all.
   Gotchas: the box button must NOT have `overflow: hidden` — it would clip the connect port
   half off the right edge and eat its pointerdown (the name span does its own ellipsis); and
   `toBeVisible()` is blind to overflow clipping, so anything about reaching a control is
@@ -332,10 +359,17 @@ in src/blocks/CLAUDE.md.
   tab exists only while a placed field is selected (a non-placed selection falls back to
   Properties without clobbering the stored choice). A placed field's look is DESIGN, never
   keyframes - the same doctrine as its drag.
-  The Animations tab names which steps move the layer and holds the preset
-  picker (preset + In/Out/Both + easing dropdown + per-direction duration + Apply -
-  blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion (it never
-  blends with the previous preset), and re-parks the preview at the playhead. On an imported
+  The Animations tab leads with the layer's LIFECYCLE rows - **Appears** (with ▶ Play / an
+  existing step by name / "in a new step »" via createStepFromLayer) and **Disappears** (with
+  ■ Out / an early exit via animEdit setLayerHide) - the same transforms the canvas chip and
+  the timeline block edges write, shown for the default path only. Below them it names which
+  steps move the layer and holds the preset
+  picker (preset + In/Out/Both + easing dropdown + per-direction duration + per-direction
+  DELAY - a hold before the motion: the apply shifts the written keyframes later within the
+  step and the layer holds its first pose through the wait, no keyframe knowledge needed +
+  Apply - blocks/presetApply.ts); Apply is a CLEAN SWAP of the targeted direction's motion
+  (it never blends with the previous preset), re-parks the preview at the playhead, and a
+  target line under it names WHICH step each direction will actually edit. On an imported
   design (the placed-design shape, code-derived) Animations is the DEFAULT tab - the artwork
   brought its look, so per-layer motion is what the Inspector is for there; a manual tab
   choice afterwards sticks. Legacy templates get a
@@ -422,16 +456,26 @@ e2e/layout.spec.ts.
 - **StylePanel** - reads/writes the :root style contract (src/templates/CLAUDE.md): colors,
   font swap, zone re-anchoring, post-creation font import (an imported font still lands in
   template.assets and shows in the Assets panel's list).
-- **AssetsPanel** - the template's bundled files as folder-grouped ROWS (images, Lottie .json
-  gated by looksLikeLottie, fonts): DnD file import (one addAssets = one undo step), rows are
+- **AssetsPanel** - the template's bundled files as folder-grouped ROWS (images, video loops
+  .webm/.mp4 - hard-capped at MAX_VIDEO_ASSET_BYTES since assets ride the saved template as
+  data URLs - Lottie .json gated by looksLikeLottie, fonts): DnD file import (one addAssets =
+  one undo step), rows are
   drag SOURCES (`application/x-noacg-asset`, exported as ASSET_DRAG_TYPE) for the canvas drop
   (CanvasInteraction) and for folder-header drops; folders are path segments (one level inside
   the bucket) - moving/renaming goes through blocks/assetOps.ts moveAsset, which rewrites every
   code reference in the SAME undoable apply, then patches stale sampleData values. Empty
   user-created folders are ephemeral component state on purpose (assets sync as template JSON).
-  The Information section derives name/format/dimensions/aspect/size/alpha/Lottie timing +
-  reference count per selection via src/assets/assetInfo.ts (async probe, cached) - the model
-  stays { path, data }. Pinned by e2e/assets.spec.ts.
+  Each row carries a USAGE mark (reference count > 0: ✓ / n×) so it's obvious which assets the
+  graphic actually places - re-dragging a used asset adds another element instance, never a
+  duplicate file. The Information section derives name/format/dimensions/aspect/size/alpha/
+  Lottie timing/video duration + reference count per selection via src/assets/assetInfo.ts
+  (async probe, cached) - the model stays { path, data }. The header's **"✚ Template
+  graphic…"** opens InsertTemplateDialog - the catalog browser in INSERT mode
+  (blocks/templateInsert.ts): a picked variant's graphic joins the current project (namespaced,
+  fields renumbered, :root scoped onto the inserted root, In/Out merged - one undo step) with a
+  placement choice (from the start / as a new next step); templates needing their own runtime
+  are greyed with the reason. Pinned by e2e/assets.spec.ts, e2e/asset-workflow.spec.ts +
+  e2e/template-insert.spec.ts.
 - **AIPromptPanel**; **ExportPanel** (validation inline; remembers the last-picked target via
   model/prefs.ts). Below the zip targets it mounts **render/RenderPanel** — the Video & image
   section (MP4/WebM/PNG/sequence/ProRes via the render API) — ONLY when `isRenderConfigured()`
@@ -469,12 +513,19 @@ Home, both routed (src/app/router.ts) so browser Back/Forward walk between surfa
   and the iframe is the template's OWN resolution scaled into it, so a non-16:9 graphic keeps
   its shape.
 - **home/GraphicControlPage** - `#/control/<graphicId>`: the saved graphic's operator
-  panel - live preview iframe + transport + machine event buttons + ENTRIES (named data
+  panel, and the surface that AIRS (the editor's Rehearse tab is the preview-only twin) -
+  live graphic + transport + machine event buttons (GREYED by controlModel
+  `isEventLegal` against a 500ms poll of the graphic's own `noacgMachineState`, exactly as the
+  editor's Rehearse panel, the event strip and the hosted page do — this surface shipped without
+  it, so every button looked pressable whether or not the graphic would drop the press) + a
+  STATE CHIP naming the graphic's current state (the fact the greying is judged against, so a
+  button is never greyed without the surface saying why) + ENTRIES (named data
   rows: add/duplicate/rename/delete/select-active, ▶ Play with an entry, ★ make an entry
   the template's default data via setFieldDefault) + the downloadable controlpanel.html
   with entries baked in (control/controlPanelHtml.ts opts.entries renders an entry
   switcher). Entry mutations compose through a read-fresh `patch(cur => …)` - two edits in
-  one tick must never overwrite each other.
+  one tick must never overwrite each other. An entry's ✕ is ARMED (two-step, like Home's
+  graphic delete): typed-in data with no undo behind it, on a row someone drives live.
 - **AuthStatus** now routes 🏠 Home from the account menu (initials avatar fallback); the
   topbar's always-visible 🏠 Home button is the no-account door to the same place.
 
@@ -632,7 +683,7 @@ would leak into the new graphic's fields.
 ## Auth UI (auth/)
 
 useAuthState hook + authUi store + SignInDialog + SignInPrompt + AuthStatus avatar menu
-(-> Homebase / Settings / Sign out). The gating pattern: read `useAuthState().needsSignIn` (true
+(-> Home / Settings / Sign out). The gating pattern: read `useAuthState().needsSignIn` (true
 only when a backend is configured AND the visitor is signed out) and render `SignInPrompt` /
 call `useAuthUi().openSignIn(reason)` - never block the app. Signup is OPEN (migration `0006`
 made the Before-User-Created hook permissive; restore the 0002 function body to re-close it to

@@ -632,8 +632,9 @@ Also nightly health checks (build, E2E, `npm audit`, Supabase advisors). Traject
 now** (drafts land `pending` in the Era-5.5 community table via a least-privilege bot; a human approves
 in the 🛡 queue) → **gate-trusted auto-publish later** once the automatic gate matches human judgment.
 Reuses `claudeProvider.generate` + `publishGate` + the bench harness; runs on GitHub Actions cron + one
-read-only scheduled cloud agent. Not yet built — see the plan doc for the verified guardrails
-(migration `0006`) and open decisions.
+read-only scheduled cloud agent. Job A (the health/CI gates) is built (push CI + weekly audit,
+2026-07-21); the generation jobs B/C are plan only — see the plan doc for the verified guardrails
+(the nightly-drafts migration, numbered `0010` there) and open decisions.
 
 ### AI mode (after the wizard works)
 - [x] Claude-backed `AIProvider` (key via the in-app AI settings or `VITE_ANTHROPIC_API_KEY`;
@@ -708,10 +709,11 @@ read-only scheduled cloud agent. Not yet built — see the plan doc for the veri
       projects autosave + save/reopen, and the EXISTING render service outputs
       MP4/WebM/PNG/sequence/ProRes via manifest kind:'remotion' (the same compiled module
       the preview runs). Uploaded images/SVGs/video become `assets` props; a video asset
-      can be the background layer. On the feature worktree branch
-      (claude/ai-remotion-creator); merge pending review. Still to do: sandbox-executor
-      live verification, a Blob upload channel for large assets, editable Remotion inputs
-      mapped to the Template Definition system, and the visual Motion Critic pass.
+      can be the background layer. Merged to main 2026-07-13; the input-model convergence
+      (editable Remotion inputs mapped to the Template Definition system) followed 2026-07-14,
+      and the HyperFrames engine joined as a second video engine 2026-07-18. Still to do:
+      sandbox-executor live verification, a Blob upload channel for large assets, and the
+      visual Motion Critic pass (experiment-gated - docs/VIDEO_DESIGN_QUALITY_PLAN.md §3.5).
 - [ ] Data-driven/live content architecture (ticker/scoreboard controlled from a backend) — later
 
 ### The SPX generation harness (2026-07-17 — AI that beats a bare prompt, provably)

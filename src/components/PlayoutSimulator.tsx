@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useTemplateStore } from '../store/templateStore';
 import { detectPrefix } from '../model/structure';
 import { parseAnimData } from '../blocks/animData';
-import { machineControls } from '../blocks/animMachine';
+import { canonicalPath, deriveMachine, machineControls } from '../blocks/animMachine';
+import { parseStatePhase } from '../blocks/timelineLens';
 import { eventLegality, isEventLegal } from '../control/controlModel';
 
 interface Props {
@@ -41,6 +42,12 @@ export type SpxWindow = Window & {
   ) => { groups: Record<string, string> };
   /** State machine: the current state pointers (the event strip's chip reads it). */
   noacgMachineState?: () => { groups: Record<string, string> };
+  /** State machine: the machine the interpreter is running (groups, for the lookups below). */
+  noacgMachine?: { groups: Array<{ id: string }> };
+  /** State machine: the timeline a state plays when ENTERED — a path waypoint's positional
+   *  step, or a branch state's own inline one. The branch scrub builds this and pauses it,
+   *  so the editor previews a branch through the runtime's own recipe, never a second one. */
+  noacgEnterTimeline?: (group: { id: string }, stateId: string) => GsapTimeline | null;
   /** The timeline the simulator is currently running (drives the timeline strip's playhead).
    *  Phase: 'in' | 'out' | 'step-N' (N = the 2-based Continue step). */
   __activeTl?: { phase: string; tl: GsapTimeline } | null;
@@ -59,6 +66,23 @@ function killAll(w: SpxWindow) {
   w.__activeTl = null;
   w.__scrubTl = null;
   w.gsap?.killTweensOf('*');
+}
+
+/**
+ * Which state a branch is entered FROM, for the branch scrub's opening pose. Read off the
+ * editor's own graph seam (animMachine `canonicalPath`), which the interpreter's
+ * `noacgCanonicalPath` mirrors — so the pose the editor composes is the pose the runtime
+ * would. `from` falls back to the group's initial when nothing reaches the state.
+ */
+function branchRoute(groupId: string, stateId: string): { from: string } {
+  const data = parseAnimData(useTemplateStore.getState().template.js);
+  const machine = data?.machine ?? (data ? deriveMachine(data) : null);
+  const gi = machine?.groups.findIndex((g) => g.id === groupId) ?? -1;
+  const group = gi >= 0 ? machine!.groups[gi] : null;
+  if (!group) return { from: stateId };
+  const route = canonicalPath(group, gi === 0, stateId);
+  // route excludes the initial state, so its second-to-last entry is the predecessor.
+  return { from: route && route.length > 1 ? route[route.length - 2] : group.initial };
 }
 
 /** Return the graphic to its clean CSS resting state before a fresh entrance. An exit can
@@ -299,7 +323,22 @@ export default function PlayoutSimulator({ iframeRef }: Props) {
     if (!w.__scrubTl || w.__scrubTl.phase !== scrubCommand.phase) {
       killAll(w);
       w.update?.(latestData());
-      if (scrubCommand.phase === 'in') {
+      const branch = parseStatePhase(scrubCommand.phase);
+      if (branch) {
+        // A BRANCH state's own timeline (blocks/timelineLens.ts). Compose the pose the state
+        // is entered FROM — its canonical predecessor, the same route the runtime replays —
+        // then hold its entry timeline paused. Snapping is what makes the scrubbed segment
+        // animate from the right look instead of from the graphic's CSS resting state; a
+        // state nothing reaches has no predecessor, so it plays from the rest pose, which is
+        // honest (the node editor marks that state unreachable in the same breath).
+        const group = w.noacgMachine?.groups.find((g) => g.id === branch.groupId);
+        if (!group || typeof w.noacgEnterTimeline !== 'function' || typeof w.noacgSnap !== 'function') return;
+        const route = branchRoute(branch.groupId, branch.stateId);
+        w.noacgSnap({ [branch.groupId]: route.from }, { timers: false });
+        const tl = w.noacgEnterTimeline(group, branch.stateId);
+        if (!tl) return;
+        w.__scrubTl = { phase: scrubCommand.phase, tl };
+      } else if (scrubCommand.phase === 'in') {
         w.__scrubTl = { phase: 'in', tl: w.buildInTimeline() };
       } else if (scrubCommand.phase.startsWith('step-')) {
         // Continue segment N: run the entrance + the prior steps to their ends, then hold

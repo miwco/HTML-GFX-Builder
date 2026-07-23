@@ -48,7 +48,7 @@ since the last explicit Save. The store (`templateStore`) tracks
 
 ## 3. Navigation (hash routes, one application)
 
-`src/app/routes.ts` — hash routing (static-host safe, refresh restores, browser
+`src/app/router.ts` — hash routing (static-host safe, refresh restores, browser
 Back/Forward are real history):
 
 | Route | Surface |

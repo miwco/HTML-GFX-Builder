@@ -5,8 +5,12 @@ The operational playbook for the adoption push. It executes the GTM plan (the pu
 human budget of **~5 h/week**. Companion docs: `docs/GOALS.md` (Era 7),
 `docs/NIGHTLY_AUTOMATION_PLAN.md` (the library flywheel - reused here, not re-planned).
 
-> Status: **ACTIVE PLAN**. Decisions below are locked (founder, 2026-07-08). Check items off as
-> they land; treat the build backlog (§9) as the work queue.
+> Status: **ACTIVE PLAN, largely not started.** Decisions below are locked (founder,
+> 2026-07-08). As of 2026-07-22 only backlog item 1 (open signup) is done; the 12-week
+> calendar's week numbers should be read from whenever W0 actually starts, not from the
+> lock date. Product work (the template-library / state-machine / control-layer stage,
+> now complete) took priority in between. Check items off as they land; treat the build
+> backlog (§9) as the work queue.
 
 ---
 

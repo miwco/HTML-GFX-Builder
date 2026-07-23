@@ -93,6 +93,66 @@ export function insertImageElement(
   return { template: next, selector: `#${id}` };
 }
 
+/** Unique element id from a video asset's file name: vid-<stem>, -2/-3… while taken. */
+function uniqueVideoId(html: string, assetPath: string): string {
+  const { file } = splitAssetPath(assetPath);
+  const stem = file.replace(/\.[^.]*$/, '').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || 'video';
+  const base = `vid-${stem}`; // never matches /^f\d+$/, so it can't collide with field ids
+  let id = base;
+  let n = 2;
+  while (new RegExp(`\\bid=["']${id}["']`).test(html)) id = `${base}-${n++}`;
+  return id;
+}
+
+/**
+ * Insert a muted, looping <video> for an uploaded video asset, centred on a canvas point
+ * (the Assets panel's drag-to-canvas drop). Muted + playsinline is what lets it autoplay in
+ * every playout browser; a .webm with alpha keeps its transparency. Tagged data-gfx with a
+ * unique id, so it registers as a selectable, animatable part like any inserted element.
+ */
+export function insertVideoElement(
+  template: SpxTemplate,
+  opts: { assetPath: string; x: number; y: number; naturalW: number; naturalH: number },
+): { template: SpxTemplate; selector: string } {
+  const { assetPath, x, y } = opts;
+  const naturalW = Math.max(1, Math.round(opts.naturalW));
+  const naturalH = Math.max(1, Math.round(opts.naturalH));
+  const res = template.resolution;
+  const { file } = splitAssetPath(assetPath);
+  const id = uniqueVideoId(template.html, assetPath);
+
+  // Display size: natural, capped at a third of the canvas width (floor 96px), keeping
+  // the aspect ratio. Deterministic whole-pixel numbers only.
+  const width = Math.max(96, Math.min(naturalW, Math.round(res.width / 3)));
+  const height = Math.max(1, Math.round((width * naturalH) / naturalW));
+  const left = Math.round(Math.min(Math.max(x - width / 2, 0), Math.max(res.width - width, 0)));
+  const top = Math.round(Math.min(Math.max(y - height / 2, 0), Math.max(res.height - height, 0)));
+
+  const htmlSnippet = `  <!-- Video: ${file} (placed from the Assets panel — plays muted on a loop; position/size in the CSS rule for #${id}) -->
+  <video id="${id}" data-gfx src="${assetPath}" autoplay muted loop playsinline></video>`;
+
+  const cssBody = `#${id} {
+  position: absolute;   /* place freely on the canvas */
+  left: ${left}px;         /* distance from the left edge */
+  top: ${top}px;          /* distance from the top edge */
+  width: ${width}px;        /* display width (natural ${naturalW}px) */
+  height: auto;         /* keep the video's aspect ratio */
+}`;
+
+  let next: SpxTemplate = {
+    ...template,
+    html: insertGraphicHtml(template.html, htmlSnippet),
+    css: appendCss(template.css, `Video: ${file}`, cssBody),
+  };
+  next = addLayer(next, {
+    id,
+    type: 'container',
+    label: file,
+    styles: { position: 'absolute', left: `${left}px`, top: `${top}px`, width: `${width}px` },
+  });
+  return { template: next, selector: `#${id}` };
+}
+
 export function moveAsset(
   template: SpxTemplate,
   fromPath: string,

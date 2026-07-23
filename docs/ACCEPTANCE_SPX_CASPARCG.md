@@ -27,8 +27,9 @@ suite (`library.spec.ts`, `machine-graph.spec.ts`, `import-*.spec.ts`, `exports.
 1. Extract the starter folder into SPX's `ASSETS/templates/` and add the template to a
    rundown.
 2. **Fields**: the operator sees `Name` / `Title`; typed values air on Continue/Play.
-3. **The walk**: Play shows the bar only; each SPX *Continue* reveals Name, then Title
-   (the `steps: 3` setting drives SPX's own Continue counter); Stop plays the exit.
+3. **The walk**: Play shows the bar only; the two SPX *Continue* presses reveal Name, then
+   Title (the `steps: 3` setting — 3 phases — drives SPX's own Continue counter); Stop plays
+   the exit.
 4. **Fonts**: on a machine WITHOUT the font installed, the graphic renders in the bundled
    face (`fonts/` travels in the folder; `FONT_LICENSES.md` is present).
 5. **Entries**: open the downloaded `<name>_controlpanel.html` beside a browser-source run
@@ -45,7 +46,9 @@ suite (`library.spec.ts`, `machine-graph.spec.ts`, `import-*.spec.ts`, `exports.
 
 ## What to report back
 
-- SPX Continue count matches the graph (3 presses to exhaust, stop always legal).
+- SPX Continue count matches the graph: `steps: 3` = 3 phases = **2** Continue presses
+  (Enter → Name In → Title In), then Continue does nothing and Stop is still legal.
+  Presses = `steps` − 1 — see docs/SPX_TEMPLATE_FORMAT.md §2 "Counting `steps`".
 - A cut/fade transition on the first arrow visibly changes the Name reveal.
 - The uploaded-font export renders identically on the playout machine.
 - Entry switch → replay works over BroadcastChannel on the playout browser build.

@@ -83,6 +83,33 @@ export function lensWrite(data: AnimData, target: TimelineTarget, edited: AnimDa
   return next;
 }
 
+/**
+ * The scrub phase for whichever timeline is open.
+ *
+ * The preview's scrub protocol addresses the WALK's phases ('in' / 'out' / 'step-N'), and a
+ * branch state is on none of them — so a branch used to send nothing at all, and its timeline
+ * was authored blind: the playhead moved, the preview did not. Worse, the surfaces that
+ * compute a phase from a step INDEX would each have called the branch's only step 'in' and
+ * jumped the preview to the graphic's entrance.
+ *
+ * One rule, every caller: a branch answers `state:<groupId>:<stateId>`, which PlayoutSimulator
+ * resolves through the runtime's own `noacgEnterTimeline`. `pathPhase` is what the caller
+ * would have sent on the default path (phaseIdOf).
+ */
+export function scrubPhase(target: TimelineTarget, pathPhase: string): string {
+  return target.kind === 'state' ? `state:${target.groupId}:${target.stateId}` : pathPhase;
+}
+
+/** Read a `state:` phase back into its two ids; null for a walk phase. */
+export function parseStatePhase(phase: string): { groupId: string; stateId: string } | null {
+  if (!phase.startsWith('state:')) return null;
+  // Ids come from the machine, which the shape gate keeps free of ':' — but split from the
+  // LEFT on exactly two fields so a stray one can never silently re-target another group.
+  const [, groupId, ...rest] = phase.split(':');
+  const stateId = rest.join(':');
+  return groupId && stateId ? { groupId, stateId } : null;
+}
+
 /** The state a branch target points at, for the surfaces that need to name it. */
 export function targetState(data: AnimData, target: TimelineTarget): { id: string; name: string } | null {
   if (target.kind === 'path') return null;

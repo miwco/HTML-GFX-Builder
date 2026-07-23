@@ -12,8 +12,10 @@ import {
   deriveMachine,
   spxSteps,
   stateById,
+  stateProblems,
   timelineKind,
   timelineLayer,
+  type StateProblem,
   type TimelineKind,
 } from '../blocks/animMachine';
 import { addStep, deleteStep, renameStep } from '../blocks/animEdit';
@@ -65,6 +67,10 @@ interface StateBox {
   kind: TimelineKind;
   /** The layer a 'layer' timeline animates (its registry selector), for the tooltip. */
   layerSelector: string | null;
+  /** What validateMachine says about THIS state (animMachine `stateProblems`), if anything.
+   *  Marked here rather than left to the Export panel: a branch can carry a whole hand-built
+   *  timeline and still never be entered, and this is the surface that let you build it. */
+  problem: StateProblem | null;
   x: number;
   y: number;
   w: number;
@@ -113,7 +119,11 @@ const PAD_X = 26;
 
 // Room for the cue badge + the ▤/◇ kind icon + the name — sized so "Name In" and
 // "Title In" read whole, not as "Na…" (the acceptance screenshots caught exactly that).
-const boxWidth = (name: string) => Math.min(200, Math.max(96, 44 + name.length * 7.5));
+/** `flagged` = the box also carries a problem dot, which takes room from the name span; without
+ *  the allowance a two-word state ellipsizes the moment it is marked, exactly when its name
+ *  matters most. */
+const boxWidth = (name: string, flagged = false) =>
+  Math.min(200, Math.max(96, 44 + name.length * 7.5)) + (flagged ? 17 : 0);
 
 /** Cubic bezier path + its midpoint (t = 0.5) for the label. */
 function bezier(
@@ -178,6 +188,14 @@ function route(from: StateBox, to: StateBox, bow: number): { path: string; mx: n
  *  picture. */
 function buildModel(data: AnimData): GraphModel {
   const machine = data.machine ?? deriveMachine(data);
+  // Judged against the machine the graph actually DRAWS, so a template whose machine is still
+  // derived is checked as what it will become the moment its first edit materializes it.
+  const problems = new Map<string, StateProblem>();
+  for (const p of stateProblems({ ...data, machine })) {
+    // An error outranks a warning on the same box — one mark, the worse news.
+    const key = `${p.groupId}/${p.stateId}`;
+    if (p.severity === 'error' || !problems.has(key)) problems.set(key, p);
+  }
   const boxes: StateBox[] = [];
   const arrows: Arrow[] = [];
   const lanes: LaneModel[] = [];
@@ -201,9 +219,23 @@ function buildModel(data: AnimData): GraphModel {
         if (!state) continue;
         const name = state.name ?? state.id;
         const pi = path.indexOf(id);
+        // ○ marks a state that does nothing on entry — the rest state, and equally any
+        // off-path POSE. Only the rest state used to wear it, so a freshly added branch was
+        // the one box in the graph with no mark at all, reading as "still loading" rather
+        // than "holds the look it arrives with". A branch that HAS a timeline says so with
+        // its ▤/◇ kind glyph instead.
         const badge =
-          pi < 0 ? (id === group.initial ? '○' : null) : pi === 0 ? '▶' : pi === path.length - 1 ? '■' : '»';
+          pi < 0
+            ? id === group.initial || !state.timeline
+              ? '○'
+              : null
+            : pi === 0
+              ? '▶'
+              : pi === path.length - 1
+                ? '■'
+                : '»';
         const timeline = isMain && pi >= 0 ? data.steps[pi] : state.timeline ?? null;
+        const problem = problems.get(`${group.id}/${id}`) ?? null;
         const box: StateBox = {
           groupId: group.id,
           id,
@@ -214,9 +246,10 @@ function buildModel(data: AnimData): GraphModel {
           pathIndex: isMain && pi >= 0 ? pi : null,
           kind: timelineKind(timeline),
           layerSelector: timelineLayer(timeline),
+          problem,
           x,
           y,
-          w: boxWidth(name),
+          w: boxWidth(name, problem !== null),
           h: BOX_H,
         };
         boxes.push(box);
@@ -815,6 +848,15 @@ export default function MachineGraph({ iframeRef, data, onOpenStep, onOpenStateT
                 </span>
               )}
               <span className="mg-name">{box.name}</span>
+              {box.problem && (
+                <span
+                  className={`mg-problem mg-problem-${box.problem.severity}`}
+                  title={box.problem.message}
+                  data-testid={`mg-problem-${box.groupId}-${box.id}`}
+                >
+                  {box.problem.severity === 'error' ? '✕' : '!'}
+                </span>
+              )}
               <span
                 className="mg-port"
                 title="Drag to another state of this group to draw a transition"
@@ -916,6 +958,22 @@ export default function MachineGraph({ iframeRef, data, onOpenStep, onOpenStateT
 }
 
 /**
+ * A state problem said as the NEXT MOVE. `stateProblems` writes for the export report, where a
+ * finding is a verdict on a finished document; here the author is mid-edit and the useful
+ * sentence is what to do about it. Unknown shapes fall back to the report's own words rather
+ * than swallowing news the graph does not recognise.
+ */
+function problemAdvice(problem: StateProblem): string {
+  if (problem.message.includes('unreachable')) {
+    return 'No arrow leads here, so this state can never play. Drag from another state’s port (its right edge) to draw one in.';
+  }
+  if (problem.message.includes('never ends')) {
+    return 'Its timer can never fire: this state’s timeline never ends (an endless loop, or measured motion). Retime the transition, or end the loop.';
+  }
+  return problem.message;
+}
+
+/**
  * What the card says a state's content IS: two facts — what ENTERING it does, and WHERE its
  * timeline lives — composed so they can never contradict each other. They used to be glued
  * together from a kind word and a suffix, which is how a quiz board's `Answer selected` came
@@ -1002,6 +1060,16 @@ function StateCard({
       />
       <div className="mg-card-row">{content}</div>
       {box.initial && <div className="mg-card-row">the rest state (off air, and after reset)</div>}
+      {/* The same finding validateTemplate would give at EXPORT time, said here instead —
+          where it is still cheap to fix, and phrased as the next move rather than a verdict. */}
+      {box.problem && (
+        <div
+          className={`mg-card-problem mg-card-problem-${box.problem.severity}`}
+          data-testid="mg-state-problem"
+        >
+          {problemAdvice(box.problem)}
+        </div>
+      )}
       {box.pathIndex !== null && (
         <button type="button" className="mg-card-action" onClick={() => onOpenStep(box.pathIndex!)} data-testid="mg-open-step">
           ≡ Open its timeline

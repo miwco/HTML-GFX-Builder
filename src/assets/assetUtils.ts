@@ -6,6 +6,7 @@
 //   images/<file>   uploaded images — next to the template, exported as YourProject/images/
 //   fonts/<file>    imported fonts
 //   lottie/<file>   imported Lottie animations (.json)
+//   videos/<file>   imported video loops (.webm/.mp4, size-capped)
 //   assets/<file>   anything else (legacy uploads keep working)
 // The Assets panel may add ONE optional user folder inside a bucket (images/logos/<file>);
 // every consumer (preview inlining, export zips, the runtime img shim) keys the full path
@@ -37,6 +38,12 @@ export function parseDataUrl(dataUrl: string): { mime: string; base64: string } 
 
 const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif'];
 const FONT_EXT = ['woff', 'woff2', 'ttf', 'otf'];
+const VIDEO_EXT = ['webm', 'mp4'];
+
+/** Hard per-video size cap: video assets ride the template JSON as data URLs, so a large
+ *  file would bloat every save/sync/share of the whole graphic. Matches the video editor's
+ *  per-asset budget. */
+export const MAX_VIDEO_ASSET_BYTES = 3 * 1024 * 1024;
 
 export function extOf(path: string): string {
   const i = path.lastIndexOf('.');
@@ -49,6 +56,11 @@ export function isImageAsset(path: string): boolean {
 
 export function isFontAsset(path: string): boolean {
   return FONT_EXT.includes(extOf(path));
+}
+
+/** True for a video asset (.webm — the alpha-capable broadcast choice — or .mp4). */
+export function isVideoAsset(path: string): boolean {
+  return VIDEO_EXT.includes(extOf(path));
 }
 
 /** True for a Lottie animation asset. Imports only accept .json files that pass
@@ -94,7 +106,15 @@ export function uniqueAssetPath(name: string, existing: AssetFile[], folder?: st
   const dot = name.lastIndexOf('.');
   const base = (dot >= 0 ? name.slice(0, dot) : name).replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'asset';
   const ext = dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
-  const bucket = IMAGE_EXT.includes(ext) ? 'images' : FONT_EXT.includes(ext) ? 'fonts' : ext === 'json' ? 'lottie' : 'assets';
+  const bucket = IMAGE_EXT.includes(ext)
+    ? 'images'
+    : FONT_EXT.includes(ext)
+      ? 'fonts'
+      : VIDEO_EXT.includes(ext)
+        ? 'videos'
+        : ext === 'json'
+          ? 'lottie'
+          : 'assets';
   const sub = folder ? sanitizeFolderName(folder) : '';
   const dir = sub ? `${bucket}/${sub}` : bucket;
   const make = (n: number) => `${dir}/${base}${n ? '-' + n : ''}${ext ? '.' + ext : ''}`;

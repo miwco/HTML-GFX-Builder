@@ -15,10 +15,11 @@ tool that renders a browser source runs the **HTML overlay** target.
 | CasparCG | Single self-contained .html + JSON/XML data shim | ✅ |
 | OGraf (EBU) | Manifest + graphic.mjs Web Component | ✅ |
 | LiveOS (NetOn.Live) | The OGraf package + LiveOS install README (engine is OGraf-compliant) | ✅ shipped 2026-07-09 |
+| H2R Graphics | Self-contained .html + embedded GDD block + play() toggle shim | ✅ shipped 2026-07-08, live-confirmed in a real H2R install |
 
-## Researched next targets
+## Researched targets
 
-### H2R Graphics — HIGH priority, small adapter (verified from docs)
+### H2R Graphics — ✅ SHIPPED 2026-07-08 (research kept for the contract details)
 
 H2R v3 has a **Custom HTML graphic type**: import an `.html` file; H2R calls global
 **`play()`** on air/off air and **`update(json)`** with a JSON *string* of changed values —
@@ -26,13 +27,12 @@ H2R v3 has a **Custom HTML graphic type**: import an `.html` file; H2R calls glo
 **GDD block** (`<script type="application/json+gdd">`, SuperflyTV's Graphics Data Definition)
 whose properties bind to element ids — the same id convention we use (`fN`).
 
-Adapter shape (probably < a day):
-- Base: the self-contained overlay composer (no autoplay block — H2R drives play()).
-- Add: a GDD `<script>` generated from the SPX DataFields (we already derive a JSON schema
-  from DataFields for the OGraf manifest — reuse that mapping).
-- Verify live: partial updates (H2R sends only changed keys — our `update()` iterates the
-  given keys, so this should just work), and how H2R treats `stop()` (docs say play() runs on
-  both on-air and off-air — may need a state toggle shim).
+As built (`export/targets/h2r.ts`): the self-contained overlay composer, a GDD `<script>`
+generated from the SPX DataFields, and a marked toggle shim converting H2R's play()-both-ways
+convention into the template's play()/stop() pair. Two real-install findings worth keeping:
+the GDD `<script>` needs `name="graphics-data-definition"` or H2R silently shows no editable
+fields, and the `file-path` gddType is unrecognized (filelist maps to a plain path input).
+Both are E2E-pinned. Live-confirmed in the real H2R app (2026-07-08): fields render, edits work.
 Sources: h2r.graphics/docs/graphics/custom-html, h2r.graphics/posts/20260116-new-in-v3.
 
 ### LiveOS (NetOn.Live) — ✅ SHIPPED 2026-07-09 via OGraf
