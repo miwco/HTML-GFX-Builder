@@ -281,8 +281,15 @@ export default function CreationWizard() {
           <button className="gallery-close" onClick={closeGallery} title="Cancel (keep current project)">✕</button>
         </div>
 
-        {/* Body: step content (+ live preview from step 2) */}
-        <div className={`wz-body ${showPreview ? 'with-preview' : ''}`}>
+        {/* Body: step content (+ live preview from step 2). The Text step (design mode, step 3)
+            is the one step whose LEFT pane is a WORKING surface — fields are placed and dragged
+            on the artwork there — so it takes the room and the preview steps back; every other
+            step splits evenly. */}
+        <div
+          className={`wz-body ${showPreview ? 'with-preview' : ''}${
+            mode === 'design' && step === 3 ? ' wz-body-working' : ''
+          }`}
+        >
           <div className="wz-step" ref={stepRef} data-overflow={stepOverflow || undefined}>
             {step === 0 && (
               <EntryStep

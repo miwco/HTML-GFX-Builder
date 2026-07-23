@@ -669,3 +669,18 @@ test('import graphic: the exported SPX package validates', async ({ page }) => {
   // Export is gated on zero validation errors; the panel says so inline.
   await expect(page.locator('.panel-body')).not.toContainText('✗');
 });
+
+test('the Text step gives the placement canvas more room than the passive preview', async ({ page }) => {
+  // You PLACE fields on the left canvas; the right pane only shows the result. The working
+  // surface used to be the smaller of the two (a fixed 520px against a ~700px preview), so
+  // text was positioned on a downscaled picture of the artwork.
+  await dropDesign(page);
+  await page.waitForTimeout(800);
+  await page.locator('.wz-next').click(); // Prepare
+  await page.locator('.wz-next').click(); // Text
+  await expect(page.getByTestId('place-stage')).toBeVisible();
+  const working = (await page.getByTestId('place-stage').boundingBox())!;
+  const preview = (await page.locator('.wz-stage').boundingBox())!;
+  expect(working.width).toBeGreaterThan(preview.width);
+  expect(working.width).toBeGreaterThan(700); // and it actually grew, not just won by shrinking the preview
+});

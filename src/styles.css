@@ -929,6 +929,10 @@ kbd {
   transition: opacity 0.18s;
 }
 .wz-step[data-overflow] .wz-step-fade { opacity: 1; }
+/* On a step whose left pane is a working surface, the preview yields — you cannot place text
+   accurately on a canvas smaller than the passive picture of it beside it (the Text step used
+   to edit at ~520px while previewing at ~700px). */
+.wz-body-working .wz-side { flex: 0 0 34%; }
 .wz-side {
   flex: 0 0 50%;                    /* the preview deserves half the modal */
   border-left: 1px solid var(--border);
@@ -1165,7 +1169,10 @@ kbd {
 .wz-variant { padding: 0; overflow: hidden; border-radius: 8px; text-align: left; }
 .wz-variant.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .wz-mini { aspect-ratio: 16 / 9; overflow: hidden; position: relative; background: #14181f; pointer-events: none; }
-.wz-mini iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: top left; transform: scale(0.128); }
+/* Anchored at the card's centre; MiniPreview supplies the size and the transform, because the
+   framing is MEASURED per template (a lower third and a full-frame card want different zoom).
+   A fixed scale here would put that decision in two places and let them disagree. */
+.wz-mini iframe { position: absolute; top: 50%; left: 50%; border: 0; transform-origin: center center; }
 .wz-variant-cap { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; }
 .wz-style-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
 .wz-style-tag[data-style='minimal'] { color: #e8c547; }
@@ -3104,7 +3111,11 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .save-menu .muted { font-size: 11px; margin-left: 6px; }
 
 /* The save + confirm dialogs: compact centred cards over the standard backdrop. */
-.save-dialog { max-width: 460px; width: min(460px, 92vw); }
+/* These dialogs borrow `.wz-modal`, which is sized for the WIZARD — a full-height multi-step
+   surface. A save prompt has a name field and two buttons, so it took a 960px-tall box with a
+   screenful of empty panel under 300px of content. Size to the content instead (the cap only
+   engages if a message ever grows tall enough to need scrolling). */
+.save-dialog { max-width: 460px; width: min(460px, 92vw); height: auto; max-height: 92vh; }
 .save-dialog .wz-header h2 { font-size: 16px; margin: 0; }
 .save-dialog-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
 .save-field { display: flex; flex-direction: column; gap: 6px; }

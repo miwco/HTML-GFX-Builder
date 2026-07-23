@@ -284,3 +284,15 @@ test('video and graphics stay separate but connected: #/video, back to graphics,
   await page.getByTestId('back-to-graphics').click();
   await expect(page.locator('.tpl-name')).toHaveText('Hairline');
 });
+
+test('the save dialog is sized by its content, not by the wizard it borrows styling from', async ({ page }) => {
+  // It wears `.wz-modal`, which is sized for the wizard's full-height multi-step surface —
+  // so a name field and two buttons used to sit in a 900px-tall box of empty panel.
+  await createProject(page, 'Hairline');
+  await page.getByTestId('save-graphic').click();
+  await expect(page.getByTestId('save-dialog')).toBeVisible();
+  const box = (await page.getByTestId('save-dialog').boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.height).toBeLessThan(420);
+  expect(box.height).toBeLessThan(viewport.height * 0.6);
+});
