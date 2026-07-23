@@ -4,9 +4,11 @@
 shipped on this branch - facet registries in `src/model/taxonomy.ts`, declared meta in
 `src/templates/meta.ts`, derivation in `src/templates/templateMeta.ts`, the browse engine in
 `src/templates/search.ts`, the wizard's Browse step in
-`src/components/wizard/steps/BrowseStep.tsx`, factory assertions live. Still open from stage
-6: the pack "kit" surface, the community/nightly publish contract, zero-result telemetry, and
-the §18 open questions.) The sections below are kept as the design record.
+`src/components/wizard/steps/BrowseStep.tsx`, factory assertions live - plus the mobile
+filter drawer, the brand-family ranking context and the card detail panel. **All four §18
+open questions are ratified** (§18, decided 2026-07-23). Still open from stage 6: the pack
+"kit" surface - now settled as an Entry card, not built - the community/nightly publish
+contract, and zero-result telemetry.) The sections below are kept as the design record.
 
 **Original status: PROPOSAL - not implemented, not binding.** This document is the reviewable deliverable
 for the "Start from template" faceted-discovery redesign. Nothing here renames existing
@@ -990,12 +992,20 @@ never crashes on a lazy variant; the factory just flags it.
   class per category fixes it, but imported designs have neither; they stay outside browse
   (correct: they're the user's own content).
 
-**Open questions [OPEN]:**
-- Should the pack ("kit") surface land in the same Browse step as a third browse mode
-  (Formats / Categories / Kits), or stay a separate Entry card? (PACK_TAXONOMY left this
-  open; the facet work doesn't depend on the answer.)
-- Do `title` and `topic` read as distinct to non-technical users, or should the tiles merge
-  ("Titles & topics") while the taxonomy keeps both ids underneath?
-- Is `noacg` as a user-facing style label ("Bold & on-air") right, or should the house family
-  present as the default/unlabelled look?
-- Light/dark: palettes make it a project knob today - confirm it stays out of discovery.
+**The four open questions - RATIFIED 2026-07-23.** Each was decided on the evidence noted;
+none needs revisiting unless that evidence changes.
+
+- **The pack ("kit") surface is its own Entry card, not a third Browse mode.** Browse
+  produces ONE graphic; a kit produces several. A "Kits" tab inside Browse would promise a
+  single pick and deliver a different outcome, so the surface follows the outcome. (Closes
+  the question `PACK_TAXONOMY.md` left open; still unbuilt, but the shape is settled.)
+- **`title` and `topic` keep separate browse tiles.** They answer different producer
+  questions - what the SHOW is versus what is being discussed NOW - and the workbook demands
+  both heavily (23 and 29 formats). Today's 4 + 4 designs look thin, but the pending pack
+  work (card10-card18) grows both; merging now and re-splitting later is churn.
+- **The house family stays labelled "Bold & on-air".** A taste call with no evidence either
+  way; the shipped label reads as a look rather than a brand name, which is what a
+  first-time non-technical user needs. (`noacg` remains the stable id.)
+- **Light/dark stays OUT of discovery.** `porcelain` is a genuinely light palette, but
+  palettes are swapped freely in the Style step immediately after picking - filtering
+  templates by a knob the very next step changes would mislead.
