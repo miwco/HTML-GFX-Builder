@@ -119,6 +119,13 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
   const aspect = ASPECTS.find((a) => a.id === draft.aspectId) ?? ASPECTS[0];
   const set = (patch: Partial<BrowseFilters>) => onFilters((prev) => ({ ...prev, ...patch }));
 
+  // On a phone the facet controls stack ~1300px tall before the first result card, so they
+  // collapse behind a drawer toggle (proposal §12.1); desktop always shows them (CSS ignores
+  // the closed state above the breakpoint). Search, active chips and results stay visible.
+  const [filtersOpen, setFiltersOpen] = useState(
+    () => !window.matchMedia('(max-width: 768px)').matches,
+  );
+
   const tiles = useMemo(() => browsableCategories(), []);
   const intensities = useMemo(() => offeredIntensities(), []);
   const structures = useMemo(() => offeredStructures(), []);
@@ -165,8 +172,30 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
 
   const relaxKey = outcome.total === 0 ? mostRestrictiveFilter(filters) : null;
 
+  const drawerCount = activeStrict.length + (filters.family || filters.format ? 1 : 0);
+
   return (
     <div className="wz-browse">
+      {/* Search — always visible, drawer or not. */}
+      <input
+        className="wz-browse-search"
+        type="search"
+        placeholder="Search all templates — try “name graphic”, “countdown”, “church verse”…"
+        value={filters.query}
+        onChange={(e) => set({ query: e.target.value })}
+        aria-label="Search templates"
+      />
+
+      {/* Mobile-only drawer toggle (CSS hides it above the breakpoint). */}
+      <button
+        className="wz-browse-drawer-btn"
+        aria-expanded={filtersOpen}
+        onClick={() => setFiltersOpen((o) => !o)}
+      >
+        ☰ Filters{drawerCount > 0 ? ` (${drawerCount})` : ''} {filtersOpen ? '▴' : '▾'}
+      </button>
+
+      <div className="wz-browse-filters" data-open={filtersOpen || undefined}>
       {/* Canvas format (carried over from the old Template step). */}
       <div className="wz-format row">
         <label>
@@ -200,16 +229,6 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
           </select>
         </label>
       </div>
-
-      {/* Search */}
-      <input
-        className="wz-browse-search"
-        type="search"
-        placeholder="Search all templates — try “name graphic”, “countdown”, “church verse”…"
-        value={filters.query}
-        onChange={(e) => set({ query: e.target.value })}
-        aria-label="Search templates"
-      />
 
       {/* What are you making? (optional; ranks, never hides) */}
       <div className="wz-format row wz-browse-programme">
@@ -336,6 +355,7 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
           ))}
         </div>
       </details>
+      </div>
 
       {/* Active chips + count + sort. */}
       <div className="wz-browse-bar">

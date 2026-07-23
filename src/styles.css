@@ -1259,6 +1259,25 @@ kbd {
 .wz-browse-cat { color: var(--accent); }
 .wz-browse-complexity { text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
 .wz-browse-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px; }
+/* The mobile filter drawer (TEMPLATE_TAXONOMY_PROPOSAL §12.1): on a phone the facet
+   controls collapse behind a toggle so results are one flick away, not ~1300px down.
+   Desktop ignores the closed state entirely — the button never renders there. */
+.wz-browse-drawer-btn { display: none; }
+@media (max-width: 768px) {
+  .wz-browse-drawer-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .wz-browse-filters { display: none; }
+  .wz-browse-filters[data-open] { display: block; }
+}
 
 .wz-anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .wz-anim { text-align: left; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }

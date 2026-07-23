@@ -617,7 +617,10 @@ offers "remove the most limiting filter" (computed: the chip whose removal resto
 results) and a Create-with-AI hand-off. Cards carry the strict info budget (category ·
 subtype, top families, field summary from semantics, ≤3 capability badges, style family,
 complexity); MiniPreview mounts its iframe only when the card scrolls into view
-(IntersectionObserver — the whole catalog can be on one grid now). The import-images
+(IntersectionObserver — the whole catalog can be on one grid now). On ≤768px the facet
+controls collapse behind the `.wz-browse-drawer-btn` toggle (active-count badge; search,
+active chips and results stay visible — closed by default via a matchMedia initial state,
+and desktop CSS ignores the closed state entirely). The import-images
 continuation (mode 'import') keeps the old ImportStep -> TemplateStep flow and indices; the
 catalog flow's later steps sit one index earlier (`animStep`).
 

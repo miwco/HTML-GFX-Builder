@@ -95,6 +95,27 @@ test('an impossible combination shows the honest empty state with its escape hat
   await expect(page.locator('.wz-variant').first()).toBeVisible();
 });
 
+test('on a phone the facets collapse into the filter drawer; results stay one flick away', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await toBrowseStep(page);
+  // Closed by default: the controls are hidden, the toggle and the results are not.
+  const drawer = page.locator('.wz-browse-filters');
+  const toggle = page.locator('.wz-browse-drawer-btn');
+  await expect(toggle).toBeVisible();
+  await expect(drawer).toBeHidden();
+  await expect(page.locator('.wz-browse-search')).toBeVisible();
+  await expect(page.locator('.wz-variant').first()).toBeVisible();
+  // Open, filter by a category tile, close — the filter holds and the badge counts it.
+  await toggle.click();
+  await expect(drawer).toBeVisible();
+  await page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Lower thirds' }).click();
+  await toggle.click();
+  await expect(drawer).toBeHidden();
+  await expect(toggle).toContainText('(1)');
+  const n = await catalogCounts(page);
+  await expect(page.locator('.wz-variant')).toHaveCount(n.lowerThirds);
+});
+
 test('facet values without catalog mass render no chip', async ({ page }) => {
   await toBrowseStep(page);
   await page.locator('.wz-browse-more summary').click();
