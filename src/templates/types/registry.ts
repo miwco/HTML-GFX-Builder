@@ -16,11 +16,14 @@ import { countdownType, holdingScreenType } from './clocks';
 import { quizBoardType } from './quizBoard';
 import { scoreboardType } from './scoreboard';
 import { tickerType } from './ticker';
+import { IDENTITY_BUG_TYPES } from './identityBugs';
 
 /** Every registered type, in the reference data's frequency order (the count is how many of
- *  the 60 reference formats ask for that graphic). The last three earn their place by what
- *  they prove rather than by frequency: a scoreboard for parallel groups, a ticker for
- *  timer-driven motion, a quiz board for the far end of the model. */
+ *  the 60 reference formats ask for that graphic). The last three of the original twelve earn
+ *  their place by what they prove rather than by frequency: a scoreboard for parallel groups,
+ *  a ticker for timer-driven motion, a quiz board for the far end of the model. The IDENTITY
+ *  family (identityBugs.ts) follows: the small persistent marks — idents, live status, logo
+ *  marks, sponsor strips and rotations, event and award marks, location chips. */
 export const TYPES: GraphicType[] = [
   lowerThirdType,     // 52/60
   sponsorBugType,     // 37/60
@@ -34,6 +37,9 @@ export const TYPES: GraphicType[] = [
   tickerType,         //  8/60
   scoreboardType,     //  5/60 — but the type that proves parallel groups
   quizBoardType,      // the flagship
+  // The identity family: station ident, live status, logo mark, sponsor strip, sponsor
+  // rotation, event ident, award mark, location chip — four looks each.
+  ...IDENTITY_BUG_TYPES,
 ];
 
 export function typeById(id: string): GraphicType | undefined {

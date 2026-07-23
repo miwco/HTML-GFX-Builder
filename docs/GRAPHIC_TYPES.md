@@ -243,7 +243,7 @@ value, so sport's intentional accent halos never trip it.
 
 ---
 
-## 6. The twelve types
+## 6. The registered types
 
 Counts are how many of the 60 reference formats in `live_format_graphics_needs.xlsx` ask for
 that graphic. Every type now ships in all four style families; the design named here is the
@@ -268,10 +268,36 @@ family a cell is in.
 The last three earn their place by what they prove rather than by frequency: parallel groups,
 timer-driven motion, and the far end of the model.
 
+### The identity family (templates/types/identityBugs.ts)
+
+The persistent marks — everything that stays on screen while other graphics come and go. They
+came in as one pack rather than one at a time because they share a structure (the corner-bug
+contract), and splitting them by frequency would have shipped a station ident with no live bug
+to sit beside it. Eight types, four families each, so the matrix stays full.
+
+| Type | Flagship design | Machine |
+|---|---|---|
+| Station ident | bug05 House Ident | – |
+| Live status | bug09 House Live | branches `live` / `replay` / `standby` |
+| Logo mark | bug13 House Mark | – |
+| Sponsor strip | bug17 House Sponsor Strip | – |
+| Sponsor rotation | bug21 House Sponsor Rotation | timer cycle + hold/resume/skip |
+| Event ident | bug25 House Event Bug | – |
+| Award mark | bug29 House Award Bug | – |
+| Location chip | bug33 House Location Chip | – |
+
+Six of the eight declare no machine — the derived linear one already says "it arrives, it
+persists, stop() removes it". The two that do are the two where the state is the graphic's
+POINT: a live bug that could not actually switch between live, replay and standby would be
+claiming a status it does not track, and a sponsor rotation that did not advance by itself
+would be a sponsor bug with extra fields. Both were verified running, not just compiled — the
+status swap through `noacgDispatch`, the rotation through its own armed timer.
+
 ### The matrix is full — and how it filled
 
-All 48 cells (12 types × noacg / glass / sport / minimal) are filled. The route there is worth
-recording, because it was not the one the first pass predicted:
+All 48 cells of the original twelve types (× noacg / glass / sport / minimal) are filled, as are
+the 32 of the identity family. The route there is worth recording, because it was not the one
+the first pass predicted:
 
 - **The promotion well ran dry fast.** 24 cells looked promotable on parts alone; 8 actually were
   on the first pass, and after promoting the single design that cleared all six gates on the

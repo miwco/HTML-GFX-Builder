@@ -45,7 +45,7 @@ test('scoreboard: all four fields bind and a score change lands', async ({ page 
 });
 
 test('corner bug: plays with the placeholder mark', async ({ page }) => {
-  await createFrom(page, 'Corner bug', 'Glass Mark');
+  await createFrom(page, 'Bugs & idents', 'Glass Mark');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
     .poll(async () => frame(page).locator('.corner-bug').evaluate((el) => getComputedStyle(el).opacity))

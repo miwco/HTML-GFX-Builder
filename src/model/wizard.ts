@@ -49,7 +49,7 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: 'info-card',     name: 'Info cards',              plannedCount: 5,  available: true,  description: 'Full / half screen cards — info and quotes.', group: 'essentials' },
   { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: true , description: 'Pre-show holding loops with a timer.', group: 'essentials' },
   { id: 'end-credits',   name: 'End credits',             plannedCount: 4,  available: true , description: 'Rolling and card-based credit sequences.', group: 'essentials' },
-  { id: 'corner-bug',    name: 'Corner bug',              plannedCount: 2,  available: true , description: 'A persistent corner logo (image placeholder).', group: 'essentials' },
+  { id: 'corner-bug',    name: 'Bugs & idents',           plannedCount: 36, available: true , description: 'Persistent marks: logos, idents, live status, sponsors, chips.', group: 'essentials' },
   // Specials — for particular formats and moments.
   { id: 'infographic',   name: 'Infographics',            plannedCount: 7,  available: true , description: 'Stats, polls, leaderboards, schedules, counters.', group: 'specials' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 4,  available: true , description: 'Countdowns and clocks for game formats.', group: 'specials' },

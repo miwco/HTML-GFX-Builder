@@ -21,6 +21,166 @@
       "css": "7fb18bef2292d9cf",
       "js": "e64c28491a1e0a94"
     },
+    "bug05": {
+      "html": "57607fcbd14399b9",
+      "css": "64acfccc47528018",
+      "js": "ea31a9a6e8d8b69d"
+    },
+    "bug06": {
+      "html": "a10f7f5cdadf5432",
+      "css": "25e44230aa216387",
+      "js": "48737feb0103da6e"
+    },
+    "bug07": {
+      "html": "8e668a1be3ae82ce",
+      "css": "34d29b55302aacd5",
+      "js": "22c3679ead1c0362"
+    },
+    "bug08": {
+      "html": "bb75be0be0da9c57",
+      "css": "02e16804bc7748dc",
+      "js": "eb985e591d1fc902"
+    },
+    "bug09": {
+      "html": "790104823cec7344",
+      "css": "15a4b05a5b5de6b7",
+      "js": "b7d6871b65886df9"
+    },
+    "bug10": {
+      "html": "477a808bc5749179",
+      "css": "d577180cb8cba7cc",
+      "js": "7c6a344c6541fff7"
+    },
+    "bug11": {
+      "html": "5ad3bcf26668d3a6",
+      "css": "d6c158a820208476",
+      "js": "1a6f954735098951"
+    },
+    "bug12": {
+      "html": "03d605cc7b9caf4b",
+      "css": "a0a81f75f26afacc",
+      "js": "bc342c6ecc46a3e2"
+    },
+    "bug13": {
+      "html": "9f50fe0e02cd5777",
+      "css": "ea7cf700bb233815",
+      "js": "1d59df578756d582"
+    },
+    "bug14": {
+      "html": "6aa216cbf189d314",
+      "css": "2490bb598b3d3bae",
+      "js": "c078eaf733694a51"
+    },
+    "bug15": {
+      "html": "6fef4ec4531f58b9",
+      "css": "dcfb27c250523b0c",
+      "js": "6a512b1a0edb09bd"
+    },
+    "bug16": {
+      "html": "6366b8bd7dd2734b",
+      "css": "8f71fcd72838d723",
+      "js": "0f26cad372c91aeb"
+    },
+    "bug17": {
+      "html": "8895470578c43285",
+      "css": "4f28a9aa6c768318",
+      "js": "b0a094181fe67ee7"
+    },
+    "bug18": {
+      "html": "0a2731afca69f489",
+      "css": "6f239853979cc3f4",
+      "js": "4052630ebaa54de1"
+    },
+    "bug19": {
+      "html": "6f949360864f5985",
+      "css": "ef5047013380a4af",
+      "js": "dd9e6e557e2759ad"
+    },
+    "bug20": {
+      "html": "fbe7d4d5403aa75c",
+      "css": "3e17de9671d2adb5",
+      "js": "2bdf20c1e6901c3d"
+    },
+    "bug21": {
+      "html": "fc7d1db4185a1b17",
+      "css": "efeeace2581a53e8",
+      "js": "8fa10ae236e44d25"
+    },
+    "bug22": {
+      "html": "f0f62b041210d36a",
+      "css": "8543a8c0495297a1",
+      "js": "d934e6d60b624878"
+    },
+    "bug23": {
+      "html": "403e8225c9ed8d42",
+      "css": "7802a39a3d80f596",
+      "js": "bebad0861f2f1d66"
+    },
+    "bug24": {
+      "html": "add6b36bb560d93c",
+      "css": "67d8d6618a20e061",
+      "js": "54c95a8fda749f7d"
+    },
+    "bug25": {
+      "html": "507a1828eaea1f2d",
+      "css": "dc1fa4436fc87a2a",
+      "js": "b22d790d62909b35"
+    },
+    "bug26": {
+      "html": "b7edfbce5fe7f277",
+      "css": "085bfe81017a1563",
+      "js": "ef5ec0796f8c213c"
+    },
+    "bug27": {
+      "html": "6b13097c1b617671",
+      "css": "7c48b25fa354dbd1",
+      "js": "1ddd296399ddd272"
+    },
+    "bug28": {
+      "html": "82ceef4b74a73c01",
+      "css": "a9a1859b00a42b5d",
+      "js": "83f3252154df66df"
+    },
+    "bug29": {
+      "html": "d1bc7341ffe684fc",
+      "css": "a68e50c1224aeb2c",
+      "js": "17878e461e1141e6"
+    },
+    "bug30": {
+      "html": "4228a12a109e4e9f",
+      "css": "d612836b8ab96175",
+      "js": "d79b5382d12e1941"
+    },
+    "bug31": {
+      "html": "3173e99a07224a6f",
+      "css": "5ba3816bb638b30b",
+      "js": "ab5c78cf45f8c171"
+    },
+    "bug32": {
+      "html": "ea5fe85f8ebc735e",
+      "css": "6e01d412031e6ba9",
+      "js": "641972324d4ed36b"
+    },
+    "bug33": {
+      "html": "9a81f10be3cacd35",
+      "css": "74e25427eb56ca89",
+      "js": "cf780cb57957e1f9"
+    },
+    "bug34": {
+      "html": "b437c8f04b99ab3c",
+      "css": "5d5dca2e84be416a",
+      "js": "1ed692298753ab94"
+    },
+    "bug35": {
+      "html": "25de2dcd218b0737",
+      "css": "0323d748931642a5",
+      "js": "44f829bd0463fc53"
+    },
+    "bug36": {
+      "html": "92060a39bacfaf52",
+      "css": "20d8e6ab71dbc849",
+      "js": "814a241a6b6abdb2"
+    },
     "card01": {
       "html": "fc19ee90cf31ced2",
       "css": "a638ec420273b970",

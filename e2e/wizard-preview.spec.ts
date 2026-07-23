@@ -94,7 +94,7 @@ test('zoom to graphic: the preview reframes onto a small graphic and back', asyn
   await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Corner bug' }).click();
+  await page.locator('.wz-cat', { hasText: 'Bugs & idents' }).click();
   await page.locator('.wz-variant', { hasText: 'Glass Mark' }).click();
 
   const iframe = page.locator('.wz-side iframe');

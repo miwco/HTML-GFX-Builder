@@ -29,18 +29,18 @@ ready for it either way.
 
 | Pack | Family | Types (curated order) | Extras |
 |---|---|---|---|
-| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen | vs01, cr03 |
-| Esports | sport | scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card | vs02 |
-| Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll | — |
-| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug | — |
-| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown | — |
-| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown | — |
-| Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen | — |
-| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard | — |
-| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda | cr01 |
-| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker | cr02 |
-| Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug | — |
-| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug | — |
+| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen, event-bug, live-bug, sponsor-strip, status-chip | vs01, cr03 |
+| Esports | sport | scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card, station-bug, live-bug, sponsor-rotator | vs02 |
+| Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll, station-bug, live-bug, logo-bug | — |
+| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug, station-bug, live-bug, status-chip | — |
+| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown, status-chip, live-bug | — |
+| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown, station-bug, sponsor-rotator | — |
+| Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen, event-bug, sponsor-strip | — |
+| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard, logo-bug | — |
+| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda, logo-bug, event-bug | cr01 |
+| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker, award-bug, event-bug | cr02 |
+| Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug, sponsor-strip, sponsor-rotator | — |
+| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug, logo-bug | — |
 
 **Extras** are catalog variants outside the type registry that belong in the kit: the versus
 card (vs01/vs02) for match-up reveals, end credits (cr01–cr03) where a program rolls them.

@@ -175,10 +175,21 @@ Adding a measured motion to another category = add a builder to its runtime + ha
 - **scoreboards/** - sb01…sb02 (prefix 'scoreboard', data blocks via convertToDataRegion;
   fixed 4-field contract f0-f3 as scoreboard-masks so the standard presets drive them;
   update() pops a score's mask when it changes on air - speed via motionSpeed()).
-- **cornerBug/** - bug01…bug02 (prefix 'corner-bug', standard assembler, `dataRegion: true`,
-  logo slot + placeholder mark; bug02 = house live clock via StandardDesign.runtimeExtraJs -
-  design-owned JS emitted BEFORE the marked ANIMATION region, DOM-ready guarded, survives the
-  data conversion untouched).
+- **cornerBug/** - bug01…bug36, the IDENTITY family (prefix 'corner-bug', standard assembler,
+  `dataRegion: true`, logo slot + placeholder mark). bug01-04 are the general logo bug; bug05-36
+  are the eight identity types x four families (types/identityBugs.ts): station ident, live
+  status, logo-only mark, sponsor strip, sponsor rotation, event ident, award mark, location
+  chip. Shared authoring parts live beside them - **parts.ts** (the logo slot's field, markup and
+  CSS, with a per-family placeholder mark: bars / diamond / slab / keyline / ring),
+  **statusParts.ts** (the live bug's three word sources + the class-driven look of its states),
+  **rotationParts.ts** (the one-stage stacking a rotation needs) and **bugRuntimes.ts** (the
+  design-owned JS the two machine-bearing types call by name: `bugStatusLive/Replay/Standby` and
+  `sponsorShowNext`). bug02 = house live clock via StandardDesign.runtimeExtraJs - design-owned
+  JS emitted BEFORE the marked ANIMATION region, DOM-ready guarded, survives the data conversion
+  untouched; the identity runtimes ride the same seam.
+  **Hide a data holder with a CSS RULE, never an inline `style="display: none"`**: the editor's
+  entrance reset clears inline props on the whole root subtree (PlayoutSimulator `resetGraphic`),
+  so an inline-hidden holder comes back VISIBLE on the canvas. `STATUS_SOURCE_CSS` is the pattern.
 - **infographics/** - ig01…ig06 (prefix 'infographic'; design owns fields + runtimeExtraJs) +
   igPresets (count-up / bars-grow / ring-fill / rows-cascade) + **igMotion.ts**. DATA BLOCKS via
   convertToDataRegion. EVERY infographic's motion is MEASURED - the stat counts to the figure the

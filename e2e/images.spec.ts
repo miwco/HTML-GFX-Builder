@@ -78,7 +78,7 @@ test('end credits: uploading a logo through the Logo field puts it in the end bl
 });
 
 test('corner bug: the logo field replaces the placeholder mark', async ({ page }) => {
-  await createFrom(page, 'Corner bug', 'Glass Mark');
+  await createFrom(page, 'Bugs & idents', 'Glass Mark');
   await create(page);
   await expect(frame(page).locator('.corner-bug-mark')).toBeVisible();
   await uploadImage(page, 'Logo', 'channel_mark.png');
