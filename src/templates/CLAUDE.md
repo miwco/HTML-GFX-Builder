@@ -29,7 +29,10 @@ resolve, extras exist, formats covered exactly once) - edit packs.ts and the doc
   format RANKS ("Best for" / "Also works") and never hides, phrase-first alias expansion
   (aliases may fan out across categories), field-weighted token index,
   `mostRestrictiveFilter` for the zero-result escape. Facet values without catalog mass are
-  not offered (`offered*` helpers).
+  not offered (`offered*` helpers). `BrowseContext` is the second argument - ambient
+  RANKING input the user never chose (today: the saved brand's family, a deliberately small
+  boost that a genuine programme match always outranks), kept out of `BrowseFilters` so it
+  can never grow a chip or be cleared by Clear-all.
 - The id registries (families/formats with verbatim sheet names, 26 graphic categories,
   structures, semantics, capabilities, placements, motion intensity/styles, style aliases)
   live in **src/model/taxonomy.ts**; display labels there, never in stored ids.

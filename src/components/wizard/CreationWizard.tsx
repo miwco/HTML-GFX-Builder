@@ -430,6 +430,9 @@ export default function CreationWizard() {
                   })
                 }
                 onAi={() => { setMode('ai'); setStep(1); }}
+                // Ranking context, not a filter: with the footer's brand toggle on, the
+                // package's siblings lead the results (proposal §13.3).
+                brandFamily={matchBrand && brand ? brand.styleTag : null}
               />
             )}
             {step === 3 && mode === 'design' && draft.designArt && (

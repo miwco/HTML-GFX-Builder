@@ -8,6 +8,8 @@ import {
   FAMILIES,
   FORMATS,
   graphicCategoryById,
+  INTENSITY_LABELS,
+  MOTION_STYLE_LABELS,
   SEMANTIC_LABELS,
   STRUCTURE_LABELS,
   STYLE_FAMILY_LABELS,
@@ -42,6 +44,9 @@ interface Props {
   onPickVariant: (variant: TemplateVariant) => void;
   /** The zero-result escape hatch: hand the search over to Create with AI. */
   onAi: () => void;
+  /** The saved brand's family when the footer's "Use current project's colors & font" is
+   *  on — ranks the package's siblings first without becoming a filter chip (§13.3). */
+  brandFamily: StyleTag | null;
 }
 
 type SortMode = 'relevance' | 'simplest';
@@ -75,13 +80,71 @@ function capabilityBadges(meta: TemplateMeta): string[] {
     .map((c) => c.name);
 }
 
-/** One template card: preview still + the strict info budget of proposal §12.3. */
-function ResultCard({ r, selected, onPick }: { r: BrowseResult; selected: boolean; onPick: () => void }) {
+/** Everything the CARD deliberately leaves out (proposal §12.3): the full field schema,
+ *  every programme format, and the complete structure/capability/motion metadata. */
+function DetailPanel({ meta }: { meta: TemplateMeta }) {
+  const formatNames = FORMATS.filter((f) => meta.programmeFormats.includes(f.id)).map((f) => f.name);
+  const universal = graphicCategoryById(meta.category).relevance === 'all';
+  return (
+    <div className="wz-variant-detail" role="group" aria-label={`${meta.name} details`}>
+      <p className="hint">{meta.description}</p>
+      <h4>Editable fields</h4>
+      <ul>
+        {meta.fieldSchema.map((field, i) => {
+          // The semantic is only worth showing when it says something the operator label
+          // does not — "f0 Name · Name" is noise.
+          const semantic = SEMANTIC_LABELS[meta.fieldSemantics[i]];
+          const adds = semantic && semantic.toLowerCase() !== field.title.toLowerCase();
+          return (
+            <li key={field.field}>
+              <code>{field.field}</code> {field.title}
+              {adds && <span className="muted"> · {semantic}</span>}
+            </li>
+          );
+        })}
+      </ul>
+      <h4>Arrangement</h4>
+      <p>{meta.structures.map((s) => STRUCTURE_LABELS[s]).join(' · ')}</p>
+      {meta.capabilities.length > 0 && (
+        <>
+          <h4>What it can do</h4>
+          <p>{meta.capabilities.map((c) => CAPABILITIES.find((k) => k.id === c)?.name ?? c).join(' · ')}</p>
+        </>
+      )}
+      <h4>Motion</h4>
+      <p>
+        {INTENSITY_LABELS[meta.motion.intensity]}
+        {meta.motion.styles.length > 0 && ` · ${meta.motion.styles.map((s) => MOTION_STYLE_LABELS[s]).join(', ')}`}
+      </p>
+      <h4>Suits</h4>
+      <p>{universal ? 'Any programme format' : formatNames.join(' · ')}</p>
+    </div>
+  );
+}
+
+/** One template card: preview still + the strict info budget of proposal §12.3, with
+ *  everything else one click away in the detail panel. The info button is a SIBLING of
+ *  the card button (never nested — a button inside a button is invalid) and swallows its
+ *  own click so opening details never picks the template. */
+function ResultCard({
+  r,
+  selected,
+  detailOpen,
+  onPick,
+  onToggleDetail,
+}: {
+  r: BrowseResult;
+  selected: boolean;
+  detailOpen: boolean;
+  onPick: () => void;
+  onToggleDetail: () => void;
+}) {
   const category = graphicCategoryById(r.meta.category);
   const familyNames = FAMILIES.filter((f) => r.meta.programmeFamilies.includes(f.id))
     .slice(0, 2)
     .map((f) => f.name);
   return (
+    <div className="wz-variant-cell">
     <button className={`wz-variant ${selected ? 'selected' : ''}`} onClick={onPick} title={r.meta.description}>
       <MiniPreview variant={r.variant} />
       <div className="wz-variant-cap">
@@ -105,6 +168,16 @@ function ResultCard({ r, selected, onPick }: { r: BrowseResult; selected: boolea
         <span className="wz-browse-complexity">{COMPLEXITY_LABELS[r.meta.complexity]}</span>
       </div>
     </button>
+      <button
+        className="wz-variant-info"
+        aria-expanded={detailOpen}
+        title={detailOpen ? 'Hide the details' : 'All its fields, formats and motion'}
+        onClick={onToggleDetail}
+      >
+        {detailOpen ? '✕' : 'ⓘ'}
+      </button>
+      {detailOpen && <DetailPanel meta={r.meta} />}
+    </div>
   );
 }
 
@@ -115,9 +188,11 @@ function ResultCard({ r, selected, onPick }: { r: BrowseResult; selected: boolea
  * More filters. Replaces the Category → Template pair for the catalog flow; filter state
  * lives in the wizard so Back returns with filters intact.
  */
-export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickVariant, onAi }: Props) {
+export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickVariant, onAi, brandFamily }: Props) {
   const aspect = ASPECTS.find((a) => a.id === draft.aspectId) ?? ASPECTS[0];
   const set = (patch: Partial<BrowseFilters>) => onFilters((prev) => ({ ...prev, ...patch }));
+  // One detail panel open at a time — the grid stays readable and Escape has one target.
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   // On a phone the facet controls stack ~1300px tall before the first result card, so they
   // collapse behind a drawer toggle (proposal §12.1); desktop always shows them (CSS ignores
@@ -130,7 +205,7 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
   const intensities = useMemo(() => offeredIntensities(), []);
   const structures = useMemo(() => offeredStructures(), []);
   const capabilityFilters = useMemo(() => offeredCapabilityFilters(), []);
-  const outcome = useMemo(() => browseTemplates(filters), [filters]);
+  const outcome = useMemo(() => browseTemplates(filters, { brandFamily }), [filters, brandFamily]);
 
   const [sort, sortSet] = useState<SortMode>('relevance');
   const sortResults = (list: BrowseResult[]) =>
@@ -166,7 +241,7 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
       clear: () => set({ capabilities: filters.capabilities.filter((x) => x !== c) }),
     });
   }
-  if (filters.intensity) activeStrict.push({ label: `Motion: ${filters.intensity}`, clear: () => set({ intensity: null }) });
+  if (filters.intensity) activeStrict.push({ label: `Motion: ${INTENSITY_LABELS[filters.intensity]}`, clear: () => set({ intensity: null }) });
   const anyActive =
     activeStrict.length > 0 || filters.query.trim() !== '' || filters.family !== null || filters.format !== null;
 
@@ -350,7 +425,7 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
               className={`wz-filter ${filters.intensity === i ? 'active' : ''}`}
               onClick={() => set({ intensity: filters.intensity === i ? null : i })}
             >
-              Motion: {i}
+              Motion: {INTENSITY_LABELS[i]}
             </button>
           ))}
         </div>
@@ -388,7 +463,14 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
           )}
           <div className="wz-variant-grid">
             {sortResults(outcome.best).map((r) => (
-              <ResultCard key={r.meta.id} r={r} selected={draft.variantId === r.meta.id} onPick={() => onPickVariant(r.variant)} />
+              <ResultCard
+                key={r.meta.id}
+                r={r}
+                selected={draft.variantId === r.meta.id}
+                detailOpen={detailId === r.meta.id}
+                onPick={() => onPickVariant(r.variant)}
+                onToggleDetail={() => setDetailId((id) => (id === r.meta.id ? null : r.meta.id))}
+              />
             ))}
           </div>
           {selectedFormatName && outcome.also.length > 0 && (
@@ -396,7 +478,14 @@ export default function BrowseStep({ draft, filters, onFilters, onDraft, onPickV
               <h3 className="wz-browse-section">Also works</h3>
               <div className="wz-variant-grid">
                 {sortResults(outcome.also).map((r) => (
-                  <ResultCard key={r.meta.id} r={r} selected={draft.variantId === r.meta.id} onPick={() => onPickVariant(r.variant)} />
+                  <ResultCard
+                key={r.meta.id}
+                r={r}
+                selected={draft.variantId === r.meta.id}
+                detailOpen={detailId === r.meta.id}
+                onPick={() => onPickVariant(r.variant)}
+                onToggleDetail={() => setDetailId((id) => (id === r.meta.id ? null : r.meta.id))}
+              />
                 ))}
               </div>
             </>

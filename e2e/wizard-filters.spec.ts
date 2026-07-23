@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { startNewProject } from './_create';
 
 // The Browse step's faceted discovery (docs/TEMPLATE_TAXONOMY_PROPOSAL.md §12-13): category
 // tiles + field buckets + style chips narrow the grid (facets AND together), programme
@@ -113,6 +114,48 @@ test('on a phone the facets collapse into the filter drawer; results stay one fl
   await expect(drawer).toBeHidden();
   await expect(toggle).toContainText('(1)');
   const n = await catalogCounts(page);
+  await expect(page.locator('.wz-variant')).toHaveCount(n.lowerThirds);
+});
+
+test('a card\'s ⓘ opens its full detail without picking the template', async ({ page }) => {
+  await toBrowseStep(page);
+  await page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Scoreboards' }).click();
+  const cell = page.locator('.wz-variant-cell').first();
+  await cell.locator('.wz-variant-info').click();
+  const detail = cell.locator('.wz-variant-detail');
+  // Everything the card's strict info budget leaves out (proposal §12.3).
+  await expect(detail).toContainText('Editable fields');
+  await expect(detail).toContainText('f0');
+  await expect(detail).toContainText('Score controls');
+  await expect(detail).toContainText('Sports broadcast');
+  // Opening details is NOT picking: no card is selected and the wizard stays on Browse.
+  await expect(page.locator('.wz-variant.selected')).toHaveCount(0);
+  await expect(page.locator('.wz-browse-search')).toBeVisible();
+  // One panel at a time, and the button closes its own.
+  await page.locator('.wz-variant-cell').nth(1).locator('.wz-variant-info').click();
+  await expect(detail).toBeHidden();
+  await expect(page.locator('.wz-variant-detail')).toHaveCount(1);
+});
+
+test('the brand toggle ranks the package siblings first without filtering anything out', async ({ page }) => {
+  // Create a glass graphic so the saved project brand is the glass family, then reopen the
+  // wizard and turn on "Use current project's colors & font" (proposal §13.3).
+  await toBrowseStep(page);
+  await page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-variant', { hasText: 'Frosted Card' }).click();
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expect(page.locator('.wz-modal')).toBeHidden();
+
+  await startNewProject(page);
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Lower thirds' }).click();
+  const n = await catalogCounts(page);
+  const firstStyle = () => page.locator('.wz-variant .wz-style-tag').first().textContent();
+  expect(await firstStyle()).not.toBe('Elegant & cinematic');
+
+  await page.locator('.wz-match input[type="checkbox"]').check();
+  expect(await firstStyle()).toBe('Elegant & cinematic');
+  // Ranking, never filtering: the result count is untouched.
   await expect(page.locator('.wz-variant')).toHaveCount(n.lowerThirds);
 });
 

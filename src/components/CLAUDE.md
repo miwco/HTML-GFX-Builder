@@ -616,7 +616,12 @@ never overwrite each other). Zero results name no template dishonestly: the empt
 offers "remove the most limiting filter" (computed: the chip whose removal restores the most
 results) and a Create-with-AI hand-off. Cards carry the strict info budget (category ·
 subtype, top families, field summary from semantics, ≤3 capability badges, style family,
-complexity); MiniPreview mounts its iframe only when the card scrolls into view
+complexity), with everything the budget excludes - the full field schema, all formats,
+structures, capabilities and motion - one ⓘ click away in the card's detail panel (a SIBLING
+button of the card button, never nested; one panel open at a time). The footer's brand
+toggle feeds `brandFamily` as browse CONTEXT, not a filter: the package's siblings rank
+first, no chip appears, Clear-all leaves it alone, and a genuine programme match always
+outranks it. MiniPreview mounts its iframe only when the card scrolls into view
 (IntersectionObserver — the whole catalog can be on one grid now). On ≤768px the facet
 controls collapse behind the `.wz-browse-drawer-btn` toggle (active-count badge; search,
 active chips and results stay visible — closed by default via a matchMedia initial state,

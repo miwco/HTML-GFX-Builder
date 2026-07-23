@@ -230,7 +230,18 @@ export interface BrowseOutcome {
   total: number;
 }
 
-export function browseTemplates(filters: BrowseFilters): BrowseOutcome {
+/** Ambient context that RANKS but is never a filter — the user did not choose it, so it
+ *  earns no chip and clearing the filters does not clear it. */
+export interface BrowseContext {
+  /** The saved project brand's style family, when "Use current project's colors & font"
+   *  is on: the package's siblings lead (proposal §13.3). A small boost, deliberately
+   *  weaker than a programme match — it must never outrank what the user asked for. */
+  brandFamily?: StyleTag | null;
+}
+
+const BRAND_BOOST = 8;
+
+export function browseTemplates(filters: BrowseFilters, context: BrowseContext = {}): BrowseOutcome {
   const q = parseQuery(filters.query);
   const hasQuery = filters.query.trim().length > 0;
   const results: BrowseResult[] = [];
@@ -248,6 +259,7 @@ export function browseTemplates(filters: BrowseFilters): BrowseOutcome {
     }
     const { boost, bestFor } = formatBoost(meta, filters);
     score += boost;
+    if (context.brandFamily && meta.styleFamily === context.brandFamily) score += BRAND_BOOST;
     // Stable catalog-order tiebreak (proposal §13.3): earlier = marginally higher.
     score += (1000 - catalogIndex) / 100000;
     results.push({ variant, meta, score, bestFor });

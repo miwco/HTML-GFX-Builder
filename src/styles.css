@@ -1259,6 +1259,39 @@ kbd {
 .wz-browse-cat { color: var(--accent); }
 .wz-browse-complexity { text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
 .wz-browse-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px; }
+/* The card's detail panel (§12.3): the card keeps its strict info budget, everything else
+   sits one ⓘ click away. The button is a sibling of the card button, overlaid on it. */
+.wz-variant-cell { position: relative; display: flex; flex-direction: column; }
+.wz-variant-cell .wz-variant { width: 100%; }
+.wz-variant-info {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.75;
+  background: rgba(10, 12, 16, 0.72);
+}
+.wz-variant-info:hover, .wz-variant-info[aria-expanded='true'] { opacity: 1; border-color: var(--accent); color: var(--accent); }
+.wz-variant-detail {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 10px 12px 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.wz-variant-detail h4 { margin: 8px 0 2px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.wz-variant-detail p { margin: 0; }
+.wz-variant-detail ul { margin: 0; padding-left: 14px; }
+.wz-variant-detail code { font-family: ui-monospace, monospace; color: var(--accent); }
 /* The mobile filter drawer (TEMPLATE_TAXONOMY_PROPOSAL §12.1): on a phone the facet
    controls collapse behind a toggle so results are one flick away, not ~1300px down.
    Desktop ignores the closed state entirely — the button never renders there. */

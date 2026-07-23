@@ -327,6 +327,10 @@ export const STYLE_FAMILY_LABELS: Record<StyleTag, string> = {
 
 export type MotionIntensity = 'none' | 'subtle' | 'medium' | 'strong';
 
+export const INTENSITY_LABELS: Record<MotionIntensity, string> = {
+  none: 'None', subtle: 'Subtle', medium: 'Medium', strong: 'Strong',
+};
+
 export type MotionStyleId =
   | 'reveal' | 'wipe' | 'slide' | 'pop' | 'scale' | 'blur' | 'roll' | 'loop' | 'flip';
 
