@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { createGraphic, haveCreds, settleSync, signIn, wipeMyGraphics, wipeMySubmissions } from './_helpers';
+import { createGraphic, haveCreds, settleSync, shot, signIn, wipeMyGraphics, wipeMySubmissions } from './_helpers';
 
 // The signed-in UX walk. The 2026-07 review could only read these surfaces from source — the
 // editor's account features render NOTHING offline, so the whole offline suite is blind to them.
@@ -9,12 +9,6 @@ import { createGraphic, haveCreds, settleSync, signIn, wipeMyGraphics, wipeMySub
 // product's, not the database's.
 //
 // It also drops a screenshot of each surface into test-results/signed-in/ for eyeballing.
-
-const SHOTS = 'test-results/signed-in';
-
-async function shot(page: Page, name: string): Promise<void> {
-  await page.screenshot({ path: `${SHOTS}/${name}.png` });
-}
 
 /** The topbar is ONE row when every control shares one vertical band and the last of them still
  *  ends inside the bar. Rows are counted by CENTRE, not by top: the bar centres its children, so

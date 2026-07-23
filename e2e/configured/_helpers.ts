@@ -42,6 +42,12 @@ export async function createGraphic(page: Page, category: string, variant: strin
   await page.waitForTimeout(650);
 }
 
+/** Drop a screenshot of a signed-in surface into test-results/signed-in/. These surfaces render
+ *  NOTHING offline, so the shots are the only way to review how they actually look. */
+export async function shot(page: Page, name: string): Promise<void> {
+  await page.screenshot({ path: `test-results/signed-in/${name}.png` });
+}
+
 /** Wait for the sign-in sync pass to finish, so a spec that reads or wipes the account's cloud
  *  data sees a settled library rather than one still being pulled in. Signing in IS a sync
  *  trigger (backend/syncController.ts), which is why this is reachable at all. */

@@ -9,6 +9,7 @@ import gsapSource from '../assets/gsap.min.js?raw';
 import lottieSource from '../assets/lottie.min.js?raw';
 import { inlineAssetRefs, isDataUrl } from '../assets/assetUtils';
 import { templateUsesLottie } from '../assets/lottieSupport';
+import { settleGraphic } from './settleGraphic';
 import type { SpxTemplate } from '../model/types';
 
 /** Remove <link>/<script> tags that point at local template files we will inline instead.
@@ -31,6 +32,18 @@ export interface ComposeOptions {
    * state, and it is NEVER used by exports/renders/thumbnails (those use their own composers).
    */
   authoring?: { padX: number; padY: number };
+  /**
+   * Park the graphic at its settled on-air state from INSIDE the document, driving it with this
+   * data (a JSON string, the shape `update()` takes).
+   *
+   * Every other preview surface settles from the OUTSIDE (settleGraphicOnLoad reaches into the
+   * iframe), which needs same-origin access. A surface showing UNTRUSTED content — the moderation
+   * queue's preview of a stranger's template — runs it with `sandbox="allow-scripts"` and nothing
+   * else, so there is no reaching in, and without this it showed a black rectangle for every
+   * graphic that is hidden until play(): exactly the surface whose only job is to LOOK at the
+   * thing. The recipe is not restated here; the shared function is serialized into the document.
+   */
+  settleWithData?: string;
 }
 
 /** Inject inline <style>, GSAP, and the template JS into the document <head>/<body>. */
@@ -128,11 +141,24 @@ window.addEventListener('unhandledrejection', function (ev) {
     html = headInjection + html;
   }
 
+  // The settle bootstrap: the SHARED recipe (preview/settleGraphic.ts), serialized into the
+  // document so it can run where the parent cannot reach. One definition, two places it executes.
+  const settleTag = options.settleWithData
+    ? `\n<script id="spx-settle">
+(function () {
+  var settle = ${settleGraphic.toString()};
+  var run = function () { settle(window, ${JSON.stringify(options.settleWithData)}); };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(run, run);
+  else run();
+})();
+</script>`
+    : '';
+
   // Error capture + template JS go right before </body> so the DOM exists when functions run.
   if (/<\/body>/i.test(html)) {
-    html = html.replace(/<\/body>/i, `${captureTag}\n${jsTag}\n</body>`);
+    html = html.replace(/<\/body>/i, `${captureTag}\n${jsTag}${settleTag}\n</body>`);
   } else {
-    html = html + captureTag + jsTag;
+    html = html + captureTag + jsTag + settleTag;
   }
 
   return html;
