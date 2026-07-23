@@ -55,10 +55,21 @@ export function settleGraphic(win: SettleWindow | null | undefined, data: string
  * Settle once the document's own fonts have loaded. A text graphic laid out in the fallback
  * face and then jumped to the end of its entrance would freeze the WRONG metrics into the
  * frame, so every caller that settles on iframe load should come through here.
+ *
+ * `onSettled` runs right after, which is the only moment a caller may MEASURE the graphic: the
+ * wait above is asynchronous, and before it a text graphic is still in the fallback face - and
+ * mid-entrance it can sit off-canvas entirely.
  */
-export function settleGraphicOnLoad(frame: HTMLIFrameElement | null, data: string): void {
+export function settleGraphicOnLoad(
+  frame: HTMLIFrameElement | null,
+  data: string,
+  onSettled?: () => void,
+): void {
   const win = frame?.contentWindow as SettleWindow | null | undefined;
-  const run = () => settleGraphic(win, data);
+  const run = () => {
+    settleGraphic(win, data);
+    onSettled?.();
+  };
   const fonts = (frame?.contentWindow as Window | null)?.document?.fonts;
   if (fonts?.ready) void fonts.ready.then(run, run);
   else run();

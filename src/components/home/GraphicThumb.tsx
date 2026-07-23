@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { composeDocument } from '../../preview/composeDocument';
+import {
+  frameGraphic,
+  framingTransform,
+  measureGraphicBox,
+  type GraphicBox,
+} from '../../preview/frameGraphic';
 import { settleGraphicOnLoad } from '../../preview/settleGraphic';
 import { fieldDescriptors } from '../../control/controlModel';
 import type { SpxTemplate } from '../../model/types';
@@ -18,6 +24,13 @@ import type { SpxTemplate } from '../../model/types';
  * card is actually scrolled into view, and the composed document is memoized per template. Both
  * the composition (preview/composeDocument) and the settle recipe below are the editor's own —
  * there is no second render path.
+ */
+
+/**
+ * FRAMED ON THE GRAPHIC, not on the canvas: preview/frameGraphic.ts, the same recipe the wizard's
+ * picker cards use. At this size the whole-canvas view is not a small preview of a lower third,
+ * it is an unreadable smear of one - the band occupies a fraction of a 1920×1080 frame, so the
+ * card measures the graphic's own box and frames onto that.
  */
 
 /** Card width in CSS px; the height follows the template's own aspect ratio. Sized so a band
@@ -59,9 +72,11 @@ export default function GraphicThumb({
   const [visible, setVisible] = useState(false);
   const compact = useCompactThumb();
 
+  const [box, setBox] = useState<GraphicBox | null>(null);
+
   const boxW = compact ? THUMB_W_COMPACT : THUMB_W;
   const { width, height } = template.resolution;
-  const scale = boxW / width;
+  const boxH = Math.round(boxW * (height / width));
 
   // Mount the iframe only when the card reaches the viewport — a library of a hundred graphics
   // must not parse a hundred copies of GSAP to show the eight rows a user can actually see.
@@ -95,14 +110,18 @@ export default function GraphicThumb({
   }, [template, values]);
 
   /** Park the card at the settled on-air state — the shared recipe, so a card and the operator
-   *  panel's preview can never disagree about what "at rest" looks like. */
-  const onLoad = () => settleGraphicOnLoad(frameRef.current, data);
+   *  panel's preview can never disagree about what "at rest" looks like — then frame on the
+   *  graphic it settled into. */
+  const onLoad = () =>
+    settleGraphicOnLoad(frameRef.current, data, () => setBox(measureGraphicBox(frameRef.current)));
+
+  const framing = frameGraphic(box, { width, height }, { w: boxW, h: boxH });
 
   return (
     <div
       ref={boxRef}
       className="gfx-thumb"
-      style={{ width: boxW, height: Math.round(boxW * (height / width)) }}
+      style={{ width: boxW, height: boxH }}
       data-testid="graphic-thumb"
       aria-hidden="true"
     >
@@ -114,7 +133,7 @@ export default function GraphicThumb({
           srcDoc={doc}
           onLoad={onLoad}
           tabIndex={-1}
-          style={{ width, height, transform: `scale(${scale})` }}
+          style={{ width, height, transform: framingTransform(framing) }}
         />
       )}
     </div>

@@ -3165,7 +3165,10 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   background: #05070b;
   pointer-events: none;
 }
-.gfx-thumb iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: top left; }
+/* Anchored at the card's centre; GraphicThumb supplies the size and the transform, because the
+   framing is MEASURED per graphic (a lower third and a full-frame card want different zoom) —
+   the same arrangement the wizard's picker cards use. */
+.gfx-thumb iframe { position: absolute; top: 50%; left: 50%; border: 0; transform-origin: center center; }
 
 /* The per-graphic control panel page (#/control/<id>). */
 .control-page-body { display: grid; grid-template-columns: 1fr 380px; gap: 0; flex: 1; min-height: 0; }

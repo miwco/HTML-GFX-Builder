@@ -51,6 +51,13 @@ in src/blocks/CLAUDE.md.
   need NO coordinate changes there — the gesture math follows automatically (pinned by the zoom
   case in e2e/multi-select.spec.ts). Off-canvas VISIBILITY (a pasteboard so elements that start
   off-screen render) is a separate step — it needs the iframe to render past the canvas bounds.
+  **pasteboard.ts owns HOW MUCH** margin: derived from the graphic's own authored motion (the
+  largest px `x`/`y` keyframe), rounded up in steps so authoring doesn't re-fit the stage on
+  every commit. Margin is not free — the stage fits the PADDED document, so a flat third of a
+  frame on every side shrank the working canvas for the many templates that never leave it.
+  Where the reach is unknowable the old flat pad stands: a legacy/unparsable region, MEASURED
+  motion, or PERCENT travel (`xPercent`/`yPercent` moves a layer by a fraction of its own size,
+  which the data does not carry). Pinned by e2e/pasteboard.spec.ts.
 - **CanvasGuides**.
 - **spaceKey.ts - WHO OWNS A KEY.** Several components listen on `window` for the same keys.
   They are SIBLINGS ON ONE NODE, so `stopPropagation` cannot reach across and the order they
@@ -486,8 +493,10 @@ Home, both routed (src/app/router.ts) so browser Back/Forward walk between surfa
   migration, nothing extra to sync, and it can never disagree with the template it previews.
   The iframe mounts only when the card scrolls into view (IntersectionObserver), so a library
   of a hundred graphics parses GSAP for the rows a user can actually see. The box is fixed-width
-  and the iframe is the template's OWN resolution scaled into it, so a non-16:9 graphic keeps
-  its shape.
+  and keeps the template's aspect, so a non-16:9 graphic keeps its shape. It is FRAMED ON THE
+  GRAPHIC, not on the canvas (preview/frameGraphic.ts, shared with the wizard's picker cards):
+  a lower third is a band across a fraction of a 1920×1080 frame, and at 144px the whole-canvas
+  view was an unreadable smear of one. Measured after the settle, so nothing is framed mid-air.
 - **home/GraphicControlPage** - `#/control/<graphicId>`: the saved graphic's operator
   panel, and the surface that AIRS (the editor's Rehearse tab is the preview-only twin) -
   live graphic + transport + machine event buttons (GREYED by controlModel

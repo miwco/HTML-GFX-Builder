@@ -66,7 +66,9 @@ export default function PreviewFrame({ iframeRef }: Props) {
   // The iframe VIEWPORT, the gesture overlay, and the guides all grow to this padded document
   // together, so the coordinate origin moves with them (see CanvasInteraction). Pad is a pure
   // view concept — it never enters the template or any persisted coordinate.
-  const { padX, padY } = computePad(template.resolution);
+  // Derived from the graphic's own authored motion, so a template that never leaves the canvas
+  // spends no stage width on empty pasteboard (see pasteboard.ts).
+  const { padX, padY } = useMemo(() => computePad(template), [template]);
   const docW = stageW + 2 * padX;
   const docH = stageH + 2 * padY;
 

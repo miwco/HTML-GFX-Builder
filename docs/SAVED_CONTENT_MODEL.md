@@ -75,7 +75,10 @@ editor canvas's own settle recipe: `update()` → `buildInTimeline().progress(1,
 version bump, no migration, and no second copy of the artwork riding every cloud sync. It also
 cannot go stale — a template edited on another device shows its new look the moment it syncs,
 which is exactly when a preview has to be trusted. The cost, re-rendering per Home visit, is paid
-down by mounting each iframe only once its card scrolls into view.
+down by mounting each iframe only once its card scrolls into view. The card frames on the
+GRAPHIC rather than the canvas (`preview/frameGraphic.ts`, the same recipe behind the wizard's
+picker cards): most formats occupy a fraction of the frame, so it measures the graphic's own box
+once the settle is done and zooms onto that, with the whole-canvas fit as the floor.
 
 ## 4. Control panel entries
 
