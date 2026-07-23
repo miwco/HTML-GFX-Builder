@@ -235,7 +235,7 @@ test('a saved v2 layout gains the Assets tab once (v2 -> v3 migration)', async (
   await expect(page.locator('.topbar')).toBeVisible();
   // The migration inserted Assets right after Style in the right dock.
   await expect(page.locator('[data-testid="dock-right"] .dock-tab-label')).toHaveText([
-    'Inspector', 'Data', 'Control', 'Style', 'Assets', 'AI', 'Export',
+    'Inspector', 'Content', 'Rehearse', 'Style', 'Assets', 'AI', 'Export',
   ]);
 });
 

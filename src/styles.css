@@ -929,6 +929,10 @@ kbd {
   transition: opacity 0.18s;
 }
 .wz-step[data-overflow] .wz-step-fade { opacity: 1; }
+/* On a step whose left pane is a working surface, the preview yields — you cannot place text
+   accurately on a canvas smaller than the passive picture of it beside it (the Text step used
+   to edit at ~520px while previewing at ~700px). */
+.wz-body-working .wz-side { flex: 0 0 34%; }
 .wz-side {
   flex: 0 0 50%;                    /* the preview deserves half the modal */
   border-left: 1px solid var(--border);
@@ -1165,7 +1169,10 @@ kbd {
 .wz-variant { padding: 0; overflow: hidden; border-radius: 8px; text-align: left; }
 .wz-variant.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .wz-mini { aspect-ratio: 16 / 9; overflow: hidden; position: relative; background: #14181f; pointer-events: none; }
-.wz-mini iframe { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; border: 0; transform-origin: top left; transform: scale(0.128); }
+/* Anchored at the card's centre; MiniPreview supplies the size and the transform, because the
+   framing is MEASURED per template (a lower third and a full-frame card want different zoom).
+   A fixed scale here would put that decision in two places and let them disagree. */
+.wz-mini iframe { position: absolute; top: 50%; left: 50%; border: 0; transform-origin: center center; }
 .wz-variant-cap { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; }
 .wz-style-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
 .wz-style-tag[data-style='minimal'] { color: #e8c547; }
@@ -3159,8 +3166,9 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .canvas-context-menu button:hover { background: var(--bg); color: var(--amber); }
 
-/* "Add template graphic" — the catalog picker that INSERTS into the current project. */
-.insert-tpl-dialog { max-width: 860px; width: min(860px, 94vw); max-height: 86vh; display: flex; flex-direction: column; }
+/* "Add template graphic" — the catalog picker that INSERTS into the current project.
+   Like the save dialogs below, it borrows `.wz-modal` but sizes to its content. */
+.insert-tpl-dialog { max-width: 860px; width: min(860px, 94vw); height: auto; max-height: 86vh; display: flex; flex-direction: column; }
 .insert-tpl-body { padding: 12px 16px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .insert-tpl-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .insert-tpl-cats { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -3192,7 +3200,11 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .insert-tpl-card-name { font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
 .insert-tpl-card-blocked { font-size: 10px; color: var(--text-dim); }
 
-.save-dialog { max-width: 460px; width: min(460px, 92vw); }
+/* These dialogs borrow `.wz-modal`, which is sized for the WIZARD — a full-height multi-step
+   surface. A save prompt has a name field and two buttons, so it took a 960px-tall box with a
+   screenful of empty panel under 300px of content. Size to the content instead (the cap only
+   engages if a message ever grows tall enough to need scrolling). */
+.save-dialog { max-width: 460px; width: min(460px, 92vw); height: auto; max-height: 92vh; }
 .save-dialog .wz-header h2 { font-size: 16px; margin: 0; }
 .save-dialog-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
 .save-field { display: flex; flex-direction: column; gap: 6px; }
@@ -3309,6 +3321,20 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 }
 .control-page-transport button.primary { padding-inline: 20px; font-weight: 600; }
 .control-events-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+/* The operator's "where is it" chip — the editor's .simulator-state, sized for the transport
+   row it sits in (this bar is deliberately bigger than the editor's; see the operator-sized
+   cues). Pushed right so it reads as status, not as another button. */
+.control-state-chip {
+  margin-left: auto;
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  color: var(--text-dim);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
 .control-page-side {
   border-left: 1px solid var(--border);
   padding: 14px 16px 30px;
@@ -3567,6 +3593,46 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .mg-kind { font-size: 10px; margin-right: 4px; opacity: 0.9; }
 .mg-kind-layer { color: #7fb8e8; }
 .mg-kind-graphic { color: var(--amber); }
+
+/* A state validateMachine has something to say about. It sits BEFORE the connect port and
+   after the flexing name, so it never competes with the port for the box's right edge (the
+   port owns that; clipping it would eat its pointerdown — see the box's overflow gotcha). */
+.mg-problem {
+  flex-shrink: 0;
+  margin-left: 4px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--void);
+}
+.mg-problem-warning { background: var(--warn); }
+.mg-problem-error { background: var(--danger); }
+.mg-state:has(.mg-problem-warning) { border-color: color-mix(in srgb, var(--warn) 55%, transparent); }
+.mg-state:has(.mg-problem-error) { border-color: color-mix(in srgb, var(--danger) 65%, transparent); }
+
+.mg-card-problem {
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 5px 7px;
+  border-radius: 5px;
+  border-left: 2px solid;
+}
+.mg-card-problem-warning {
+  color: var(--warn);
+  border-left-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+.mg-card-problem-error {
+  color: var(--danger);
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
 
 /* Placed in FRAME coordinates measured off its button (MachineGraph `framePoint`), not hung
    under it inside the scroller: a lower third's menu is taller than its own two-state diagram,

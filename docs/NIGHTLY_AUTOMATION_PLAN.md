@@ -21,7 +21,7 @@ moderator queue).
 > job A split by what actually drifts. Both are secret-free. This closes Phase 3's
 > scheduling-harness item (docs/noacg-master-goals.md). **Jobs B/C (generation + staging + the
 > review agent) remain PLAN ONLY** — they spend real API money nightly, require migration
-> `0006`, and wait on the §10 decisions; if B lands, a nightly cadence returns with it. Read
+> `0010`, and wait on the §10 decisions; if B lands, a nightly cadence returns with it. Read
 > `docs/ERA5_PLAN.md` and `docs/GOALS.md` first; this plan slots in as a new operability layer
 > on top of the shipped Era 5.5 community feature.
 
@@ -98,7 +98,7 @@ human"* **refuted the naive version** of the plan. The facts, from
 
 **Conclusion:** staging AI drafts for review *without* granting the bot the power to publish them
 **requires a small schema change** - a dedicated least-privilege staging path. This is migration
-**`0006`** below, and it is the linchpin of the whole plan. (See §3.)
+**`0010`** below, and it is the linchpin of the whole plan. (See §3.)
 
 Everything else - the generator, the gate, the health checks, the review UI - is reuse.
 
@@ -108,7 +108,7 @@ Everything else - the generator, the gate, the health checks, the review UI - is
 
 - **Never auto-publish.** A nightly draft is *structurally* incapable of becoming `approved`. The
   only path from draft → gallery is a **human clicking Approve** in the 🛡 Moderation queue. No agent,
-  script, or service key can shortcut it. (Made structural by `0006`.)
+  script, or service key can shortcut it. (Made structural by `0010`.)
 - **Reuse, don't reinvent.** The generator is `claudeProvider.generate`. The safety gate is
   `publishGate` (`validateTemplate` + `templateBench`). The render/screenshot/overlap harness is
   lifted from `scripts/ai-bench.mjs` + `scripts/ai-compare.mjs`. The review surface is the existing
@@ -137,7 +137,7 @@ Everything else - the generator, the gate, the health checks, the review UI - is
                          │   • npm audit / npm outdated          - publishGate (validate+bench)            │
                          │   • upload reports                     - motion/overlap check (multi-timestamp) │
                          │   • open issue on failure              - dedup vs catalog + live gallery        │
-                         │                                        - stage survivors as PENDING via 0006 RPC│
+                         │                                        - stage survivors as PENDING via 0010 RPC│
                          │                                        - upload assets to community-assets/<uid>│
                          │                                      • upload review dossier (shots + JSON)     │
                          │                                                                                 │
@@ -165,7 +165,11 @@ agent **read-only on the queue** preserves the hard guardrail: even the agent ca
 
 ---
 
-## 3. The linchpin: migration `0006_nightly_drafts.sql`
+## 3. The linchpin: migration `0010_nightly_drafts.sql`
+
+> Numbering note: this plan originally called the migration `0006`, written before `0006` was
+> taken by open signup (2026-07-08). Migrations now run through `0009_graphic_kind.sql`, so the
+> nightly-drafts migration takes the next free slot - renumber again if something lands first.
 
 A least-privilege staging path so a bot can create `pending` drafts but **can never approve, edit, or
 publish** anything. New surface, minimal:
@@ -294,7 +298,7 @@ for each brief in the nightly bank (rotating; brand-matched variants optional):
       record as SKIPPED; continue
 
   externalize assets → community-assets/<bot-uid>/<hash>   // REUSE: communityData.publishGraphic's codec
-  slug = rpc('community_stage_draft', {kind, name, summary, category, body})  // NEW: 0006 RPC → PENDING
+  slug = rpc('community_stage_draft', {kind, name, summary, category, body})  // NEW: 0010 RPC → PENDING
   save screenshot + metadata to nightly-out/
 ```
 
@@ -311,7 +315,7 @@ Key reuse points, concretely:
   settled overlap sampler and adding a third sample. The bench and this job both import it.
 - **Asset transport + staging:** reuse `externalizeAssets` (from `src/backend/assets.ts`, already used
   by `communityData.publishGraphic`) to push fonts/images to the public bucket and keep only sentinels
-  in the row body; then the `0006` RPC instead of a raw insert.
+  in the row body; then the `0010` RPC instead of a raw insert.
 
 **Cost control is built into the script** (see guardrails): a hard `MAX_DRAFTS` and a token/spend
 ceiling, aborting before overspending, exactly like `ai-bench.mjs` aborts when no key is present.
@@ -351,7 +355,7 @@ No new data path - `listAllForModeration`, `getModeratorItem`, and `moderate` al
   `community_stage_draft`, which hard-codes `status='pending'`; the bot has no moderator UPDATE policy;
   the gallery is `approved`-only. There is no code path from bot → `approved`. The review agent is
   read-only on the queue. Publishing is exclusively a human click. *(This is the fix for the §0
-  finding - without `0006` the naive plan auto-publishes.)*
+  finding - without `0010` the naive plan auto-publishes.)*
 - **Least privilege.** The bot can create pending drafts and write under its own asset folder - nothing
   else. It cannot read other users' rows (RLS), cannot approve/edit/remove, cannot touch `moderators`.
 - **Cost cap + kill switch.** `MAX_DRAFTS` per night and a hard spend ceiling in the script (abort
@@ -373,7 +377,7 @@ No new data path - `listAllForModeration`, `getModeratorItem`, and `moderate` al
 - **Fail-safe + fail-loud.** Any job failure opens/updates a tracking issue and notifies; a red nightly
   never affects prod or users (drafts are invisible; the SPA is untouched). The generation job failing
   is a non-event for end users.
-- **Migration reviewed like `0004`.** `0006` gets the same adversarial SQL review the community
+- **Migration reviewed like `0004`.** `0010` gets the same adversarial SQL review the community
   migrations got (author-self-approve, audit forgery, anon EXECUTE via Supabase default grants - the
   bugs 0004/0005 caught) before it's applied to live Supabase.
 
@@ -402,7 +406,7 @@ midnight-ish UTC and a small N.)*
 
 ## 9. Phased implementation (when we build)
 
-1. **Phase N0 - migration + bot.** Write `0006_nightly_drafts.sql` (source column, `nightly_bots`,
+1. **Phase N0 - migration + bot.** Write `0010_nightly_drafts.sql` (source column, `nightly_bots`,
    `is_nightly_bot()`, `community_stage_draft`, guard branch). Adversarial SQL review. Apply to live
    Supabase via MCP. Create + allowlist the bot account. Build green; offline E2E green (offline path
    unchanged - it's an additive migration).

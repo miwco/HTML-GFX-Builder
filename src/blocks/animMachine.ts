@@ -399,6 +399,61 @@ function hasEndlessMotion(data: AnimData, group: AnimGroup, stateId: string): bo
   return false;
 }
 
+/** A semantic problem that belongs to ONE state, so a surface can point at the box it is about. */
+export interface StateProblem {
+  groupId: string;
+  stateId: string;
+  severity: 'error' | 'warning';
+  /** The sentence, subject included — validateMachine prefixes the group, the graph does not. */
+  message: string;
+}
+
+/**
+ * The problems that are ABOUT a state rather than about the machine as a whole.
+ *
+ * Split out of `validateMachine` so the NODE EDITOR can mark the offending box where the
+ * author is working, instead of leaving the finding to the Export panel — a branch state can
+ * carry a whole hand-built timeline and still never be entered, and the surface that let you
+ * build it is the one that owes you the news. validateMachine folds these back into its own
+ * lists, so the rule is still written once.
+ */
+export function stateProblems(data: AnimData): StateProblem[] {
+  const machine = data.machine;
+  if (!machine) return [];
+  const out: StateProblem[] = [];
+  machine.groups.forEach((group, gi) => {
+    // Unreachable states can never be entered by any event — usually a leftover.
+    for (const state of group.states) {
+      if (state.id === group.initial) continue;
+      if (canonicalPath(group, gi === 0, state.id) === null) {
+        out.push({
+          groupId: group.id,
+          stateId: state.id,
+          severity: 'warning',
+          message: `state "${state.id}" is unreachable from "${group.initial}".`,
+        });
+      }
+    }
+    // A timer arms when its state's entry timeline ENDS. A timeline holding endless motion
+    // (a repeat:-1 loop, or a measured builder that returns one) never ends, so the timer
+    // would never arm and the state would silently never advance. Verified against GSAP:
+    // a call scheduled at an endless timeline's duration does not fire.
+    for (const t of group.transitions) {
+      if (t.trigger === 'timer' && hasEndlessMotion(data, group, t.from)) {
+        out.push({
+          groupId: group.id,
+          stateId: t.from,
+          severity: 'error',
+          message:
+            `state "${t.from}" has a timer transition but its timeline never ends ` +
+            `(it carries an endless loop or measured motion), so the timer would never fire.`,
+        });
+      }
+    }
+  });
+  return out;
+}
+
 /** Semantic judgement for validateTemplate — runs only on a machine that already passed the
  *  shape gate (isAnimData). Errors block export; warnings advise. */
 export function validateMachine(data: AnimData): { errors: string[]; warnings: string[] } {
@@ -431,13 +486,6 @@ export function validateMachine(data: AnimData): { errors: string[]; warnings: s
         warnings.push(`Group "${group.id}": the initial state sits on the default path — Off is usually a rest outside it.`);
       }
     }
-    // Unreachable states can never be entered by any event — usually a leftover.
-    for (const state of group.states) {
-      if (state.id === group.initial) continue;
-      if (canonicalPath(group, isMain, state.id) === null) {
-        warnings.push(`Group "${group.id}": state "${state.id}" is unreachable from "${group.initial}".`);
-      }
-    }
     for (const t of group.transitions) {
       if (t.trigger === 'data-condition') {
         warnings.push(`Group "${group.id}": "${t.from}" → "${t.to}" uses the reserved data-condition trigger — it never fires in this version.`);
@@ -462,18 +510,13 @@ export function validateMachine(data: AnimData): { errors: string[]; warnings: s
           `Group "${group.id}": "${t.from}" → "${t.to}" carries an unknown transition style "${t.style}" — the target state's entry timeline will play instead.`,
         );
       }
-      // A timer arms when its state's entry timeline ENDS. A timeline holding endless motion
-      // (a repeat:-1 loop, or a measured builder that returns one) never ends, so the timer
-      // would never arm and the state would silently never advance. Verified against GSAP:
-      // a call scheduled at an endless timeline's duration does not fire.
-      if (t.trigger === 'timer' && hasEndlessMotion(data, group, t.from)) {
-        errors.push(
-          `Group "${group.id}": state "${t.from}" has a timer transition but its timeline never ends ` +
-            `(it carries an endless loop or measured motion), so the timer would never fire.`,
-        );
-      }
     }
   });
+  // The per-state findings (unreachable states, timers on endless timelines) come from the
+  // shared rule the node editor marks its boxes with — see stateProblems.
+  for (const p of stateProblems(data)) {
+    (p.severity === 'error' ? errors : warnings).push(`Group "${p.groupId}": ${p.message}`);
+  }
   // A control entry for an event no arrow carries would render a dead button — machineControls
   // skips it, and this says why the declared button is missing.
   if (machine.controls) {

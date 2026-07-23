@@ -81,11 +81,12 @@ export default function SampleDataPanel() {
   return (
     <div>
       <div className="panel-section">
-        <h3>Sample data</h3>
+        <h3>Content <span className="muted">— preview values</span></h3>
         <p className="hint">
-          These values come from the template's field definitions. After editing them, press
-          <strong> Update</strong> below to send them to <code className="inline">update(data)</code> as
-          JSON and refresh the preview (Play does this too).
+          The sample values shown in the preview while you design — they are <strong>not</strong>{' '}
+          what airs. On air, an operator drives the graphic from its <strong>Control panel</strong>{' '}
+          (Home → Control panels). After editing here, press <strong>Update</strong> below to send
+          them to <code className="inline">update(data)</code> and refresh the preview (Play does this too).
         </p>
       </div>
 

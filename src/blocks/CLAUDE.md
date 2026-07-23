@@ -209,6 +209,17 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   and `isAnimStepShape(_, false)` refuses them on an inline timeline. The target lives in
   templateStore, never here: the Inspector resolves values against the same projection, and a
   component-local target would have it editing the entrance while the timeline showed a branch.
+  **`scrubPhase(target, pathPhase)`** is the same idea for the PREVIEW: the scrub protocol
+  addresses the walk's phases ('in' / 'out' / 'step-N') and a branch is on none of them, so a
+  branch answers `state:<groupId>:<stateId>` (read back by `parseStatePhase`, resolved by
+  PlayoutSimulator through the runtime's own `noacgEnterTimeline`). One rule for every caller -
+  the timeline, the Inspector and the canvas - because each of them computes a phase from a
+  step INDEX, and on a one-step projection every one of them would otherwise have called the
+  branch's only step 'in' and jumped the preview to the graphic's entrance.
+  **Every surface that keyframes at the playhead must read AND write through the lens.** The
+  canvas is the easy one to forget: it took its data straight from `parseAnimData`, so with a
+  branch on screen a canvas drag wrote x/y into the default path's step while the strip showed
+  the branch.
 - **animMachine.ts** - the machine's editor-side seam (animData owns the literal, this owns the
   GRAPH questions). `deriveMachine` builds the implicit ONE-GROUP linear machine for data with
   no `machine` key - states named after the steps, a synthesized pose-only `off`, a `next` arrow
@@ -229,8 +240,15 @@ editor <-> runtime parity is pinned by e2e/anim-engine.spec.ts.
   `allOperatorEvents`, `machineControls` (THE one button-list merge every control surface
   renders - declared `machine.controls` entries dressed over the authored events; an
   undeclared `next` is skipped because the lifecycle button already fires it),
-  `timerTransition`, and `validateMachine` (semantic errors/warnings for validateTemplate;
-  the SHAPE gate stays in animData's `isAnimData`).
+  `timerTransition`, `validateMachine` (semantic errors/warnings for validateTemplate;
+  the SHAPE gate stays in animData's `isAnimData`), and **`stateProblems`** - the subset of
+  those findings that belong to ONE state (unreachable; a timer on a timeline that never
+  ends), returned STRUCTURALLY `{groupId, stateId, severity, message}` so the node editor can
+  mark the box it is about. validateMachine folds them back into its own lists, so the rule is
+  written once: a finding cannot appear on the graph and not in the export report, or vice
+  versa. Split out because a branch state can carry a whole hand-built timeline and still
+  never be entered, and leaving that to the Export panel meant the surface that let you build
+  it said nothing.
   THE POSITIONAL BINDING, the one thing to hold onto: `defaultPath[i]`'s timeline IS `steps[i]`.
   No stored indices to go stale - and it is why every timeline surface keeps working under a
   machine. Its consequence: step-structural edits (`addStep`, `deleteStep`, `duplicateStep`,

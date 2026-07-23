@@ -4,8 +4,10 @@ import { zoneDecls } from '../templates/shared/base';
 import { nextFieldId, setCssDeclaration, setFieldDefault } from '../blocks/edit';
 import { getCssVariable, setCssVariable } from '../blocks/cssVars';
 import type { Zone9 } from '../model/wizard';
+import type { SpxTemplate } from '../model/types';
 import { detectPrefix, getTemplateParts, type TemplatePart } from '../model/structure';
-import { parseAnimData } from '../blocks/animData';
+import { parseAnimData, type AnimData } from '../blocks/animData';
+import { lensRead, lensWrite, scrubPhase } from '../blocks/timelineLens';
 import { writeAnimData } from '../templates/shared/animRuntime';
 import { setKeyframe } from '../blocks/animEdit';
 import { activationStep } from '../blocks/animEval';
@@ -325,7 +327,23 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
   //    same conditions (steps on, part eligible), writing the same patch (blocks/stepAssign.ts
   //    changePartPress). The code stays the one truth. A press is the middle steps' `reveals`;
   //    a legacy region has no editable press chain at all (Phase 8 — it is read-only). ──
-  const dataModel = useMemo(() => parseAnimData(template.js), [template.js]);
+  // THROUGH THE LENS, like the timeline and the Inspector (blocks/timelineLens.ts). The canvas
+  // keyframes at the playhead, and the playhead belongs to whichever timeline is OPEN — so
+  // reading the raw document here meant that, with a branch state's timeline on screen, a
+  // canvas drag wrote its x/y into the default path's step instead. The strip showed the
+  // branch, the keyframe landed on the walk, and nothing said so.
+  const timelineTarget = useTemplateStore((s) => s.timelineTarget);
+  const nativeDoc = useMemo(() => parseAnimData(template.js), [template.js]);
+  const dataModel = useMemo(
+    () => (nativeDoc ? lensRead(nativeDoc, timelineTarget) : null),
+    [nativeDoc, timelineTarget],
+  );
+  /** Fold an edited projection back into the document and emit the new js (null = no change). */
+  const projectedJs = (doc: SpxTemplate, next: AnimData): string | null => {
+    const base = parseAnimData(doc.js);
+    const folded = base ? lensWrite(base, timelineTarget, next) : next;
+    return folded ? writeAnimData(doc.js, folded) : null;
+  };
   const presses = useMemo(
     () => (dataModel ? dataModel.steps.slice(1, -1).map((s) => s.reveals ?? []) : null),
     [dataModel],
@@ -421,11 +439,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
       const y = Math.round((layer.baseY + ld.dy) * 100) / 100;
       next = setKeyframe(setKeyframe(next, at.step, layer.selector, 'x', at.tRel, x), at.step, layer.selector, 'y', at.tRel, y);
     }
-    const js = writeAnimData(template.js, next);
+    const js = projectedJs(template, next);
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
     const place = playhead;
-    if (place) setTimeout(() => sendScrub(phaseIdOf(dataModel, place.step), place.t), 650);
+    if (place) setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(dataModel, place.step)), place.t), 650);
   };
 
   /** Clear the placement drag's inline left/top previews — the stylesheet position returns. */
@@ -1301,11 +1319,11 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     const at = keyframePlace(d.selector);
     if (!at) return;
     const next = setKeyframe(dataModel, at.step, d.selector, d.kind === 'scale' ? 'scale' : 'rotation', at.tRel, d.value);
-    const js = writeAnimData(template.js, next);
+    const js = projectedJs(template, next);
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
     const place = playhead;
-    if (place) setTimeout(() => sendScrub(phaseIdOf(dataModel, place.step), place.t), 650);
+    if (place) setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(dataModel, place.step)), place.t), 650);
   };
 
   // ── The selected placed field's SIZE handle: live preview through the same CSS channel
@@ -1403,7 +1421,8 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     }
     let keyed = false;
     if (burst.keyed.length > 0) {
-      const model = parseAnimData(next.js);
+      const burstDoc = parseAnimData(next.js);
+      const model = burstDoc ? lensRead(burstDoc, timelineTarget) : null;
       if (model) {
         const speed = model.speed || 1;
         let nd = model;
@@ -1415,7 +1434,7 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
           const y = Math.round((k.baseY + burst.dy) * 100) / 100;
           nd = setKeyframe(setKeyframe(nd, at.step, k.selector, 'x', at.tRel, x), at.step, k.selector, 'y', at.tRel, y);
         }
-        const js = writeAnimData(next.js, nd);
+        const js = projectedJs(next, nd);
         if (js && js !== next.js) {
           next = { ...next, js };
           keyed = true;
@@ -1426,9 +1445,13 @@ export default function CanvasInteraction({ iframeRef, width, height, padX = 0, 
     s.applyTemplate(next);
     s.setActiveTab(keyed && next.css === s.template.css ? 'js' : 'css');
     if (keyed && s.playhead) {
-      const model = parseAnimData(s.template.js);
+      const doc = parseAnimData(s.template.js);
+      const model = doc ? lensRead(doc, timelineTarget) : null;
       const place = s.playhead;
-      if (model) setTimeout(() => useTemplateStore.getState().sendScrub(phaseIdOf(model, place.step), place.t), 650);
+      if (model) {
+        const phase = scrubPhase(timelineTarget, phaseIdOf(model, place.step));
+        setTimeout(() => useTemplateStore.getState().sendScrub(phase, place.t), 650);
+      }
     }
   };
 

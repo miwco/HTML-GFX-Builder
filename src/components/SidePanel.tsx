@@ -14,10 +14,12 @@ import ExportPanel from './ExportPanel';
 // panels: Data = sample values + add-field; Control = the operator view. Validation lives
 // inside Export; explanations live on hover in the editor; step motion lives on the
 // timeline strip under the preview, not in a tab.
+// Labels match WorkspaceDock's PANEL_LABEL (Content = design values, Rehearse = the in-editor
+// operator view). Keep the two in step.
 const PANELS: { id: PanelId; label: string }[] = [
   { id: 'inspector', label: 'Inspector' },
-  { id: 'data', label: 'Data' },
-  { id: 'control', label: 'Control' },
+  { id: 'data', label: 'Content' },
+  { id: 'control', label: 'Rehearse' },
   { id: 'style', label: 'Style' },
   { id: 'assets', label: 'Assets' },
   { id: 'ai', label: 'AI' },

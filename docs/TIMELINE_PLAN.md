@@ -1,5 +1,12 @@
 # Timeline & advanced animation — direction plan
 
+> **STATUS 2026-07-22: HISTORICAL.** Every slice here shipped (T1-T3.x), and the
+> literal-patching architecture this plan is written around was then retired by
+> **Timeline v2** (`docs/TIMELINE_V2_PLAN.md` - the migration is complete; the patchers are
+> deleted). The binding interaction contract today is `docs/TIMELINE_INTERACTION_MODEL.md`;
+> the engine contracts live in `src/blocks/CLAUDE.md`. Kept as the rationale record for the
+> segment-chain model and the competitive research (Loopic / SPX steps).
+
 The timeline's job: make **complex broadcast animation sequencing controllable and
 reusable** — timing, easing, per-line choreography, and next()/step triggers — for people
 who will never hand-edit GSAP. It is deliberately NOT the graphics creation surface (the

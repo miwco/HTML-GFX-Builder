@@ -107,8 +107,9 @@ hosted receiver into each graphic at export (the saved snapshot stays clean).
 
 ## Profiles
 
-The homebase (`components/Homebase.tsx`) is the profile: saved graphics across packets,
-video projects, shows with their hosted-page links, community submissions. Sync kinds now
+The routed Home (`components/home/HomePage.tsx`, `#/home` — docs/SAVED_CONTENT_MODEL.md §3;
+it replaced the old Homebase modal) is the profile: saved graphics across packages, video
+projects, shows with their hosted-page links, community submissions. Sync kinds now
 include `'show'` and `'video'` (video tombstones strip the heavy payload to a readable
 stub). All local-first; cloud mirrors for signed-in users.
 

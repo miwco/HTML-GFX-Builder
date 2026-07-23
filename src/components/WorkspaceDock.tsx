@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { DockId, DockState, PanelId } from '../model/layout';
 
+// The three field-value surfaces read as one word before this: the Data tab, the Control tab,
+// and the routed Control panel page all edited "the fields", and nothing said which set AIRS.
+// Named by ROLE now: Content = the design-time values (a preview, never aired), Rehearse = the
+// in-editor operator view that drives THIS preview, and the routed page keeps "Control panel" —
+// it is the one an operator actually runs on air.
 const PANEL_LABEL: Record<PanelId, string> = {
   code: 'Code',
   inspector: 'Inspector',
-  data: 'Data',
-  control: 'Control',
+  data: 'Content',
+  control: 'Rehearse',
   style: 'Style',
   assets: 'Assets',
   ai: 'AI',

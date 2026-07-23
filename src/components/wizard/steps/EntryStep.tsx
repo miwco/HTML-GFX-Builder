@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import BrandLogo from '../../BrandLogo';
 import { loadGraphics, type GraphicDoc } from '../../../model/library';
+import { loadPackets } from '../../../model/packets';
+import { hasCurrentVideoProject, listSavedVideoProjects } from '../../../model/videoProject';
 
 interface Props {
   onTemplates: () => void;
@@ -31,6 +33,17 @@ export default function EntryStep({ onTemplates, onImportGraphic, onAi, onVideo,
     () => loadGraphics().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 3),
     [],
   );
+  /** Is there anything to continue? Home holds graphics, packages and videos, so any of them
+   *  counts. On a first-ever visit there is nothing, and offering the loudest card on the
+   *  screen as a door to an empty room is a false lead - creation leads instead. */
+  const hasSavedWork = useMemo(
+    () =>
+      recent.length > 0 ||
+      loadPackets().length > 0 ||
+      listSavedVideoProjects().length > 0 ||
+      hasCurrentVideoProject(),
+    [recent],
+  );
 
   return (
     <div className="wz-entry-wrap">
@@ -50,7 +63,9 @@ export default function EntryStep({ onTemplates, onImportGraphic, onAi, onVideo,
         </div>
       </div>
 
-      {/* ── Continue working: saved work first — creation is not the only door. ── */}
+      {/* ── Continue working: saved work first — creation is not the only door. Shown only
+             when there IS work to continue; see hasSavedWork. ── */}
+      {hasSavedWork && (
       <div className="wz-continue" data-testid="wz-continue">
         <button className="wz-entry-card wz-continue-card" onClick={onHome} data-entry="continue">
           <span className="wz-entry-icon">🏠</span>
@@ -74,6 +89,7 @@ export default function EntryStep({ onTemplates, onImportGraphic, onAi, onVideo,
           </div>
         )}
       </div>
+      )}
 
       <div className="wz-entry">
         <button className="wz-entry-card wz-entry-card--primary" onClick={onTemplates} data-entry="template">

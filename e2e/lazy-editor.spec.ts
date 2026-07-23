@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { showCode } from './_code';
 
 // Monaco loads lazily (AppShell wraps CodeEditor in React.lazy): the shell, preview, and
 // wizard never wait on the editor bundle, and surfaces that don't show code don't fetch it
@@ -38,11 +39,16 @@ async function createHairline(page: Page): Promise<string[]> {
 
 const isEditorModule = (url: string) => /CodeEditor|monaco/i.test(url);
 
-test('desktop: the code pane streams Monaco in after the shell', async ({ page }) => {
+test('desktop: Monaco is not fetched until the code pane is opened', async ({ page }) => {
   const requested = await createHairline(page);
-  // The lazy boundary must resolve into a real, working Monaco in the code dock.
-  await expect(page.getByTestId('dock-tab-code')).toBeVisible();
-  await expect(page.locator('.monaco-editor').first()).toBeVisible();
+  // The pane ships CLOSED (model/layout.ts), so a user who never opens code never pays for
+  // the editor bundle — the same bargain the mobile layout has always had.
+  await expect(page.getByTestId('dock-tab-code')).toHaveCount(0);
+  expect(requested.some(isEditorModule)).toBe(false);
+
+  // Opening it streams Monaco in behind the shell, and the lazy boundary resolves into a real,
+  // working editor (showCode waits for it).
+  await showCode(page);
   expect(requested.some(isEditorModule)).toBe(true);
 });
 

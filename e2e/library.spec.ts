@@ -65,6 +65,15 @@ test('Home lists the library; a package opens with its graphics; Back walks the 
   await expect(page.locator('.tpl-name')).toHaveText('Presenter lower third');
 });
 
+test('a first-ever visit is offered creation, not a door to an empty Home', async ({ page }) => {
+  // Nothing saved anywhere (a fresh context): "Continue working" would be the loudest card on
+  // the screen and would lead to an empty Home, so it stays away until there IS work.
+  await page.goto('/app');
+  await expect(page.locator('.wz-modal')).toBeVisible();
+  await expect(page.getByTestId('wz-continue')).toHaveCount(0);
+  await expect(page.locator('[data-entry="template"]')).toBeVisible();
+});
+
 test('the wizard leads with Continue working: recent graphics reopen from the entry step', async ({ page }) => {
   await createProject(page, 'Hairline');
   await saveAs(page, 'Presenter lower third');
@@ -136,6 +145,37 @@ test('a saved graphic\'s control panel: entries create, play with the active ent
   // Back returns to Home's control panels section (history is real).
   await page.goBack();
   await expect(page.getByTestId('home-page')).toBeVisible();
+});
+
+test('the control panel reports the state and greys an event the machine would drop', async ({ page }) => {
+  // Parity with the editor's Rehearse panel, the event strip and the hosted page: all three
+  // poll the runtime's pointers and grey an illegal event. This surface shipped with neither,
+  // so a live operator had no on-air indication and every button looked pressable.
+  await createProject(page, { category: 'quiz' });
+  await saveAs(page, 'Quiz board');
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-controls').click();
+  await page.locator('.pk-graphic', { hasText: 'Quiz board' }).locator('button', { hasText: 'Open control panel' }).click();
+  await expect(page.getByTestId('graphic-control-page')).toBeVisible();
+
+  // The chip names where the preview is, and it is what the greying is judged against.
+  await expect(page.getByTestId('control-state')).toContainText('enter');
+  await expect(page.getByTestId('control-event-lock')).toBeDisabled(); // no arrow out of Enter
+  await expect(page.getByTestId('control-event-select')).toBeEnabled();
+
+  await page.getByTestId('control-event-select').click();
+  await expect(page.getByTestId('control-state')).toContainText('selected');
+  await expect(page.getByTestId('control-event-lock')).toBeEnabled(); // legal from Selected
+  await expect(page.getByTestId('control-event-judge')).toBeDisabled();
+
+  // An entry's ✕ is ARMED, like Home's graphic delete — one stray click cost the whole row.
+  await page.getByTestId('add-entry').click();
+  await expect(page.locator('.control-entry')).toHaveCount(1);
+  await page.getByTestId('delete-entry').click();
+  await expect(page.getByTestId('delete-entry')).toHaveText('Delete?');
+  await expect(page.locator('.control-entry')).toHaveCount(1); // still there
+  await page.getByTestId('delete-entry').click();
+  await expect(page.locator('.control-entry')).toHaveCount(0);
 });
 
 test('the control panel shows the graphic at rest before any take, and says how to get Home', async ({ page }) => {
@@ -274,4 +314,16 @@ test('video and graphics stay separate but connected: #/video, back to graphics,
   await expect(page.locator('.video-workspace-badge')).toContainText('Video');
   await page.getByTestId('back-to-graphics').click();
   await expect(page.locator('.tpl-name')).toHaveText('Hairline');
+});
+
+test('the save dialog is sized by its content, not by the wizard it borrows styling from', async ({ page }) => {
+  // It wears `.wz-modal`, which is sized for the wizard's full-height multi-step surface —
+  // so a name field and two buttons used to sit in a 900px-tall box of empty panel.
+  await createProject(page, 'Hairline');
+  await page.getByTestId('save-graphic').click();
+  await expect(page.getByTestId('save-dialog')).toBeVisible();
+  const box = (await page.getByTestId('save-dialog').boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.height).toBeLessThan(420);
+  expect(box.height).toBeLessThan(viewport.height * 0.6);
 });

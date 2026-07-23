@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { saveAs } from 'file-saver';
 import { useRouter } from '../../app/router';
 import { graphicById, newEntry, updateGraphic, type ControlEntry, type GraphicDoc } from '../../model/library';
-import { fieldDescriptors, eventButtons } from '../../control/controlModel';
+import { fieldDescriptors, eventButtons, eventLegality, isEventLegal } from '../../control/controlModel';
 import { renderControlPanelHtml } from '../../control/controlPanelHtml';
 import { composeDocument } from '../../preview/composeDocument';
 import { settleGraphicOnLoad } from '../../preview/settleGraphic';
@@ -21,6 +21,8 @@ interface GraphicWindow {
   stop?: () => void;
   next?: () => void;
   noacgDispatch?: (event: string, payload?: Record<string, string>) => void;
+  /** The machine's pointers — what the state chip reads and what greys the event buttons. */
+  noacgMachineState?: () => { groups: Record<string, string> };
 }
 
 /**
@@ -37,6 +39,8 @@ export default function GraphicControlPage({ id }: { id: string }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const [note, setNote] = useState<string | null>(null);
+  /** The entry whose ✕ is armed (two-step delete), or null. Cleared by any other entry's arm. */
+  const [deleteArmed, setDeleteArmed] = useState<string | null>(null);
 
   // Re-read when the route id changes (Back/Forward between two panels).
   useEffect(() => setDoc(graphicById(id)), [id]);
@@ -68,6 +72,29 @@ export default function GraphicControlPage({ id }: { id: string }) {
   );
   const buttons = useMemo(() => (doc ? eventButtons(doc.template.js) : []), [doc]);
   const srcdoc = useMemo(() => (doc ? composeDocument(doc.template) : ''), [doc]);
+
+  // WHERE THE GRAPHIC IS, and which presses the machine would actually accept. Every other
+  // operator surface (the editor's Rehearse panel, the event strip, the hosted page) polls the
+  // runtime's own pointers and greys an event with no arrow out of the current state; this
+  // page shipped without either, so a live operator saw no on-air indication at all and every
+  // button looked pressable whether or not the graphic would drop it. Same rule, same poll.
+  const legality = useMemo(() => (doc ? eventLegality(doc.template.js) : {}), [doc]);
+  const [machineState, setMachineState] = useState<{ groups: Record<string, string> } | null>(null);
+  useEffect(() => {
+    if (buttons.length === 0) return; // an ordinary template has no machine to report
+    const tick = () => {
+      const w = iframeRef.current?.contentWindow as unknown as GraphicWindow | null;
+      setMachineState(w?.noacgMachineState?.() ?? null);
+    };
+    tick();
+    const handle = setInterval(tick, 500);
+    return () => clearInterval(handle);
+  }, [buttons.length, doc?.id]);
+  const stateLabel = machineState
+    ? Object.entries(machineState.groups)
+        .map(([g, s]) => (Object.keys(machineState.groups).length > 1 ? `${g}:${s}` : s))
+        .join(' · ')
+    : null;
 
   if (!doc) {
     return (
@@ -279,19 +306,41 @@ export default function GraphicControlPage({ id }: { id: string }) {
             </button>
             <button onClick={() => win()?.stop?.()} title="Take the graphic off air" data-testid="control-stop">■ Stop</button>
             {buttons.length > 0 && <span className="control-events-sep" aria-hidden="true" />}
-            {buttons.map((b) => (
-              <button
-                key={b.event}
-                onClick={() => {
-                  const payload: Record<string, string> = {};
-                  for (const key of b.payload ?? []) payload[key] = String(active?.values[key] ?? '');
-                  win()?.noacgDispatch?.(b.event, payload);
-                }}
-                title={`Fire "${b.event}"`}
+            {buttons.map((b) => {
+              const legal = isEventLegal(legality, b.event, machineState);
+              return (
+                <button
+                  key={b.event}
+                  disabled={!legal}
+                  onClick={() => {
+                    const payload: Record<string, string> = {};
+                    for (const key of b.payload ?? []) payload[key] = String(active?.values[key] ?? '');
+                    win()?.noacgDispatch?.(b.event, payload);
+                  }}
+                  title={
+                    legal
+                      ? `Fire "${b.event}"`
+                      : `"${b.event}" has no arrow out of the current state, so the graphic would drop it`
+                  }
+                  data-testid={`control-event-${b.event}`}
+                >
+                  ⚡ {b.label}
+                </button>
+              );
+            })}
+            {/* WHERE THE GRAPHIC IS — the fact the event buttons are greyed against, so the
+                surface never greys a button without saying why. This page is the ON-AIR
+                control surface (the editor's Rehearse tab is the preview-only one), so the
+                chip names the graphic's state plainly rather than hedging it as a preview. */}
+            {stateLabel && (
+              <span
+                className="control-state-chip"
+                title="The graphic's current state — what the event buttons are greyed against"
+                data-testid="control-state"
               >
-                ⚡ {b.label}
-              </button>
-            ))}
+                ◇ {stateLabel}
+              </span>
+            )}
           </div>
         </section>
 
@@ -302,8 +351,9 @@ export default function GraphicControlPage({ id }: { id: string }) {
             <button className="primary" onClick={addEntry} data-testid="add-entry">＋ Add entry</button>
           </div>
           <p className="hint">
-            Saved data rows for this graphic — “Anna Andersson · Presenter”, “Michael Smith ·
-            Guest”. Select one, play it, switch, play again.
+            This is the on-air control surface — playing an entry here airs it (the editor’s
+            Rehearse tab only drives the preview). Saved data rows for this graphic — “Anna
+            Andersson · Presenter”, “Michael Smith · Guest”. Select one, play it, switch, play again.
           </p>
 
           {doc.entries.length === 0 && (
@@ -327,7 +377,24 @@ export default function GraphicControlPage({ id }: { id: string }) {
                 </button>
                 <button onClick={() => playEntry(entry)} title="Play the graphic with this entry" data-testid="play-entry">▶</button>
                 <button onClick={() => duplicateEntry(entry)} title="Duplicate">⧉</button>
-                <button onClick={() => deleteEntry(entry)} title="Delete" data-testid="delete-entry">✕</button>
+                {/* ARMED, like Home's graphic delete. An entry is typed-in data with no undo
+                    behind it, and this row sits between ▶ Play and the entry switcher on a
+                    surface someone drives live — a single stray click cost the whole row. */}
+                <button
+                  className={deleteArmed === entry.id ? 'reset-armed' : ''}
+                  onClick={() => {
+                    if (deleteArmed === entry.id) {
+                      setDeleteArmed(null);
+                      deleteEntry(entry);
+                    } else {
+                      setDeleteArmed(entry.id);
+                    }
+                  }}
+                  title={deleteArmed === entry.id ? `Click again to delete "${entry.label}"` : 'Delete this entry'}
+                  data-testid="delete-entry"
+                >
+                  {deleteArmed === entry.id ? 'Delete?' : '✕'}
+                </button>
               </div>
             ))}
           </div>

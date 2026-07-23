@@ -19,7 +19,7 @@ import {
   setStepEase,
 } from '../blocks/animEdit';
 import { deriveMachine, spxSteps, timelineKind, walkEntry } from '../blocks/animMachine';
-import { lensRead, lensWrite, PATH_TARGET, targetState } from '../blocks/timelineLens';
+import { lensRead, lensWrite, PATH_TARGET, scrubPhase, targetState } from '../blocks/timelineLens';
 import { EASINGS } from '../model/easings';
 import { replaceRegionWithAnimData, writeAnimData } from '../templates/shared/animRuntime';
 import { activationStep, animatedProps, hideStep, stepSeconds } from '../blocks/animEval';
@@ -346,12 +346,9 @@ function StepTimeline({
     setHead(place);
     setPlayhead(place); // the Inspector stamps keyframes at the parked playhead
     setScrubbing(true);
-    // The preview's scrub protocol addresses the WALK's phases ('in' / 'out' / 'step-N'), and
-    // a branch state is on none of them. Clicking the state already snapped the preview onto
-    // it, which is the right resting pose, so the playhead here parks for the Inspector's
-    // keyframes rather than driving playback. (Live scrubbing inside a branch needs the
-    // runtime to address a state's timeline — a separate piece of work.)
-    if (!branch) sendScrub(phaseIdOf(data, place.step), place.t);
+    // A branch answers `state:<group>:<state>` instead of one of the WALK's phases — the lens
+    // owns that rule, PlayoutSimulator resolves it through the runtime's own entry timeline.
+    sendScrub(scrubPhase(timelineTarget, phaseIdOf(data, place.step)), place.t);
     const seg = segs[place.step];
     if (seg) followScroll(seg.x + Math.min(place.t, stepSeconds(data, place.step)) * pxPerSec);
   };
@@ -377,7 +374,7 @@ function StepTimeline({
       applyTemplate({ ...template, js });
     }
     const place = headRef.current;
-    setTimeout(() => sendScrub(phaseIdOf(data, place.step), place.t), 650);
+    setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(data, place.step)), place.t), 650);
   };
 
   /** The SPX `out` setting — the hold's popover writes it (until ■ Stop / auto-out N ms /
@@ -920,7 +917,7 @@ function StepTimeline({
       if (js && js !== template.js) {
         applyTemplate({ ...template, js });
         const place = headRef.current;
-        setTimeout(() => sendScrub(phaseIdOf(data, place.step), place.t), 650);
+        setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(data, place.step)), place.t), 650);
       }
       return;
     }

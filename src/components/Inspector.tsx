@@ -25,7 +25,7 @@ import type { SpxTemplate } from '../model/types';
 import { parseAnimData, type AnimData } from '../blocks/animData';
 import { writeAnimData } from '../templates/shared/animRuntime';
 import { importAnimData } from '../blocks/animImport';
-import { lensRead, lensWrite } from '../blocks/timelineLens';
+import { lensRead, lensWrite, scrubPhase } from '../blocks/timelineLens';
 import { deleteKeyframe, setFilterComponent, setKeyframe } from '../blocks/animEdit';
 import { filterComponent } from '../blocks/filterTrack';
 import { applyPresetData, presetDonor } from '../blocks/presetApply';
@@ -285,9 +285,9 @@ export default function Inspector() {
     const js = writeAnimData(template.js, next);
     if (!js || js === template.js) return;
     applyTemplate({ ...template, js });
-    // A branch state is on none of the walk's scrub phases; the preview stays snapped to it.
-    if (playhead && data && timelineTarget.kind === 'path') {
-      setTimeout(() => sendScrub(phaseIdOf(data, playhead.step), playhead.t), 650);
+    // A branch answers `state:<group>:<state>`; the lens owns which phase this is.
+    if (playhead && data) {
+      setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(data, playhead.step)), playhead.t), 650);
     }
   };
 
@@ -361,7 +361,7 @@ export default function Inspector() {
     if (!target) return;
     const t = target.tRel / speed;
     setPlayhead({ step: target.step, t });
-    sendScrub(phaseIdOf(data, target.step), t);
+    sendScrub(scrubPhase(timelineTarget, phaseIdOf(data, target.step)), t);
   };
 
   return (
@@ -884,7 +884,9 @@ export default function Inspector() {
                   applyTemplate({ ...template, js });
                   requestReplay(); // presets are motion — play them
                   // Re-park the preview at the playhead after the debounced rebuild.
-                  if (playhead) setTimeout(() => sendScrub(phaseIdOf(native, playhead.step), playhead.t), 650);
+                  if (playhead) {
+                    setTimeout(() => sendScrub(scrubPhase(timelineTarget, phaseIdOf(native, playhead.step)), playhead.t), 650);
+                  }
                 }}
                 title="Replace this element's motion in the chosen direction with this style (undo with Ctrl+Z)"
                 data-testid="inspector-preset-apply"

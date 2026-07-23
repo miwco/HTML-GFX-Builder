@@ -62,7 +62,7 @@ window.SPXGCTemplateDefinition = {
   "playlayer":   "1",             // layer (higher = on top)
   "webplayout":  "1",             // web renderer/output id
   "out":         "manual",        // "manual" | "none" | milliseconds (auto-out)
-  "steps":       "0",             // number of extra states; >0 enables next()
+  "steps":       "1",             // number of animation PHASES; >=2 enables Continue/next()
   "dataformat":  "json",          // how data is passed to update() — normally "json"
   "uicolor":     "7",             // color label for the template card (cosmetic, "1".."7")
   "DataFields": [
@@ -71,6 +71,21 @@ window.SPXGCTemplateDefinition = {
   ]
 };
 ```
+
+#### Counting `steps` (the one that is easy to get wrong)
+
+`steps` counts **phases**, not button presses. Phase 1 is the in-animation; phases 2..n are the
+ones an operator reaches with **Continue**. The exit is not a phase — Stop plays it. So:
+
+| The graphic | `steps` | Continue presses |
+|---|---|---|
+| plain in / out | `"1"` | 0 (Continue disabled) |
+| in → reveal → out | `"2"` | 1 |
+| in → reveal A → reveal B → out | `"3"` | 2 |
+
+**Presses = `steps` − 1.** This project derives the value rather than authoring it:
+`blocks/animMachine.ts` `spxSteps()` = the default path's length − 1, which is the same number
+(the path's last waypoint is the exit, reached by `stop()`).
 
 ### DataField keys
 
@@ -116,7 +131,7 @@ SPX (via CasparCG / the web renderer) calls these **global** functions. Define t
 | `update(data)`  | When data is sent (and before play) | Parse `data` (a JSON string) and write values into the DOM. |
 | `play()`        | Take the graphic **on air** | Animate in. |
 | `stop()`        | Take the graphic **off air** | Animate out. |
-| `next(data)`    | Advance a multi-step graphic (`steps` > 0) | Go to the next state. |
+| `next(data)`    | Advance a multi-step graphic (`steps` >= 2) | Go to the next state. |
 
 `data` is a **JSON string**, e.g. `{"f0":"Ada","f1":"Engineer"}`. Always `JSON.parse` it (guard for
 non-JSON in case the renderer sends an empty/placeholder value).

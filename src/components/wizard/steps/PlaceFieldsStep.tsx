@@ -61,8 +61,22 @@ export default function PlaceFieldsStep({ art, draft, onDraft }: Props) {
     if (def) ensureAppFontFace(def);
   }, [fields, designFamily]);
 
-  /** Display scale: design px -> canvas CSS px. */
-  const stageWidth = 520;
+  /** Display scale: design px -> canvas CSS px. The stage takes the width its pane actually
+   *  offers rather than a fixed 520 — this is the surface you PLACE text on, and every pixel
+   *  of it is precision you get back. Clamped so a very wide modal cannot blow the artwork up
+   *  past its own resolution, and it falls back to the old width until measured. */
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [paneWidth, setPaneWidth] = useState(520);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => setPaneWidth(Math.max(320, el.clientWidth));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const stageWidth = Math.min(paneWidth, art.width);
   const s = stageWidth / art.width;
 
   const patchFields = (next: DesignFieldSpec[]) => onDraft({ designFields: next });
@@ -215,7 +229,7 @@ export default function PlaceFieldsStep({ art, draft, onDraft }: Props) {
   const weights = useMemo(() => [300, 400, 500, 600, 700, 800, 900], []);
 
   return (
-    <div className="place-fields">
+    <div className="place-fields" ref={wrapRef}>
       <div className="row" style={{ gap: 6, alignItems: 'center', marginBottom: 8 }}>
         <span className="hint" style={{ marginRight: 4 }}>Tool:</span>
         <button className={tool === 'select' ? 'active' : ''} onClick={() => setTool('select')} title="Select / move fields" data-testid="tool-select">↖ Select</button>

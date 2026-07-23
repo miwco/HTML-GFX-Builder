@@ -174,6 +174,38 @@ test('drawing an arrow from a port creates a transition; the walk\'s only edge r
   expect(await templateJs(page)).toContain('"from": "enter", "to": "reveal"');
 });
 
+test('a state nothing can enter is marked where it was authored, and the mark clears', async ({ page }) => {
+  // validateMachine has always known this, but the finding only reached the EXPORT panel —
+  // so a branch could carry a whole hand-built timeline and never be entered, and the
+  // surface that let you build it said nothing.
+  await createProject(page, { category: 'lower-third' });
+  await openGraph(page);
+
+  await page.getByTestId('mg-add-state-main').click();
+  await awaitPreviewRebuild(page, () => page.locator('.mg-add-menu button', { hasText: '○ Pose state' }).click());
+
+  const mark = page.getByTestId('mg-problem-main-new-state');
+  await expect(mark).toBeVisible();
+  await expect(mark).toHaveAttribute('title', /unreachable/);
+  // The card says the NEXT MOVE, not the export report's verdict.
+  await expect(page.getByTestId('mg-state-problem')).toContainText('No arrow leads here');
+  // A pose wears ○ like the rest state does — it used to be the one unmarked box on the graph.
+  await expect(page.locator('[data-testid="mg-state-main-new-state"] .mg-badge')).toHaveText('○');
+
+  // Draw a real arrow in; the mark goes with the reason for it.
+  await page.hover('[data-testid="mg-state-main-enter"]');
+  const port = await page.getByTestId('mg-port-main-enter').boundingBox();
+  const target = await page.getByTestId('mg-state-main-new-state').boundingBox();
+  await awaitPreviewRebuild(page, async () => {
+    await page.mouse.move(port!.x + port!.width / 2, port!.y + port!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target!.x + target!.width / 2, target!.y + target!.height / 2, { steps: 8 });
+    await page.mouse.up();
+  });
+  await expect(page.getByTestId('mg-problem-main-new-state')).toHaveCount(0);
+  await expect(page.getByTestId('mg-state-problem')).toHaveCount(0);
+});
+
 test('branch states and parallel groups add and delete; a dragged box parks and persists', async ({ page }) => {
   await createProject(page, { category: 'quiz' });
   await openGraph(page);
@@ -423,6 +455,28 @@ test('a branch state gets its own timeline, and it really plays', async ({ page 
   });
   expect(moved.before).not.toContain('140');
   expect(moved.after).toContain('140');
+
+  // SCRUBBING the branch drives the preview. The scrub protocol only ever addressed the
+  // WALK's phases, so a branch sent nothing at all and its timeline was authored blind — the
+  // playhead moved and the picture did not. It now answers `state:<group>:<state>`, which the
+  // simulator resolves through the runtime's OWN entry timeline.
+  const canvas = (await page.getByTestId('tlv2-canvas').boundingBox())!;
+  /** The box's live translateX, read off the matrix — a scrub lands NEAR a keyframe, not on
+   *  its exact number, so this compares distances rather than substrings. */
+  const boxX = () =>
+    page.evaluate(() => {
+      const w = document.querySelector<HTMLIFrameElement>('iframe.preview-frame')!.contentWindow!;
+      const m = w.getComputedStyle(w.document.querySelector('.lower-third-box')!).transform;
+      return Number(m.match(/matrix\(([^)]+)\)/)?.[1].split(',')[4] ?? NaN);
+    });
+  await page.mouse.click(canvas.x + 2, canvas.y + 8);
+  await page.waitForTimeout(500);
+  const atStart = await boxX();
+  await page.mouse.click(canvas.x + canvas.width - 6, canvas.y + 8);
+  await page.waitForTimeout(500);
+  const atEnd = await boxX();
+  expect(Math.abs(atEnd - atStart)).toBeGreaterThan(50); // the preview follows the branch playhead
+  expect(atEnd).toBeGreaterThan(130); // and lands on the branch's own last keyframe (140)
 
   // Back to the graphic's own sequence.
   await page.getByTestId('tlv2-branch-back').click();

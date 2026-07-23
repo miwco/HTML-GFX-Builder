@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { showCode } from './_code';
 
 // Era 1: self-hosted Monaco — the editor must work with every CDN unreachable.
 
@@ -20,7 +21,9 @@ test('the editor loads and works with all CDNs blocked', async ({ page }) => {
     await page.getByRole('button', { name: 'Create project' }).click();
   });
 
-  // Monaco rendered from the bundle and is interactive.
+  // Monaco rendered from the bundle and is interactive — opened from the topbar, since the
+  // pane ships closed, and the point here is that its chunk comes from the bundle, not a CDN.
+  await showCode(page);
   await expect(page.locator('.editor-host .monaco-editor')).toBeVisible();
   await expect(page.locator('.editor-host .view-line').first()).toContainText('DOCTYPE');
   await page.locator('.editor-host .monaco-editor').click();

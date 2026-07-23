@@ -9,9 +9,9 @@ import { readFileSync } from 'node:fs';
 
 async function addCurrentToShow(page: Page, showName: string, create = false): Promise<void> {
   await page.getByTestId('dock-tab-control').click();
-  const section = page.locator('.panel-section', { hasText: 'Shows' });
+  const section = page.locator('.panel-section', { hasText: 'Rundowns' });
   if (create) {
-    await section.getByPlaceholder('New show name').fill(showName);
+    await section.getByPlaceholder('New rundown name').fill(showName);
     await section.getByRole('button', { name: 'Create', exact: true }).click();
   } else {
     // A fresh document remounts the panel, so the show needs re-picking by name.
@@ -19,7 +19,7 @@ async function addCurrentToShow(page: Page, showName: string, create = false): P
     await section.locator('select').selectOption(value!);
   }
   await section.getByRole('button', { name: '+ Add current' }).click();
-  await expect(section.locator('.status-ok')).toContainText('is in the show');
+  await expect(section.locator('.status-ok')).toContainText('is in the rundown');
 }
 
 test('a show collects graphics in rundown order and exports one aggregated panel', async ({ page, context }) => {
@@ -31,7 +31,7 @@ test('a show collects graphics in rundown order and exports one aggregated panel
   await addCurrentToShow(page, 'Evening Show');
 
   // The rundown lists both, in order.
-  const section = page.locator('.panel-section', { hasText: 'Shows' });
+  const section = page.locator('.panel-section', { hasText: 'Rundowns' });
   await expect(section.locator('.show-graphic-row')).toHaveCount(2);
   await expect(section.locator('.show-graphic-row').nth(0)).toContainText('1. Hairline');
   await expect(section.locator('.show-graphic-row').nth(1)).toContainText('2. Arena Quiz');
@@ -39,7 +39,7 @@ test('a show collects graphics in rundown order and exports one aggregated panel
   // Export: one folder per graphic + the aggregated show panel.
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    section.getByRole('button', { name: /Export show package/ }).click(),
+    section.getByRole('button', { name: /Export rundown package/ }).click(),
   ]);
   const zip = await JSZip.loadAsync(readFileSync(await download.path()));
   const names = Object.keys(zip.files);
@@ -121,7 +121,7 @@ test('offline: the hosted control route answers honestly and the Shows section g
 
   await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
   await page.getByTestId('dock-tab-control').click();
-  const section = page.locator('.panel-section', { hasText: 'Shows' });
+  const section = page.locator('.panel-section', { hasText: 'Rundowns' });
   await expect(section).toBeVisible();
   await expect(section.getByText(/host.*online/i)).toHaveCount(0);
 });
@@ -256,14 +256,14 @@ test('the rundown reorders and removes; deleting the show keeps nothing behind',
   await createProject(page, { name: 'Arena Quiz' });
   await addCurrentToShow(page, 'Reorder Show');
 
-  const section = page.locator('.panel-section', { hasText: 'Shows' });
+  const section = page.locator('.panel-section', { hasText: 'Rundowns' });
   await section.locator('.show-graphic-row').nth(1).getByRole('button', { name: '↑' }).click();
   await expect(section.locator('.show-graphic-row').nth(0)).toContainText('1. Arena Quiz');
 
   await section.locator('.show-graphic-row').nth(0).getByRole('button', { name: '✕' }).click();
   await expect(section.locator('.show-graphic-row')).toHaveCount(1);
 
-  await section.getByRole('button', { name: 'Delete show' }).click();
+  await section.getByRole('button', { name: 'Delete rundown' }).click();
   await expect(section.locator('.show-graphic-row')).toHaveCount(0);
   const stored = await page.evaluate(() => {
     const list = JSON.parse(localStorage.getItem('spx-gfx-shows') ?? '[]') as { deleted?: boolean; graphics: unknown[] }[];
@@ -271,4 +271,57 @@ test('the rundown reorders and removes; deleting the show keeps nothing behind',
   });
   expect(stored.live).toBe(0); // tombstoned, payload stripped
   expect(stored.payloads).toEqual([0]);
+});
+
+test('a rundown export ships the LIVE graphic, not the snapshot from when it was added', async ({ page }) => {
+  // Save the graphic to the library so the rundown copy carries a graphicId, then add it.
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
+  await page.getByTestId('save-graphic').click();
+  await page.getByTestId('save-name').fill('Anchor L3');
+  await page.getByTestId('save-confirm').click();
+  await expect(page.getByTestId('save-dialog')).toBeHidden();
+  await addCurrentToShow(page, 'Live Rundown', true);
+
+  // Edit the LIBRARY graphic after it is in the rundown — a distinctive marker in the CSS.
+  await page.evaluate(async () => {
+    const { useTemplateStore } = await import('/src/store/templateStore.ts');
+    const s = useTemplateStore.getState();
+    s.applyTemplate({ ...s.template, css: s.template.css + '\n/* EDITED-AFTER-ADD */\n' });
+    // Re-save so the library record (not just the working doc) carries the edit.
+    const { saveCurrentGraphic } = await import('/src/store/saveActions.ts');
+    saveCurrentGraphic();
+  });
+
+  const section = page.locator('.panel-section', { hasText: 'Rundowns' });
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    section.getByRole('button', { name: /Export rundown package/ }).click(),
+  ]);
+  const zip = await JSZip.loadAsync(readFileSync(await download.path()));
+  const css = await zip.file('live_rundown/anchor_l3/css/template.css')!.async('string');
+  // The export carries the edit made AFTER the graphic was added — the live library template,
+  // not the snapshot embedded at add time.
+  expect(css).toContain('EDITED-AFTER-ADD');
+});
+
+test('Home lists rundowns and exports one; the package tab no longer calls itself a show', async ({ page }) => {
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
+  await addCurrentToShow(page, 'Home Rundown', true);
+
+  await page.getByTestId('open-home').click();
+  await page.getByTestId('home-nav-rundowns').click();
+  const row = page.locator('[data-testid^="rundown-row-"]');
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('Home Rundown');
+  await expect(row).toContainText('1 graphic');
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    row.getByTestId('export-rundown').click(),
+  ]);
+  expect(await download.suggestedFilename()).toMatch(/rundown\.zip$/);
+
+  // The word clash the review found: the Packages tab must not describe a package as a "show".
+  await page.getByTestId('home-nav-packages').click();
+  await expect(page.locator('.home-body')).not.toContainText(/A package is a show/i);
 });

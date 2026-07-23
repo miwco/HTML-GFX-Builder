@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { showCode } from './_code';
 
 // The Prettier formatting layer (src/format/formatCode.ts) and its Monaco wiring. The service is
 // house-aware on purpose: it formats HTML freely, but it must NEVER silently rewrite the two
@@ -93,6 +94,8 @@ async function createLowerThird(page: Page) {
     await page.getByRole('button', { name: 'Create project' }).click();
     await expect(page.locator('.wz-modal')).toBeHidden();
   });
+  // The Format button lives in the code pane's toolbar, and the pane ships closed.
+  await showCode(page);
 }
 
 test('the Format button reformats the active tab through Monaco and the store', async ({ page }) => {

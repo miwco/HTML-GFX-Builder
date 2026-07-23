@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
 import { createProject } from './_create';
+import { showCode } from './_code';
 import { canvasBox } from './_canvas';
 
 // Era 6 — direct manipulation (docs/WYSIWYG_PLAN.md, revised: NO move mode). The canvas
@@ -10,6 +11,8 @@ import { canvasBox } from './_canvas';
 
 async function createHairline(page: Page) {
   await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
+  // The subject is the CODE PATCH a drag writes, so the pane (closed by default) must be open.
+  await showCode(page);
 }
 
 /** The root rule's anchoring sides from the PREVIEW's stylesheet (behavior-true: what renders).

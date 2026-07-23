@@ -160,5 +160,6 @@ the row. Do not add rows without updating §3's justification trail.
   sanctioned imports into `src/render` live outside this graph. This subsumes invariant 5 -
   with the purity trio in Stage A, every §3 invariant is now machine-enforced.
 
-Until then, `scripts/e2e-affected.mjs` remains the de-facto machine-readable domain map (its
-`CORE` list is the "shared kernel" statement); keep it in step with this doc when domains move.
+Both stages are wired, so §3 needs no further tooling. `scripts/e2e-affected.mjs` stays a second,
+coarser domain map (its `CORE` list is the "shared kernel" statement) used for test selection
+rather than enforcement; keep it in step with this doc when domains move.

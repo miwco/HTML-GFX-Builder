@@ -17,7 +17,7 @@ import { slug } from './common';
 import { buildStarterInto } from './targets/spxStarter';
 import { renderShowControlPanelHtml } from '../control/controlPanelHtml';
 import { hostedReceiverConfig, hostedReceiverBlock, stripHostedReceiver } from '../control/hostedReceiver';
-import { loadGraphics, entriesForSavedGraphic } from '../model/library';
+import { loadGraphics, entriesForSavedGraphic, templateForSavedGraphic } from '../model/library';
 import type { Show } from '../model/shows';
 
 /** Optional seam for the hosted receiver's backend coordinates. Defaults to the app's own
@@ -45,7 +45,10 @@ export async function buildShowZip(show: Show, opts?: ShowExportOptions): Promis
     // A published show bakes the hosted-control receiver into each graphic, so the exported
     // package is drivable from the hosted page as-is. The saved snapshot stays clean — the
     // block exists only in the export; an unpublished show exports 100% offline.
-    let template = graphic.template;
+    // The LIVE template from the library (templateForSavedGraphic), not the snapshot embedded
+    // when the graphic was added — the graphic keeps being edited, and the export must ship
+    // what it looks like now.
+    let template = templateForSavedGraphic(graphic, library);
     const hosted = show.hostedSlug
       ? opts?.hostedBackend
         ? { ...opts.hostedBackend, slug: show.hostedSlug, graphic: graphic.name }
@@ -61,7 +64,7 @@ export async function buildShowZip(show: Show, opts?: ShowExportOptions): Promis
     'show_controlpanel.html',
     renderShowControlPanelHtml(
       show.name,
-      show.graphics.map((g) => ({ template: g.template, entries: entriesForSavedGraphic(g, library) })),
+      show.graphics.map((g) => ({ template: templateForSavedGraphic(g, library), entries: entriesForSavedGraphic(g, library) })),
     ),
   );
   root.file(
