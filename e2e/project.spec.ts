@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { showCode } from './_code';
 
 // Era 5.2b: the working graphic autosaves locally and survives a reload. Startup follows from
 // it: only a first-ever visit (no autosaved project) opens the wizard; a returning user lands
@@ -15,7 +16,8 @@ test('project autosave: the working graphic survives a reload', async ({ page })
     await page.getByRole('button', { name: 'Create project' }).click();
   });
 
-  // A distinctive edit into the code.
+  // A distinctive edit into the code (the pane ships closed — open it as a user would).
+  await showCode(page);
   await page.locator('.editor-host .monaco-editor').click();
   await page.keyboard.press('Control+End');
   await page.keyboard.type('<!-- autosave-marker-42 -->');

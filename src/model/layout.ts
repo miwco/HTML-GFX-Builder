@@ -29,12 +29,22 @@ export interface WorkspaceLayout {
 
 const STORAGE_KEY = 'spx-gfx-layout';
 
-/** The default framing: code on the left, the Inspector + tool panels on the right, and the
- *  canvas over a roomy timeline in the centre. The bottom dock starts empty. */
+/** The default framing: the canvas over a roomy timeline in the centre, the Inspector + tool
+ *  panels on the right, and BOTH the left and bottom docks empty.
+ *
+ *  The code panel starts CLOSED on purpose. Code is always available and never hidden behind a
+ *  scene model - but the view is optional (root CLAUDE.md), and most people who open this app
+ *  are here to make a graphic by choosing, not by reading HTML. Handing a first-time visitor a
+ *  Monaco pane across a third of the window says the opposite. The topbar's "▸ Show code"
+ *  brings it back in one click, and because an absent panel is what "closed" MEANS here
+ *  (loadLayout deliberately never re-adds one), that choice then persists like any other.
+ *
+ *  This is a change of DEFAULT, not of shape: anyone with a saved layout keeps their docks
+ *  exactly as they left them, so no version bump or migration is involved. */
 export const DEFAULT_LAYOUT: WorkspaceLayout = {
   version: 3,
   docks: {
-    left: { panels: ['code'], active: 'code', size: 0.28 },
+    left: { panels: [], active: null, size: 0.28 },
     right: { panels: ['inspector', 'data', 'control', 'style', 'assets', 'ai', 'export'], active: 'inspector', size: 0.26 },
     bottom: { panels: [], active: null, size: 0.3 },
   },

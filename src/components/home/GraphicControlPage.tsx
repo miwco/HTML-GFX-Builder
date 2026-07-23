@@ -302,8 +302,9 @@ export default function GraphicControlPage({ id }: { id: string }) {
             <button className="primary" onClick={addEntry} data-testid="add-entry">＋ Add entry</button>
           </div>
           <p className="hint">
-            Saved data rows for this graphic — “Anna Andersson · Presenter”, “Michael Smith ·
-            Guest”. Select one, play it, switch, play again.
+            This is the on-air control surface — playing an entry here airs it (the editor’s
+            Rehearse tab only drives the preview). Saved data rows for this graphic — “Anna
+            Andersson · Presenter”, “Michael Smith · Guest”. Select one, play it, switch, play again.
           </p>
 
           {doc.entries.length === 0 && (

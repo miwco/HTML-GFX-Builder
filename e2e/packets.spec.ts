@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createProject } from './_create';
+import { showCode } from './_code';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
 
@@ -108,7 +109,9 @@ test('looks: capture the current look in Home, apply it to another graphic, surv
     return useTemplateStore.getState().template.css;
   });
   expect(css).toContain('--accent: #12e29a');
-  // The applied change is highlighted in the CSS tab.
+  // The applied change is highlighted in the CSS tab — for a user who has the code pane open
+  // (it ships closed; applying a look works either way, this asserts what they'd then see).
+  await showCode(page);
   await expect(page.locator('.tabs .tab.active')).toHaveText('CSS');
   await expect(page.locator('.editor-host .changed-line').first()).toBeVisible();
 });

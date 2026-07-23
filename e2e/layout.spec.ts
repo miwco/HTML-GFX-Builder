@@ -10,11 +10,13 @@ async function createHairline(page: Page) {
   await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
 }
 
-test('the default framing: code on the left, Inspector + tools on the right, timeline in the centre', async ({ page }) => {
+test('the default framing: code CLOSED, Inspector + tools on the right, timeline in the centre', async ({ page }) => {
   await createHairline(page);
-  // Left dock holds the code editor; the right dock holds the Inspector (active) + tool panels.
-  await expect(page.getByTestId('dock-slot-left')).toBeVisible();
-  await expect(page.getByTestId('dock-tab-code')).toBeVisible();
+  // The code panel starts CLOSED, so there is no left dock and the canvas gets that width.
+  // Code is never hidden behind a scene model - the VIEW is optional, and the topbar opens it.
+  await expect(page.getByTestId('dock-slot-left')).toHaveCount(0);
+  await expect(page.getByTestId('dock-tab-code')).toHaveCount(0);
+  await expect(page.getByTestId('toggle-code')).toContainText('Show code');
   await expect(page.locator('[data-testid="dock-right"] .dock-tab.active .dock-tab-label')).toHaveText('Inspector');
   for (const id of ['data', 'control', 'style', 'assets', 'ai', 'export']) {
     await expect(page.getByTestId(`dock-tab-${id}`)).toBeVisible();
@@ -26,8 +28,30 @@ test('the default framing: code on the left, Inspector + tools on the right, tim
   expect(timeline.y).toBeGreaterThanOrEqual(stage.y + stage.height - 8);
 });
 
+test('opening the code pane narrows the centre, and the OPEN state persists', async ({ page }) => {
+  await createHairline(page);
+  const centerClosed = (await page.getByTestId('center-stage').boundingBox())!.width;
+
+  // Open the code editor from the topbar — the left dock appears and the centre gives way.
+  await page.getByTestId('toggle-code').click();
+  await expect(page.getByTestId('dock-slot-left')).toBeVisible();
+  await expect(page.getByTestId('dock-tab-code')).toBeVisible();
+  const centerOpen = (await page.getByTestId('center-stage').boundingBox())!.width;
+  expect(centerOpen).toBeLessThan(centerClosed);
+
+  // A pro who opens code keeps it: the choice survives a reload like any other dock state.
+  // (The reload restores the project directly — no startup wizard to dismiss.)
+  await page.reload();
+  await expect(page.locator('.topbar')).toBeVisible();
+  await expect(page.getByTestId('dock-slot-left')).toBeVisible();
+  await expect(page.getByTestId('dock-tab-code')).toBeVisible();
+});
+
 test('closing a panel removes its dock and widens the centre; the closed state persists', async ({ page }) => {
   await createHairline(page);
+  // Start from code OPEN (the default is closed), so this covers the close direction.
+  await page.getByTestId('toggle-code').click();
+  await expect(page.getByTestId('dock-slot-left')).toBeVisible();
   const centerBefore = (await page.getByTestId('center-stage').boundingBox())!.width;
 
   // Close the code editor — the left dock disappears and the centre widens.
@@ -47,6 +71,9 @@ test('closing a panel removes its dock and widens the centre; the closed state p
 
 test('dragging a dock divider resizes it, and the size persists', async ({ page }) => {
   await createHairline(page);
+  // The left dock is empty by default now, so open the code pane to have a divider to drag.
+  await page.getByTestId('toggle-code').click();
+  await expect(page.getByTestId('dock-slot-left')).toBeVisible();
   const leftBefore = (await page.getByTestId('dock-slot-left').boundingBox())!.width;
 
   // Drag the left divider RIGHT by 120px (raw move/down/move/up — pointer capture needs real moves).
@@ -137,7 +164,7 @@ test('mobile: the Inspector is a panel tab, so a selected layer can still be edi
 
   // The tool panels still render in the shared padded body beside it.
   await page.getByTestId('panel-tab-data').click();
-  await expect(page.locator('.panel-body')).toContainText('Sample data');
+  await expect(page.locator('.panel-body')).toContainText('Content');
 });
 
 test('mobile: the wizard preview keeps a real stage instead of collapsing', async ({ page }) => {

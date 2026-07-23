@@ -26,6 +26,8 @@ import {
   type SavedLook,
 } from '../../model/packets';
 import { saveBrand } from '../../model/brand';
+import { loadShows, deleteShow, type Show } from '../../model/shows';
+import { buildShowZip } from '../../export/showExport';
 import {
   deleteSavedVideoProject,
   listSavedVideoProjects,
@@ -58,13 +60,14 @@ function activeValues(g: GraphicDoc): Record<string, string> | undefined {
   return g.entries.find((e) => e.id === g.activeEntryId)?.values;
 }
 
-type Section = 'recent' | 'graphics' | 'packages' | 'controls' | 'videos' | 'looks';
+type Section = 'recent' | 'graphics' | 'packages' | 'controls' | 'rundowns' | 'videos' | 'looks';
 
 const SECTIONS: { id: Section; label: string; icon: string }[] = [
   { id: 'recent', label: 'Recent', icon: '🕘' },
   { id: 'graphics', label: 'Graphics', icon: '◫' },
   { id: 'packages', label: 'Packages', icon: '📦' },
   { id: 'controls', label: 'Control panels', icon: '🎛' },
+  { id: 'rundowns', label: 'Rundowns', icon: '📋' },
   { id: 'videos', label: 'Videos', icon: '🎬' },
   { id: 'looks', label: 'Brand looks', icon: '🎨' },
 ];
@@ -89,6 +92,7 @@ export default function HomePage({ route }: { route: Route }) {
   const graphics = useMemo(() => loadGraphics().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), [rev]);
   const packages = useMemo(() => loadPackets(), [rev]);
   const looks = useMemo(() => loadLooks(), [rev]);
+  const rundowns = useMemo(() => loadShows(), [rev]);
   const videos = useMemo(() => listSavedVideoProjects(), [rev]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -312,6 +316,10 @@ export default function HomePage({ route }: { route: Route }) {
                     </div>
                   ))}
                 </>
+              )}
+
+              {section === 'rundowns' && (
+                <RundownsSection rundowns={rundowns} onChanged={refresh} onNew={() => navigate({ view: 'new' })} />
               )}
 
               {section === 'videos' && (
@@ -583,8 +591,9 @@ function PackagesSection({
     <>
       <h2>Packages</h2>
       <p className="hint">
-        A package is a show, production, or graphics collection — “Election Night” with its
-        lower thirds, results graphic, and ticker together.
+        A package is a folder for related graphics — “Election Night” with its lower thirds,
+        results graphic, and ticker filed together. To run several graphics at once on air,
+        that is a <strong>rundown</strong> (in a graphic’s control panel).
       </p>
       <div className="row" style={{ marginBottom: 10 }}>
         <input
@@ -613,6 +622,87 @@ function PackagesSection({
           <span className="muted">{countIn(p.id)} graphic{countIn(p.id) === 1 ? '' : 's'}</span>
           <div className="spacer" />
           <button className="primary" onClick={() => onOpenPackage(p)} data-testid="open-package">Open</button>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/**
+ * The Rundowns Home section: DISCOVER and manage the rundowns built in the editor's control
+ * panel (a rundown = graphics that run together on air, model/shows.ts). Building one - creating
+ * it, adding the graphic you are editing - stays in that control panel, where the graphic
+ * context is, exactly as saving into a package does. Here you see them all, export a package,
+ * copy a published operator link, or delete one.
+ */
+function RundownsSection({
+  rundowns,
+  onChanged,
+  onNew,
+}: {
+  rundowns: Show[];
+  onChanged: () => void;
+  onNew: () => void;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const exportRundown = async (r: Show) => {
+    const zip = await buildShowZip(r);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    saveAs(blob, `${slug(r.name)}_rundown.zip`);
+  };
+  return (
+    <>
+      <h2>Rundowns</h2>
+      <p className="hint">
+        A rundown is several graphics that run together on air — a bug, a lower third, and a
+        ticker as one show, operated from a single control page. Build one from a graphic’s
+        <strong> control panel</strong> (“Add current” to a rundown); manage and export them here.
+      </p>
+      {rundowns.length === 0 && (
+        <p className="hint">
+          No rundowns yet.{' '}
+          <button className="link-inline" onClick={onNew}>Create a graphic</button>, then add it to a
+          rundown from its control panel.
+        </p>
+      )}
+      {rundowns.map((r) => (
+        <div className="pk-graphic" key={r.id} data-testid={`rundown-row-${r.id}`}>
+          <strong>📋 {r.name}</strong>
+          <span className="muted">
+            {r.graphics.length} graphic{r.graphics.length === 1 ? '' : 's'}
+            {r.hostedSlug ? ' · 🌐 published' : ''}
+          </span>
+          <div className="spacer" />
+          {r.hostedSlug && (
+            <button
+              onClick={() => {
+                void navigator.clipboard?.writeText(`${window.location.origin}/app?control=${encodeURIComponent(r.hostedSlug!)}`);
+                onChanged();
+              }}
+              title="Copy the operator link (keep it private)"
+            >
+              🔗 Copy link
+            </button>
+          )}
+          <button
+            className="primary"
+            disabled={r.graphics.length === 0}
+            onClick={() => void exportRundown(r)}
+            data-testid="export-rundown"
+          >
+            ⬇ Export
+          </button>
+          {confirmDelete === r.id ? (
+            <button
+              className="destructive"
+              onClick={() => { deleteShow(r.id); setConfirmDelete(null); onChanged(); }}
+              title="Delete this rundown (its graphics stay saved wherever else they live)"
+            >
+              Delete?
+            </button>
+          ) : (
+            <button onClick={() => setConfirmDelete(r.id)} title="Delete this rundown">🗑</button>
+          )}
         </div>
       ))}
     </>

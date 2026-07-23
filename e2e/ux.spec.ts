@@ -1,5 +1,6 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
+import { showCode } from './_code';
 
 // The UX overhaul: preview-over-tabs layout, validation inside Export, motion phase
 // control + auto-replay (on the timeline strip — the Motion tab is retired), add-field
@@ -21,8 +22,10 @@ function frame(page: Page): FrameLocator {
   return page.frameLocator('iframe.preview-frame');
 }
 
-test('layout: code dock left, canvas + timeline in the centre, tool tabs in the right dock', async ({ page }) => {
+test('layout: code dock left ONCE OPENED, canvas + timeline in the centre, tool tabs right', async ({ page }) => {
   await createHairline(page);
+  // The code pane ships CLOSED (model/layout.ts); opened, it takes the left of the centre.
+  await showCode(page);
   const editor = await page.locator('.editor-host').boundingBox();
   const stage = await page.locator('.preview-stage').boundingBox();
   const rightTabs = await page.locator('[data-testid="dock-right"] .dock-tabs').boundingBox();
@@ -32,9 +35,10 @@ test('layout: code dock left, canvas + timeline in the centre, tool tabs in the 
   // …and the tool tabs are a dock to the RIGHT of the stage.
   expect(rightTabs!.x).toBeGreaterThanOrEqual(stage!.x + stage!.width - 4);
   // The right dock holds the Inspector plus the focused tool panels — Blocks/Learn/Validate
-  // are gone; Control is the operator view; Motion lives on the timeline, not in a tab.
+  // are gone; Content = design values, Rehearse = the in-editor operator view; Motion lives on
+  // the timeline, not in a tab.
   await expect(page.locator('[data-testid="dock-right"] .dock-tab-label')).toHaveText([
-    'Inspector', 'Data', 'Control', 'Style', 'Assets', 'AI', 'Export',
+    'Inspector', 'Content', 'Rehearse', 'Style', 'Assets', 'AI', 'Export',
   ]);
 });
 
@@ -42,7 +46,8 @@ test('export: validation shows inline and gates the download on a broken templat
   await createHairline(page);
   await page.getByTestId('dock-tab-export').click();
   await expect(page.locator('.panel-body .status-ok')).toContainText('valid and ready');
-  // Break the runtime: blank the JS in the editor.
+  // Break the runtime: blank the JS in the editor (the pane ships closed — open it first).
+  await showCode(page);
   await page.locator('.tabs .tab', { hasText: 'JS' }).click();
   await page.locator('.editor-host .monaco-editor').click();
   await page.keyboard.press('Control+a');
@@ -76,7 +81,8 @@ test('data: add-field lands as a REAL line on a catalog template, in the assembl
   expect(selected).toBe('#f2');
   await page.getByTestId('dock-tab-data').click();
   await expect(page.locator('.field-row', { hasText: 'Sponsor' })).toBeVisible();
-  // …the editor switched to HTML and highlighted the change.
+  // …and for someone with the code pane open, it switched to HTML and highlighted the change.
+  await showCode(page);
   await expect(page.locator('.tabs .tab.active')).toHaveText('HTML');
   await expect(page.locator('.editor-host .changed-line').first()).toBeVisible();
 });
@@ -145,6 +151,7 @@ test('wizard: direction control mixes a different exit preset at create', async 
 
 test('style: a color change highlights the changed CSS lines', async ({ page }) => {
   await createHairline(page);
+  await showCode(page); // the highlight below lives in the code pane, which ships closed
   await page.getByTestId('dock-tab-style').click();
   const accentRow = page.locator('.field-row', { hasText: '--accent' }).first();
   await accentRow.locator('input[type="color"]').evaluate((el) => {

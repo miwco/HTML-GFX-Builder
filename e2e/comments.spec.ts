@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { createProject } from './_create';
+import { showCode } from './_code';
 
 // The Comments visibility control (src/editor/commentVisibility.ts) - a VIEW preference over the
 // code editor. Two things it must never do: get the comment spans wrong (hence tokenization, not
@@ -7,10 +8,10 @@ import { createProject } from './_create';
 // reapply-on-model-change contract and the temporary reveal that keeps a hidden comment from
 // swallowing whatever the editor is pointing the user at.
 
-/** The code pane's Monaco (the left dock) once the lazy chunk is up. */
+/** The code pane's Monaco once the lazy chunk is up. The pane ships CLOSED, and this whole
+ *  file's subject is a control that lives inside it — so open it first, as its user would. */
 async function codeEditorReady(page: Page) {
-  await expect(page.getByTestId('dock-tab-code')).toBeVisible();
-  await expect(page.locator('.monaco-editor').first()).toBeVisible();
+  await showCode(page);
   await expect(page.getByTestId('comment-visibility')).toBeVisible();
 }
 

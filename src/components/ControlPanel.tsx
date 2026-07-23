@@ -72,13 +72,13 @@ export default function ControlPanel() {
     // page can find the graphic's saved entries (control/hostedControl.ts).
     const { shows: next, error } = addGraphicToShow(activeShow.id, template, { graphicId: savedGraphicId });
     setShows(next);
-    setShowNote(error ?? `✓ "${template.name}" is in the show (same name updates in place).`);
+    setShowNote(error ?? `✓ "${template.name}" is in the rundown (same name updates in place).`);
   };
   const exportShow = async (show: Show) => {
     const zip = await buildShowZip(show);
     const blob = await zip.generateAsync({ type: 'blob' });
-    saveAs(blob, `${slug(show.name)}_show.zip`);
-    setShowNote(`✓ Exported "${show.name}" — one folder per graphic + show_controlpanel.html.`);
+    saveAs(blob, `${slug(show.name)}_rundown.zip`);
+    setShowNote(`✓ Exported "${show.name}" — one folder per graphic + show_controlpanel.html (rundown package).`);
   };
   // ── Hosted control (account feature): publish the show's control page online ──
   const [publishBusy, setPublishBusy] = useState(false);
@@ -89,7 +89,7 @@ export default function ControlPanel() {
       const hostedSlug = await publishControlShow(show);
       if (hostedSlug) {
         setShows(setShowHostedSlug(show.id, hostedSlug));
-        setShowNote('✓ Hosted control page is live — share the link with your operators. Re-publish after changing the show.');
+        setShowNote('✓ Hosted control page is live — share the link with your operators. Re-publish after changing the rundown.');
       }
     } catch (e) {
       setShowNote(`Publish failed: ${(e as Error).message}`);
@@ -209,11 +209,12 @@ export default function ControlPanel() {
   return (
     <div>
       <div className="panel-section">
-        <h3>Control panel <span className="muted">— operator view</span></h3>
+        <h3>Rehearse <span className="muted">— operator view</span></h3>
         <p className="hint">
-          Auto-built from this graphic's fields. Edits drive the preview live; the buttons play
-          it out. <strong>Download</strong> a standalone copy to run the graphic as a browser
-          source and operate it from another tab.
+          The operator view, here for <strong>rehearsal</strong>: auto-built from this graphic's
+          fields, its edits and buttons drive <strong>this preview</strong> so you can play it
+          through before air. The real on-air surface is the graphic's own <strong>Control
+          panel</strong> (Home → Control panels, or the standalone copy you download below).
         </p>
       </div>
 
@@ -273,15 +274,15 @@ export default function ControlPanel() {
 
       <div className="divider" />
       <div className="panel-section">
-        <h3>Shows <span className="muted">— run graphics together</span></h3>
+        <h3>Rundowns <span className="muted">— graphics that run together</span></h3>
         <p className="hint">
-          A show collects graphics that run at once (bug + lower third + ticker). Exporting it
+          A rundown collects graphics that run at once (bug + lower third + ticker). Exporting it
           packages every graphic plus <strong>one</strong> control page with a card per graphic
-          — the whole show operated from a single tab.
+          — the whole rundown operated from a single tab. Manage saved rundowns from Home.
         </p>
         <div className="row">
           <input
-            placeholder="New show name"
+            placeholder="New rundown name"
             value={newShowName}
             onChange={(e) => setNewShowName(e.target.value)}
           />
@@ -290,13 +291,13 @@ export default function ControlPanel() {
         {shows.length > 0 && (
           <div className="row" style={{ marginTop: 8 }}>
             <select className="grow" value={showId} onChange={(e) => setShowId(e.target.value)}>
-              <option value="">Pick a show…</option>
+              <option value="">Pick a rundown…</option>
               {shows.map((s) => (
                 <option key={s.id} value={s.id}>{s.name} ({s.graphics.length})</option>
               ))}
             </select>
             {activeShow && (
-              <button className="primary" onClick={addCurrent} title="Add or update this graphic in the show">
+              <button className="primary" onClick={addCurrent} title="Add or update this graphic in the rundown">
                 + Add current
               </button>
             )}
@@ -324,26 +325,26 @@ export default function ControlPanel() {
                   onClick={() => setShows(moveShowGraphic(activeShow.id, g.id, 1))}
                   title="Move down the rundown"
                 >↓</button>
-                <button className="show-row-btn" onClick={() => setShows(removeShowGraphic(activeShow.id, g.id))} title="Remove from the show">✕</button>
+                <button className="show-row-btn" onClick={() => setShows(removeShowGraphic(activeShow.id, g.id))} title="Remove from the rundown">✕</button>
               </div>
             ))}
             <div className="row" style={{ marginTop: 8 }}>
-              <button onClick={() => { setShows(deleteShow(activeShow.id)); setShowId(''); }} title="Delete this show (its graphics stay saved wherever else they live)">
-                Delete show
+              <button onClick={() => { setShows(deleteShow(activeShow.id)); setShowId(''); }} title="Delete this rundown (its graphics stay saved wherever else they live)">
+                Delete rundown
               </button>
               <div className="spacer" style={{ flex: 1 }} />
               <button className="primary" disabled={activeShow.graphics.length === 0} onClick={() => exportShow(activeShow)}>
-                ⬇ Export show package
+                ⬇ Export rundown package
               </button>
             </div>
             {backendConfigured && (
               <div style={{ marginTop: 10 }}>
                 {needsSignIn ? (
                   <p className="muted">
-                    <button className="link-inline" onClick={() => openSignIn('Sign in to host this show’s control page online.')}>
+                    <button className="link-inline" onClick={() => openSignIn('Sign in to host this rundown’s control page online.')}>
                       Sign in
                     </button>{' '}
-                    to host this show's control page online — operators then drive it from any
+                    to host this rundown's control page online — operators then drive it from any
                     device via a private link, with crash recovery.
                   </p>
                 ) : (
@@ -380,7 +381,7 @@ export default function ControlPanel() {
                     )}
                     {activeShow.hostedSlug && (
                       <p className="hint" style={{ marginTop: 6 }}>
-                        Exporting the show now bakes the hosted receiver into each graphic, so the
+                        Exporting the rundown now bakes the hosted receiver into each graphic, so the
                         online page drives the exported package from any device — with recovery.
                       </p>
                     )}

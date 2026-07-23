@@ -129,3 +129,44 @@ test('animation step: a mid-demo preset change never leaves the preview hidden',
   await page.waitForTimeout(4500);
   await expect.poll(() => rootOpacity(page), { timeout: 5000 }).toBe('1');
 });
+
+test('template cards frame onto the graphic, not the empty canvas around it', async ({ page }) => {
+  // A lower third occupies a band of a 1920x1080 frame, so a card that scaled the whole canvas
+  // was mostly empty and the designs were hard to tell apart at picking size. Each card now
+  // measures its graphic and frames onto it (MiniPreview) — the same reframe "Zoom to graphic"
+  // performs. Assert the framing is real (zoomed past the whole-canvas fit) and that the
+  // graphic sits INSIDE its card rather than being cropped by the zoom.
+  await page.goto('/app');
+  await expect(page.getByTestId('creation-wizard')).toBeVisible();
+  await page.locator('[data-entry="template"]').click();
+  await page.locator('.wz-cat', { hasText: 'Lower thirds' }).click();
+  await expect(page.locator('.wz-variant').first()).toBeVisible();
+
+  const framing = await page.evaluate(async () => {
+    await new Promise((r) => setTimeout(r, 2500)); // let the minis settle + measure
+    const out: { zoom: number; insideL: boolean; insideR: boolean }[] = [];
+    document.querySelectorAll('.wz-variant');
+    [...document.querySelectorAll('.wz-variant')].slice(0, 5).forEach((card) => {
+      const mini = card.querySelector('.wz-mini')!.getBoundingClientRect();
+      const f = card.querySelector('iframe') as HTMLIFrameElement;
+      const inner = f.contentDocument?.body?.querySelector('div')?.getBoundingClientRect();
+      if (!inner) return;
+      const fr = f.getBoundingClientRect();
+      const scale = fr.width / f.offsetWidth;         // rendered scale of the canvas
+      const fit = mini.width / f.offsetWidth;          // the whole-canvas fit it replaces
+      const gx = fr.left + inner.left * scale;
+      out.push({
+        zoom: scale / fit,
+        insideL: gx >= mini.left - 1,
+        insideR: gx + inner.width * scale <= mini.right + 1,
+      });
+    });
+    return out;
+  });
+
+  expect(framing.length).toBeGreaterThanOrEqual(4);
+  for (const f of framing) {
+    expect(f.zoom).toBeGreaterThan(1.5); // genuinely reframed, not the old whole-canvas scale
+    expect(f.insideL && f.insideR).toBe(true); // and the zoom never crops the design away
+  }
+});

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
 import { createProject } from './_create';
+import { showCode } from './_code';
 import { canvasBox, elementPoint } from './_canvas';
 
 // Era 6 — the canvas SELECTION model. Clicking a structural element selects it: an amber
@@ -10,6 +11,13 @@ import { canvasBox, elementPoint } from './_canvas';
 // deselects. Selection is editor UI state ONLY — it never writes into the template.
 
 async function createHairline(page: Page) {
+  await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
+  // These cases assert what a canvas gesture writes into the CODE, and the pane ships closed.
+  await showCode(page);
+}
+
+/** The mobile stack has no dock model and its own code toggle, so it bootstraps without one. */
+async function createHairlineMobile(page: Page) {
   await createProject(page, { category: 'Lower thirds', name: 'Hairline' });
 }
 
@@ -237,7 +245,7 @@ test('the chip assigns the selected part to a press — the data chain, from the
 
 test('mobile: the chip drops the desktop-gesture hints and stays inside the canvas', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await createHairline(page);
+  await createHairlineMobile(page);
   await waitSettled(page);
 
   // Select through the shared selection (the timeline row label — the same real UI path

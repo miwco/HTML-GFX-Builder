@@ -1,6 +1,7 @@
 import { test, expect, type Page, type FrameLocator } from '@playwright/test';
 import { awaitPreviewRebuild } from './_preview';
 import { createProject } from './_create';
+import { showCode } from './_code';
 import { applyLegacyRegion, applyUnconvertibleRegion, applyUnreadableRegion } from './_legacy';
 
 // PHASE 8 — what happens to a LEGACY TEMPLATE now that the classic strip's editing patchers are
@@ -25,6 +26,8 @@ import { applyLegacyRegion, applyUnconvertibleRegion, applyUnreadableRegion } fr
 
 async function createCard(page: Page) {
   await createProject(page, { category: 'Info cards', name: 'Hairline Card' });
+  // Several cases assert which code TAB the surface jumps to, so the pane must be open.
+  await showCode(page);
 }
 
 function frame(page: Page): FrameLocator {
