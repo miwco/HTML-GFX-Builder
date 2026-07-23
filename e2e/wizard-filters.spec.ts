@@ -1,74 +1,126 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// The Template step's discovery filters: chips derived purely from variant metadata
-// (style family, logo capability, line capacity) narrow the card grid; clearing them
-// restores the full catalog. Facets that cannot narrow a category are not offered.
+// The Browse step's faceted discovery (docs/TEMPLATE_TAXONOMY_PROPOSAL.md §12-13): category
+// tiles + field buckets + style chips narrow the grid (facets AND together), programme
+// selection RANKS into "Best for" / "Also works" without hiding anything, search reaches
+// templates through aliases, and the zero-result state offers its own escape hatches.
+// Counts derive from the live metadata so the assertions track catalog growth; the
+// RELATIONSHIPS are what this spec guards, never absolute totals.
 
-async function toTemplateStep(page: Page, category: string) {
+async function toBrowseStep(page: Page) {
   await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: category }).click();
+  await expect(page.locator('.wz-browse-search')).toBeVisible();
 }
 
-/** Counts derived from the live catalog, so the assertions track catalog growth (the whole
- *  point of the template factory) instead of pinning a size that changes every time a cell
- *  is filled. The RELATIONSHIPS are what this spec guards — a style filter shows only that
- *  style, adding logo narrows further — not the absolute totals. */
-async function lowerThirdCounts(page: Page) {
+async function catalogCounts(page: Page) {
   return page.evaluate(async () => {
-    const { variantsFor } = await import('/src/templates/catalog.ts');
-    const vs = variantsFor('lower-third') as { styleTag: string; logo: string; maxLines: number }[];
+    const { allTemplateMeta } = await import('/src/templates/templateMeta.ts');
+    const all = allTemplateMeta().map(({ meta }) => meta);
+    const lt = all.filter((m) => m.category === 'lower-third');
     return {
-      total: vs.length,
-      glass: vs.filter((v) => v.styleTag === 'glass').length,
-      glassLogo: vs.filter((v) => v.styleTag === 'glass' && v.logo !== 'none').length,
-      threePlus: vs.filter((v) => v.maxLines >= 3).length,
+      total: all.length,
+      lowerThirds: lt.length,
+      ltGlass: lt.filter((m) => m.styleFamily === 'glass').length,
+      ltGlassLogo: lt.filter((m) => m.styleFamily === 'glass' && m.capabilities.includes('logo-upload')).length,
+      repeating: all.filter((m) => m.fieldCounts.repeating > 0).length,
     };
   });
 }
 
-test('style, logo, and line filters narrow the lower-thirds grid; clear restores all', async ({ page }) => {
-  await toTemplateStep(page, 'Lower thirds');
-  const n = await lowerThirdCounts(page);
+test('category, style, and capability facets AND together; clear-all restores the catalog', async ({ page }) => {
+  await toBrowseStep(page);
+  const n = await catalogCounts(page);
   const cards = page.locator('.wz-variant');
   await expect(cards).toHaveCount(n.total);
 
-  // Style: Glass keeps exactly the glass designs.
-  await page.locator('.wz-filter', { hasText: 'Glass' }).click();
-  await expect(cards).toHaveCount(n.glass);
-  for (const tag of await page.locator('.wz-variant .wz-style-tag').allTextContents()) {
-    expect(tag).toBe('Glass');
-  }
+  // Category tile narrows to that category's templates.
+  await page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Lower thirds' }).click();
+  await expect(cards).toHaveCount(n.lowerThirds);
 
-  // Adding the logo facet narrows to glass designs with a logo slot (lt08 Frosted Card).
-  await page.locator('.wz-filter', { hasText: 'Logo slot' }).click();
-  await expect(cards).toHaveCount(n.glassLogo);
+  // Style: the glass family keeps exactly the glass designs.
+  await page.locator('.wz-filter', { hasText: 'Elegant & cinematic' }).click();
+  await expect(cards).toHaveCount(n.ltGlass);
+
+  // Capabilities live under More filters and are STRICT (has logo upload = has it).
+  await page.locator('.wz-browse-more summary').click();
+  await page.locator('.wz-browse-more .wz-filter', { hasText: 'Logo upload' }).click();
+  await expect(cards).toHaveCount(n.ltGlassLogo);
   await expect(page.locator('.wz-variant', { hasText: 'Frosted Card' })).toBeVisible();
 
-  // Clear brings the whole catalog back.
-  await page.locator('.wz-filter', { hasText: 'Clear' }).click();
+  // Clear all brings the whole catalog back.
+  await page.locator('.wz-filter-clear').click();
   await expect(cards).toHaveCount(n.total);
 
-  // Line capacity: 3+ lines keeps only the roomier designs.
-  await page.locator('.wz-filter', { hasText: '3+ lines' }).click();
-  await expect(cards).toHaveCount(n.threePlus);
+  // The repeating bucket keeps only templates with a repeating list field.
+  await page.getByRole('button', { name: '↻ Repeating' }).click();
+  await expect(cards).toHaveCount(n.repeating);
 });
 
-test('an impossible combination shows the empty state with its own clear', async ({ page }) => {
-  await toTemplateStep(page, 'Lower thirds');
-  const n = await lowerThirdCounts(page);
-  // NoaCG designs carry no logo slot, so this combination matches nothing.
-  await page.locator('.wz-filter', { hasText: 'NoaCG' }).click();
-  await page.locator('.wz-filter', { hasText: 'Logo slot' }).click();
-  await expect(page.locator('.wz-variant')).toHaveCount(0);
-  await page.locator('.wz-filter-empty button', { hasText: 'Clear filters' }).click();
+test('programme selection ranks into Best for / Also works without hiding anything', async ({ page }) => {
+  await toBrowseStep(page);
+  const n = await catalogCounts(page);
+  await page.locator('.wz-browse-programme select').last().selectOption('church-service');
+  // Ranking, never exclusion: every template still shows, split across the two sections.
+  await expect(page.locator('.wz-browse-section', { hasText: 'Best for church service' })).toBeVisible();
+  await expect(page.locator('.wz-browse-section', { hasText: 'Also works' })).toBeVisible();
   await expect(page.locator('.wz-variant')).toHaveCount(n.total);
 });
 
-test('facets that cannot narrow a category are not offered', async ({ page }) => {
-  // Starting soon: no logo-capable design, so the logo chip must not appear.
-  await toTemplateStep(page, 'Starting soon');
+test('search reaches templates through aliases and field semantics', async ({ page }) => {
+  await toBrowseStep(page);
+  const n = await catalogCounts(page);
+  // "name graphic" is an alias for lower thirds — no template carries those words.
+  await page.locator('.wz-browse-search').fill('name graphic');
+  await expect(page.locator('.wz-variant')).toHaveCount(n.lowerThirds);
+  await page.locator('.wz-browse-search').fill('countdown');
+  // Countdown fans out across timers AND holding screens (the alias set).
+  await expect(page.locator('.wz-variant', { hasText: 'Quiet Hold' })).toBeVisible();
+  await expect(page.locator('.wz-variant', { hasText: 'Clean Clock' })).toBeVisible();
+});
+
+test('an impossible combination shows the honest empty state with its escape hatches', async ({ page }) => {
+  await toBrowseStep(page);
+  // Bold & on-air lower thirds carry no logo slot, so this combination matches nothing.
+  await page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Lower thirds' }).click();
+  await page.locator('.wz-filter', { hasText: 'Bold & on-air' }).click();
+  await page.locator('.wz-browse-more summary').click();
+  await page.locator('.wz-browse-more .wz-filter', { hasText: 'Logo upload' }).click();
+  await expect(page.locator('.wz-variant')).toHaveCount(0);
+  await expect(page.locator('.wz-browse-empty')).toBeVisible();
+  // The escape hatches: drop the most limiting filter, or hand the brief to Create with AI.
+  await expect(page.locator('.wz-browse-empty button', { hasText: 'Create it with AI' })).toBeVisible();
+  await page.locator('.wz-browse-empty button', { hasText: 'Remove the most limiting filter' }).click();
   await expect(page.locator('.wz-variant').first()).toBeVisible();
-  await expect(page.locator('.wz-filter', { hasText: 'Logo slot' })).toBeHidden();
+});
+
+test('on a phone the facets collapse into the filter drawer; results stay one flick away', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await toBrowseStep(page);
+  // Closed by default: the controls are hidden, the toggle and the results are not.
+  const drawer = page.locator('.wz-browse-filters');
+  const toggle = page.locator('.wz-browse-drawer-btn');
+  await expect(toggle).toBeVisible();
+  await expect(drawer).toBeHidden();
+  await expect(page.locator('.wz-browse-search')).toBeVisible();
+  await expect(page.locator('.wz-variant').first()).toBeVisible();
+  // Open, filter by a category tile, close — the filter holds and the badge counts it.
+  await toggle.click();
+  await expect(drawer).toBeVisible();
+  await page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Lower thirds' }).click();
+  await toggle.click();
+  await expect(drawer).toBeHidden();
+  await expect(toggle).toContainText('(1)');
+  const n = await catalogCounts(page);
+  await expect(page.locator('.wz-variant')).toHaveCount(n.lowerThirds);
+});
+
+test('facet values without catalog mass render no chip', async ({ page }) => {
+  await toBrowseStep(page);
+  await page.locator('.wz-browse-more summary').click();
+  // No preset ships intensity "none", so that chip must not exist (proposal §10).
+  await expect(page.locator('.wz-filter', { hasText: 'Motion: none' })).toHaveCount(0);
+  // And only categories with content render tiles — the product category is a known gap.
+  await expect(page.locator('.wz-browse-tiles .wz-cat', { hasText: 'Products' })).toHaveCount(0);
 });

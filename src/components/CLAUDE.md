@@ -598,10 +598,31 @@ undo/redo keys as AppShell with the same Monaco/form-field guard. AI chat gates 
 
 ## Wizard (wizard/)
 
-CreationWizard (Entry -> Category -> Template -> Fields -> Style -> Animation, persistent live
-preview), draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.create(options)`
+CreationWizard (Entry -> Browse -> Fields -> Style -> Animation, persistent live preview),
+draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.create(options)`
 which generates the complete, commented template. FIVE entry cards: template, Create with AI,
 video, Import graphic, blank.
+
+**Browse** (steps/BrowseStep.tsx, mode 'template' only) is the FACETED template storefront
+(docs/TEMPLATE_TAXONOMY_PROPOSAL.md §12) replacing the old Category -> Template pair: search
+(alias-aware, src/templates/search.ts), optional programme family/format selects (RANKING —
+"Best for X" / "Also works" sections, never exclusion), category tiles with live counts (only
+categories with catalog content render), field-count buckets (range-intersection over the
+reachable visible range), style-family chips, and the specialist facets (structure /
+capabilities / placement-motion) under a More-filters disclosure. Filter state lives in
+CreationWizard (`browseFilters`) so Back returns with filters intact; the setter is passed as
+a REACT DISPATCH so chip toggles compose as functional updates (two clicks in one batch must
+never overwrite each other). Zero results name no template dishonestly: the empty state
+offers "remove the most limiting filter" (computed: the chip whose removal restores the most
+results) and a Create-with-AI hand-off. Cards carry the strict info budget (category ·
+subtype, top families, field summary from semantics, ≤3 capability badges, style family,
+complexity); MiniPreview mounts its iframe only when the card scrolls into view
+(IntersectionObserver — the whole catalog can be on one grid now). On ≤768px the facet
+controls collapse behind the `.wz-browse-drawer-btn` toggle (active-count badge; search,
+active chips and results stay visible — closed by default via a matchMedia initial state,
+and desktop CSS ignores the closed state entirely). The import-images
+continuation (mode 'import') keeps the old ImportStep -> TemplateStep flow and indices; the
+catalog flow's later steps sit one index earlier (`animStep`).
 
 **Import graphic** (mode 'design', steps/ImportDesignStep + PrepareDesignStep +
 PlaceFieldsStep + the shared AnimationStep) is a SETUP flow, not a second editor:

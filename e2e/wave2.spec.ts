@@ -13,7 +13,7 @@ function frame(page: Page): FrameLocator {
 }
 
 test('starting soon: holds on screen and the countdown ticks', async ({ page }) => {
-  await createFrom(page, 'Starting soon', 'Quiet Hold');
+  await createFrom(page, 'Holding', 'Quiet Hold');
   const clock = frame(page).locator('.starting-soon-clock');
   await expect(clock).toHaveText('5:00'); // idle paint shows the full duration
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -23,7 +23,7 @@ test('starting soon: holds on screen and the countdown ticks', async ({ page }) 
 });
 
 test('game timer: label binds and the clock runs', async ({ page }) => {
-  await createFrom(page, 'Game show timer', 'Clean Clock');
+  await createFrom(page, 'Timers', 'Clean Clock');
   await expect(frame(page).locator('#f0')).toHaveText('ROUND 1');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect(frame(page).locator('.game-timer-clock')).not.toHaveText('3:00', { timeout: 6000 });
@@ -45,7 +45,7 @@ test('scoreboard: all four fields bind and a score change lands', async ({ page 
 });
 
 test('corner bug: plays with the placeholder mark', async ({ page }) => {
-  await createFrom(page, 'Corner bug', 'Glass Mark');
+  await createFrom(page, 'corner logos', 'Glass Mark');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
     .poll(async () => frame(page).locator('.corner-bug').evaluate((el) => getComputedStyle(el).opacity))
@@ -54,7 +54,7 @@ test('corner bug: plays with the placeholder mark', async ({ page }) => {
 });
 
 test('infographic: the stat counts up to its value', async ({ page }) => {
-  await createFrom(page, 'Infographics', 'Big Stat');
+  await createFrom(page, 'Statistics', 'Big Stat');
   const value = frame(page).locator('#f0');
   await expect(value).toHaveText('87%');
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -66,7 +66,7 @@ test('infographic: the stat counts up to its value', async ({ page }) => {
 });
 
 test('quiz: options bind and Next reveals the correct answer', async ({ page }) => {
-  await createFrom(page, 'Quiz graphics', 'Arena Quiz');
+  await createFrom(page, 'quizzes', 'Arena Quiz');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect(frame(page).locator('#f2')).toHaveText('Mars');
   await expect(frame(page).locator('.quiz-correct')).toHaveCount(0); // no reveal before next()

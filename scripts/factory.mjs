@@ -281,6 +281,11 @@ const PROBE = `(async (onlyIds) => {
   const allVariantIds = [];
   for (const list of Object.values(CATALOG)) for (const v of list ?? []) allVariantIds.push(v.id);
   const packProblems = validatePacks(allVariantIds);
+  // The discovery-taxonomy assertions (docs/TEMPLATE_TAXONOMY_PROPOSAL.md §17 stage 2):
+  // format-id ↔ sheet-name bijection, subtypes from the controlled lists, positional
+  // semantics matching schema length. Same failure surface as the pack problems.
+  const { validateTaxonomy } = await import('/src/templates/templateMeta.ts');
+  packProblems.push(...validateTaxonomy());
   const packs = [];
   for (const pack of PACKS) {
     let resolved = [];
