@@ -18,7 +18,7 @@ export const bug29: TemplateVariant = defineBugVariant(
     category: 'corner-bug',
     name: 'House Award Bug',
     styleTag: 'noacg',
-    description: 'The house award mark: an amber award kicker over the category, beside the award logo.',
+    description: 'The house winner / nominee mark: an amber award kicker over the category, beside the award logo.',
     maxLines: 2,
     suggestedLines: [
       { title: 'Award', sample: 'WINNER 2026' },

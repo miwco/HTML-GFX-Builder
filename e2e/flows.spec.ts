@@ -132,8 +132,19 @@ test('import graphics: image lands in the logo slot', async ({ page }) => {
   await expect(page.locator('.asset-card')).toHaveCount(1);
   await page.getByRole('button', { name: /Continue with 1 image/ }).click();
 
-  // Logo-slot designs come first.
-  await expect(page.locator('.wz-variant').first()).toContainText('Number Badge');
+  // Logo-slot designs come first. WHICH one leads is the catalog's business (the sort is
+  // stable, so it is simply the first logo-capable lower third in browse order) — this spec
+  // guards the ORDERING RULE, so it asks the catalog rather than naming a design and going
+  // red every time the pack grows one.
+  const firstWithLogo = await page.evaluate(async () => {
+    const { variantsFor } = await import('/src/templates/catalog.ts');
+    const vs = variantsFor('lower-third') as { name: string; logo: string }[];
+    return vs.find((v) => v.logo !== 'none')!.name;
+  });
+  await expect(page.locator('.wz-variant').first()).toContainText(firstWithLogo);
+
+  // Number Badge is the design this test drives: its slot is hand-authored, so a working
+  // image here proves the whole path (upload -> asset -> field -> <img> src).
   await page.locator('.wz-variant', { hasText: 'Number Badge' }).click();
   await createFromCurrentStep(page);
 

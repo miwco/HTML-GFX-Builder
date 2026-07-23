@@ -24,7 +24,7 @@ export const bug31: TemplateVariant = defineBugVariant(
     category: 'corner-bug',
     name: 'Champion Bug',
     styleTag: 'sport',
-    description: 'An award slab: the award word on an accent chip, the category beside the trophy logo.',
+    description: 'A champion / winner slab: the award word on an accent chip, the category beside the trophy logo.',
     maxLines: 2,
     suggestedLines: [
       { title: 'Award', sample: 'CHAMPIONS' },

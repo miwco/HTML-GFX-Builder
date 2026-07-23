@@ -15,7 +15,7 @@ export const bug32: TemplateVariant = defineBugVariant(
     category: 'corner-bug',
     name: 'Laurel Bug',
     styleTag: 'minimal',
-    description: 'A panel-free award mark: the logo in a hairline ring, the award word over its category.',
+    description: 'A panel-free winner / nominee mark: the logo in a hairline ring, the award word over its category.',
     maxLines: 2,
     suggestedLines: [
       { title: 'Award', sample: 'WINNER' },

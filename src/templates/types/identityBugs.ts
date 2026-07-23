@@ -680,7 +680,7 @@ export const awardBugType: GraphicType = {
     {
       id: 'bug29',
       name: 'House Award Bug',
-      description: 'The house award mark: an amber award kicker over the category, beside the award logo.',
+      description: 'The house winner / nominee mark: an amber award kicker over the category, beside the award logo.',
       styleTag: 'noacg',
       palette: paletteById('noacg'),
       fontId: 'space-grotesk',
@@ -689,7 +689,7 @@ export const awardBugType: GraphicType = {
     {
       id: 'bug30',
       name: 'Gala Award Bug',
-      description: 'A frosted award mark: the logo in an accent ring, the award word over its category.',
+      description: 'A frosted winner / nominee mark: the logo in an accent ring, the award word over its category.',
       styleTag: 'glass',
       palette: paletteById('orchid'),
       fontId: 'manrope',
@@ -700,7 +700,7 @@ export const awardBugType: GraphicType = {
     {
       id: 'bug31',
       name: 'Champion Bug',
-      description: 'An award slab: the award word on an accent chip, the category beside the trophy logo.',
+      description: 'A champion / winner slab: the award word on an accent chip, the category beside the trophy logo.',
       styleTag: 'sport',
       palette: paletteById('volt'),
       fontId: 'oswald',
@@ -711,7 +711,7 @@ export const awardBugType: GraphicType = {
     {
       id: 'bug32',
       name: 'Laurel Bug',
-      description: 'A panel-free award mark: the logo in a hairline ring, the award word over its category.',
+      description: 'A panel-free winner / nominee mark: the logo in a hairline ring, the award word over its category.',
       styleTag: 'minimal',
       palette: paletteById('ivory'),
       fontId: 'inter',

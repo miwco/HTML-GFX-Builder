@@ -3,9 +3,22 @@
 // fully offline at playout. Generated CSS contains a visible @font-face rule referencing the
 // relative path "fonts/<file>" — teachable and 1:1 with the export.
 
-/** The style families. 'noacg' is the house family — the product's own on-air look
- *  (dark control-room panels, one amber accent, mono technical labels). */
-export type StyleTag = 'minimal' | 'sport' | 'glass' | 'noacg';
+/**
+ * The style families. 'noacg' is the house family — the product's own on-air look
+ * (dark control-room panels, one amber accent, mono technical labels).
+ *
+ * 'editorial' and 'cinematic' are the two on-air voices the first four could not cover:
+ * - **editorial** — the magazine/newsroom voice. Rules instead of panels, wide-tracked small-caps
+ *   kickers, a printed-page hierarchy. Where minimal removes everything, editorial ORGANISES:
+ *   a hairline rule and a kicker are structure, not decoration.
+ * - **cinematic** — the documentary/title-card voice. No panel edge at all; text sits on a soft
+ *   scrim and carries its own shadow, set in light, widely tracked caps. It is the one family
+ *   whose display type OPENS UP (positive tracking) instead of tightening.
+ *
+ * Both are full families: they carry a FAMILY_TOKENS row (model/themeTokens.ts), palettes, font
+ * affinities, and wizard filter chips, exactly like the original four.
+ */
+export type StyleTag = 'minimal' | 'sport' | 'glass' | 'noacg' | 'editorial' | 'cinematic';
 
 export interface BundledFont {
   id: string;
@@ -29,7 +42,7 @@ export const FONTS: BundledFont[] = [
     family: 'Inter',
     file: 'inter.woff2',
     weights: [400, 800],
-    styleTags: ['minimal', 'glass'],
+    styleTags: ['minimal', 'glass', 'cinematic'],
     fallback: 'Arial, sans-serif',
     blurb: 'Neutral, crisp UI classic — never wrong.',
   },
@@ -56,7 +69,7 @@ export const FONTS: BundledFont[] = [
     family: 'Manrope',
     file: 'manrope.woff2',
     weights: [400, 800],
-    styleTags: ['glass', 'minimal'],
+    styleTags: ['glass', 'minimal', 'cinematic'],
     fallback: 'Arial, sans-serif',
     blurb: 'Soft, rounded, friendly — social/stream feel.',
   },
@@ -65,7 +78,7 @@ export const FONTS: BundledFont[] = [
     family: 'Archivo',
     file: 'archivo.woff2',
     weights: [400, 900],
-    styleTags: ['sport', 'minimal'],
+    styleTags: ['sport', 'minimal', 'editorial'],
     fallback: 'Arial, sans-serif',
     blurb: 'Sturdy grotesque; heavy weights hit hard.',
   },
@@ -74,7 +87,7 @@ export const FONTS: BundledFont[] = [
     family: 'Oswald',
     file: 'oswald.woff2',
     weights: [400, 700],
-    styleTags: ['sport'],
+    styleTags: ['sport', 'editorial'],
     fallback: '"Arial Narrow", Arial, sans-serif',
     blurb: 'Condensed broadcast workhorse — big names, tight space.',
   },
@@ -83,7 +96,7 @@ export const FONTS: BundledFont[] = [
     family: 'Bebas Neue',
     file: 'bebas-neue.woff2',
     weights: [400, 400],
-    styleTags: ['sport'],
+    styleTags: ['sport', 'cinematic'],
     fallback: '"Arial Narrow", Arial, sans-serif',
     blurb: 'All-caps display impact; pair with a quiet body font.',
   },

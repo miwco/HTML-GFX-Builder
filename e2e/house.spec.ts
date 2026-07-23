@@ -30,7 +30,7 @@ test('house strap: creates from the noacg family and plays', async ({ page }) =>
 });
 
 test('house clock bug: the live clock ticks and the logo replaces the mark', async ({ page }) => {
-  await createFrom(page, 'Bugs & idents', 'House Clock');
+  await createFrom(page, 'corner logos', 'House Clock');
   await page.getByRole('button', { name: '▶ Play' }).click();
   await expect
     .poll(async () => frame(page).locator('.corner-bug').evaluate((el) => getComputedStyle(el).opacity))

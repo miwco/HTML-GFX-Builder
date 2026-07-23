@@ -704,7 +704,7 @@ test('v2 property rows: a layer expands into per-property sub-rows with their ow
 });
 
 test('v2: corner bugs create as data blocks — the step timeline is their native surface', async ({ page }) => {
-  await createProject(page, { category: 'Bugs & idents', name: 'Glass Mark' });
+  await createProject(page, { category: 'Bugs & corner logos', name: 'Glass Mark' });
   // The step timeline outright — no classic strip, no convert chips.
   await expect(page.getByTestId('timeline-v2')).toBeVisible();
   await expect(page.getByTestId('timeline-v2-convert')).toHaveCount(0);

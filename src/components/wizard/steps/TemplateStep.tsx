@@ -12,7 +12,18 @@ interface Props {
   onPickVariant: (variant: TemplateVariant) => void;
 }
 
-const STYLE_LABEL = { minimal: 'Minimal', sport: 'Sport', glass: 'Glass', noacg: 'NoaCG' } as const;
+/** Every style family, in the order the chips offer them. Typed as the full StyleTag record so
+ *  adding a family to the union is a compile error here until it has a label and a chip. */
+const STYLE_LABEL: Record<StyleTag, string> = {
+  minimal: 'Minimal',
+  editorial: 'Editorial',
+  cinematic: 'Cinematic',
+  sport: 'Sport',
+  glass: 'Glass',
+  noacg: 'NoaCG',
+};
+
+const STYLE_ORDER = Object.keys(STYLE_LABEL) as StyleTag[];
 
 /** The discovery filters — every facet derives from variant metadata, so a new
  *  template family inherits filtering with no extra code. Ephemeral UI state
@@ -39,7 +50,7 @@ export default function TemplateStep({ variants, draft, onDraft, onPickVariant }
 
   // Only offer chips that can actually narrow THIS category's catalog.
   const styleTags = useMemo(
-    () => (['minimal', 'sport', 'glass', 'noacg'] as StyleTag[]).filter((t) => variants.some((v) => v.styleTag === t)),
+    () => STYLE_ORDER.filter((t) => variants.some((v) => v.styleTag === t)),
     [variants],
   );
   const anyLogo = variants.some((v) => v.logo !== 'none');

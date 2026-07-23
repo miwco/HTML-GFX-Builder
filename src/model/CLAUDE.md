@@ -15,11 +15,23 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   registry parts (selectable, animatable, named by their field titles) while `countLines` - "how
   many lines does THIS design have", what the preset emitters size choreography from - keeps
   counting the host's only.
+- **taxonomy.ts** - the DISCOVERY facet registries (docs/TEMPLATE_TAXONOMY_PROPOSAL.md): stable
+  kebab-case ids + display labels for programme families/formats (each format carries the
+  VERBATIM workbook `sheetName` packs.ts uses), the 26 graphic categories (controlled
+  subtypes, coverage class, `relevance: 'all'`), structures, field semantics, capabilities,
+  placements, the per-preset motion intensity/style table (total over AnimPresetId — a new
+  preset without a row is a type error), style-family labels, and the search alias table
+  (aliases resolve to SETS of facet values). Pure data; derivation lives in
+  src/templates/templateMeta.ts, the browse engine in src/templates/search.ts.
 - **wizard.ts** - categories, variants, WizardOptions, palettes. A variant declares its
   CAPABILITIES - `maxLines` (1-5 line capacity), `logo: 'none' | 'optional' | 'built-in'`,
   `animationPresets` - which drive the wizard's Fields/Animation options AND the Template
   step's filter chips, so a new family inherits both automatically. Sizing is two knobs:
   `sizeScale` (--scale, whole graphic) and `typeScale` (--type-scale, text only).
+  DISCOVERY metadata does NOT live on the variant: browse facets and search come from the one
+  taxonomy (taxonomy.ts + templates/templateMeta.ts + templates/search.ts). A variant carries
+  only what it needs to BUILD itself; a second discovery model on the variant would drift from
+  the first the moment either changed.
 - **fonts.ts** - bundled OFL fonts registry + CustomFont import helpers.
 - **themeTokens.ts** - the SHAPE half of the `:root` style contract, and DESIGN_LANGUAGE §8's
   family table in code: panel blur/radius/shadow/keyline, accent weight/glow/ink, the label
@@ -32,11 +44,23 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   var(--scale))`, `none`, `50%`), never bare numbers, so one token covers a scaled length, a
   keyword and a percentage without the consuming rule knowing which it got. Shadow-slot
   neutral is `NO_SHADOW` (`0 0 0 0 transparent`), because these compose into comma-separated
-  `box-shadow` lists and `none, none` is invalid CSS. Deliberately absent: density (unmeasured,
+  `box-shadow` lists and `none, none` is invalid CSS. **`accentInk` is `var(--panel-bg)` in
+  three families and a LITERAL dark in glass** - the other three panel on a near-black, so
+  their panel colour doubles as the ink for text sitting on an accent fill, while a glass
+  panel is `rgba(255,255,255,0.10)`, a translucent WHITE. Resolving the ink to that made every
+  glass design that floods a chip render its text invisible (it shipped that way in qz03's
+  answer chip). An ink also has to be OPAQUE: a translucent one washes out over a coloured
+  chip even at the right hue. Deliberately absent: density (unmeasured,
   genuinely per-design), the sport skew (`skewX(0deg)` is not inert - it makes a stacking
   context), and motion feel (it lives in the NOACG_ANIM block, not in CSS).
 - **brand.ts** - ProjectBrand save/load (localStorage 'spx-gfx-brand'), captured on every wizard
   Create.
+- **generationSpec.ts** - the AI "More control" panel's user-authored GenerationSpec (category
+  id union, SpecFieldDef on FieldKind, fonts as CustomFont choices, animation intent incl. the
+  intensity->speed x easing map) + the cross-session draft ('spx-gfx-ai-spec-draft'). Lives HERE
+  (not src/ai) because SavedProject and GraphicDoc persist it as `aiSpec` (additive optional);
+  the category REGISTRY that interprets it is src/ai/spec/categories.ts. Version-1 migrate-on-read
+  via normalizeSpec; an unknown version degrades to "no spec", never a crash.
 - **library.ts** - the GRAPHICS LIBRARY (docs/SAVED_CONTENT_MODEL.md): every durably saved
   graphic is ONE `GraphicDoc` with a STABLE uuid ('spx-gfx-graphics', sync kind 'graphic',
   supabase migration 0009) - template + baseline + `packageId` (null = standalone) + the

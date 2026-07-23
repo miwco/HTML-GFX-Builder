@@ -63,7 +63,7 @@ test('data panel: the add-field types are the broadcast set, and Image becomes a
 });
 
 test('end credits: uploading a logo through the Logo field puts it in the end block', async ({ page }) => {
-  await createFrom(page, 'End credits', 'Classic Roll');
+  await createFrom(page, 'Credits', 'Classic Roll');
   await create(page);
   // Placeholder first — no logo picked yet.
   await expect(frame(page).locator('.credits-end .credits-logo-slot')).toBeAttached();
@@ -78,7 +78,7 @@ test('end credits: uploading a logo through the Logo field puts it in the end bl
 });
 
 test('corner bug: the logo field replaces the placeholder mark', async ({ page }) => {
-  await createFrom(page, 'Bugs & idents', 'Glass Mark');
+  await createFrom(page, 'corner logos', 'Glass Mark');
   await create(page);
   await expect(frame(page).locator('.corner-bug-mark')).toBeVisible();
   await uploadImage(page, 'Logo', 'channel_mark.png');
@@ -91,7 +91,7 @@ test('corner bug: the logo field replaces the placeholder mark', async ({ page }
 });
 
 test('export: the zip is [project]/index.html with images under [project]/images/', async ({ page }) => {
-  await createFrom(page, 'End credits', 'Classic Roll');
+  await createFrom(page, 'Credits', 'Classic Roll');
   await create(page);
   await uploadImage(page, 'Logo', 'station_logo.png');
   await page.getByTestId('dock-tab-export').click();

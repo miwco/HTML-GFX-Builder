@@ -64,7 +64,7 @@ const PROBE = `(async (onlyIds) => {
   const { hasMachineRuntime } = await import('/src/templates/shared/animRuntime.ts');
   const { validateTemplate } = await import('/src/validation/validateTemplate.ts');
 
-  const FAMILIES = ['minimal', 'sport', 'glass', 'noacg'];
+  const FAMILIES = ['minimal', 'editorial', 'cinematic', 'sport', 'glass', 'noacg'];
 
   // ── The matrix ─────────────────────────────────────────────────────────────────────────
   // Read off the live TYPES array. 12 types x 4 families; a cell is filled when some design
@@ -281,6 +281,11 @@ const PROBE = `(async (onlyIds) => {
   const allVariantIds = [];
   for (const list of Object.values(CATALOG)) for (const v of list ?? []) allVariantIds.push(v.id);
   const packProblems = validatePacks(allVariantIds);
+  // The discovery-taxonomy assertions (docs/TEMPLATE_TAXONOMY_PROPOSAL.md §17 stage 2):
+  // format-id ↔ sheet-name bijection, subtypes from the controlled lists, positional
+  // semantics matching schema length. Same failure surface as the pack problems.
+  const { validateTaxonomy } = await import('/src/templates/templateMeta.ts');
+  packProblems.push(...validateTaxonomy());
   const packs = [];
   for (const pack of PACKS) {
     let resolved = [];
@@ -361,7 +366,7 @@ const { cells, candidates, packs, packProblems, literalDrift } = probe;
 
 // ── The matrix report ────────────────────────────────────────────────────────────────────
 
-const FAMILIES = ['minimal', 'sport', 'glass', 'noacg'];
+const FAMILIES = ['minimal', 'editorial', 'cinematic', 'sport', 'glass', 'noacg'];
 const filled = cells.filter((c) => c.designId);
 const empty = cells.filter((c) => !c.designId);
 

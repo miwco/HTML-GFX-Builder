@@ -16,7 +16,7 @@ export const bug30: TemplateVariant = defineBugVariant(
     category: 'corner-bug',
     name: 'Gala Award Bug',
     styleTag: 'glass',
-    description: 'A frosted award mark: the logo in an accent ring, the award word over its category.',
+    description: 'A frosted winner / nominee mark: the logo in an accent ring, the award word over its category.',
     maxLines: 2,
     suggestedLines: [
       { title: 'Award', sample: 'NOMINEE' },

@@ -43,13 +43,13 @@ export type TemplateCategory =
 
 export const CATEGORIES: CategoryInfo[] = [
   // Essentials — the graphics almost every live show needs.
-  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 13, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
+  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 86, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
   { id: 'ticker',        name: 'Tickers',                 plannedCount: 6,  available: true , description: 'Scrolling news, info, and index strips.', group: 'essentials' },
   { id: 'scoreboard',    name: 'Scoreboards',             plannedCount: 2,  available: true , description: 'Two-team scores and match status.', group: 'essentials' },
   { id: 'info-card',     name: 'Info cards',              plannedCount: 5,  available: true,  description: 'Full / half screen cards — info and quotes.', group: 'essentials' },
   { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: true , description: 'Pre-show holding loops with a timer.', group: 'essentials' },
   { id: 'end-credits',   name: 'End credits',             plannedCount: 4,  available: true , description: 'Rolling and card-based credit sequences.', group: 'essentials' },
-  { id: 'corner-bug',    name: 'Bugs & idents',           plannedCount: 36, available: true , description: 'Persistent marks: logos, idents, live status, sponsors, chips.', group: 'essentials' },
+  { id: 'corner-bug',    name: 'Bugs & corner logos',     plannedCount: 36, available: true , description: 'Persistent marks: logos, idents, live status, sponsors, chips.', group: 'essentials' },
   // Specials — for particular formats and moments.
   { id: 'infographic',   name: 'Infographics',            plannedCount: 7,  available: true , description: 'Stats, polls, leaderboards, schedules, counters.', group: 'specials' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 4,  available: true , description: 'Countdowns and clocks for game formats.', group: 'specials' },
@@ -308,6 +308,15 @@ export const PALETTES: Palette[] = [
   { id: 'volt',     name: 'Volt',         styleTags: ['sport'],   accent: '#c8f31d', text: '#ffffff', textDim: 'rgba(255,255,255,0.75)', panel: 'rgba(8, 10, 14, 0.94)' },
   { id: 'inferno',  name: 'Inferno',      styleTags: ['sport'],   accent: '#ff5a1f', text: '#ffffff', textDim: 'rgba(255,255,255,0.75)', panel: 'rgba(12, 8, 8, 0.94)' },
   { id: 'royal',    name: 'Royal',        styleTags: ['sport', 'glass'], accent: '#3d6bff', text: '#ffffff', textDim: 'rgba(255,255,255,0.72)', panel: 'rgba(8, 10, 20, 0.94)' },
+  // Editorial (the magazine/newsroom voice — printed-page colour: one ink, one paper)
+  // The accent is measured, not picked by eye: editorial designs put it on SMALL tracked caps,
+  // and a deeper vermilion (#d1462f) lands at 4.2:1 on the ink panel — under the 4.5:1 a caption
+  // needs. This one clears it at ~5.2:1 without becoming orange.
+  { id: 'vermilion',name: 'Vermilion',    styleTags: ['editorial'], accent: '#e2593f', text: '#ffffff', textDim: 'rgba(255,255,255,0.66)', panel: 'rgba(16, 15, 14, 0.90)' },
+  { id: 'broadsheet',name: 'Broadsheet',  styleTags: ['editorial', 'minimal'], accent: '#1f3a5f', text: '#14161a', textDim: 'rgba(20,22,26,0.62)', panel: 'rgba(245, 243, 238, 0.96)' },
+  // Cinematic (documentary colour: bone and ember over a scrim — never a saturated accent)
+  { id: 'noir',     name: 'Noir',         styleTags: ['cinematic'], accent: '#e8e2d6', text: '#ffffff', textDim: 'rgba(255,255,255,0.62)', panel: 'rgba(0, 0, 0, 0.55)' },
+  { id: 'ember',    name: 'Ember',        styleTags: ['cinematic'], accent: '#e0a458', text: '#ffffff', textDim: 'rgba(255,255,255,0.62)', panel: 'rgba(10, 8, 6, 0.55)' },
   // Glass
   { id: 'frost',    name: 'Frost',        styleTags: ['glass'],   accent: '#7dd3fc', text: '#ffffff', textDim: 'rgba(255,255,255,0.7)',  panel: 'rgba(255, 255, 255, 0.10)' },
   { id: 'orchid',   name: 'Orchid',       styleTags: ['glass'],   accent: '#c084fc', text: '#ffffff', textDim: 'rgba(255,255,255,0.7)',  panel: 'rgba(255, 255, 255, 0.10)' },
