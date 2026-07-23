@@ -12,6 +12,9 @@ import { specToTemplate, type DesignSpec } from './designSpec';
 import type { TemplateCategory } from '../model/wizard';
 import type { StyleTag } from '../model/fonts';
 import { variantsFor } from '../templates/catalog';
+import { aiCategoryById } from './spec/categories';
+import { applySpecLocks, applySpecOutPreset } from './spec/specDesign';
+import { ensureSpecFonts } from './spec/specValidate';
 
 const block = (id: string) => BUILDING_BLOCKS.find((b) => b.id === id)!;
 
@@ -78,28 +81,36 @@ const STYLE_KEYWORDS: { test: RegExp; tag: StyleTag }[] = [
   { test: /minimal|clean|quiet|restrained|elegant/, tag: 'minimal' },
 ];
 
-/** Keyword-match a grounded design spec, or null when nothing fits. */
+/** Keyword-match a grounded design spec, or null when nothing fits. A structured setup's
+ *  pinned category wins over keywords, and the user's decisions overlay the result — so the
+ *  offline provider honors the "More control" panel exactly like the live harness. */
 function keywordSpec(prompt: string, ctx?: GenerateContext): { spec: DesignSpec; label: string } | null {
   const p = prompt.toLowerCase();
+  const pinned = ctx?.spec && ctx.spec.category !== 'auto' ? aiCategoryById(ctx.spec.category) : undefined;
   const hit = CATEGORY_KEYWORDS.find((k) => k.test.test(p));
-  if (!hit) return null;
-  const pool = variantsFor(hit.category);
+  const category = pinned?.templateCategory ?? hit?.category;
+  if (!category) return null;
+  const label = pinned ? pinned.name.toLowerCase() : hit!.label;
+  const pool = variantsFor(category);
   if (!pool.length) return null;
   const style = STYLE_KEYWORDS.find((s) => s.test.test(p))?.tag;
   const variant = (style && pool.find((v) => v.styleTag === style)) ?? pool[0];
-  return {
-    label: hit.label,
-    spec: {
-      fit: 'catalog',
-      reason: `Keyword match: ${hit.label}.`,
-      name: variant.name,
-      summary: `A ${hit.label} assembled from the catalog design system (offline mode).`,
-      category: hit.category,
-      variantId: variant.id,
-      lines: [],
-      useLogoSlot: Boolean(ctx?.images?.length),
-    },
+  const spec: DesignSpec = {
+    fit: 'catalog',
+    reason: pinned ? `User-selected category: ${pinned.name}.` : `Keyword match: ${label}.`,
+    name: variant.name,
+    summary: `A ${label} assembled from the catalog design system (offline mode).`,
+    category,
+    variantId: variant.id,
+    lines: [],
+    useLogoSlot: Boolean(ctx?.images?.length),
   };
+  return { label, spec: applySpecLocks(spec, ctx?.spec) };
+}
+
+/** The spec's deterministic post-passes, shared with the live harness. */
+function groundSpecPasses(template: SpxTemplate, ctx?: GenerateContext): SpxTemplate {
+  return applySpecOutPreset(ensureSpecFonts(template, ctx?.spec), ctx?.spec);
 }
 
 export class StubAIProvider implements AIProvider {
@@ -114,7 +125,7 @@ export class StubAIProvider implements AIProvider {
         summary:
           `Assembled a ${grounded.label} from the catalog design system. ` +
           '(Offline mode matches keywords — connect an AI key for free-form briefs.)',
-        template,
+        template: groundSpecPasses(template, context),
         path: 'stub',
         spec: grounded.spec,
       };
@@ -168,7 +179,7 @@ export class StubAIProvider implements AIProvider {
         const { template } = specToTemplate(spec, context);
         return {
           summary: `Option: ${variant.name} — a ${grounded.label} from the catalog design system (offline mode).`,
-          template,
+          template: groundSpecPasses(template, context),
           path: 'stub' as const,
           spec,
         };

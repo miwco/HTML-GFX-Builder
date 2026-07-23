@@ -3,16 +3,26 @@
 // validation before it can be applied or exported — the platform owns the structure.
 
 import type { AssetFile, Resolution, SpxTemplate, TemplateChange } from '../model/types';
+import type { CustomFont } from '../model/fonts';
 import type { Palette } from '../model/wizard';
 import type { ValidationResult } from '../validation/validateTemplate';
 import type { DesignSpec } from './designSpec';
+import type { GenerationSpec } from './spec/generationSpec';
 
 /** Extra inputs for generation: uploaded images (logo / still), brand colors, canvas. */
 export interface GenerateContext {
-  /** Uploaded images, already stored as data-URL assets (paths like images/logo.png). */
+  /** Uploaded images that APPEAR IN the graphic (logo, stills) — data-URL assets
+   *  (paths like images/logo.png), bundled into the result. */
   images: AssetFile[];
+  /** Style references: images that only INFLUENCE the design (mood boards, screenshots).
+   *  Sent to the model as vision input, never bundled, never placed, never copied. */
+  references?: AssetFile[];
   /** Brand colors to honor (the project brand or a custom palette), if any. */
   palette: Palette | null;
+  /** The user's uploaded primary font — embedded like a wizard font import. */
+  customFont?: CustomFont;
+  /** The user-authored structured setup (the "More control" panel), if any. */
+  spec?: GenerationSpec | null;
   resolution: Resolution;
   fps: number;
 }
