@@ -282,6 +282,11 @@ findings properly rather than sprinkling eslint-disable comments.
   main, no `git push origin main`, no `safe-merge`. Being in the primary checkout on `main` is not
   permission to land - the user decides when work lands, *after* they know the change is safe.
   Commit verified work to the feature branch, report what you did and verified, and STOP.
+- **The one exception is `/safe-merge`.** Invoking it IS the ask: run that flow to completion for
+  the named branch - preflight, merge into `main`, push, guarded cleanup - without asking again for
+  the merge or the push. The permission is scoped to that invocation and that branch; it never
+  carries to another branch, a later turn, or any other route onto `main`. If the flow's own checks
+  fail, stop and report - permission to run the flow is not permission to land something broken.
 - **Commit messages:** clear and human-readable, explaining the actual change - understandable to an
   outside developer reading the history cold. No chat/session language, internal planning names, or
   AI-sounding phrases ("as requested", "starting era 5", "continued work"). Never mention Claude,
