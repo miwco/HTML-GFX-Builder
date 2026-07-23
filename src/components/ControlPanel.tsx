@@ -344,7 +344,7 @@ export default function ControlPanel() {
                     <button className="link-inline" onClick={() => openSignIn('Sign in to host this rundown’s control page online.')}>
                       Sign in
                     </button>{' '}
-                    to host this rundown's control page online — operators then drive it from any
+                    to host this rundown’s control page online — operators then drive it from any
                     device via a private link, with crash recovery.
                   </p>
                 ) : (
@@ -354,7 +354,7 @@ export default function ControlPanel() {
                         className="primary"
                         disabled={publishBusy || activeShow.graphics.length === 0}
                         onClick={() => publishShow(activeShow)}
-                        title="Create or update the online control page for this show"
+                        title="Create or update the online control page for this rundown"
                       >
                         {activeShow.hostedSlug ? '↻ Re-publish online page' : '🌐 Host control page online'}
                       </button>
@@ -368,11 +368,18 @@ export default function ControlPanel() {
                           readOnly
                           value={hostedUrl(activeShow.hostedSlug)}
                           style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12 }}
-                          title="The operator link — anyone with it can drive the show (keep it private)"
+                          title="The operator link — anyone with it can drive the rundown (keep it private)"
                           onFocus={(e) => e.currentTarget.select()}
                         />
                         <button
-                          onClick={() => { void navigator.clipboard?.writeText(hostedUrl(activeShow.hostedSlug!)); setShowNote('✓ Link copied.'); }}
+                          onClick={() => {
+                            // Only claim the copy once it lands — the clipboard can refuse
+                            // (permission, or a plain-http page with no clipboard at all).
+                            void navigator.clipboard?.writeText(hostedUrl(activeShow.hostedSlug!)).then(
+                              () => setShowNote('✓ Link copied.'),
+                              () => setShowNote('Could not copy — select the link above and copy it by hand.'),
+                            );
+                          }}
                           title="Copy the operator link"
                         >
                           Copy
@@ -391,7 +398,13 @@ export default function ControlPanel() {
             )}
           </>
         )}
-        {showNote && <p className="status-ok" style={{ marginTop: 6 }}>{showNote}</p>}
+        {/* The same slot carries confirmations AND failures ("Publish failed: …"), so it must not
+            paint every one of them green. ✓ leads a success, as it does in Home. */}
+        {showNote && (
+          <p className={showNote.startsWith('✓') ? 'status-ok' : 'status-bad'} style={{ marginTop: 6 }}>
+            {showNote}
+          </p>
+        )}
       </div>
 
       <div className="divider" />

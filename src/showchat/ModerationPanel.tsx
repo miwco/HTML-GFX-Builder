@@ -76,7 +76,12 @@ export default function ModerationPanel({ onClose }: Props) {
   };
 
   const act = (id: string, status: ChatRow['status']) => void moderate(id, status); // Realtime refreshes the list
-  const copyLink = () => { void navigator.clipboard?.writeText(sendInUrl); setNote('✓ Send-in link copied.'); };
+  // Only claim the copy once it lands — the clipboard can refuse (permission, or a plain-http
+  // page, where navigator.clipboard is missing entirely).
+  const copyLink = () => void navigator.clipboard?.writeText(sendInUrl).then(
+    () => setNote('✓ Send-in link copied.'),
+    () => setNote('Could not copy — select the link and copy it by hand.'),
+  );
 
   const sorted = [...queue].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || b.created_at.localeCompare(a.created_at));
 
@@ -111,7 +116,10 @@ export default function ModerationPanel({ onClose }: Props) {
                 <button onClick={removeShow} title="Delete this show and its messages">🗑</button>
               </div>
             )}
-            {note && <p className="status-ok" style={{ marginTop: 6 }}>{note}</p>}
+            {/* One slot, both outcomes — "Could not create the show." must not read as success. */}
+            {note && (
+              <p className={note.startsWith('✓') ? 'status-ok' : 'status-bad'} style={{ marginTop: 6 }}>{note}</p>
+            )}
           </div>
 
           {show && (

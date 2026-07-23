@@ -42,6 +42,25 @@ export async function createGraphic(page: Page, category: string, variant: strin
   await page.waitForTimeout(650);
 }
 
+/** Wait for the sign-in sync pass to finish, so a spec that reads or wipes the account's cloud
+ *  data sees a settled library rather than one still being pulled in. Signing in IS a sync
+ *  trigger (backend/syncController.ts), which is why this is reachable at all. */
+export async function settleSync(page: Page): Promise<void> {
+  await expect(page.locator('.sync-status.sync-synced')).toBeVisible({ timeout: 30_000 });
+}
+
+/** Delete every saved graphic in the account's library and push the tombstones. The library
+ *  SYNCS, so without this each live run would leave another "Hairline" in the cloud for the next
+ *  one to pull back down — and specs that address a saved row by name would go ambiguous. */
+export async function wipeMyGraphics(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const { loadGraphics, deleteGraphic } = await import('/src/model/library.ts');
+    for (const g of loadGraphics()) deleteGraphic(g.id);
+    const { syncNow } = await import('/src/backend/syncController.ts');
+    await syncNow();
+  });
+}
+
 /** Remove every community submission owned by the signed-in test account (bulletproof teardown for a
  *  throwaway account that should only ever hold test rows). */
 export async function wipeMySubmissions(page: Page): Promise<void> {

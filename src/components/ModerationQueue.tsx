@@ -7,6 +7,7 @@ import {
   listAllForModeration,
   listReports,
   moderate,
+  STATUS_LABEL,
   type CommunityReport,
   type ModeratorItem,
 } from '../community/communityData';
@@ -18,13 +19,6 @@ interface Props {
 
 type Filter = 'reported' | 'all';
 type Selected = ModeratorItem & { body: unknown };
-
-const STATUS_LABEL: Record<ModeratorItem['status'], string> = {
-  pending: 'in review',
-  approved: 'live',
-  rejected: 'rejected',
-  removed: 'removed',
-};
 
 // Fit the preview to the modal on a phone (the modal is ~full width there), cap it on desktop.
 const PREVIEW_W = Math.min(460, (typeof window !== 'undefined' ? window.innerWidth : 500) - 90);

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createGraphic, haveCreds, signIn, wipeMySubmissions } from './_helpers';
+import { createGraphic, haveCreds, settleSync, signIn, wipeMyGraphics, wipeMySubmissions } from './_helpers';
 import { startNewProject } from '../_create';
 
 // Authenticated community flows against the configured Supabase backend. Skips unless E2E_EMAIL /
@@ -10,10 +10,15 @@ test.describe('community (configured / signed-in)', () => {
 
   test.beforeEach(async ({ page }) => {
     await signIn(page);
+    // The library syncs, so the account arrives carrying whatever earlier runs saved. Start from
+    // an empty one — every graphic below is addressed by NAME.
+    await settleSync(page);
+    await wipeMyGraphics(page);
   });
 
   test.afterEach(async ({ page }) => {
     await wipeMySubmissions(page);
+    await wipeMyGraphics(page);
   });
 
   test('publish a graphic, then import it back from the gallery', async ({ page }) => {
