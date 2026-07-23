@@ -9,6 +9,7 @@
 // soft-delete tombstones, sync kind 'graphic' (supabase migration 0009).
 
 import type { SpxTemplate, TemplateType } from './types';
+import type { GenerationSpec } from './generationSpec';
 import { loadAllPackets, upsertPacket, type Packet, type SavedGraphic } from './packets';
 import { uuid } from './id';
 
@@ -42,6 +43,10 @@ export interface GraphicDoc {
   updatedAt: string;
   /** Soft-delete tombstone (hidden from the UI, kept so the delete syncs). See Packet.deleted. */
   deleted?: boolean;
+  /** The AI generation spec this graphic was created from (the "More control" setup) — kept
+   *  with the save so a later refine can start from the same structured decisions. Additive
+   *  optional; rides the sync record unchanged. */
+  aiSpec?: GenerationSpec | null;
 }
 
 const GRAPHICS_KEY = 'spx-gfx-graphics';
@@ -109,7 +114,14 @@ export function upsertGraphic(doc: GraphicDoc): void {
 /** Create a new library record from the working template. Returns the doc (or an error). */
 export function createGraphic(
   template: SpxTemplate,
-  opts: { name: string; packageId?: string | null; baseline?: SpxTemplate; entries?: ControlEntry[]; activeEntryId?: string | null },
+  opts: {
+    name: string;
+    packageId?: string | null;
+    baseline?: SpxTemplate;
+    entries?: ControlEntry[];
+    activeEntryId?: string | null;
+    aiSpec?: GenerationSpec | null;
+  },
 ): { doc: GraphicDoc; error: string | null } {
   const doc: GraphicDoc = {
     version: 1,
@@ -121,6 +133,7 @@ export function createGraphic(
     baseline: opts.baseline,
     entries: opts.entries ?? [],
     activeEntryId: opts.activeEntryId ?? null,
+    aiSpec: opts.aiSpec ?? null,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
@@ -132,7 +145,7 @@ export function createGraphic(
 /** Update fields of an existing graphic (the Save path, rename, move, entries…). */
 export function updateGraphic(
   id: string,
-  patch: Partial<Pick<GraphicDoc, 'name' | 'packageId' | 'template' | 'baseline' | 'entries' | 'activeEntryId'>>,
+  patch: Partial<Pick<GraphicDoc, 'name' | 'packageId' | 'template' | 'baseline' | 'entries' | 'activeEntryId' | 'aiSpec'>>,
 ): { doc: GraphicDoc | null; error: string | null } {
   const all = rawGraphics();
   const doc = all.find((g) => g.id === id && !g.deleted);

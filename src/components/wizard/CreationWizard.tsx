@@ -22,6 +22,7 @@ import AnimationStep from './steps/AnimationStep';
 import AiStep from './steps/AiStep';
 import VideoStep from './steps/VideoStep';
 import type { SpxTemplate } from '../../model/types';
+import { clearSpecDraft, type GenerationSpec } from '../../model/generationSpec';
 import type { VideoProject } from '../../model/videoTypes';
 import { useVideoProjectStore } from '../../store/videoProjectStore';
 import { useDocKindStore } from '../../store/docKindStore';
@@ -59,8 +60,9 @@ export default function CreationWizard() {
   const [mode, setMode] = useState<'template' | 'import' | 'design' | 'ai' | 'video'>('template');
   const [draft, setDraft] = useState<WizardDraft>(initialDraft);
   const [replayKey, setReplayKey] = useState(0);
-  // Describe-it mode: the AI's current (validated) result, previewed live like any draft.
-  const [aiResult, setAiResult] = useState<{ template: SpxTemplate; valid: boolean } | null>(null);
+  // Describe-it mode: the AI's current (validated) result, previewed live like any draft —
+  // plus the structured setup it was generated under (saved with the created project).
+  const [aiResult, setAiResult] = useState<{ template: SpxTemplate; valid: boolean; spec?: GenerationSpec | null } | null>(null);
   // The saved project brand (the "Use current project's colors & font" toggle keeps new
   // graphics in the same package).
   const [brand, setBrand] = useState<ProjectBrand | null>(null);
@@ -178,7 +180,12 @@ export default function CreationWizard() {
     // The picked harness alternative becomes the project — commit the staged preference
     // (aggregated, subtle; see src/ai/preferences.ts). A no-alternatives run staged nothing.
     commitStagedSelection();
-    void applyGenerated(aiResult.template);
+    void applyGenerated(aiResult.template).then(() => {
+      // AFTER the apply: the whole-project swap just cleared the store's spec, so the
+      // created project now adopts its own (it rides the autosave slot + the next Save).
+      useTemplateStore.getState().setAiSpec(aiResult.spec ?? null);
+      clearSpecDraft();
+    });
   };
 
   const create = () => {
@@ -320,7 +327,7 @@ export default function CreationWizard() {
                 fps={draft.fps}
                 brandPalette={matchBrand && brand ? brand.palette : null}
                 result={aiResult?.template ?? null}
-                onResult={(template, valid) => setAiResult(template ? { template, valid } : null)}
+                onResult={(template, valid, spec) => setAiResult(template ? { template, valid, spec } : null)}
                 onOpenImported={(imported) => {
                   // The byte-faithful path (deliberately NOT applyGenerated/Prettier): the
                   // user's file opens exactly as written, and the Export panel's inline

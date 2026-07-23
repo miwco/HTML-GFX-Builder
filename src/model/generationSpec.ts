@@ -2,18 +2,46 @@
 // data fields, visual direction, fonts, and animation intent as TYPED data. The spec rides
 // GenerateContext.spec into the harness, where it PINS the matching DesignSpec decisions
 // (the model stops inventing what the user already decided) and feeds the coder path's
-// structured briefing (specPrompt.ts). A prompt-only user never creates one — every field
-// is optional and an empty spec injects nothing.
+// structured briefing (src/ai/spec/specPrompt.ts). A prompt-only user never creates one —
+// every field is optional and an empty spec injects nothing.
+//
+// It lives in the model layer (not src/ai) because SavedProject and GraphicDoc persist it —
+// the schema is data, the AI-category REGISTRY that interprets it stays in src/ai/spec.
 //
 // The vocabulary deliberately reuses the platform's single sources of truth: FieldKind
-// (model/fieldModel.ts), AnimPresetId/AnimSpeed (model/wizard.ts), EasingId
-// (model/easings.ts), CustomFont (model/fonts.ts). No parallel enums.
+// (fieldModel.ts), AnimPresetId/AnimSpeed (wizard.ts), EasingId (easings.ts), CustomFont
+// (fonts.ts). No parallel enums.
 
-import type { FieldKind } from '../../model/fieldModel';
-import type { CustomFont } from '../../model/fonts';
-import type { EasingId } from '../../model/easings';
-import type { AnimPresetId, AnimSpeed, ExtraFieldSpec, LineSpec } from '../../model/wizard';
-import type { AiCategoryId } from './categories';
+import type { FieldKind } from './fieldModel';
+import type { CustomFont } from './fonts';
+import type { EasingId } from './easings';
+import type { AnimPresetId, AnimSpeed, ExtraFieldSpec, LineSpec } from './wizard';
+
+/** The AI category ids. The union lives HERE (the persisted schema references it); each id's
+ *  REGISTRY entry — names, template links, suggested fields, workflow rules — lives in
+ *  src/ai/spec/categories.ts. The compiler keeps the two in step: a registry entry with an
+ *  id outside this union fails the build. */
+export type AiCategoryId =
+  | 'lower-third'
+  | 'title'
+  | 'topic-card'
+  | 'breaking'
+  | 'ticker'
+  | 'scoreboard'
+  | 'stats-panel'
+  | 'player-card'
+  | 'versus'
+  | 'quiz'
+  | 'poll'
+  | 'qa-card'
+  | 'countdown'
+  | 'schedule'
+  | 'leaderboard'
+  | 'quote'
+  | 'sponsor-bug'
+  | 'social-bug'
+  | 'progress-goal'
+  | 'starting-soon';
 
 // ── Fields ───────────────────────────────────────────────────────────────────
 

@@ -9,32 +9,12 @@
 // the harness pinning all read this registry; none of them enumerate categories themselves.
 
 import type { AnimPresetId, TemplateCategory } from '../../model/wizard';
+import type { AiCategoryId, SpecFieldDef } from '../../model/generationSpec';
 import { variantsFor } from '../../templates/catalog';
 import { typeById } from '../../templates/types/registry';
 import type { GraphicType } from '../../templates/types/graphicType';
-import type { SpecFieldDef } from './generationSpec';
 
-export type AiCategoryId =
-  | 'lower-third'
-  | 'title'
-  | 'topic-card'
-  | 'breaking'
-  | 'ticker'
-  | 'scoreboard'
-  | 'stats-panel'
-  | 'player-card'
-  | 'versus'
-  | 'quiz'
-  | 'poll'
-  | 'qa-card'
-  | 'countdown'
-  | 'schedule'
-  | 'leaderboard'
-  | 'quote'
-  | 'sponsor-bug'
-  | 'social-bug'
-  | 'progress-goal'
-  | 'starting-soon';
+export type { AiCategoryId } from '../../model/generationSpec';
 
 export interface AiCategory {
   id: AiCategoryId;

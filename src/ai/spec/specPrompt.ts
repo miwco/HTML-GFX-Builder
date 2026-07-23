@@ -18,7 +18,7 @@ import {
   specIsEmpty,
   type GenerationSpec,
   type SpecFieldDef,
-} from './generationSpec';
+} from '../../model/generationSpec';
 
 // ── The state-machine pattern, serialized ────────────────────────────────────
 

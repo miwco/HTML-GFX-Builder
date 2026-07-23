@@ -9,7 +9,7 @@ import type { SpxTemplate } from '../../model/types';
 import { customFontFaceCss } from '../../model/fonts';
 import { validateTemplate, type ValidationIssue, type ValidationResult } from '../../validation/validateTemplate';
 import type { SpxValidator } from '../provider';
-import { specCustomFonts, specIsEmpty, type GenerationSpec } from './generationSpec';
+import { specCustomFonts, specIsEmpty, type GenerationSpec } from '../../model/generationSpec';
 
 const norm = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ');
 

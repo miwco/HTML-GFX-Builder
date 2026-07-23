@@ -18,7 +18,7 @@ import {
   specExtraFields,
   specLines,
   type GenerationSpec,
-} from './generationSpec';
+} from '../../model/generationSpec';
 
 /** DesignSpec.lines carries at most 3 visible lines (the tool schema's maxItems). */
 const MAX_SPEC_LINES = 3;

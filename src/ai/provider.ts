@@ -7,7 +7,7 @@ import type { CustomFont } from '../model/fonts';
 import type { Palette } from '../model/wizard';
 import type { ValidationResult } from '../validation/validateTemplate';
 import type { DesignSpec } from './designSpec';
-import type { GenerationSpec } from './spec/generationSpec';
+import type { GenerationSpec } from '../model/generationSpec';
 
 /** Extra inputs for generation: uploaded images (logo / still), brand colors, canvas. */
 export interface GenerateContext {
