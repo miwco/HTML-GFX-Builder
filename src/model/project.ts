@@ -5,6 +5,7 @@
 // 'project' record lands next, alongside brand, via the singleton mechanism.
 
 import type { SpxTemplate } from './types';
+import type { GenerationSpec } from './generationSpec';
 import { uuid } from './id';
 
 export interface SavedProject {
@@ -22,6 +23,9 @@ export interface SavedProject {
   /** True when the working document has changed since its last explicit Save. Persisted so a
    *  reload keeps the honest "Unsaved changes" badge. Additive optional. */
   dirty?: boolean;
+  /** The AI generation spec this project was created from (the "More control" setup), kept
+   *  so a later refine can start from the same structured decisions. Additive optional. */
+  aiSpec?: GenerationSpec | null;
   /** Soft-delete tombstone (for cloud sync parity — see Packet.deleted). */
   deleted?: boolean;
 }
@@ -54,6 +58,7 @@ export function saveProject(
   template: SpxTemplate,
   baseline?: SpxTemplate,
   link?: { graphicId: string | null; dirty: boolean },
+  aiSpec?: GenerationSpec | null,
 ): void {
   try {
     const existing = loadProject();
@@ -66,6 +71,8 @@ export function saveProject(
       baseline: baseline ?? existing?.baseline,
       graphicId: link ? link.graphicId : existing?.graphicId ?? null,
       dirty: link ? link.dirty : existing?.dirty ?? false,
+      // undefined = a plain autosave carries the spec over; null explicitly clears it.
+      aiSpec: aiSpec === undefined ? existing?.aiSpec ?? null : aiSpec,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rec));
     notifyDataChanged();

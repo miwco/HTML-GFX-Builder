@@ -693,6 +693,19 @@ every provider call, streams `onProgress` stages into the busy line, shows the r
 result's `spec` back on refine so spec-level refinement re-assembles deterministically
 (src/ai/CLAUDE.md).
 
+**"More control"** (steps/ai/MoreControlPanel.tsx) is the OPTIONAL structured setup beside
+the prompt: an accordion editing ONE `GenerationSpec` (model/generationSpec.ts) - category
+(the 20-entry registry in src/ai/spec/categories.ts, or "Let AI decide" with the inferred
+pick surfaced editable on the result card), data fields (suggested per category from the
+GraphicType's own declarations, reorderable), look & references (style/mood/avoid, exact
+brand colours, style-reference images - vision-only, kept apart from the drop zone's placed
+assets), fonts (primary through the shared FontPicker, secondary/numeric uploads), and
+animation (presets filtered to the category, intensity cards, transition style, speed/
+easing/steps). Collapsed sections show summary chips and keep their values; the spec
+persists as a cross-session draft and, on Create, lands on the store's `aiSpec` (saved with
+the project). A prompt-only user never touches it - an empty spec injects nothing (pinned by
+e2e/ai-more-control.spec.ts).
+
 The harness is ON BY DEFAULT, with the **"Use NoaCG harness (3 options)"** checkbox
 (`AiSettings.useHarness`, default true — the benchmark showed it a clean win) still able to
 turn it off. On → `generateAlternatives`: three directions, rendered as `[data-alt]`

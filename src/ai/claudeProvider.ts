@@ -28,6 +28,9 @@ import { parseAnimData } from '../blocks/animData';
 import { emitPresetRegion } from '../blocks/presetRegistry';
 import { ANIMATION_MARK_OPEN } from '../templates/lowerThirds/animPresets';
 import { convertToDataRegion } from '../templates/shared/standard';
+import { specSections } from './spec/specPrompt';
+import { applySpecLocks, applySpecOutPreset, narrowedSpecTool } from './spec/specDesign';
+import { demoteSpecFields, ensureSpecFonts } from './spec/specValidate';
 
 // ── Structured output: the model must return the template via this tool ─────
 
@@ -86,18 +89,23 @@ look; make every choice follow the programme.`;
  * convertToDataRegion flips it. Falls back to the converted form when the variant's preset
  * can't emit for it (still a complete teacher, just data-shaped).
  */
-function exampleWithAuthoringRegion(variant: TemplateVariant): SpxTemplate {
+function exampleWithAuthoringRegion(variant: TemplateVariant, presetId?: string): SpxTemplate {
   const tpl = variant.create();
-  const region = emitPresetRegion(tpl, variant.animationPresets[0]);
+  // When the user explicitly picked an entrance preset the variant knows, the worked example
+  // shows THAT preset's authored choreography — the model studies the motion it must ship.
+  const preset = presetId && variant.animationPresets.includes(presetId as never)
+    ? (presetId as TemplateVariant['animationPresets'][number])
+    : variant.animationPresets[0];
+  const region = emitPresetRegion(tpl, preset);
   if (!region) return tpl;
   return { ...tpl, js: tpl.js.replace(/\/\* == ANIMATION[\s\S]*?== END ANIMATION == \*\//, () => region) };
 }
 
-function systemPrompt(exampleVariant: TemplateVariant = lt01): string {
+function systemPrompt(exampleVariant: TemplateVariant = lt01, examplePresetId?: string): string {
   // The canonical example is REAL generated code — the same contracts the wizard writes.
   // The caller picks the nearest catalog design so a scoreboard brief studies a real
   // scoreboard's contracts, not always a lower third.
-  const example = exampleWithAuthoringRegion(exampleVariant);
+  const example = exampleWithAuthoringRegion(exampleVariant, examplePresetId);
   return `You are the template generator inside NoaCG Studio — a tool that creates
 broadcast graphics templates for SPX Graphics / CasparCG playout. You write COMPLETE, working,
 marketplace-quality templates. The user is learning to code from what you write.
@@ -351,7 +359,7 @@ async function generateValidated(
   run?: AiRunRecorder,
   exampleVariant?: TemplateVariant,
 ): Promise<AiTemplateChange> {
-  const system = systemPrompt(exampleVariant);
+  const system = systemPrompt(exampleVariant, ctx?.spec?.animation?.inPresetId);
   options?.onProgress?.('Writing the code…');
   let t0 = Date.now();
   // The system prompt is byte-identical across the emit and its repair rounds — one
@@ -364,8 +372,14 @@ async function generateValidated(
   });
   run?.stage('coder', t0, first.model, first.usage);
 
+  // Ground every emit the same way: region conversion, then the spec's deterministic
+  // passes — uploaded fonts land as assets + @font-face whether or not the model wrote
+  // them, and an explicit exit preset applies as a real keyframe swap where possible.
+  const ground = (e: EmittedTemplate): SpxTemplate =>
+    applySpecOutPreset(ensureSpecFonts(convertEmittedRegion(toTemplate(e, ctx, base)), ctx?.spec), ctx?.spec);
+
   let emitted = first.output as EmittedTemplate;
-  let template = convertEmittedRegion(toTemplate(emitted, ctx, base));
+  let template = ground(emitted);
   let summary = emitted.summary;
   options?.onProgress?.('Testing it…');
   let validation = await validateWith(template, options, run);
@@ -414,7 +428,7 @@ ${template.js}`,
     });
     run?.stage(`repair-${round}`, t0, repair.model, repair.usage);
     emitted = repair.output as EmittedTemplate;
-    template = convertEmittedRegion(toTemplate(emitted, ctx, base));
+    template = ground(emitted);
     summary = emitted.summary;
     options?.onProgress?.('Testing it…');
     validation = await validateWith(template, options, run);
@@ -453,13 +467,25 @@ function contextText(prompt: string, ctx?: GenerateContext): string {
     }
     if (ctx.images.length > 0) {
       parts.push(
-        `The user uploaded ${ctx.images.length} image(s), attached above in order. They are available ` +
-          `at these relative paths (already bundled — reference them exactly):\n` +
+        `The user uploaded ${ctx.images.length} image(s) to APPEAR IN the graphic, attached above ` +
+          `first (in order). They are available at these relative paths (already bundled — reference ` +
+          `them exactly):\n` +
           ctx.images.map((a, i) => `  ${i + 1}. ${a.path}`).join('\n') +
           `\nUse them the way the brief implies (logo → a logo slot with an <img id="fN"> image field; ` +
           `a full-frame still → background or featured media). Match the design's colors and mood to the images.`,
       );
     }
+    if (ctx.references?.length) {
+      parts.push(
+        `The user also attached ${ctx.references.length} STYLE REFERENCE image(s) (the last ` +
+          `${ctx.references.length} attachment(s)). They are design guidance ONLY: read the SYSTEM ` +
+          `behind them — grid, hierarchy, spacing rhythm, proportions, shape language, colour balance, ` +
+          `density, motion cues — and let it drive your decisions. Never place them in the graphic, ` +
+          `never reproduce their layout or artwork literally.`,
+      );
+    }
+    const sections = specSections(ctx.spec);
+    if (sections) parts.push(sections);
   }
   return parts.join('\n\n');
 }
@@ -467,7 +493,8 @@ function contextText(prompt: string, ctx?: GenerateContext): string {
 function imageBlocks(ctx?: GenerateContext): ContentBlock[] {
   if (!ctx) return [];
   const blocks: ContentBlock[] = [];
-  for (const asset of ctx.images) {
+  // Assets first, references after — contextText numbers them in exactly this order.
+  for (const asset of [...ctx.images, ...(ctx.references ?? [])]) {
     if (typeof asset.data !== 'string') continue;
     const parsed = parseDataUrl(asset.data);
     if (parsed && parsed.mime.startsWith('image/') && parsed.mime !== 'image/svg+xml') {
@@ -628,13 +655,16 @@ async function groundedResult(
   const assembled = specToTemplate(spec, ctx);
   // The spec's compositional parameters (typography scale, density, shape, panel) apply
   // as deterministic overrides — the brief shapes the composition, not just the colours.
-  let template = applyDesignAdjustments(assembled.template, spec);
+  // Then the user's own decisions: secondary/numeric uploaded fonts ground as embedded
+  // assets, and an explicit exit preset swaps in as real keyframes (blocks/presetApply).
+  let template = applySpecOutPreset(ensureSpecFonts(applyDesignAdjustments(assembled.template, spec), ctx?.spec), ctx?.spec);
   run.stage('assemble', t0);
   run.diversity(assembled.diversity);
   options?.onProgress?.('Testing it…');
   // No repair loop here: a grounded assembly failing its own bench is a platform bug
-  // worth surfacing, not something a model round-trip should paper over.
-  let validation = await validateWith(template, options, run);
+  // worth surfacing, not something a model round-trip should paper over. A user field a
+  // FIXED-CONTRACT category cannot carry demotes to an honest warning (no loop to fight it).
+  let validation = demoteSpecFields(await validateWith(template, options, run));
   let path: AiPath = 'grounded';
   if (spec.flourish && validation.ok) {
     const polished = await polishStage(template, spec, options, run);
@@ -693,12 +723,16 @@ export const claudeProvider: AIProvider = {
         const result = await callClaudeDetailed({
           system: specSystemPrompt(),
           messages: [{ role: 'user', content: userContent }],
-          tool: DESIGN_SPEC_TOOL,
+          // A pinned user category narrows the tool schema itself — the model can only
+          // route within the decision.
+          tool: narrowedSpecTool(DESIGN_SPEC_TOOL, context?.spec),
           maxTokens: 4000,
         });
         run.stage('design-spec', t0, result.model, result.usage);
         spec = result.output as DesignSpec;
         if (!Array.isArray(spec.lines)) spec.lines = [];
+        // The user's structured decisions overwrite the model's — deterministically.
+        spec = applySpecLocks(spec, context?.spec);
       } catch {
         // No spec — the free-form path below still serves the brief.
       }
@@ -756,13 +790,14 @@ export const claudeProvider: AIProvider = {
         const result = await callClaudeDetailed({
           system: specSystemPrompt(),
           messages: [{ role: 'user', content: userContent }],
-          tool: DESIGN_ALTERNATIVES_TOOL,
+          tool: narrowedSpecTool(DESIGN_ALTERNATIVES_TOOL, context?.spec),
           maxTokens: 8000,
         });
         run.stage('design-alternatives', t0, result.model, result.usage);
         const output = result.output as { alternatives?: DesignSpec[] };
         specs = (Array.isArray(output.alternatives) ? output.alternatives : []).slice(0, 3);
-        for (const spec of specs) if (!Array.isArray(spec.lines)) spec.lines = [];
+        // Each direction stays free where the user left freedom; each is pinned where not.
+        specs = specs.map((s) => applySpecLocks({ ...s, lines: Array.isArray(s.lines) ? s.lines : [] }, context?.spec));
       } catch {
         specs = [];
       }

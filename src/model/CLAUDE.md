@@ -45,6 +45,12 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   context), and motion feel (it lives in the NOACG_ANIM block, not in CSS).
 - **brand.ts** - ProjectBrand save/load (localStorage 'spx-gfx-brand'), captured on every wizard
   Create.
+- **generationSpec.ts** - the AI "More control" panel's user-authored GenerationSpec (category
+  id union, SpecFieldDef on FieldKind, fonts as CustomFont choices, animation intent incl. the
+  intensity->speed x easing map) + the cross-session draft ('spx-gfx-ai-spec-draft'). Lives HERE
+  (not src/ai) because SavedProject and GraphicDoc persist it as `aiSpec` (additive optional);
+  the category REGISTRY that interprets it is src/ai/spec/categories.ts. Version-1 migrate-on-read
+  via normalizeSpec; an unknown version degrades to "no spec", never a crash.
 - **library.ts** - the GRAPHICS LIBRARY (docs/SAVED_CONTENT_MODEL.md): every durably saved
   graphic is ONE `GraphicDoc` with a STABLE uuid ('spx-gfx-graphics', sync kind 'graphic',
   supabase migration 0009) - template + baseline + `packageId` (null = standalone) + the

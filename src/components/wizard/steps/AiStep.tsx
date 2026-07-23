@@ -1,11 +1,21 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getAiProvider } from '../../../ai';
 import { brainstorm, type ChatMessage } from '../../../ai/brainstorm';
 import { EXAMPLE_PROMPTS } from '../../../ai/examplePrompts';
 import { AI_MODELS, aiConfigured, loadAiSettings, saveAiSettings } from '../../../ai/settings';
-import type { AiPath, AiTemplateChange, GenerateOptions, SpxValidator } from '../../../ai/provider';
+import type { AiPath, AiTemplateChange, GenerateContext, GenerateOptions, SpxValidator } from '../../../ai/provider';
 import type { DesignSpec } from '../../../ai/designSpec';
 import { clearStagedSelection, facetsOf, stageSelection } from '../../../ai/preferences';
+import { AI_CATEGORIES, aiCategoryForTemplateCategory } from '../../../ai/spec/categories';
+import { withSpecChecks } from '../../../ai/spec/specValidate';
+import {
+  emptyGenerationSpec,
+  loadSpecDraft,
+  saveSpecDraft,
+  specIsEmpty,
+  type AiCategoryId,
+  type GenerationSpec,
+} from '../../../model/generationSpec';
 import { useAuthState } from '../../auth/useAuthState';
 import SignInPrompt from '../../auth/SignInPrompt';
 import { fileToDataUrl, uniqueAssetPath } from '../../../assets/assetUtils';
@@ -14,6 +24,7 @@ import type { AssetFile, Resolution, SpxTemplate } from '../../../model/types';
 import type { Palette } from '../../../model/wizard';
 import { validateTemplate, type ValidationResult } from '../../../validation/validateTemplate';
 import { benchTemplateRuntime, mergeResults } from '../../../validation/runtimeBench';
+import MoreControlPanel from './ai/MoreControlPanel';
 
 interface Props {
   resolution: Resolution;
@@ -22,7 +33,9 @@ interface Props {
   brandPalette: Palette | null;
   /** The current AI result shown in the live preview (null until the first generation). */
   result: SpxTemplate | null;
-  onResult: (template: SpxTemplate | null, valid: boolean) => void;
+  /** `spec` is the structured setup the result was generated under (null = prompt-only) —
+   *  the wizard saves it with the created project. */
+  onResult: (template: SpxTemplate | null, valid: boolean, spec?: GenerationSpec | null) => void;
   /** Byte-faithful open of a dropped .html/.zip template — no AI, applies and closes. */
   onOpenImported: (template: SpxTemplate) => void;
   /** Continue into the catalog flow designing AROUND the dropped images (no AI needed). */
@@ -64,6 +77,13 @@ export default function AiStep({
   const [prompt, setPrompt] = useState('');
   const [refine, setRefine] = useState('');
   const [images, setImages] = useState<AssetFile[]>([]);
+  // The structured setup ("More control"): persisted as a cross-session draft so closing
+  // the wizard never loses it; an empty spec injects nothing anywhere.
+  const [spec, setSpec] = useState<GenerationSpec>(() => loadSpecDraft() ?? emptyGenerationSpec());
+  const [moreOpen, setMoreOpen] = useState(() => !specIsEmpty(loadSpecDraft()));
+  const [references, setReferences] = useState<AssetFile[]>([]);
+  useEffect(() => saveSpecDraft(spec), [spec]);
+  const activeSpec = specIsEmpty(spec) ? null : spec;
   const [imported, setImported] = useState<{ fileName: string; template: SpxTemplate } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -136,8 +156,10 @@ export default function AiStep({
 
   // The harness's injected validation pipeline: static rules + the live runtime bench
   // (lifecycle, field binding, overlap/overflow, double-length stress) — bench findings
-  // drive the provider's repair rounds.
-  const validate: SpxValidator = async (t) => mergeResults(validateTemplate(t), await benchTemplateRuntime(t));
+  // drive the provider's repair rounds. The structured setup adds its own checks on top
+  // (requested fields present, uploaded fonts actually used).
+  const baseValidate: SpxValidator = async (t) => mergeResults(validateTemplate(t), await benchTemplateRuntime(t));
+  const validate: SpxValidator = withSpecChecks(baseValidate, activeSpec) ?? baseValidate;
 
   const showChange = (change: AiTemplateChange) => {
     const v = change.validation ?? validateTemplate(change.template);
@@ -145,7 +167,7 @@ export default function AiStep({
     setValidation(v);
     setLastPath(change.path ?? null);
     setLastSpec(change.spec ?? null);
-    onResult(change.template, v.ok);
+    onResult(change.template, v.ok, activeSpec);
     return v;
   };
 
@@ -174,7 +196,20 @@ export default function AiStep({
     );
   };
 
-  const context = { images, palette: brandPalette, resolution, fps };
+  // Exact brand colours from the setup win over the project-brand toggle; the setup's
+  // uploaded primary font rides as the wizard-style custom font.
+  const specPalette: Palette | null = spec.brandColors
+    ? { id: 'ai-user-brand', name: 'Brand colors', styleTags: ['noacg'], ...spec.brandColors }
+    : null;
+  const context: GenerateContext = {
+    images,
+    references: references.length ? references : undefined,
+    palette: specPalette ?? brandPalette,
+    customFont: spec.fonts?.primary?.customFont,
+    spec: activeSpec,
+    resolution,
+    fps,
+  };
 
   const generate = () => {
     // Conversion always runs the validated conversion flow; plain generation branches on
@@ -414,8 +449,27 @@ export default function AiStep({
                 Use NoaCG harness (3 options)
               </label>
             )}
+            {!imported && (
+              <button
+                onClick={() => setMoreOpen((o) => !o)}
+                data-testid="more-control-toggle"
+                title="Optional structured setup: category, data fields, references, fonts, animation — better, more predictable results, especially on smaller models."
+              >
+                {moreOpen ? '▾' : '▸'} More control{activeSpec ? ' ●' : ''}
+              </button>
+            )}
             <button onClick={() => setShowSettings((s) => !s)}>⚙ AI settings</button>
           </div>
+
+          {moreOpen && !imported && (
+            <MoreControlPanel
+              spec={spec}
+              onSpec={setSpec}
+              references={references}
+              onReferences={setReferences}
+              disabled={!!busy}
+            />
+          )}
 
           {showSettings && (
             <div className="panel-section" style={{ marginTop: 10 }}>
@@ -472,6 +526,30 @@ export default function AiStep({
               <strong>{result.name}</strong>
               {summary && <p style={{ marginTop: 6 }}>{summary}</p>}
               {routeLabel(lastPath) && <p className="hint" style={{ marginTop: 4 }}>{routeLabel(lastPath)}</p>}
+              {lastSpec && (!activeSpec || activeSpec.category === 'auto') && (
+                // The category the AI inferred — surfaced as EDITABLE metadata, never a
+                // silent decision. Changing it pins the next generation.
+                <p className="hint" style={{ marginTop: 4 }}>
+                  Detected category:{' '}
+                  <select
+                    aria-label="Detected graphic category"
+                    value={aiCategoryForTemplateCategory(lastSpec.category)?.id ?? ''}
+                    onChange={(e) => {
+                      const id = e.target.value as AiCategoryId | '';
+                      if (!id) return;
+                      setSpec({ ...spec, category: id, categoryInferred: true });
+                      setMoreOpen(true);
+                    }}
+                    disabled={!!busy}
+                  >
+                    <option value="" disabled>—</option>
+                    {AI_CATEGORIES.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>{' '}
+                  — change it to pin the next Generate.
+                </p>
+              )}
               <p className={validation?.ok ? 'status-ok' : 'status-bad'} style={{ marginTop: 6 }}>
                 {validation?.ok
                   ? lastPath === 'raw'

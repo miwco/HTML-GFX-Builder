@@ -47,6 +47,10 @@ Home/control/video never does (nothing is lost there).
 
 templateStore.ts (zustand) holds the template plus editor UI state.
 
+- **aiSpec / setAiSpec** - the GenerationSpec the current project was AI-created from (null =
+  not an AI creation). Rides the autosave slot (SavedProject.aiSpec) and every Save
+  (GraphicDoc.aiSpec via saveActions); cleared by a whole-project swap - the AI create path
+  and openGraphicDoc set the right one just after.
 - **saved** - the save LINK `{ graphicId, dirty, status }` (docs/SAVED_CONTENT_MODEL.md §2):
   the autosave subscription flips `dirty` on any template change; a whole-project swap
   (applyTemplate with resetSampleData) SEVERS the link (graphicId null) so a fresh creation

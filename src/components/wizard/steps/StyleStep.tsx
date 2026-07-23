@@ -18,8 +18,10 @@ interface Props {
   onDraft: (patch: DraftPatch) => void;
 }
 
-/** #rrggbb for the native color input; rgba()/other values fall back to a neutral swatch. */
-function pickerHex(value: string): string {
+/** #rrggbb for the native color input; rgba()/other values fall back to a neutral swatch.
+ *  Shared with the AI step's brand-colour rows (steps/ai/MoreControlPanel) — one conversion,
+ *  so a colour swatch means the same thing wherever the user picks one. */
+export function pickerHex(value: string): string {
   if (/^#[0-9a-f]{6}$/i.test(value)) return value;
   const m = value.match(/rgba?\((\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
   if (!m) return '#888888';
