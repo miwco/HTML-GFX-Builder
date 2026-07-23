@@ -1227,7 +1227,14 @@ kbd {
 .wz-nudge input { width: 80px; }
 
 /* Step 5: animation */
-/* The Template step's discovery filters: small chips above the variant grid. */
+/* The Template step's discovery filters: search, then the production chips, then the
+   look chips. Two chip rows on purpose — a production is a different KIND of question
+   from a style, and one undifferentiated row of eighteen chips reads as noise. */
+.wz-search-row { margin: 4px 0 8px; }
+.wz-search { width: 100%; font-size: 13px; padding: 7px 12px; border-radius: 8px; }
+.wz-role-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.wz-rolechip { padding: 4px 12px; border-radius: 999px; font-size: 12px; opacity: 0.9; }
+.wz-rolechip.active { border-color: var(--accent); color: var(--accent); opacity: 1; }
 .wz-filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
 .wz-filter { padding: 4px 12px; border-radius: 999px; font-size: 12px; }
 .wz-filter.active { border-color: var(--accent); color: var(--accent); }
@@ -3184,6 +3191,9 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
 .insert-tpl-body { padding: 12px 16px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
 .insert-tpl-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .insert-tpl-cats { display: flex; flex-wrap: wrap; gap: 4px; }
+/* The search box grows into whatever the category tabs leave, and drops to its own row
+   on a narrow dialog rather than squeezing the tabs. */
+.insert-tpl-search { flex: 1 1 180px; min-width: 140px; font-size: 12px; padding: 5px 10px; border-radius: 8px; }
 /* The participation choices sit as ONE group at the toolbar's right edge — the toolbar
    spreads its children, so two loose labels would drift to opposite ends of the row. */
 .insert-tpl-choices { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }

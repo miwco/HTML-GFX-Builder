@@ -20,6 +20,18 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   `animationPresets` - which drive the wizard's Fields/Animation options AND the Template
   step's filter chips, so a new family inherits both automatically. Sizing is two knobs:
   `sizeScale` (--scale, whole graphic) and `typeScale` (--type-scale, text only).
+  DISCOVERY is two independent axes. `styleTag` says what a design LOOKS like; **`roleTag`**
+  (`RoleTag`, labelled by `ROLE_LABELS`, ordered by `ROLE_TAGS`) says what PRODUCTION it was
+  drawn for - interview, talk, commentary, sport, esports, faith, academic, politics,
+  analysis, music, location, creator. The two are genuinely independent: a church speaker
+  strap and an esports player tag can both be `minimal` and share nothing about hierarchy,
+  composition or motion. **A generalist design carries no `roleTag` at all** - absent means
+  "suits any production", never "unclassified" - which is why the field is optional and why
+  clearing the chips must bring the roleless designs back. **`variantMatchesQuery`** is the
+  ONE free-text predicate (name, description, style, role, `keywords`, and the
+  operator-facing field labels; terms ANDed so more words always narrow); the wizard's
+  Template step and InsertTemplateDialog both call it, so a word can never match in one
+  browse surface and miss in the other.
 - **fonts.ts** - bundled OFL fonts registry + CustomFont import helpers.
 - **themeTokens.ts** - the SHAPE half of the `:root` style contract, and DESIGN_LANGUAGE §8's
   family table in code: panel blur/radius/shadow/keyline, accent weight/glow/ink, the label
@@ -32,7 +44,13 @@ Loaded alongside the root CLAUDE.md when working in this directory. Keep it accu
   var(--scale))`, `none`, `50%`), never bare numbers, so one token covers a scaled length, a
   keyword and a percentage without the consuming rule knowing which it got. Shadow-slot
   neutral is `NO_SHADOW` (`0 0 0 0 transparent`), because these compose into comma-separated
-  `box-shadow` lists and `none, none` is invalid CSS. Deliberately absent: density (unmeasured,
+  `box-shadow` lists and `none, none` is invalid CSS. **`accentInk` is `var(--panel-bg)` in
+  three families and a LITERAL dark in glass** - the other three panel on a near-black, so
+  their panel colour doubles as the ink for text sitting on an accent fill, while a glass
+  panel is `rgba(255,255,255,0.10)`, a translucent WHITE. Resolving the ink to that made every
+  glass design that floods a chip render its text invisible (it shipped that way in qz03's
+  answer chip). An ink also has to be OPAQUE: a translucent one washes out over a coloured
+  chip even at the right hue. Deliberately absent: density (unmeasured,
   genuinely per-design), the sport skew (`skewX(0deg)` is not inert - it makes a stacking
   context), and motion feel (it lives in the NOACG_ANIM block, not in CSS).
 - **brand.ts** - ProjectBrand save/load (localStorage 'spx-gfx-brand'), captured on every wizard

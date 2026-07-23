@@ -43,7 +43,7 @@ export type TemplateCategory =
 
 export const CATEGORIES: CategoryInfo[] = [
   // Essentials — the graphics almost every live show needs.
-  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 13, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
+  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 50, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
   { id: 'ticker',        name: 'Tickers',                 plannedCount: 6,  available: true , description: 'Scrolling news, info, and index strips.', group: 'essentials' },
   { id: 'scoreboard',    name: 'Scoreboards',             plannedCount: 2,  available: true , description: 'Two-team scores and match status.', group: 'essentials' },
   { id: 'info-card',     name: 'Info cards',              plannedCount: 5,  available: true,  description: 'Full / half screen cards — info and quotes.', group: 'essentials' },
@@ -269,6 +269,76 @@ export interface ResolvedOptions {
  *  'none' = the design has no sensible place for one. */
 export type LogoSupport = 'none' | 'optional' | 'built-in';
 
+/**
+ * The production a design was drawn FOR — the second discovery axis beside `styleTag`.
+ *
+ * Style says what a graphic looks like; role says what show it belongs to, and the two are
+ * genuinely independent: a church speaker strap and an esports player tag can both be
+ * "minimal" and still share nothing about hierarchy, composition, or motion. A user
+ * arrives at the catalog with a production in mind ("I run a church stream"), not with a
+ * style word, so this is the facet that answers the question they actually have.
+ *
+ * Most of the catalog carries NO role: a design that suits any show should not be filed
+ * under one (see TemplateVariant.roleTag).
+ */
+export type RoleTag =
+  | 'interview'   // two people, equal billing — the split strap
+  | 'talk'        // host + guest: one constant, one visitor, deliberately unequal
+  | 'commentary'  // the booth: two callers named together
+  | 'sport'       // an athlete: squad number, position, club, stat line
+  | 'esports'     // team tag + in-game name; casters and analysts on the desk
+  | 'faith'       // worship: preacher, reader, scripture reference
+  | 'academic'    // a speaker and the institution behind them
+  | 'politics'    // candidate + party, with the party colour carrying the identity
+  | 'analysis'    // the expert voice, marked as comment rather than report
+  | 'music'       // artist and track
+  | 'location'    // where and when: live flag, place, clock, time zone
+  | 'creator';    // handles and platform identity
+
+/** The operator-facing name of each role, in the order the picker offers them. */
+export const ROLE_LABELS: Record<RoleTag, string> = {
+  interview: 'Interview',
+  talk: 'Host & guest',
+  commentary: 'Commentary',
+  sport: 'Sport',
+  esports: 'Esports',
+  faith: 'Worship',
+  academic: 'Academic',
+  politics: 'Politics',
+  analysis: 'Analysis',
+  music: 'Music',
+  location: 'Live & location',
+  creator: 'Creator',
+};
+
+/** The roles in picker order — derived from ROLE_LABELS so the two can never drift. */
+export const ROLE_TAGS = Object.keys(ROLE_LABELS) as RoleTag[];
+
+/**
+ * Free-text search over a variant, for every surface that browses the catalog.
+ *
+ * ONE predicate, because the wizard's picker and the insert dialog must agree about what
+ * "candidate" matches. Every term has to hit something (AND across terms, OR across
+ * fields), so typing more words always narrows.
+ */
+export function variantMatchesQuery(v: TemplateVariant, query: string): boolean {
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+  const haystack = [
+    v.name,
+    v.description,
+    v.styleTag,
+    v.roleTag ? ROLE_LABELS[v.roleTag] : '',
+    ...(v.keywords ?? []),
+    // The operator-facing field labels: someone looking for a scripture strap is looking
+    // for the design whose field is called "Reading".
+    ...v.suggestedLines.map((l) => l.title),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return terms.every((t) => haystack.includes(t));
+}
+
 export interface TemplateVariant {
   /** e.g. "lt01". */
   id: string;
@@ -279,6 +349,15 @@ export interface TemplateVariant {
   category: TemplateCategory;
   name: string;
   styleTag: StyleTag;
+  /**
+   * The PRODUCTION CONTEXT the design was drawn for (see RoleTag). A generalist design —
+   * one that suits any show — deliberately carries none, which is why this is optional:
+   * absent means "no particular production", not "unclassified".
+   */
+  roleTag?: RoleTag;
+  /** Extra search terms the name and description don't already contain (a caster strap
+   *  should answer "shoutcaster"). Name/description/style are searched anyway. */
+  keywords?: string[];
   description: string;
   /** How many visible text lines the design supports (1–5). */
   maxLines: number;

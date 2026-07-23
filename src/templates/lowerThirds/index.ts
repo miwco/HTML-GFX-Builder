@@ -1,7 +1,14 @@
-// The lower-third catalog: 14 hand-tuned designs across four style directions
-// (4 minimal · 3 sport · 3 glass · 4 noacg house). Each is a TemplateVariant whose
-// create(options) generates a complete, teachable SPX template (see shared.ts +
-// docs/DESIGN_LANGUAGE.md).
+// The lower-third catalog, in two halves.
+//
+// The GENERALISTS (lt01…lt18) are hand-tuned designs across four style directions — straps
+// that suit any show, filed by look. The SPECIALISTS (./specialist, ls01…ls32) are drawn for
+// one production each and filed by `roleTag`: interview duos, host-and-guest pairings,
+// commentary booths, athletes, esports, worship, academic, politics, analysis, music, live
+// and location, creator identity.
+//
+// Both halves are the same kind of thing — a TemplateVariant whose create(options) generates
+// a complete, teachable SPX template (see shared.ts + docs/DESIGN_LANGUAGE.md). The split is
+// about how a user FINDS one, not about how it is built.
 
 import type { TemplateVariant } from '../../model/wizard';
 import { lt01 } from './lt01';
@@ -22,8 +29,12 @@ import { lt15 } from './lt15';
 import { lt16 } from './lt16';
 import { lt17 } from './lt17';
 import { lt18 } from './lt18';
+import { SPECIALIST_LOWER_THIRDS } from './specialist';
 
-export const LOWER_THIRDS: TemplateVariant[] = [
+/** The GENERALIST straps — designs that suit any show, ordered by style family. They carry
+ *  no `roleTag`: filing a universal name-and-title strap under one production would be a
+ *  claim it doesn't make. */
+const GENERAL_LOWER_THIRDS: TemplateVariant[] = [
   // NoaCG house (the product's own on-air look — brand-kit overlays as templates)
   lt11, // House Strap — amber bar + void blur panel, mono kicker title
   lt12, // House Breaking — accent label chip over a void headline panel
@@ -47,6 +58,17 @@ export const LOWER_THIRDS: TemplateVariant[] = [
   lt15, // Frost Strap — glass lower third with a real accent edge (lower-third type, glass)
   lt16, // Frost Handle — compact glass social mark (social-handle type, glass)
 ];
+
+/**
+ * The browsable lower thirds: the generalists first, then the SPECIALIST pack
+ * (./specialist) — designs drawn for one production, each carrying its `roleTag`.
+ *
+ * Order matters: someone who opens the category without a production in mind should meet the
+ * universal straps first, and someone who has one reaches for the role chips rather than
+ * scrolling. Appending rather than interleaving also keeps every existing design exactly
+ * where it has always been in the grid.
+ */
+export const LOWER_THIRDS: TemplateVariant[] = [...GENERAL_LOWER_THIRDS, ...SPECIALIST_LOWER_THIRDS];
 
 export function lowerThirdById(id: string): TemplateVariant | undefined {
   return LOWER_THIRDS.find((v) => v.id === id);
