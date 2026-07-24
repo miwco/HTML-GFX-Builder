@@ -13,8 +13,8 @@ half of Phase 3's done-when, made true for the axis it is true on:
 
 - **A new pack = config.** Add the entry; the factory proves it resolves and that the format
   mapping stays exactly-once.
-- **A new THEME ≠ config, deliberately.** A fifth family needs a `FAMILY_TOKENS` row, twelve
-  designs (one per type, each through the six gates), and the wizard's family chip. The matrix
+- **A new THEME ≠ config, deliberately.** A fifth family needs a `FAMILY_TOKENS` row, one design
+  per type (nineteen of them now, each through the six gates), and the wizard's family chip. The matrix
   fill measured that real cost at ~30 designed variants per two families; pretending a theme is
   a config knob would just move that work somewhere unreviewed. `validatePacks` fails a pack
   pointing at an unfilled family, which keeps the claim honest.
@@ -31,18 +31,26 @@ config are ready for it; only the surface is unbuilt.
 
 | Pack | Family | Types (curated order) | Extras |
 |---|---|---|---|
-| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen, event-bug, live-bug, sponsor-strip, status-chip | vs01, cr03 |
-| Esports | sport | scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card, station-bug, live-bug, sponsor-rotator | vs02 |
-| Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll, station-bug, live-bug, logo-bug | — |
-| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug, station-bug, live-bug, status-chip | — |
-| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown, status-chip, live-bug | — |
-| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown, station-bug, sponsor-rotator | — |
-| Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen, event-bug, sponsor-strip | — |
-| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard, logo-bug | — |
-| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda, logo-bug, event-bug | cr01 |
-| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker, award-bug, event-bug | cr02 |
-| Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug, sponsor-strip, sponsor-rotator | — |
-| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug, logo-bug | — |
+| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen, now-next, notice-card, event-bug, live-bug, sponsor-strip, status-chip | vs01, cr03 |
+| Esports | sport | scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card, now-next, station-bug, live-bug, sponsor-rotator | vs02 |
+| Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll, now-next, process-steps, station-bug, live-bug, logo-bug | — |
+| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug, headline-card, key-facts, notice-card, station-bug, live-bug, status-chip | — |
+| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown, headline-card, key-facts, status-chip, live-bug | — |
+| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown, key-facts, recap-card, station-bug, sponsor-rotator | — |
+| Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen, now-next, process-steps, recap-card, key-facts, event-bug, sponsor-strip | — |
+| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard, process-steps, key-facts, recap-card, logo-bug | — |
+| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda, statement-card, logo-bug, event-bug | cr01 |
+| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker, now-next, statement-card, notice-card, award-bug, event-bug | cr02 |
+| Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug, key-facts, sponsor-strip, sponsor-rotator | — |
+| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug, process-steps, logo-bug | — |
+
+The title/topic/information pack's seven types and the identity family's eight (docs/
+GRAPHIC_TYPES.md §6) both joined the kits that were standing in for them: the newsroom gets a
+real headline card and a public notice instead of a topic card carrying a paragraph, corporate
+and classroom get the process/checklist and the recap, church and stage get the bilingual
+statement, now/next lands wherever a programme runs to a schedule, and every pack picks up the
+persistent marks it actually leaves on screen. No format's mapping moved — the packs describe
+the same 60 formats with graphics that fit them better.
 
 **Extras** are catalog variants outside the type registry that belong in the kit: the versus
 card (vs01/vs02) for match-up reveals, end credits (cr01–cr03) where a program rolls them.

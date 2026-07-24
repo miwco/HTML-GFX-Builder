@@ -405,6 +405,9 @@ export const COMPLEXITY_LABELS: Record<Complexity, string> = {
  *  forcing the taxonomy's internal boundary onto the user (proposal §14). */
 export interface AliasTargets {
   categories?: GraphicCategoryId[];
+  /** Controlled subtype ids within the categories above — lets a precise word ("sponsor",
+   *  "station id") rank the right SUBTYPE rather than boosting a whole category equally. */
+  subtypes?: string[];
   structures?: StructureId[];
   formats?: ProgrammeFormatId[];
   families?: ProgrammeFamilyId[];
@@ -424,10 +427,11 @@ export const ALIASES: Record<string, AliasTargets> = {
   'chyron': { categories: ['lower-third'] },
   'l3': { categories: ['lower-third'] },
   'corner logo': { categories: ['bug'] },
-  'watermark': { categories: ['bug'] },
-  'dog': { categories: ['bug'] },
-  'station id': { categories: ['bug'] },
-  'handle': { categories: ['bug'] },
+  'watermark': { categories: ['bug'], subtypes: ['logo-only', 'station'] },
+  'dog': { categories: ['bug'], subtypes: ['logo-only', 'station'] },
+  'station id': { categories: ['bug'], subtypes: ['station'] },
+  'ident': { categories: ['bug'], subtypes: ['station', 'event'] },
+  'handle': { categories: ['bug'], subtypes: ['social-handle'] },
   'viewer question': { categories: ['question'] },
   'chat question': { categories: ['question'] },
   'ama': { categories: ['question'], formats: ['live-qa'] },
@@ -470,7 +474,7 @@ export const ALIASES: Record<string, AliasTargets> = {
   'sale': { categories: ['product'] },
   'qr': { categories: ['cta'] },
   'link card': { categories: ['cta'] },
-  'sponsor': { categories: ['bug', 'sponsor'] },
+  'sponsor': { categories: ['bug', 'sponsor'], subtypes: ['sponsor'] },
   'starting soon': { categories: ['holding'] },
   'brb': { categories: ['holding'] },
   'be right back': { categories: ['holding'] },
@@ -487,9 +491,9 @@ export const ALIASES: Record<string, AliasTargets> = {
   'head to head': { categories: ['reveal'] },
   'matchup': { categories: ['reveal'] },
   'face-off': { categories: ['reveal'] },
-  'award': { categories: ['reveal', 'results', 'bug'] },
-  'winner': { categories: ['reveal', 'results'] },
-  'trophy': { categories: ['reveal', 'bug'] },
+  'award': { categories: ['reveal', 'results', 'bug'], subtypes: ['award'] },
+  'winner': { categories: ['reveal', 'results'], subtypes: ['winner'] },
+  'trophy': { categories: ['reveal', 'bug'], subtypes: ['award'] },
   'stinger': { categories: ['transition'] },
   'wipe': { categories: ['transition'] },
   // structure vocabulary

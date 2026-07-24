@@ -217,6 +217,18 @@ const PROBE = `(async (onlyIds) => {
               ']. Declare TypeDesign.animationPresets to keep the design’s own vocabulary.',
           );
         }
+        // Steps drift, for the same reason as motion drift: defaultSteps is what create({})
+        // resolves, so a stepped design compiled unstepped ships a checklist that shows its
+        // last item on the first frame — and, like the preset list, no output-based check can
+        // see it, because the design's OWN variant record is what every baseline was taken from.
+        const compiledSteps = !!(design.defaultSteps ?? type.capabilities.defaultSteps);
+        if (compiledSteps !== !!own.defaultSteps) {
+          rec.gates.capabilities.push(
+            'steps drift: the design is authored ' + (own.defaultSteps ? 'STEPPED' : 'unstepped') +
+              ' but compiles ' + (compiledSteps ? 'STEPPED' : 'unstepped') +
+              '. Declare TypeDesign.defaultSteps to keep the design’s own reveal.',
+          );
+        }
         const compiledZone = design.defaultZone ?? type.capabilities.defaultZone;
         if (own.defaultZone && compiledZone !== own.defaultZone) {
           rec.gates.capabilities.push(

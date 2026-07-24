@@ -136,6 +136,54 @@ scheduled at the timeline's end). A `repeat: -1` loop or a measured `dynamics` b
 that unreachable, so `validateMachine` errors on it. This is why the ticker type is a rotator
 with its own `ticker-rotate` preset rather than the endless marquee.
 
+## pack4/ - the TITLE / TOPIC / INFORMATION pack
+
+36 designs over nine graphic types - openers (title-card), topic and chapter cards (topic-card),
+and the seven types `types/briefings.ts` + `types/lists.ts` add: now/next, headline + body,
+process/checklist, public notice, statement (long text + a second language), key facts, and
+recap/actions. NOTHING here is a new mechanism: the word-shaped ones build on the info-card
+assembler, the two LIST boards build on the infographic one (their content is a textarea the
+runtime renders and their motion is measured), and both go through the ordinary graphic-type
+registry.
+
+- **pack4/skin.ts** - the pack's shared style vocabulary: four `Pack4Skin` records (clean =
+  minimal, frost = glass, volt = sport, house = noacg) plus the emitters every design composes -
+  `panelCss` (the family's panel treatment), `accentCss` (its leading motif: hairline rule /
+  short stroke / top rail / glowing amber bar), `labelCss`, `dividerCss`, `measureCss` (a
+  design's own text measure, overriding the category cap - running text wants a narrower one
+  than a headline), `textLegibilityCss` (the panel-less family's halo over live video) and
+  `readableTextCss`. `decl(prop, value, comment)` is the aligned declaration formatter every
+  emitter uses - the first draft hand-padded and silently ate the semicolon of every long value.
+- **pack4/content.ts** - the pack's WORDS: each type's `TypeField[]` and every design's sample
+  text, declared ONCE. The variant reads it through `typeLines(FIELDS, SAMPLES)` and the type
+  declares the same `SAMPLES`, so the two sides the factory's samples gate compares cannot
+  drift. title-card's and topic-card's field arrays moved here for the same reason.
+- **pack4/markup.ts** - `maskLine` (index-safe, so a design handed fewer lines than it draws for
+  emits fewer), `emptyLineCss`, and `maskScoped`. TWO RULES the whole pack follows: every
+  vertical margin sits on the line's SPAN (never its mask) and every span carries `:empty {
+  display: none }`, so a field the operator clears takes NO space - that is what makes "half the
+  fields filled" a supported state and, in the process card, what keeps the CSS step counters
+  contiguous (a display:none box is skipped by counters). `maskScoped` exists because the
+  category already styles `.{prefix}-mask > span` including `text-wrap: balance`; a design that
+  wants a paragraph's wrapping has to say so at the same specificity.
+- **infoCards/pack4/*.ts** - one builder per type (titles, topics, nowNext, headline, process,
+  notice, statement); **infographics/pack4/** - `boards.ts` (facts + recap) and `listRuntimes.ts`
+  (their `rebuildInfographic()`, the dataRuntimes.ts pattern). Unlike the schedule board, a line
+  with NO pipe still renders here: a fact with no term and an action with no owner are real
+  content, not malformed rows.
+
+Two things in the pack are worth knowing before touching it:
+
+- **process-steps is the catalog's first STEPPED-by-default type** (`TemplateVariant.defaultSteps`
+  / `TypeCapabilities.defaultSteps`, honoured in `resolveOptions`). The wizard draft's steps flag
+  is tri-state now (`null` = the design decides) - a hard `false` there had been overriding every
+  design that knows better. `scripts/factory.mjs` gates steps drift alongside motion and position.
+- **notice-card is the pack's one state machine**: a PARALLEL `level` group (standard / urgent)
+  with `escalate` / `standDown` operator events fading a `.info-card-alert` wash. Parallel, not a
+  branch on the main path, because escalating must not disturb where the operator's walk has got
+  to - and because a group entered by transition or by snap restores with the rest after a
+  control-page refresh.
+
 ## Categories
 
 - **lowerThirds/specialist/** - ls01…ls32, the SPECIALIST pack: lower thirds drawn for ONE
@@ -180,9 +228,11 @@ with its own `ticker-rotate` preset rather than the endless marquee.
   ids adjacent + `SLIDE_FAMILY`/`isSlidePreset` so pickers group them: the wizard renders ONE
   Slide card with a direction picker, the Inspector one optgroup), then line-reveal, mask-wipe,
   pop-spring, snap-stinger, blur-in, fade, flip-3d.
-- **infoCards/** - card01…card05 (prefix 'info-card', `dataRegion: true`). The standard contract's
+- **infoCards/** - card01…card37 (prefix 'info-card', `dataRegion: true`). The standard contract's
   other line-based family: they use the same 9-preset bank as lower thirds and convert exactly like
   them, steps and all (a » press per body line becomes a middle step with its `reveals`).
+  card10-card37 are the TITLE / TOPIC / INFORMATION pack (see pack4/ below); each is a thin
+  variant record over a shared per-type builder in `infoCards/pack4/`.
 - **endCredits/** - cr01…cr04 (prefix 'credits') + creditsPresets.ts (credits-roll /
   credits-pages / credits-crawl) + **creditsMotion.ts**; data-driven: a hidden #f0 textarea holds
   "Role | Name" lines, template JS parses and rebuilds #credits-track, ends with logo + year
@@ -249,7 +299,7 @@ Adding a measured motion to another category = add a builder to its runtime + ha
   **Hide a data holder with a CSS RULE, never an inline `style="display: none"`**: the editor's
   entrance reset clears inline props on the whole root subtree (PlayoutSimulator `resetGraphic`),
   so an inline-hidden holder comes back VISIBLE on the canvas. `STATUS_SOURCE_CSS` is the pattern.
-- **infographics/** - ig01…ig06 (prefix 'infographic'; design owns fields + runtimeExtraJs) +
+- **infographics/** - ig01…ig21 (prefix 'infographic'; design owns fields + runtimeExtraJs) +
   igPresets (count-up / bars-grow / ring-fill / rows-cascade) + **igMotion.ts**. DATA BLOCKS via
   convertToDataRegion. EVERY infographic's motion is MEASURED - the stat counts to the figure the
   operator typed, each bar grows to its own `data-value`, the ring draws to that percent, and the

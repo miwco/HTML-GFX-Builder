@@ -482,7 +482,10 @@ export default function CreationWizard() {
                     lines: v.suggestedLines.map((l) => ({ ...l })),
                     zone: null,
                     logoEnabled: null, // the logo decision belongs to the picked design
-                    animation: { presetId: null, outPresetId: null },
+                    // Motion AND the steps decision belong to the picked design too: a
+                    // checklist is stepped by construction and a name strap is not, so
+                    // switching design re-asks instead of carrying the last answer across.
+                    animation: { presetId: null, outPresetId: null, steps: null },
                     // Matched brand carries the package look into every new graphic.
                     ...(matchBrand && brand
                       ? brandPatch(brand)

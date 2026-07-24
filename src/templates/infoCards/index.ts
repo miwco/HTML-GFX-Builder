@@ -11,6 +11,34 @@ import { card06 } from './card06';
 import { card07 } from './card07';
 import { card08 } from './card08';
 import { card09 } from './card09';
+import { card10 } from './card10';
+import { card11 } from './card11';
+import { card12 } from './card12';
+import { card13 } from './card13';
+import { card14 } from './card14';
+import { card15 } from './card15';
+import { card16 } from './card16';
+import { card17 } from './card17';
+import { card18 } from './card18';
+import { card19 } from './card19';
+import { card20 } from './card20';
+import { card21 } from './card21';
+import { card22 } from './card22';
+import { card23 } from './card23';
+import { card24 } from './card24';
+import { card25 } from './card25';
+import { card26 } from './card26';
+import { card27 } from './card27';
+import { card28 } from './card28';
+import { card29 } from './card29';
+import { card30 } from './card30';
+import { card31 } from './card31';
+import { card32 } from './card32';
+import { card33 } from './card33';
+import { card34 } from './card34';
+import { card35 } from './card35';
+import { card36 } from './card36';
+import { card37 } from './card37';
 
 export const INFO_CARDS: TemplateVariant[] = [
   card05, // House Title — noacg mono kicker + huge display title (sibling lt11)
@@ -22,6 +50,35 @@ export const INFO_CARDS: TemplateVariant[] = [
   card07, // Clean Title — minimal title card (sibling lt01 / lt02)
   card08, // Slab Title — sport title card, leaning slab (sibling lt05 / card02)
   card09, // Frost Title — glass title card, frosted panel (sibling lt08 / card03)
+  // ── The title / topic / information pack ──
+  card10, // Session Title — minimal session opener (title-card)
+  card11, // Keynote Title — glass keynote opener (title-card)
+  card12, // Segment Title — sport segment opener (title-card)
+  card13, // Service Title — house ceremony opener (title-card)
+  card14, // Chapter Card — minimal chapter marker (topic-card)
+  card15, // Question Card — glass question card (topic-card)
+  card16, // Topic Slab — sport talking point (topic-card)
+  card17, // Key Term — house explainer card (topic-card)
+  card18, // Now & Next — minimal now/next (now-next)
+  card19, // Frost Now Next — glass now-playing (now-next)
+  card20, // Volt Now Next — sport now/next slab (now-next)
+  card21, // House Now Next — house now/next (now-next)
+  card22, // News Headline — minimal headline + body (headline-card)
+  card23, // Frost Headline — glass announcement (headline-card)
+  card24, // Volt Headline — sport report (headline-card)
+  card25, // House Headline — house release note (headline-card)
+  card26, // Clean Steps — minimal numbered process (process-steps)
+  card27, // Frost Checklist — glass checklist (process-steps)
+  card28, // Volt Process — sport runsheet (process-steps)
+  card29, // House Runbook — house process (process-steps)
+  card30, // Public Notice — minimal public information (notice-card)
+  card31, // Frost Advisory — glass venue advisory (notice-card)
+  card32, // Alert Slab — sport safety notice (notice-card)
+  card33, // House Notice — house service notice (notice-card)
+  card34, // Statement Card — minimal long text (statement-card)
+  card35, // Reading Card — glass reading (statement-card)
+  card36, // Translation Slab — sport translation (statement-card)
+  card37, // House Statement — house long text (statement-card)
 ];
 
 export function infoCardById(id: string): TemplateVariant | undefined {

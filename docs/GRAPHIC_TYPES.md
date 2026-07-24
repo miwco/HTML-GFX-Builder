@@ -43,7 +43,7 @@ sweeps and every spec already speak.
 no branches, no parallel groups and no event overrides compiles to **no `machine` key**, and
 its template comes out byte-identical to what it emitted before.
 
-Seven of the twelve shipped types are in that class. That is the design working, not a
+Nineteen of the twenty-seven shipped types are in that class. That is the design working, not a
 shortcut — and it is what makes promoting an existing variant safe.
 
 ---
@@ -264,9 +264,32 @@ family a cell is in.
 | Ticker | 8 | tk07 House Rotator | timer cycle + pause/resume/skip |
 | Scoreboard | 5 | sb03 House Score | parallel `flag` / `clock` / `result` |
 | Quiz board | — | qz02 House Quiz | branches `selected` / `locked` |
+| Now / Next | — | card21 House Now Next | – |
+| Headline card | — | card25 House Headline | – |
+| Process / checklist | — | card29 House Runbook | – (stepped by default) |
+| Public notice | — | card33 House Notice | parallel `level` (escalate / stand down) |
+| Statement | — | card37 House Statement | – |
+| Key facts | — | ig17 House Facts | – |
+| Recap / actions | — | ig21 House Actions | – |
 
-The last three earn their place by what they prove rather than by frequency: parallel groups,
-timer-driven motion, and the far end of the model.
+Scoreboard, ticker and quiz board earn their place by what they prove rather than by frequency:
+parallel groups, timer-driven motion, and the far end of the model.
+
+The seven below them are the TITLE / TOPIC / INFORMATION pack (`src/templates/pack4/`). They
+carry no frequency count because the reference sheet asked which graphics a format needs and
+answered "an opener" and "a topic card" — the two types already above. Each of these is a shape
+those two were being made to stand in for: a now/next card is not a title card with different
+words, a process shown all at once is not a process, and a bilingual reading is not a quote.
+Six of the seven add no machine, which is the rule holding at scale. The notice adds one
+parallel group, because a notice's LEVEL changes while the graphic is on air and re-taking the
+card to change it would blank the screen at the worst possible moment.
+
+The pack also added the fourth wizard-facing capability, `defaultSteps`: whether a design starts
+in multi-step mode. It is a capability rather than a preference for the same reason
+`animationPresets[0]` is — it decides what an untouched `create({})` produces, and a process
+card created single-step shows its last step on the first frame. The wizard's steps flag became
+tri-state (`null` = the design decides) to make room for it, matching `zone` and `logoEnabled`,
+and `scripts/factory.mjs` gates the drift the same way it gates motion and position.
 
 ### The identity family (templates/types/identityBugs.ts)
 
@@ -295,9 +318,9 @@ status swap through `noacgDispatch`, the rotation through its own armed timer.
 
 ### The matrix is full — and how it filled
 
-All 48 cells of the original twelve types (× noacg / glass / sport / minimal) are filled, as are
-the 32 of the identity family. The route there is worth recording, because it was not the one
-the first pass predicted:
+All cells (× noacg / glass / sport / minimal) are filled: 48 of the original twelve types, 28 of
+the title/topic/information pack's seven, and 32 of the identity family's eight. The route there
+is worth recording, because it was not the one the first pass predicted:
 
 - **The promotion well ran dry fast.** 24 cells looked promotable on parts alone; 8 actually were
   on the first pass, and after promoting the single design that cleared all six gates on the

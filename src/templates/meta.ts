@@ -138,6 +138,46 @@ export const TYPE_META: Record<string, DeclaredTemplateMeta> = {
     },
     extraCapabilities: ['quiz-states', 'operator-states', 'multi-step'],
   },
+
+  // ── The title / topic / information pack (templates/pack4/) ─────────────────
+  // The seven shapes the opener and the topic card were being made to stand in for. Each names
+  // the graphic CATEGORY an operator would browse it under — a now/next card is not a title, a
+  // notice is not a topic — so they scatter across topic / quote / info / alert / list rather
+  // than piling into one 'info' bucket.
+  'now-next': {
+    category: 'topic', subtype: 'now-playing', structures: ['multi-line'],
+    semantics: { nowLabel: 'headline', now: 'topic', nowMeta: 'description', nextLabel: 'headline', next: 'topic' },
+  },
+  'headline-card': {
+    category: 'quote', subtype: 'headline', structures: ['multi-line'],
+    semantics: { kicker: 'topic', headline: 'headline', body: 'description', source: 'source' },
+  },
+  'process-steps': {
+    category: 'info', subtype: 'step', structures: ['multi-line'],
+    semantics: { heading: 'headline', step1: 'description', step2: 'description', step3: 'description', step4: 'description' },
+    // Stepped by construction — the reveal is the graphic (TemplateVariant.defaultSteps).
+    extraCapabilities: ['multi-step'],
+  },
+  'notice-card': {
+    category: 'alert', subtype: 'notice', structures: ['multi-line'],
+    semantics: { label: 'headline', headline: 'headline', body: 'description', action: 'description', contact: 'source' },
+    // The parallel `level` group escalates and stands down while on air (briefings.ts).
+    extraCapabilities: ['alert-state', 'operator-states'],
+  },
+  'statement-card': {
+    category: 'quote', subtype: 'quote', structures: ['multi-line'],
+    semantics: { label: 'headline', primary: 'description', secondary: 'description', attribution: 'source' },
+  },
+  'key-facts': {
+    category: 'info', subtype: 'explainer', structures: ['rows'],
+    semantics: { facts: 'items', heading: 'headline' },
+    extraCapabilities: ['repeating'],
+  },
+  'recap-card': {
+    category: 'list', subtype: 'order', structures: ['rows'],
+    semantics: { items: 'items', heading: 'headline' },
+    extraCapabilities: ['repeating'],
+  },
 };
 
 // ── Per-variant declarations (the ~30 unclaimed hand-written designs where the

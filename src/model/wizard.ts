@@ -288,6 +288,17 @@ export interface TemplateVariant {
   logo: LogoSupport;
   /** Animation presets that suit this design (first = default). */
   animationPresets: AnimPresetId[];
+  /**
+   * Whether the design starts in multi-step mode (SPX Continue reveals one line per press).
+   * Absent = off, which is what every design did before this existed.
+   *
+   * It is a CAPABILITY like `animationPresets[0]`, not a preference: a numbered process card
+   * or a checklist is a stepped graphic by construction — created single-step it shows its
+   * ending on the first frame — while a name strap is not. The wizard's steps toggle still
+   * wins wherever the user touches it; this only decides what an untouched `create({})`
+   * produces, which is also what the previews, the sweeps and the AI see.
+   */
+  defaultSteps?: boolean;
   defaultPalette: Palette;
   defaultFontId: string;
   defaultZone: Zone9;
@@ -351,7 +362,7 @@ export function resolveOptions(variant: TemplateVariant, options: WizardOptions 
       presetId: options.animation?.presetId ?? variant.animationPresets[0],
       speed: options.animation?.speed ?? 1,
       easing: options.animation?.easing ?? 'auto',
-      steps: options.animation?.steps ?? false,
+      steps: options.animation?.steps ?? variant.defaultSteps ?? false,
     },
     importedImages: options.importedImages ?? [],
     logoAssetPath: options.logoAssetPath ?? null,

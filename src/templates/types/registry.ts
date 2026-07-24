@@ -10,7 +10,15 @@ import type { TemplateCategory, TemplateVariant } from '../../model/wizard';
 import { variantsFromType, type GraphicType } from './graphicType';
 import { lowerThirdType } from './lowerThird';
 import { socialBugType, sponsorBugType } from './bugs';
+import {
+  headlineCardType,
+  noticeCardType,
+  nowNextType,
+  processStepsType,
+  statementCardType,
+} from './briefings';
 import { titleCardType, topicCardType } from './cards';
+import { keyFactsType, recapType } from './lists';
 import { agendaType, pollType } from './dataBoards';
 import { countdownType, holdingScreenType } from './clocks';
 import { quizBoardType } from './quizBoard';
@@ -37,6 +45,19 @@ export const TYPES: GraphicType[] = [
   tickerType,         //  8/60
   scoreboardType,     //  5/60 — but the type that proves parallel groups
   quizBoardType,      // the flagship
+  // ── The title / topic / information pack ──
+  // These have no frequency count: the reference sheet asked "which graphics does this
+  // format need", and it named the OPENER and the TOPIC card, which the two types above
+  // already cover. Everything below is a shape those two were being made to stand in for —
+  // a now/next card is not a title card with different words, and a process shown all at once
+  // is not a process. They earn their place by being a different graphic, not by frequency.
+  nowNextType,        // now playing / coming up
+  headlineCardType,   // headline + body
+  processStepsType,   // steps, processes, checklists — the pack's stepped type
+  noticeCardType,     // public information + safety — the pack's state machine
+  statementCardType,  // long text, and a second language
+  keyFactsType,       // key facts / explainers — a list board, like the agenda
+  recapType,          // recap / action items — a list board, like the agenda
   // The identity family: station ident, live status, logo mark, sponsor strip, sponsor
   // rotation, event ident, award mark, location chip — four looks each.
   ...IDENTITY_BUG_TYPES,

@@ -49,6 +49,7 @@ export const PACKS: TemplatePack[] = [
     family: 'sport',
     types: [
       'scoreboard', 'countdown', 'lower-third', 'ticker', 'sponsor-bug', 'title-card', 'holding-screen',
+      'now-next', 'notice-card',
       // The identity marks a match feed leaves up: the fixture ident, the live/replay status,
       // the sponsor bar, and the venue chip for pitchside cameras.
       'event-bug', 'live-bug', 'sponsor-strip', 'status-chip',
@@ -63,6 +64,7 @@ export const PACKS: TemplatePack[] = [
     family: 'sport',
     types: [
       'scoreboard', 'lower-third', 'countdown', 'agenda', 'social-bug', 'sponsor-bug', 'holding-screen', 'title-card',
+      'now-next',
       // Tournament nights run long: a station ident, the live/replay status, and a sponsor
       // rotation that cycles the tournament's partners without an operator touching it.
       'station-bug', 'live-bug', 'sponsor-rotator',
@@ -77,6 +79,7 @@ export const PACKS: TemplatePack[] = [
     family: 'noacg',
     types: [
       'holding-screen', 'lower-third', 'topic-card', 'social-bug', 'sponsor-bug', 'countdown', 'poll',
+      'now-next', 'process-steps',
       // A creator's own identity: the channel ident, a live/standby mark for stream breaks,
       // and the logo-only bug for the hours where nothing else should be on screen.
       'station-bug', 'live-bug', 'logo-bug',
@@ -101,6 +104,7 @@ export const PACKS: TemplatePack[] = [
     family: 'minimal',
     types: [
       'lower-third', 'ticker', 'topic-card', 'title-card', 'agenda', 'sponsor-bug',
+      'headline-card', 'key-facts', 'notice-card',
       // The newsroom's own furniture: the channel ident that never leaves, the live/replay
       // status a news desk is obliged to be honest about, and the location chip for reporters.
       'station-bug', 'live-bug', 'status-chip',
@@ -121,6 +125,7 @@ export const PACKS: TemplatePack[] = [
     family: 'minimal',
     types: [
       'poll', 'lower-third', 'ticker', 'title-card', 'agenda', 'countdown',
+      'headline-card', 'key-facts',
       // Results night runs from many places at once: a location chip per feed, and a status
       // mark that says plainly whether a shot is live or a replay.
       'status-chip', 'live-bug',
@@ -138,6 +143,7 @@ export const PACKS: TemplatePack[] = [
     family: 'glass',
     types: [
       'lower-third', 'topic-card', 'poll', 'agenda', 'social-bug', 'sponsor-bug', 'countdown',
+      'key-facts', 'recap-card',
       // A show ident for the corner, and a sponsor rotation for the partners a podcast or
       // panel show reads out between segments.
       'station-bug', 'sponsor-rotator',
@@ -159,6 +165,7 @@ export const PACKS: TemplatePack[] = [
     family: 'minimal',
     types: [
       'agenda', 'lower-third', 'countdown', 'title-card', 'topic-card', 'poll', 'holding-screen',
+      'now-next', 'process-steps', 'recap-card', 'key-facts',
       // A conference stream identifies the event and its sponsors more than anything else:
       // the session ident in the corner, and the partner strip along the bottom.
       'event-bug', 'sponsor-strip',
@@ -183,6 +190,7 @@ export const PACKS: TemplatePack[] = [
     family: 'noacg',
     types: [
       'quiz-board', 'countdown', 'lower-third', 'topic-card', 'agenda', 'scoreboard',
+      'process-steps', 'key-facts', 'recap-card',
       // A school or university stream keeps its institution's mark up, and nothing else.
       'logo-bug',
     ],
@@ -199,6 +207,7 @@ export const PACKS: TemplatePack[] = [
     family: 'minimal',
     types: [
       'title-card', 'lower-third', 'topic-card', 'holding-screen', 'countdown', 'agenda',
+      'statement-card',
       // The congregation's or family's own mark, and the ident for the service, ceremony or
       // memorial being streamed — both quiet enough to leave up for an hour.
       'logo-bug', 'event-bug',
@@ -218,6 +227,7 @@ export const PACKS: TemplatePack[] = [
     family: 'glass',
     types: [
       'title-card', 'lower-third', 'holding-screen', 'countdown', 'social-bug', 'agenda', 'ticker',
+      'now-next', 'statement-card', 'notice-card',
       // A gala runs on two marks: which award is being given, and which festival or stage
       // this is.
       'award-bug', 'event-bug',
@@ -239,6 +249,7 @@ export const PACKS: TemplatePack[] = [
     family: 'noacg',
     types: [
       'topic-card', 'countdown', 'lower-third', 'ticker', 'title-card', 'sponsor-bug',
+      'key-facts',
       // Live commerce is brand-dense: a partner strip for the show's sponsors, and a rotation
       // for the ones that cycle through a long selling block.
       'sponsor-strip', 'sponsor-rotator',
@@ -258,6 +269,7 @@ export const PACKS: TemplatePack[] = [
     family: 'minimal',
     types: [
       'countdown', 'holding-screen', 'topic-card', 'lower-third', 'social-bug',
+      'process-steps',
       // A class or an ambient stream keeps one quiet mark on screen and nothing more.
       'logo-bug',
     ],

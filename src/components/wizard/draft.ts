@@ -110,7 +110,11 @@ export interface WizardDraft {
     direction: AnimPhase;
     speed: AnimSpeed;
     easing: EasingId;
-    steps: boolean;
+    /** SPX multi-step reveal. `null` = the user has not decided, so the picked design's own
+     *  answer stands (`TemplateVariant.defaultSteps`) — the same "undecided" shape `zone` and
+     *  `logoEnabled` use. A process card or a checklist is stepped by construction; a name
+     *  strap is not, and a hard `false` here would have overridden every design that knows. */
+    steps: boolean | null;
   };
   /** Images dropped in via the "Import graphics" entry (stored as data-URL assets). */
   importedImages: AssetFile[];
@@ -165,7 +169,7 @@ export function initialDraft(): WizardDraft {
     typeScale: 1,
     zone: null,
     nudge: { x: 0, y: 0 },
-    animation: { presetId: null, outPresetId: null, direction: 'both', speed: 1, easing: 'auto', steps: false },
+    animation: { presetId: null, outPresetId: null, direction: 'both', speed: 1, easing: 'auto', steps: null },
     importedImages: [],
     logoAssetPath: null,
     logoEnabled: null,
@@ -217,7 +221,8 @@ export function draftToOptions(variant: TemplateVariant, draft: WizardDraft): Wi
       presetId: draft.animation.presetId ?? variant.animationPresets[0],
       speed: draft.animation.speed,
       easing: draft.animation.easing,
-      steps: draft.animation.steps,
+      // null = undecided; resolveOptions then uses the variant's own `defaultSteps`.
+      steps: draft.animation.steps ?? undefined,
     },
     importedImages: draft.importedImages.length > 0 ? draft.importedImages : undefined,
     logoAssetPath: variant.logo !== 'none' ? draft.logoAssetPath ?? undefined : undefined,
