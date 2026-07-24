@@ -14,10 +14,12 @@ import { awaitPreviewRebuild } from './_preview';
 // which no other graphic does; and both new categories have to survive the round trip a real
 // user makes — edit, save, reload, export to every target.
 
-/** The new categories, by their wizard label and a design to build from each. */
+/** The new categories, by their BROWSE TILE label and a design to build from each. The label is
+ *  the graphic category's name in the taxonomy (model/taxonomy.ts), NOT the old wizard category
+ *  name — the Browse step files templates by graphic category. */
 const NEW_CATEGORIES = [
-  { label: 'Camera frames', id: 'frame', design: 'House Cam' },
-  { label: 'Transitions', id: 'transition', design: 'Volt Stinger' },
+  { label: 'Frames & layouts', id: 'frame', design: 'House Cam' },
+  { label: 'Stingers & wipes', id: 'transition', design: 'Volt Stinger' },
 ];
 
 async function openWizardCategories(page: Page) {
