@@ -133,6 +133,7 @@ function indexFor(meta: TemplateMeta): IndexedField[] {
 interface ParsedQuery {
   tokens: string[];
   boostCategories: Set<GraphicCategoryId>;
+  boostSubtypes: Set<string>;
   boostStructures: Set<StructureId>;
   boostFormats: Set<ProgrammeFormatId>;
   boostFamilies: Set<ProgrammeFamilyId>;
@@ -144,6 +145,7 @@ function parseQuery(raw: string): ParsedQuery {
   const parsed: ParsedQuery = {
     tokens: [],
     boostCategories: new Set(),
+    boostSubtypes: new Set(),
     boostStructures: new Set(),
     boostFormats: new Set(),
     boostFamilies: new Set(),
@@ -157,6 +159,7 @@ function parseQuery(raw: string): ParsedQuery {
     text = text.replace(needle, ' ');
     const t = ALIASES[alias];
     t.categories?.forEach((c) => parsed.boostCategories.add(c));
+    t.subtypes?.forEach((s) => parsed.boostSubtypes.add(s));
     t.structures?.forEach((s) => parsed.boostStructures.add(s));
     t.formats?.forEach((f) => parsed.boostFormats.add(f));
     t.families?.forEach((f) => parsed.boostFamilies.add(f));
@@ -190,6 +193,8 @@ function textScore(meta: TemplateMeta, tokens: string[]): number {
 function aliasScore(meta: TemplateMeta, q: ParsedQuery): number {
   let score = 0;
   if (q.boostCategories.has(meta.category)) score += 40;
+  // A precise word ranks its SUBTYPE above the rest of the boosted category.
+  if (meta.subtype && q.boostSubtypes.has(meta.subtype)) score += 25;
   if (meta.structures.some((s) => q.boostStructures.has(s))) score += 20;
   if (meta.programmeFormats.some((f) => q.boostFormats.has(f))) score += 15;
   if (meta.programmeFamilies.some((f) => q.boostFamilies.has(f))) score += 10;
