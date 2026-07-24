@@ -55,7 +55,7 @@ export const ig03: TemplateVariant = defineInfographicVariant(
       <div id="infographic-rows"></div>
     </div>
     <!-- Hidden standings source — SPX writes field f0 here; JS renders it. One "CODE gap" per line. -->
-    <div id="f0" style="display: none">${towerText}</div>`,
+    <div id="f0" class="noacg-data-source">${towerText}</div>`,
 
       css: `/* The title — a small caps kicker over the tower, led by a chunky accent dash. */
 .infographic-title {

@@ -39,6 +39,8 @@ export type TemplateCategory =
   | 'corner-bug'
   | 'versus'
   | 'quiz'
+  | 'frame'
+  | 'transition'
   // The competition pack (docs/COMPETITION_PACK.md): esports, competition, result and
   // reveal graphics. Four categories, one shared assembler (templates/competition).
   | 'esports-score'
@@ -49,18 +51,20 @@ export type TemplateCategory =
 
 export const CATEGORIES: CategoryInfo[] = [
   // Essentials — the graphics almost every live show needs.
-  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 13, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
+  { id: 'lower-third',   name: 'Lower thirds',            plannedCount: 86, available: true,  description: 'Names, titles, and straps over the action.', group: 'essentials' },
   { id: 'ticker',        name: 'Tickers',                 plannedCount: 6,  available: true , description: 'Scrolling news, info, and index strips.', group: 'essentials' },
   { id: 'scoreboard',    name: 'Scoreboards',             plannedCount: 2,  available: true , description: 'Two-team scores and match status.', group: 'essentials' },
   { id: 'info-card',     name: 'Info cards',              plannedCount: 5,  available: true,  description: 'Full / half screen cards — info and quotes.', group: 'essentials' },
   { id: 'starting-soon', name: 'Starting soon',           plannedCount: 3,  available: true , description: 'Pre-show holding loops with a timer.', group: 'essentials' },
   { id: 'end-credits',   name: 'End credits',             plannedCount: 4,  available: true , description: 'Rolling and card-based credit sequences.', group: 'essentials' },
-  { id: 'corner-bug',    name: 'Corner bug',              plannedCount: 2,  available: true , description: 'A persistent corner logo (image placeholder).', group: 'essentials' },
+  { id: 'corner-bug',    name: 'Bugs & corner logos',     plannedCount: 36, available: true , description: 'Persistent marks: logos, idents, live status, sponsors, chips.', group: 'essentials' },
   // Specials — for particular formats and moments.
   { id: 'infographic',   name: 'Infographics',            plannedCount: 7,  available: true , description: 'Stats, polls, leaderboards, schedules, counters.', group: 'specials' },
   { id: 'game-timer',    name: 'Game show timer',         plannedCount: 4,  available: true , description: 'Countdowns and clocks for game formats.', group: 'specials' },
   { id: 'versus',        name: 'Versus cards',            plannedCount: 2,  available: true , description: 'Full-frame match-up cards — two sides meet.', group: 'specials' },
   { id: 'quiz',          name: 'Quiz graphics',           plannedCount: 1,  available: true , description: 'Game-show questions with answer options.', group: 'specials' },
+  { id: 'frame',         name: 'Camera frames',           plannedCount: 4,  available: true , description: 'Surrounds for webcams, interviews, split screens and screen shares.', group: 'specials' },
+  { id: 'transition',    name: 'Transitions',             plannedCount: 4,  available: true , description: 'Full-frame stingers and wipes that cover a cut, then clear.', group: 'specials' },
   // The competition pack — esports, competition, result and reveal graphics.
   { id: 'esports-score', name: 'Esports scoreboards',     plannedCount: 7,  available: true , description: 'Series scorebugs and map / round indicators.', group: 'specials' },
   { id: 'matchup',       name: 'Match-ups & competitors', plannedCount: 10, available: true , description: 'Match-ups with a winner pick, head-to-heads, player cards.', group: 'specials' },
@@ -169,6 +173,20 @@ export type AnimPresetId =
   | 'bars-grow'
   | 'ring-fill'
   | 'rows-cascade'
+  // The goal/milestone motions: a ring drawn to raised/goal (its angle and the counted
+  // figure are different values, which is why it is not 'ring-fill'), and a progress line
+  // that pops each milestone it passes.
+  | 'goal-ring'
+  | 'milestone-run'
+  // Camera-frame motion (templates/frames/framePresets.ts): the window edge, then the plate.
+  | 'frame-draw'
+  | 'frame-fade'
+  | 'frame-slide'
+  // Transition motion (templates/transitions/transitionPresets.ts): the entrance COVERS the
+  // frame and holds there — the exit is what clears it again.
+  | 'transition-slam'
+  | 'transition-wipe'
+  | 'transition-sweep'
   // Quiz format (templates/quiz/quizPresets.ts) — Continue plays the Reveal step, which
   // calls revealAnswer() to light up the correct row:
   | 'quiz-reveal'
@@ -305,6 +323,17 @@ export interface TemplateVariant {
   logo: LogoSupport;
   /** Animation presets that suit this design (first = default). */
   animationPresets: AnimPresetId[];
+  /**
+   * Whether the design starts in multi-step mode (SPX Continue reveals one line per press).
+   * Absent = off, which is what every design did before this existed.
+   *
+   * It is a CAPABILITY like `animationPresets[0]`, not a preference: a numbered process card
+   * or a checklist is a stepped graphic by construction — created single-step it shows its
+   * ending on the first frame — while a name strap is not. The wizard's steps toggle still
+   * wins wherever the user touches it; this only decides what an untouched `create({})`
+   * produces, which is also what the previews, the sweeps and the AI see.
+   */
+  defaultSteps?: boolean;
   defaultPalette: Palette;
   defaultFontId: string;
   defaultZone: Zone9;
@@ -325,6 +354,15 @@ export const PALETTES: Palette[] = [
   { id: 'volt',     name: 'Volt',         styleTags: ['sport'],   accent: '#c8f31d', text: '#ffffff', textDim: 'rgba(255,255,255,0.75)', panel: 'rgba(8, 10, 14, 0.94)' },
   { id: 'inferno',  name: 'Inferno',      styleTags: ['sport'],   accent: '#ff5a1f', text: '#ffffff', textDim: 'rgba(255,255,255,0.75)', panel: 'rgba(12, 8, 8, 0.94)' },
   { id: 'royal',    name: 'Royal',        styleTags: ['sport', 'glass'], accent: '#3d6bff', text: '#ffffff', textDim: 'rgba(255,255,255,0.72)', panel: 'rgba(8, 10, 20, 0.94)' },
+  // Editorial (the magazine/newsroom voice — printed-page colour: one ink, one paper)
+  // The accent is measured, not picked by eye: editorial designs put it on SMALL tracked caps,
+  // and a deeper vermilion (#d1462f) lands at 4.2:1 on the ink panel — under the 4.5:1 a caption
+  // needs. This one clears it at ~5.2:1 without becoming orange.
+  { id: 'vermilion',name: 'Vermilion',    styleTags: ['editorial'], accent: '#e2593f', text: '#ffffff', textDim: 'rgba(255,255,255,0.66)', panel: 'rgba(16, 15, 14, 0.90)' },
+  { id: 'broadsheet',name: 'Broadsheet',  styleTags: ['editorial', 'minimal'], accent: '#1f3a5f', text: '#14161a', textDim: 'rgba(20,22,26,0.62)', panel: 'rgba(245, 243, 238, 0.96)' },
+  // Cinematic (documentary colour: bone and ember over a scrim — never a saturated accent)
+  { id: 'noir',     name: 'Noir',         styleTags: ['cinematic'], accent: '#e8e2d6', text: '#ffffff', textDim: 'rgba(255,255,255,0.62)', panel: 'rgba(0, 0, 0, 0.55)' },
+  { id: 'ember',    name: 'Ember',        styleTags: ['cinematic'], accent: '#e0a458', text: '#ffffff', textDim: 'rgba(255,255,255,0.62)', panel: 'rgba(10, 8, 6, 0.55)' },
   // Glass
   { id: 'frost',    name: 'Frost',        styleTags: ['glass'],   accent: '#7dd3fc', text: '#ffffff', textDim: 'rgba(255,255,255,0.7)',  panel: 'rgba(255, 255, 255, 0.10)' },
   { id: 'orchid',   name: 'Orchid',       styleTags: ['glass'],   accent: '#c084fc', text: '#ffffff', textDim: 'rgba(255,255,255,0.7)',  panel: 'rgba(255, 255, 255, 0.10)' },
@@ -359,7 +397,7 @@ export function resolveOptions(variant: TemplateVariant, options: WizardOptions 
       presetId: options.animation?.presetId ?? variant.animationPresets[0],
       speed: options.animation?.speed ?? 1,
       easing: options.animation?.easing ?? 'auto',
-      steps: options.animation?.steps ?? false,
+      steps: options.animation?.steps ?? variant.defaultSteps ?? false,
     },
     importedImages: options.importedImages ?? [],
     logoAssetPath: options.logoAssetPath ?? null,

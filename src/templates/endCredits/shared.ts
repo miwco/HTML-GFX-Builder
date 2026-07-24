@@ -24,6 +24,7 @@ import {
 import {
   baseSettings,
   computeScale,
+  dataSourceCss,
   documentHtml,
   resetCanvasCss,
   resolveHeadingFont,
@@ -197,9 +198,9 @@ export function assembleCredits(meta: CreditsMeta, design: CreditsDesign, o: Res
   <div class="credits">
 ${design.html}
     <!-- Hidden data sources — SPX writes the field values here; JS renders them. -->
-    <div id="f0" style="display: none">${creditsText}</div>
-    <div id="f1" style="display: none">${yearText}</div>
-    <div id="f2" style="display: none">${logoPath}</div>
+    <div id="f0" class="noacg-data-source">${creditsText}</div>
+    <div id="f1" class="noacg-data-source">${yearText}</div>
+    <div id="f2" class="noacg-data-source">${logoPath}</div>
   </div>`,
   });
 
@@ -220,6 +221,8 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 
 /* ── Design ── */
 ${design.css}
+
+${dataSourceCss}
 `;
 
   const preset = creditsPresetById(o.animation.presetId);

@@ -27,6 +27,7 @@ import {
 import {
   baseSettings,
   computeScale,
+  dataSourceCss,
   documentHtml,
   maxTextWidthCss,
   resetCanvasCss,
@@ -153,7 +154,7 @@ export function assembleGameTimer(meta: GameTimerMeta, design: GameTimerDesign, 
   <div class="game-timer">
 ${design.html}
     <!-- Hidden duration source — SPX writes field f1 (minutes) here; JS reads it. -->
-    <div id="f1" style="display: none">${MINUTES_SAMPLE}</div>
+    <div id="f1" class="noacg-data-source">${MINUTES_SAMPLE}</div>
   </div>`,
   });
 
@@ -189,6 +190,8 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 
 /* ── Design ── */
 ${design.css}
+
+${dataSourceCss}
 `;
 
   const preset = gameTimerPresetById(o.animation.presetId);

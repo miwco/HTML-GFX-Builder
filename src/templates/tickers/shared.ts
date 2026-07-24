@@ -26,6 +26,7 @@ import {
 import {
   baseSettings,
   computeScale,
+  dataSourceCss,
   documentHtml,
   resetCanvasCss,
   resolveHeadingFont,
@@ -202,7 +203,7 @@ export function assembleTicker(meta: TickerMeta, design: TickerDesign, o: Resolv
   <div class="ticker">
 ${design.html}
     <!-- Hidden items source — SPX writes field f0 here; JS renders it. -->
-    <div id="f0" style="display: none">${itemsText}</div>
+    <div id="f0" class="noacg-data-source">${itemsText}</div>
   </div>`,
   });
 
@@ -223,7 +224,9 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 
 /* ── Design ── */
 ${design.css}
-${o.animation.presetId === 'ticker-rotate' ? ROTATE_CSS : ''}`;
+${o.animation.presetId === 'ticker-rotate' ? ROTATE_CSS : ''}
+
+${dataSourceCss}`;
 
   const preset = tickerPresetById(o.animation.presetId);
   const ease = resolveEasing(o.animation.easing, preset.autoEase);

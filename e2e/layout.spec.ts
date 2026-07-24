@@ -171,6 +171,8 @@ test('mobile: the wizard preview keeps a real stage instead of collapsing', asyn
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/app');
   await page.locator('[data-entry="template"]').click();
+  // On a phone the category tiles live inside the closed filter drawer — open it first.
+  await page.locator('.wz-browse-drawer-btn').click();
   await page.locator('.wz-cat', { hasText: 'Lower thirds' }).first().click();
   await page.locator('.wz-variant').first().click();
 

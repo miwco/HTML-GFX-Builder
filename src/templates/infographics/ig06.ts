@@ -55,7 +55,7 @@ export const ig06: TemplateVariant = defineInfographicVariant(
       <div id="infographic-rows"></div>
     </div>
     <!-- Hidden schedule source — SPX writes field f0 here; JS renders it. One "time | show" per line. -->
-    <div id="f0" style="display: none">${rowsText}</div>`,
+    <div id="f0" class="noacg-data-source">${rowsText}</div>`,
 
       css: `/* The panel — restrained and near-black: the minimal family's quiet slab (lt01's sibling). */
 .infographic-box {

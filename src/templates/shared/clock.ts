@@ -3,8 +3,10 @@
 // logic, not motion): the animation presets only call startClock() / stopClock().
 //
 // Contract with the design:
-//   - a hidden <div id="fN" style="display:none"> holds the duration in whole minutes
-//     (decimals allowed: "0.5" is thirty seconds) — SPX writes into it like any field
+//   - a hidden <div id="fN" class="noacg-data-source"> holds the duration in whole minutes
+//     (decimals allowed: "0.5" is thirty seconds) — SPX writes into it like any field.
+//     The hider is a CSS rule, never an inline style: the editor's entrance reset clears
+//     inline props (base.ts DATA_SOURCE_CLASS), which would un-hide an inline-hidden holder
 //   - a .{prefix}-clock element displays the time as M:SS
 //   - when the clock hits zero the root gets a .{prefix}-done class, so the design's CSS
 //     can flash, recolor, or swap text without any extra JS

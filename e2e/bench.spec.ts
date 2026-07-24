@@ -206,6 +206,8 @@ const CATEGORIES = [
   'infographic',
   'versus',
   'quiz',
+  'frame',
+  'transition',
 ] as const;
 
 test.describe('catalog calibration tripwire', () => {

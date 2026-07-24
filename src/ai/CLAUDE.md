@@ -121,13 +121,45 @@ rounds, route, diversity fields; localStorage ring, JSON-exportable). The standi
 
 Both need the dev server + a real key and SPEND TOKENS - never CI.
 
+## The structured setup (spec/ - the "More control" panel's harness grip)
+
+The AI step's optional "More control" panel authors a `GenerationSpec` (schema in
+`src/model/generationSpec.ts` - MODEL layer, because SavedProject/GraphicDoc persist it as
+`aiSpec`) that rides `GenerateContext.spec` as TYPED data, never flattened into prose early.
+An empty spec injects nothing - the prompt-only flow is byte-identical to before. The parts:
+
+- `spec/categories.ts` - the 20-entry AI CATEGORY registry (measured from the 60-format
+  reference workbook): each entry links a `TemplateCategory` and, where one models it, a
+  `GraphicType` id (fields/machine/controls come from the type), plus suggested fields,
+  workflow rules, and (rules-only entries) a machine hint. **Adding a category = one entry
+  here + its id in the model union**; nothing else enumerates categories.
+- `spec/specPrompt.ts` - deterministic prompt sections (category workflow rules, the field
+  table, the linked type's serialized machine pattern, fonts, motion intent). Appended by
+  `contextText`, so every path - including raw - reads the user's own decisions.
+- `spec/specDesign.ts` - the pinning: `narrowedSpecTool` collapses the design-stage tool
+  schema to the pinned category; `applySpecLocks` overwrites the model-emitted DesignSpec
+  with the user's decisions (fields, animation, fonts, brand colours) and re-picks a chassis
+  that can CARRY the user's line count; `applySpecOutPreset` applies an explicit exit preset
+  as a real keyframe swap (blocks/presetApply).
+- `spec/specValidate.ts` - the user's own quality gates: requested-field-present (ERROR -
+  drives the coder's repair loop; demoted to a warning on grounded assemblies, where a
+  fixed-contract category legitimately can't carry it and no loop exists), uploaded-font-used
+  (warning = the honest fallback report), and `ensureSpecFonts` (uploaded fonts ALWAYS land
+  as embedded assets + a visible @font-face, model or no model).
+
+References-vs-assets: `GenerateContext.references` are vision-only style guidance (never
+bundled, never placed); `images` appear in the graphic. Both ride `imageBlocks` in that
+order and `contextText` labels them.
+
 ## Other files
 
 - `anthropic.ts` - the one API client (BYO key or VITE_AI_PROXY_URL gateway); forced-tool
   calls, `callClaudeDetailed` returns usage + model, `cacheSystem` marks a prompt-cache
   breakpoint (the coder + its repairs share one system prompt).
 - `stubProvider.ts` - the offline provider: keyword -> DesignSpec -> the SAME specToTemplate
-  pipeline, so offline results are catalog-grade; block answers remain as fallback.
+  pipeline, so offline results are catalog-grade; block answers remain as fallback. It honors
+  the structured setup through the same `applySpecLocks`/post-passes, which is what keeps
+  the whole More-control flow e2e-testable without tokens (e2e/ai-more-control.spec.ts).
 - `settings.ts`, `index.ts` (getAiProvider), `brainstorm.ts`, `examplePrompts.ts`,
   `presets.ts` - unchanged roles.
 

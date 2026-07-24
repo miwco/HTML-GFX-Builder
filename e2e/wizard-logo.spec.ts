@@ -34,7 +34,7 @@ async function createdTemplate(page: Page) {
 }
 
 test('logo toggle + custom upload: the created template carries the field, asset, and <img>', async ({ page }) => {
-  await toFieldsStep(page, 'Info cards', 'Hairline Card');
+  await toFieldsStep(page, 'Topic', 'Hairline Card');
 
   // The optional-logo section is offered; turn it on and upload a custom logo.
   const logoSection = page.locator('.panel-section', { hasText: 'Include a logo slot' });
@@ -69,7 +69,7 @@ test('logo toggle + custom upload: the created template carries the field, asset
 });
 
 test('logo toggle off: nothing is injected', async ({ page }) => {
-  await toFieldsStep(page, 'Info cards', 'Hairline Card');
+  await toFieldsStep(page, 'Topic', 'Hairline Card');
   // Offered but left off (the default when no image was imported).
   await expect(page.locator('.panel-section', { hasText: 'Include a logo slot' })).toBeVisible();
   await page.getByRole('button', { name: 'Create project' }).click();

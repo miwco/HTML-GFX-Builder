@@ -25,6 +25,7 @@ import {
 import {
   baseSettings,
   computeScale,
+  dataSourceCss,
   documentHtml,
   maxTextWidthCss,
   resetCanvasCss,
@@ -144,7 +145,7 @@ export function assembleStartingSoon(
   <div class="starting-soon">
 ${design.html}
     <!-- Hidden countdown source — SPX writes field f2 (minutes) here; the clock reads it. -->
-    <div id="f2" style="display: none">5</div>
+    <div id="f2" class="noacg-data-source">5</div>
   </div>`,
   });
 
@@ -180,6 +181,8 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 
 /* ── Design ── */
 ${design.css}
+
+${dataSourceCss}
 `;
 
   const preset = ssPresetById(o.animation.presetId);

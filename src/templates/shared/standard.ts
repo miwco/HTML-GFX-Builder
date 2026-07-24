@@ -141,6 +141,57 @@ export function lineClassFor(prefix: string, index: number): string {
   return [`${prefix}-name`, `${prefix}-title`, `${prefix}-extra`][index] ?? `${prefix}-extra`;
 }
 
+/**
+ * ONE mask-wrapped line with a class the DESIGN chose.
+ *
+ * `lineMasksFor` below walks the whole line list through the generic name/title/extra ladder,
+ * which is right for a design whose lines are a heading and its body. It is wrong for a design
+ * whose lines are semantically DIFFERENT things — a product name, its price, the struck-through
+ * previous price, a promo code: those need their own classes to be styled apart, and the ladder
+ * gives the third line and every line after it the same `-extra`. Composing the masks one at a
+ * time is how such a design keeps the structure contract (a `<prefix>-mask` parent, so the line
+ * is a real registry part with the mask reveal channel) while naming each line for what it is.
+ *
+ * The line is only emitted when the operator kept it: `o.lines` is what the wizard resolved, so
+ * a design that offers five slots and is used with three must render three.
+ */
+export function maskLine(
+  prefix: string,
+  o: ResolvedOptions,
+  index: number,
+  cls: string,
+  indent = '      ',
+): string {
+  const line = o.lines[index];
+  if (!line) return '';
+  return (
+    `${indent}<!-- ${line.title} (f${index}) — SPX writes this field's value straight into the element. -->\n` +
+    `${indent}<div class="${prefix}-mask"><span id="f${index}" class="${cls}">${line.sample}</span></div>`
+  );
+}
+
+/** Join the emitted mask lines of `maskLine`, dropping the ones the options left out. */
+export function maskLines(parts: string[]): string {
+  return parts.filter((p) => p !== '').join('\n');
+}
+
+/**
+ * The `fN` id of a design's OWN extra field (a product shot, a QR code, a sponsor slot).
+ *
+ * `assembleStandard` builds the field list as `fieldsFromOptions(o)` — the visible lines, then
+ * the OPERATOR's extra fields — followed by `design.extraFields`. So a design's own field is
+ * numbered after BOTH, and a design that counts only the lines silently claims an id the
+ * operator's first extra field already has: two entries for one id, and the later one wins the
+ * `getElementById` write. `applyLogoSlot` has always done this arithmetic; this is the same
+ * rule, named, for designs that hand-author their own slot instead.
+ *
+ * `offset` is the index within the design's own extra fields (0 for a single slot; 0…n-1 for a
+ * sponsor strip's row).
+ */
+export function designFieldId(o: ResolvedOptions, offset = 0): string {
+  return `f${o.lines.length + o.extraFields.length + offset}`;
+}
+
 /** The mask-wrapped line elements (SPX writes straight into id="fN"). */
 export function lineMasksFor(prefix: string, o: ResolvedOptions, indent = '      '): string {
   return o.lines

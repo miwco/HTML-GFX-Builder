@@ -51,7 +51,7 @@ export const ig13: TemplateVariant = defineInfographicVariant(
       <div id="infographic-bars"></div>
     </div>
     <!-- Hidden bars source — SPX writes field f0 here; JS renders it. One "Label | value" per line. -->
-    <div id="f0" style="display: none">${barsText}</div>`,
+    <div id="f0" class="noacg-data-source">${barsText}</div>`,
 
       css: `/* The panel — restrained and near-black: the minimal family's quiet slab (lt01's sibling). */
 .infographic-box {

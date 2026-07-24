@@ -25,9 +25,25 @@ interface MiniWindow extends Window {
 export default function MiniPreview({ variant }: { variant: TemplateVariant }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const template = useMemo(() => variant.create(), [variant]);
-  const doc = useMemo(() => composeDocument(template), [template]);
-  const { width, height } = template.resolution;
+  // Mount the iframe only once the card scrolls into view (the GraphicThumb recipe): the
+  // Browse step can show the whole catalog at once, and building + parsing GSAP for every
+  // off-screen tile would make opening it a page-long stall.
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) {
+        setVisible(true);
+        io.disconnect();
+      }
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const template = useMemo(() => (visible ? variant.create() : null), [variant, visible]);
+  const doc = useMemo(() => (template ? composeDocument(template) : ''), [template]);
+  const { width, height } = template?.resolution ?? { width: 1920, height: 1080 };
   const [box, setBox] = useState<GraphicBox | null>(null);
   // The card's own size, MEASURED: the grid reflows with the wizard's width, and a hard-coded
   // guess here silently mis-frames every tile the day the layout changes.
@@ -57,15 +73,17 @@ export default function MiniPreview({ variant }: { variant: TemplateVariant }) {
 
   return (
     <div className="wz-mini" ref={cardRef}>
-      <iframe
-        ref={ref}
-        title={`${variant.name} preview`}
-        sandbox="allow-scripts allow-same-origin"
-        srcDoc={doc}
-        onLoad={() => setTimeout(settle, 40)}
-        tabIndex={-1}
-        style={{ width, height, transform: framingTransform(framing) }}
-      />
+      {visible && (
+        <iframe
+          ref={ref}
+          title={`${variant.name} preview`}
+          sandbox="allow-scripts allow-same-origin"
+          srcDoc={doc}
+          onLoad={() => setTimeout(settle, 40)}
+          tabIndex={-1}
+          style={{ width, height, transform: framingTransform(framing) }}
+        />
+      )}
     </div>
   );
 }

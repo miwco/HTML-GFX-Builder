@@ -61,7 +61,7 @@ export const ig05: TemplateVariant = defineInfographicVariant(
       </div>
     </div>
     <!-- Hidden goal source — SPX writes field f1 here; JS reads it and formats the goal line. -->
-    <div id="f1" style="display: none">${goalText}</div>`,
+    <div id="f1" class="noacg-data-source">${goalText}</div>`,
 
       css: `/* The panel — lt03's quiet keyline card, capped by the design's one accent hairline. */
 .infographic-box {

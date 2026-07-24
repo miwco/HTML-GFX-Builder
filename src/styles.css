@@ -1188,6 +1188,8 @@ kbd {
 .wz-variant-cap { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; }
 .wz-style-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
 .wz-style-tag[data-style='minimal'] { color: #e8c547; }
+.wz-style-tag[data-style='editorial'] { color: #e2593f; }
+.wz-style-tag[data-style='cinematic'] { color: #e0a458; }
 .wz-style-tag[data-style='sport'] { color: #c8f31d; }
 .wz-style-tag[data-style='glass'] { color: #7dd3fc; }
 .wz-style-tag[data-style='noacg'] { color: var(--amber); }
@@ -1233,6 +1235,84 @@ kbd {
 .wz-filter.active { border-color: var(--accent); color: var(--accent); }
 .wz-filter-clear { opacity: 0.8; }
 .wz-filter-empty { margin-top: 8px; }
+
+/* The Browse step — the faceted template storefront (TEMPLATE_TAXONOMY_PROPOSAL §12). */
+.wz-browse-search {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.wz-browse-programme { margin-bottom: 12px; }
+.wz-browse-programme select { min-width: 200px; }
+.wz-browse-tiles { margin-bottom: 12px; }
+.wz-browse-tiles .wz-cat { padding: 9px 12px; gap: 0; }
+.wz-filter-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+.wz-browse-more { margin: 0 0 10px; }
+.wz-browse-more summary { cursor: pointer; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+.wz-browse-more .wz-filter-row { margin: 4px 0 8px; }
+.wz-browse-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.wz-browse-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wz-browse-count { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.wz-browse-section { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin: 14px 0 8px; }
+/* Result cards carry the strict info budget under the existing caption row. */
+.wz-browse-meta { display: flex; flex-direction: column; gap: 2px; padding: 0 10px 10px; font-size: 11px; color: var(--text-dim); }
+.wz-browse-cat { color: var(--accent); }
+.wz-browse-complexity { text-transform: uppercase; letter-spacing: 0.08em; font-size: 10px; }
+.wz-browse-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px; }
+/* The card's detail panel (§12.3): the card keeps its strict info budget, everything else
+   sits one ⓘ click away. The button is a sibling of the card button, overlaid on it. */
+.wz-variant-cell { position: relative; display: flex; flex-direction: column; }
+.wz-variant-cell .wz-variant { width: 100%; }
+.wz-variant-info {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.75;
+  background: rgba(10, 12, 16, 0.72);
+}
+.wz-variant-info:hover, .wz-variant-info[aria-expanded='true'] { opacity: 1; border-color: var(--accent); color: var(--accent); }
+.wz-variant-detail {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 10px 12px 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  max-height: 260px;
+  overflow-y: auto;
+}
+.wz-variant-detail h4 { margin: 8px 0 2px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.wz-variant-detail p { margin: 0; }
+.wz-variant-detail ul { margin: 0; padding-left: 14px; }
+.wz-variant-detail code { font-family: ui-monospace, monospace; color: var(--accent); }
+/* The mobile filter drawer (TEMPLATE_TAXONOMY_PROPOSAL §12.1): on a phone the facet
+   controls collapse behind a toggle so results are one flick away, not ~1300px down.
+   Desktop ignores the closed state entirely — the button never renders there. */
+.wz-browse-drawer-btn { display: none; }
+@media (max-width: 768px) {
+  .wz-browse-drawer-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 10px;
+  }
+  .wz-browse-filters { display: none; }
+  .wz-browse-filters[data-open] { display: block; }
+}
 
 .wz-anim-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
 .wz-anim { text-align: left; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 4px; }
@@ -3693,3 +3773,84 @@ code.inline { font-family: ui-monospace, monospace; background: var(--bg); paddi
   color: var(--text-dim);
   padding: 2px 10px;
 }
+
+/* ══ Create with AI — the "More control" structured setup (MoreControlPanel) ═══════════════ */
+
+.mc-panel {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mc-section + .mc-section { border-top: 1px solid var(--border); }
+.mc-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.mc-head:hover { background: rgba(232, 237, 242, 0.04); }
+.mc-caret { color: var(--text-dim); font-size: 11px; width: 12px; }
+.mc-title { font-weight: 600; font-size: 13px; }
+.mc-summary {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--amber);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 55%;
+}
+.mc-body { padding: 4px 12px 12px; }
+.mc-cats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+.mc-intensity {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+}
+.mc-cat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.mc-cat span { color: var(--text-dim); font-size: 11px; }
+.mc-cat.selected { border-color: var(--amber); background: rgba(246, 166, 35, 0.08); }
+.mc-field {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-top: 6px;
+}
+/* The base rule gives every select `width: 100%`, which as a flex BASIS swallows its row (the
+   .field-add-row precedent). Two things break without this: the field label input beside the
+   type picker collapses to a sliver, and the Animation section's label/select pairs each wrap
+   onto their own line instead of reading as compact groups. Capped so a long preset name
+   cannot blow the row out either. */
+.mc-panel .row select { flex: 0 1 auto; width: auto; min-width: 130px; max-width: 260px; }
+/* On a narrow screen the type picker and the row's buttons eat the width, and the label
+   input — the field's IDENTITY — is what gets squeezed to nothing. Let the row wrap and
+   floor the text inputs instead, so a label drops to its own line rather than vanishing. */
+.mc-field .row { flex-wrap: wrap; }
+.mc-field .row > input { min-width: 160px; }
+/* Sized so a full rgba(255, 255, 255, 0.72) reads without truncating — a panel colour
+   needs its alpha, and a clipped value is unreadable AND un-checkable. */
+.mc-color { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text-dim); min-width: 250px; flex: 1 1 250px; }
+/* Wide enough for the LONGEST slot name, so the upload buttons share one left edge — a
+   per-row width lets a renamed label silently knock the column out of alignment. */
+.mc-font-slot { min-width: 130px; }

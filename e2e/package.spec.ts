@@ -101,7 +101,7 @@ test('project brand: match toggle carries the look to another variant', async ({
 });
 
 test('info card: creates, binds, and plays', async ({ page }) => {
-  await toVariantStep(page, 'Info cards', 'Slab Card');
+  await toVariantStep(page, 'Topic', 'Slab Card');
   await create(page);
   await expect(page.locator('.topbar .tpl-name')).toHaveText('Slab Card');
   await expect(frame(page).locator('.info-card')).toBeAttached(); // the NEW document is loaded
@@ -112,7 +112,7 @@ test('info card: creates, binds, and plays', async ({ page }) => {
 });
 
 test('end credits: text field drives the parsed roll', async ({ page }) => {
-  await toVariantStep(page, 'End credits', 'Classic Roll');
+  await toVariantStep(page, 'Credits', 'Classic Roll');
   await create(page);
   const track = frame(page).locator('#credits-track');
   await expect(track.locator('.credits-row').first()).toBeAttached();

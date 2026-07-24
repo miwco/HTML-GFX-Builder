@@ -79,8 +79,8 @@ function insertedPrefixes(doc: Document): Array<{ root: Element; prefix: string 
  *   classes in hand-edited/AI HTML exclude that part rather than guessing);
  * - `line` means "mask-slide capable": an `fN` element whose PARENT carries the
  *   `<prefix>-mask` class;
- * - hidden data holders (`display: none` divs) are not parts; empty logo `<img>` slots ARE
- *   (the slot exists — a value shows it).
+ * - hidden data holders (`.noacg-data-source` divs SPX writes into) are not parts; empty logo
+ *   `<img>` slots ARE (the slot exists — a value shows it).
  */
 export function getTemplateParts(html: string, fields: SpxField[] = []): TemplatePart[] {
   const doc = new DOMParser().parseFromString(html, 'text/html');

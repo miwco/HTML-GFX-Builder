@@ -108,9 +108,9 @@ ${row(2)}
       <div class="infographic-base"></div>
     </div>
     <!-- Hidden percent sources — SPX writes f2/f5/f8 here; rebuildInfographic() reads them. -->
-    <div id="f2" style="display: none">${cands[0].pct}</div>
-    <div id="f5" style="display: none">${cands[1].pct}</div>
-    <div id="f8" style="display: none">${cands[2].pct}</div>`,
+    <div id="f2" class="noacg-data-source">${cands[0].pct}</div>
+    <div id="f5" class="noacg-data-source">${cands[1].pct}</div>
+    <div id="f8" class="noacg-data-source">${cands[2].pct}</div>`,
 
       css: `/* The board — one wide near-black results panel (lt01's quiet keyline language, sized
    for a chart). Fixed width like ig02: the bar tracks need a stable run to grow along. */

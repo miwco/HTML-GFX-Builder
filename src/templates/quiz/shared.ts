@@ -41,6 +41,7 @@ import {
 import {
   baseSettings,
   computeScale,
+  dataSourceCss,
   documentHtml,
   maxTextWidthCss,
   resetCanvasCss,
@@ -310,10 +311,10 @@ export function assembleQuiz(
   <div class="quiz">
 ${design.html}
     <!-- Hidden correct-answer source — SPX writes field f5 here; the reveal reads it. -->
-    <div id="f5" style="display: none">B</div>
+    <div id="f5" class="noacg-data-source">B</div>
     <!-- Hidden selected-answer source — the contestant's pick (field f6). It is DATA: one
          "selected" state plus this letter, never one state per answer. -->
-    <div id="f6" style="display: none"></div>
+    <div id="f6" class="noacg-data-source"></div>
   </div>`,
   });
 
@@ -352,6 +353,8 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 
 /* ── Design ── */
 ${design.css}
+
+${dataSourceCss}
 `;
 
   const preset = quizPresetById(o.animation.presetId);

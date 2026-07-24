@@ -51,7 +51,7 @@ export const ig10: TemplateVariant = defineInfographicVariant(
       <div id="infographic-rows"></div>
     </div>
     <!-- Hidden schedule source — SPX writes field f0 here; JS renders it. One "time | show" per line. -->
-    <div id="f0" style="display: none">${rowsText}</div>`,
+    <div id="f0" class="noacg-data-source">${rowsText}</div>`,
 
       css: `/* The slab — a solid dark board, zero radius: the sport family's hard panel. */
 .infographic-box {
