@@ -130,20 +130,20 @@ with its own `ticker-rotate` preset rather than the endless marquee.
   ids adjacent + `SLIDE_FAMILY`/`isSlidePreset` so pickers group them: the wizard renders ONE
   Slide card with a direction picker, the Inspector one optgroup), then line-reveal, mask-wipe,
   pop-spring, snap-stinger, blur-in, fade, flip-3d.
-- **infoCards/** - card01…card18 (prefix 'info-card', `dataRegion: true`). The standard contract's
+- **infoCards/** - card01…card58 (prefix 'info-card', `dataRegion: true`). The standard contract's
   other line-based family: they use the same 9-preset bank as lower thirds and convert exactly like
   them, steps and all (a » press per body line becomes a middle step with its `reveals`).
   Two jobs in one category: card01…card09 are INFORMATION cards (a heading with lines under it),
-  card10…card18 are SET-PIECE cards whose layout carries a convention older than television -
+  card50…card58 are SET-PIECE cards whose layout carries a convention older than television -
   a reading, a lyric (now + next), a quotation, a translation, an order of service, and the
   ceremony cards.
   **The grid trap:** `cardLineMasks` wraps every line in a `.info-card-mask` div, so on a design
   that lays the box out as a grid or flex container the ITEMS are the masks, not the `#fN` spans.
   Placement rules target the masks (`.info-card-mask:nth-child(N)`), type rules target the spans -
-  see card17.
+  see card57.
   **The rail trap:** `.info-card-accent` is absolutely positioned at the root's left edge and the
   box is painted AFTER it, so a design whose box has a BACKGROUND must reserve the strip
-  (`margin-left: var(--accent-weight)`) or the panel covers the rail completely (card16, card18).
+  (`margin-left: var(--accent-weight)`) or the panel covers the rail completely (card56, card58).
   A panel-less design (card01) needs only padding.
 - **endCredits/** - cr01…cr12 (prefix 'credits') + creditsPresets.ts (credits-roll /
   credits-loop / credits-board / credits-pages / credits-crawl) + **creditsMotion.ts**;

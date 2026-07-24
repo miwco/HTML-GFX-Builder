@@ -1,4 +1,4 @@
-// card14 "Wedding Card" — the title card for a wedding stream: the couple, the date, the
+// card54 "Wedding Card" — the title card for a wedding stream: the couple, the date, the
 // place. Minimal family, sibling of card07 (Clean Title) and lt01.
 //
 // The one structural decision: the two names are ONE field, not two. Every "Name & Name"
@@ -14,9 +14,9 @@
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card14: TemplateVariant = defineCardVariant(
+export const card54: TemplateVariant = defineCardVariant(
   {
-    id: 'card14',
+    id: 'card54',
     category: 'info-card',
     name: 'Wedding Card',
     styleTag: 'minimal',

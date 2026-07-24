@@ -1,4 +1,4 @@
-// card16 "Award Card" — the category and the winner, for an awards show, a prize-giving, a
+// card56 "Award Card" — the category and the winner, for an awards show, a prize-giving, a
 // sports presentation or a staff-recognition segment. House style, sibling of card05 (House
 // Title) and lt11.
 //
@@ -15,9 +15,9 @@ import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { fontById, labelFontFaceCss } from '../../model/fonts';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card16: TemplateVariant = defineCardVariant(
+export const card56: TemplateVariant = defineCardVariant(
   {
-    id: 'card16',
+    id: 'card56',
     category: 'info-card',
     name: 'Award Card',
     styleTag: 'noacg',

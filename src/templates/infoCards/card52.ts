@@ -1,4 +1,4 @@
-// card12 "Quotation" — the pull-quote card: something a speaker just said, held on screen
+// card52 "Quotation" — the pull-quote card: something a speaker just said, held on screen
 // while it lands. Minimal family, sibling of card01 and lt02 (Underline).
 //
 // A quote card lives or dies on the attribution being subordinate. The quote is the content;
@@ -12,9 +12,9 @@
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card12: TemplateVariant = defineCardVariant(
+export const card52: TemplateVariant = defineCardVariant(
   {
-    id: 'card12',
+    id: 'card52',
     category: 'info-card',
     name: 'Quotation',
     styleTag: 'minimal',

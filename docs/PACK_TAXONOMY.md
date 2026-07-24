@@ -1,4 +1,4 @@
-ss08, ss09, card12 
+ss08, ss09, card52 
 
 Phase 3's taxonomy deliverable (docs/noacg-master-goals.md): the 60 live-program formats in
 `live_format_graphics_needs.xlsx` (repo root, untracked) each map to exactly one **pack** — a
@@ -32,21 +32,21 @@ ready for it either way.
 | Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen | vs01, cr03, ss11, cr12 |
 | Esports | sport | scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card | vs02, ss13, cr12 |
 | Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll | ss06, ss08, ss09, ss12 |
-| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug | ss08, card12 |
-| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown | card12, cr05 |
-| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown | card12, ss06, ss12 |
+| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug | ss08, card52 |
+| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown | card52, cr05 |
+| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown | card52, ss06, ss12 |
 | Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen | ss13, cr05, cr07, cr09 |
-| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard | cr10, card18, ss13 |
-| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda | cr01, cr05, cr10, cr11, ss07, ss10, card10, card11, card14, card15, card17 |
-| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker | cr02, cr09, cr12, ss07, ss11, card16 |
+| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard | cr10, card58, ss13 |
+| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda | cr01, cr05, cr10, cr11, ss07, ss10, card50, card51, card54, card55, card57 |
+| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker | cr02, cr09, cr12, ss07, ss11, card56 |
 | Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug | ss06, ss12, cr12 |
-| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug | ss08, ss09, card12 |
+| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug | ss08, ss09, card52 |
 
 **Extras** are catalog variants outside the type registry that belong in the kit: the versus
 card (vs01/vs02) for match-up reveals, and the whole HOLDING / CREDITS / CEREMONY set: the
 holding screens (ss05-ss13 - countdowns to a start time, breaks, technical pauses, sign-offs),
 the list formats (cr05-cr12 - schedule boards, looping reels, thank-you and donor walls,
-sponsor boards and crawls, ceremony rolls), and the set-piece cards (card10-card18 - readings,
+sponsor boards and crawls, ceremony rolls), and the set-piece cards (card50-card58 - readings,
 lyrics, quotations, translations, orders of service, award, graduate, wedding and memorial).
 They ship without a state machine beyond the derived one, which is correct for what they are.
 

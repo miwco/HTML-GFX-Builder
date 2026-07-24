@@ -1,4 +1,4 @@
-// card15 "In Memoriam" — the memorial card: one person, their years, and a line about them.
+// card55 "In Memoriam" — the memorial card: one person, their years, and a line about them.
 // Minimal family, sibling of card07 (Clean Title) and cr11 (Roll of Remembrance), which is the
 // same job done as a list.
 //
@@ -13,9 +13,9 @@
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card15: TemplateVariant = defineCardVariant(
+export const card55: TemplateVariant = defineCardVariant(
   {
-    id: 'card15',
+    id: 'card55',
     category: 'info-card',
     name: 'In Memoriam',
     styleTag: 'minimal',

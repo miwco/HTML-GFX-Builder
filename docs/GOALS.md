@@ -118,7 +118,7 @@ with its lower-third siblings (§8), swept per category, and covered by an E2E s
       credit reel, thank-you wall, donor wall, sponsor board, sponsor crawl, graduation roll,
       roll of remembrance. The parser gained a third line kind (`entry`) so a bare name on a
       wall is a name, not a section heading
-- [x] **Set-piece cards (card10–card18)** — layouts carrying conventions older than
+- [x] **Set-piece cards (card50–card58)** — layouts carrying conventions older than
       television: scripture, lyric (now + next), quotation, translation, order of service,
       award (built for the Continue beat), graduate, wedding, in memoriam
 - [x] Verified: full build, per-category sweeps, the runtime bench over all 43 designs in the

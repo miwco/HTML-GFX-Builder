@@ -1,4 +1,4 @@
-// card18 "Graduate" — the single-name card for the walk across the stage: one graduate, their
+// card58 "Graduate" — the single-name card for the walk across the stage: one graduate, their
 // award, and their honours. House style, sibling of card05 (House Title) and cr10 (Graduation
 // Roll), which is the same content as a list.
 //
@@ -15,9 +15,9 @@ import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { fontById, labelFontFaceCss } from '../../model/fonts';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card18: TemplateVariant = defineCardVariant(
+export const card58: TemplateVariant = defineCardVariant(
   {
-    id: 'card18',
+    id: 'card58',
     category: 'info-card',
     name: 'Graduate',
     styleTag: 'noacg',

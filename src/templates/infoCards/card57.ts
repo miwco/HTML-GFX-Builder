@@ -1,4 +1,4 @@
-// card17 "Order of Service" — the item card for a service or ceremony: the hymn, the reading,
+// card57 "Order of Service" — the item card for a service or ceremony: the hymn, the reading,
 // the address, the piece of music, and who is leading it. Minimal family, sibling of card07
 // (Clean Title) and lt02 (Underline).
 //
@@ -13,9 +13,9 @@
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card17: TemplateVariant = defineCardVariant(
+export const card57: TemplateVariant = defineCardVariant(
   {
-    id: 'card17',
+    id: 'card57',
     category: 'info-card',
     name: 'Order of Service',
     styleTag: 'minimal',

@@ -1,4 +1,4 @@
-// card10 "Scripture" — the reading card: a verse on screen while it is read aloud, in a
+// card50 "Scripture" — the reading card: a verse on screen while it is read aloud, in a
 // service, a wedding, a funeral or a broadcast devotional. Minimal family, sibling of card01
 // (Hairline Card) and lt01.
 //
@@ -11,9 +11,9 @@
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card10: TemplateVariant = defineCardVariant(
+export const card50: TemplateVariant = defineCardVariant(
   {
-    id: 'card10',
+    id: 'card50',
     category: 'info-card',
     name: 'Scripture',
     styleTag: 'minimal',

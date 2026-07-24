@@ -1,4 +1,4 @@
-// card11 "Lyric Line" — the song card: the line being sung now, with the line that comes next
+// card51 "Lyric Line" — the song card: the line being sung now, with the line that comes next
 // underneath it. Glass family, sibling of card03 (Frosted Panel) and lt08.
 //
 // Why two lines and not four: a congregation, a choir or a crowd needs to arrive at the next
@@ -13,9 +13,9 @@
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card11: TemplateVariant = defineCardVariant(
+export const card51: TemplateVariant = defineCardVariant(
   {
-    id: 'card11',
+    id: 'card51',
     category: 'info-card',
     name: 'Lyric Line',
     styleTag: 'glass',

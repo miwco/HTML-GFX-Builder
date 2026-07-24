@@ -86,7 +86,7 @@ export const PACKS: TemplatePack[] = [
     description: 'Anchor straps, the wire ticker, headline and topic cards for news programs.',
     family: 'minimal',
     types: ['lower-third', 'ticker', 'topic-card', 'title-card', 'agenda', 'sponsor-bug'],
-    extras: ['ss08', 'card12'],
+    extras: ['ss08', 'card52'],
     formats: [
       'News / current affairs livestream',
       'Weather broadcast / climate update',
@@ -102,7 +102,7 @@ export const PACKS: TemplatePack[] = [
     description: 'Result bars, candidate straps and the count ticker for civic broadcasts.',
     family: 'minimal',
     types: ['poll', 'lower-third', 'ticker', 'title-card', 'agenda', 'countdown'],
-    extras: ['card12', 'cr05'],
+    extras: ['card52', 'cr05'],
     formats: [
       'Election night / results program',
       'Debate / political discussion',
@@ -115,7 +115,7 @@ export const PACKS: TemplatePack[] = [
     description: 'Guest straps, topic and question cards, polls — panels, podcasts and Q&As.',
     family: 'glass',
     types: ['lower-third', 'topic-card', 'poll', 'agenda', 'social-bug', 'sponsor-bug', 'countdown'],
-    extras: ['card12', 'ss06', 'ss12'],
+    extras: ['card52', 'ss06', 'ss12'],
     formats: [
       'Talk show / panel discussion',
       'Podcast livestream / videocast',
@@ -152,7 +152,7 @@ export const PACKS: TemplatePack[] = [
     description: 'Quiz board, timers, lesson cards and a score table for teaching streams.',
     family: 'noacg',
     types: ['quiz-board', 'countdown', 'lower-third', 'topic-card', 'agenda', 'scoreboard'],
-    extras: ['cr10', 'card18', 'ss13'],
+    extras: ['cr10', 'card58', 'ss13'],
     formats: [
       'Education / lecture livestream',
       'Student production / school TV',
@@ -165,7 +165,7 @@ export const PACKS: TemplatePack[] = [
     description: 'Service titles, scripture cards, program schedule and a quiet countdown.',
     family: 'minimal',
     types: ['title-card', 'lower-third', 'topic-card', 'holding-screen', 'countdown', 'agenda'],
-    extras: ['cr01', 'cr05', 'cr10', 'cr11', 'ss07', 'ss10', 'card10', 'card11', 'card14', 'card15', 'card17'],
+    extras: ['cr01', 'cr05', 'cr10', 'cr11', 'ss07', 'ss10', 'card50', 'card51', 'card54', 'card55', 'card57'],
     formats: [
       'Religious service / church livestream',
       'Graduation / ceremony stream',
@@ -179,7 +179,7 @@ export const PACKS: TemplatePack[] = [
     description: 'Artist straps, setlist cards, intermission screens for performances and galas.',
     family: 'glass',
     types: ['title-card', 'lower-third', 'holding-screen', 'countdown', 'social-bug', 'agenda', 'ticker'],
-    extras: ['cr02', 'cr09', 'cr12', 'ss07', 'ss11', 'card16'],
+    extras: ['cr02', 'cr09', 'cr12', 'ss07', 'ss11', 'card56'],
     formats: [
       'Music performance / concert livestream',
       'Award show / gala',
@@ -210,7 +210,7 @@ export const PACKS: TemplatePack[] = [
     description: 'Interval timers, session titles and calm holding screens for movement and rest.',
     family: 'minimal',
     types: ['countdown', 'holding-screen', 'topic-card', 'lower-third', 'social-bug'],
-    extras: ['ss08', 'ss09', 'card12'],
+    extras: ['ss08', 'ss09', 'card52'],
     formats: [
       'Fitness / workout class',
       'Meditation / ambient livestream',

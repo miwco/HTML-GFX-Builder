@@ -1,4 +1,4 @@
-// card13 "Translation" — the bilingual caption: what was said, and what it means. Glass
+// card53 "Translation" — the bilingual caption: what was said, and what it means. Glass
 // family, sibling of card03 (Frosted Panel) and lt10.
 //
 // The layout answers one question: which language is the audience reading? For a translated
@@ -12,9 +12,9 @@
 import { paletteById, type TemplateVariant } from '../../model/wizard';
 import { defineCardVariant, cardLineMasks } from './shared';
 
-export const card13: TemplateVariant = defineCardVariant(
+export const card53: TemplateVariant = defineCardVariant(
   {
-    id: 'card13',
+    id: 'card53',
     category: 'info-card',
     name: 'Translation',
     styleTag: 'glass',
