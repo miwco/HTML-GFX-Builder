@@ -9,6 +9,7 @@ import type { TemplateVariant } from '../model/wizard';
 import { CATEGORIES } from '../model/wizard';
 import type { StyleTag } from '../model/fonts';
 import {
+  ALIASES,
   COVERAGE_PLACEMENTS,
   FORMATS,
   GRAPHIC_CATEGORIES,
@@ -292,6 +293,16 @@ export function validateTaxonomy(): string[] {
     }
   }
   if (bySheet.size !== FORMATS.length) problems.push('duplicate sheetName in the format registry');
+
+  // Alias targets cannot invent taxonomy: every subtype an alias boosts must be a real
+  // controlled subtype id (the same rule the category/structure/format targets already obey
+  // by their union types — subtypes are plain strings, so they need an explicit check).
+  const knownSubtypes = new Set(GRAPHIC_CATEGORIES.flatMap((c) => c.subtypes));
+  for (const [alias, targets] of Object.entries(ALIASES)) {
+    for (const sub of targets.subtypes ?? []) {
+      if (!knownSubtypes.has(sub)) problems.push(`alias "${alias}": subtype "${sub}" is not a known subtype id`);
+    }
+  }
 
   for (const { variant, meta } of allTemplateMeta()) {
     const category = graphicCategoryById(meta.category);
