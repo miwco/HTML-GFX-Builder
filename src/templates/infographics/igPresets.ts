@@ -142,6 +142,67 @@ ${MARK_CLOSE}`,
   },
 
   {
+    id: 'goal-ring' as AnimPresetId,
+    name: 'Goal ring',
+    description: 'The panel rises in, then a ring draws to the share of the goal while the total counts up.',
+    autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Goal ring — reveal the panel, then draw the ring to raised/goal while the raised
+// total (#f0) counts up beside it. Unlike 'ring-fill', the ring's angle and the counted
+// number are DIFFERENT values: the ring shows the share of the goal, the number shows the
+// money. See infographicGoalRing() below this block.
+${knobs(cfg)}
+
+// buildInTimeline(): panel fades and rises in, then ring + total run together.
+function buildInTimeline() {
+  var tl = gsap.timeline();
+  tl.set('.infographic', { opacity: 1 });               // reveal the (CSS-hidden) graphic
+  tl.set('.infographic-ring-fill', { strokeDashoffset: 100 });  // the ring waits, empty, for its share
+  tl.fromTo('.infographic-box',
+    { opacity: 0, y: 24 },
+    { opacity: 1, y: 0, duration: 0.6 / animSpeed, ease: easeIn }
+  );
+  // MEASURED: the ring draws to raised/goal and the figure counts to the raised total — both
+  // are the operator's data, so neither is a number a keyframe can hold.
+  tl.add(infographicGoalRing('.infographic-ring-fill'), 0.4 / animSpeed);
+  return tl;
+}
+
+${outTimeline()}
+${MARK_CLOSE}`,
+  },
+
+  {
+    id: 'milestone-run' as AnimPresetId,
+    name: 'Milestone run',
+    description: 'The panel rises in, then the progress line runs along the track, popping each milestone it passes.',
+    autoEase: { easeIn: 'power3.out', easeOut: 'power2.in' },
+    emit: (cfg) => `${MARK_OPEN}
+// Preset: Milestone run — reveal the panel, then grow the progress line to its percent while
+// each milestone the line passes pops into its reached state. See infographicMilestoneRun()
+// below this block: both the line's length and the number of nodes come from the data.
+${knobs(cfg)}
+
+// buildInTimeline(): panel fades and rises in, then the line runs the track.
+function buildInTimeline() {
+  var tl = gsap.timeline();
+  tl.set('.infographic', { opacity: 1 });               // reveal the (CSS-hidden) graphic
+  tl.set('.infographic-milestone-fill', { width: '0%' });  // the rebuild renders it AT value — empty it, so it runs
+  tl.fromTo('.infographic-box',
+    { opacity: 0, y: 24 },
+    { opacity: 1, y: 0, duration: 0.6 / animSpeed, ease: easeIn }
+  );
+  // MEASURED: how far the line runs is current/target, and how many nodes it passes is how
+  // many milestones the operator wrote — neither fits in a static keyframe.
+  tl.add(infographicMilestoneRun('.infographic-milestone-fill'), 0.5 / animSpeed);
+  return tl;
+}
+
+${outTimeline()}
+${MARK_CLOSE}`,
+  },
+
+  {
     id: 'rows-cascade' as AnimPresetId,
     name: 'Rows cascade',
     description: 'The panel rises in, then the rows cascade up into place one after another.',

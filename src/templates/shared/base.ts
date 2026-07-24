@@ -209,6 +209,31 @@ function motionSpeed() {
   return 1;
 }`;
 
+// ── Hidden data sources ────────────────────────────────────────────────────────
+
+/**
+ * The class that hides a data-source holder — a `<div id="fN">` SPX writes into and the
+ * runtime reads, never drawn on screen (a countdown's minutes, a ticker's item list, a
+ * chart's data lines, a quiz's correct letter, a clock's UTC offset).
+ *
+ * Hide it with the STYLESHEET rule below, deliberately NOT an inline `style="display: none"`:
+ * the editor returns a graphic to its resting state by clearing GSAP's inline properties across
+ * the whole root subtree (components/PlayoutSimulator.tsx resetGraphic), which wipes the style
+ * attribute — and an inline-hidden holder then comes back VISIBLE on the canvas. A CSS rule
+ * cannot be cleared that way, so the holder stays hidden in the editor, in SPX, and in every
+ * export. This is the general form of cornerBug/statusParts.ts STATUS_SOURCE_CSS.
+ */
+export const DATA_SOURCE_CLASS = 'noacg-data-source';
+
+/** The stylesheet rule that hides every data-source holder. Emit it once per template that
+ *  carries one — see DATA_SOURCE_CLASS for why it is a rule and never an inline style. */
+export const dataSourceCss = `/* Hidden data sources — holders SPX writes into and the runtime reads, never drawn.
+   The rule lives in the stylesheet on purpose: an inline display:none would be wiped by the
+   editor's entrance reset (it clears inline props) and the value would appear on screen. */
+.${DATA_SOURCE_CLASS} {
+  display: none;                   /* input only: written by SPX, read by JS, never rendered */
+}`;
+
 /**
  * The teachable field writer shared by every category's update(): text into text elements,
  * image PATHS into <img id="fN"> elements (SPX image fields — ftype "filelist" — send the

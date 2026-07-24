@@ -50,7 +50,7 @@ export const ig11: TemplateVariant = defineInfographicVariant(
       <div id="infographic-bars"></div>
     </div>
     <!-- Hidden bars source — SPX writes field f0 here; JS renders it. One "Label | value" per line. -->
-    <div id="f0" style="display: none">${barsText}</div>`,
+    <div id="f0" class="noacg-data-source">${barsText}</div>`,
 
       css: `${labelFontFaceCss(fontById('jetbrains-mono'))}
 

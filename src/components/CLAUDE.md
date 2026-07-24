@@ -598,10 +598,36 @@ undo/redo keys as AppShell with the same Monaco/form-field guard. AI chat gates 
 
 ## Wizard (wizard/)
 
-CreationWizard (Entry -> Category -> Template -> Fields -> Style -> Animation, persistent live
-preview), draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.create(options)`
+CreationWizard (Entry -> Browse -> Fields -> Style -> Animation, persistent live preview),
+draft.ts, WizardPreview, MiniPreview, steps/. Creating calls `variant.create(options)`
 which generates the complete, commented template. FIVE entry cards: template, Create with AI,
 video, Import graphic, blank.
+
+**Browse** (steps/BrowseStep.tsx, mode 'template' only) is the FACETED template storefront
+(docs/TEMPLATE_TAXONOMY_PROPOSAL.md §12) replacing the old Category -> Template pair: search
+(alias-aware, src/templates/search.ts), optional programme family/format selects (RANKING —
+"Best for X" / "Also works" sections, never exclusion), category tiles with live counts (only
+categories with catalog content render), field-count buckets (range-intersection over the
+reachable visible range), style-family chips, and the specialist facets (structure /
+capabilities / placement-motion) under a More-filters disclosure. Filter state lives in
+CreationWizard (`browseFilters`) so Back returns with filters intact; the setter is passed as
+a REACT DISPATCH so chip toggles compose as functional updates (two clicks in one batch must
+never overwrite each other). Zero results name no template dishonestly: the empty state
+offers "remove the most limiting filter" (computed: the chip whose removal restores the most
+results) and a Create-with-AI hand-off. Cards carry the strict info budget (category ·
+subtype, top families, field summary from semantics, ≤3 capability badges, style family,
+complexity), with everything the budget excludes - the full field schema, all formats,
+structures, capabilities and motion - one ⓘ click away in the card's detail panel (a SIBLING
+button of the card button, never nested; one panel open at a time). The footer's brand
+toggle feeds `brandFamily` as browse CONTEXT, not a filter: the package's siblings rank
+first, no chip appears, Clear-all leaves it alone, and a genuine programme match always
+outranks it. MiniPreview mounts its iframe only when the card scrolls into view
+(IntersectionObserver — the whole catalog can be on one grid now). On ≤768px the facet
+controls collapse behind the `.wz-browse-drawer-btn` toggle (active-count badge; search,
+active chips and results stay visible — closed by default via a matchMedia initial state,
+and desktop CSS ignores the closed state entirely). The import-images
+continuation (mode 'import') keeps the old ImportStep -> TemplateStep flow and indices; the
+catalog flow's later steps sit one index earlier (`animStep`).
 
 **Import graphic** (mode 'design', steps/ImportDesignStep + PrepareDesignStep +
 PlaceFieldsStep + the shared AnimationStep) is a SETUP flow, not a second editor:
@@ -666,6 +692,19 @@ every provider call, streams `onProgress` stages into the busy line, shows the r
 (catalog design system / +flourish / custom) on the result card, and passes a grounded
 result's `spec` back on refine so spec-level refinement re-assembles deterministically
 (src/ai/CLAUDE.md).
+
+**"More control"** (steps/ai/MoreControlPanel.tsx) is the OPTIONAL structured setup beside
+the prompt: an accordion editing ONE `GenerationSpec` (model/generationSpec.ts) - category
+(the 20-entry registry in src/ai/spec/categories.ts, or "Let AI decide" with the inferred
+pick surfaced editable on the result card), data fields (suggested per category from the
+GraphicType's own declarations, reorderable), look & references (style/mood/avoid, exact
+brand colours, style-reference images - vision-only, kept apart from the drop zone's placed
+assets), fonts (primary through the shared FontPicker, secondary/numeric uploads), and
+animation (presets filtered to the category, intensity cards, transition style, speed/
+easing/steps). Collapsed sections show summary chips and keep their values; the spec
+persists as a cross-session draft and, on Create, lands on the store's `aiSpec` (saved with
+the project). A prompt-only user never touches it - an empty spec injects nothing (pinned by
+e2e/ai-more-control.spec.ts).
 
 The harness is ON BY DEFAULT, with the **"Use NoaCG harness (3 options)"** checkbox
 (`AiSettings.useHarness`, default true — the benchmark showed it a clean win) still able to

@@ -158,6 +158,94 @@ function infographicRingFill(target, opts) {
   return tl;
 }
 
+// infographicGoalRing(): the goal ring's twin of infographicRingFill().
+//
+// Why it is a SECOND builder rather than a flag on the first: ring-fill draws to the figure in
+// #f0, because on a poll or a completion stat that figure IS the percent. A goal meter's #f0 is
+// money — €124,213 raised — and the ring's angle is raised/target, a different number entirely.
+// Feeding the raised total to ring-fill would clamp it to 100 and draw a full ring at 3% of the
+// appeal. So the RING carries its own data-value (the rebuild writes it from both fields) and
+// the NUMBER counts to what the operator actually typed. Two values, one motion.
+function infographicGoalRing(target, opts) {
+  var ring = document.querySelector(target);
+  if (!ring) return null;
+  var speed = motionSpeed();
+  var ease = (opts && opts.ease) || 'power3.out';
+  // The ring's own percent, written by rebuildInfographic() — never parsed out of #f0.
+  var percent = Math.max(0, Math.min(100, parseFloat(ring.getAttribute('data-value')) || 0));
+
+  var tl = gsap.timeline();
+  tl.fromTo(ring,
+    { strokeDashoffset: 100 },                   // replay-safe: always starts empty
+    { strokeDashoffset: 100 - percent, duration: 1.4 / speed, ease: ease },
+    0
+  );
+  // The headline figure counts to the operator's total over the ring's exact length, so the
+  // number lands the moment the ring stops.
+  var el = document.getElementById('f0');
+  var stat = infographicStat(el);
+  if (stat) {
+    var counter = { value: 0 };                  // a plain object GSAP can tween
+    tl.set(el, { textContent: '0' + stat.suffix }, 0);
+    tl.to(counter, {
+      value: stat.value,
+      duration: 1.4 / speed,                     // the same length as the draw — they land together
+      ease: ease,
+      onUpdate: function () {
+        el.textContent = infographicGroupDigits(Math.round(counter.value)) + stat.suffix;
+      },
+      onComplete: function () {
+        el.textContent = stat.text;              // restore the exact text the rebuild formatted
+      }
+    }, 0);
+  }
+  return tl;
+}
+
+// infographicGroupDigits(): 124213 -> "124,213". A money figure counting up without thousand
+// separators reads as a different order of magnitude every few frames, so the count formats
+// as it goes and the rebuild's exact text is restored at the end.
+function infographicGroupDigits(n) {
+  return String(n).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',');
+}
+
+// infographicMilestoneRun(): the progress line grows along the milestone track, and each node
+// the operator has already passed pops as the line reaches it.
+//
+// MEASURED for two reasons at once: the line's length is current/last-target (their data), and
+// the number of nodes is however many milestones they wrote. The rebuild marks the passed ones
+// with .is-reached and writes the fill's data-value; this reads both at play time. A node that
+// has NOT been reached is deliberately left alone — it stays in its CSS rest state, because a
+// milestone track that animates every node identically stops saying which ones are done.
+function infographicMilestoneRun(target, opts) {
+  var fill = document.querySelector(target);
+  if (!fill) return null;
+  var speed = motionSpeed();
+  var percent = Math.max(0, Math.min(100, parseFloat(fill.getAttribute('data-value')) || 0));
+  var reached = document.querySelectorAll('.infographic-node.is-reached');
+  var grow = 1.2 / speed;                        // the line's travel time
+
+  var tl = gsap.timeline();
+  // Deliberate width tween (not scaleX): scaling would squash the line's rounded cap and drag
+  // the nodes sitting on it out of position.
+  tl.fromTo(fill,
+    { width: '0%' },                             // fromTo = replay-safe (always starts empty)
+    { width: percent + '%', duration: grow, ease: (opts && opts.ease) || 'power3.out' },
+    0
+  );
+  // Each reached node pops as the line passes it: its own position along the track decides
+  // when, so the pops track the growth instead of running on a fixed stagger.
+  for (var i = 0; i < reached.length; i++) {
+    var at = percent > 0 ? Math.min(1, (parseFloat(reached[i].getAttribute('data-at')) || 0) / percent) : 0;
+    tl.fromTo(reached[i],
+      { scale: 0.6, opacity: 0.35 },
+      { scale: 1, opacity: 1, duration: 0.34 / speed, ease: 'back.out(2)' },
+      at * grow                                  // the moment the line arrives at this node
+    );
+  }
+  return tl;
+}
+
 // infographicRowsCascade(): the rows rise in one after another. The rebuild makes one row per
 // line the operator wrote, so the sequence's length is their content — the other thing a
 // keyframe model cannot express (there is no fixed number of rows to key).

@@ -94,7 +94,7 @@ test('zoom to graphic: the preview reframes onto a small graphic and back', asyn
   await page.goto('/app');
   await expect(page.locator('.wz-modal')).toBeVisible();
   await page.locator('[data-entry="template"]').click();
-  await page.locator('.wz-cat', { hasText: 'Corner bug' }).click();
+  await page.locator('.wz-cat', { hasText: 'corner logos' }).click();
   await page.locator('.wz-variant', { hasText: 'Glass Mark' }).click();
 
   const iframe = page.locator('.wz-side iframe');
@@ -143,14 +143,17 @@ test('template cards frame onto the graphic, not the empty canvas around it', as
   await expect(page.locator('.wz-variant').first()).toBeVisible();
 
   const framing = await page.evaluate(async () => {
-    await new Promise((r) => setTimeout(r, 2500)); // let the minis settle + measure
+    // MiniPreview mounts its iframe only once the card scrolls into view — bring the
+    // measured cards on-screen first, then let them settle + measure.
+    const cards = [...document.querySelectorAll('.wz-variant')].slice(0, 5);
+    cards[0]?.scrollIntoView();
+    await new Promise((r) => setTimeout(r, 2500));
     const out: { zoom: number; insideL: boolean; insideR: boolean }[] = [];
-    document.querySelectorAll('.wz-variant');
-    [...document.querySelectorAll('.wz-variant')].slice(0, 5).forEach((card) => {
+    cards.forEach((card) => {
       const mini = card.querySelector('.wz-mini')!.getBoundingClientRect();
-      const f = card.querySelector('iframe') as HTMLIFrameElement;
-      const inner = f.contentDocument?.body?.querySelector('div')?.getBoundingClientRect();
-      if (!inner) return;
+      const f = card.querySelector('iframe') as HTMLIFrameElement | null;
+      const inner = f?.contentDocument?.body?.querySelector('div')?.getBoundingClientRect();
+      if (!f || !inner) return;
       const fr = f.getBoundingClientRect();
       const scale = fr.width / f.offsetWidth;         // rendered scale of the canvas
       const fit = mini.width / f.offsetWidth;          // the whole-canvas fit it replaces

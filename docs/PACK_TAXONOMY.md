@@ -13,34 +13,45 @@ half of Phase 3's done-when, made true for the axis it is true on:
 
 - **A new pack = config.** Add the entry; the factory proves it resolves and that the format
   mapping stays exactly-once.
-- **A new THEME ≠ config, deliberately.** A fifth family needs a `FAMILY_TOKENS` row, twelve
-  designs (one per type, each through the six gates), and the wizard's family chip. The matrix
+- **A new THEME ≠ config, deliberately.** A fifth family needs a `FAMILY_TOKENS` row, one design
+  per type (nineteen of them now, each through the six gates), and the wizard's family chip. The matrix
   fill measured that real cost at ~30 designed variants per two families; pretending a theme is
   a config knob would just move that work somewhere unreviewed. `validatePacks` fails a pack
   pointing at an unfilled family, which keeps the claim honest.
 - **The pack's family is a default, not a constraint.** Any pack resolves in any of the four
   families — the family field is the curated taste pick a non-technical user starts from.
 
-What a pack does NOT yet have is a wizard surface (a "start from a pack" entry). That is a
-product decision about the creation flow, left open on purpose; the taxonomy and the config are
-ready for it either way.
+What a pack does NOT yet have is a wizard surface. Its SHAPE is now decided
+(`TEMPLATE_TAXONOMY_PROPOSAL.md` §18, 2026-07-23): **a "start from a kit" ENTRY CARD, not a
+third mode inside the Browse step** - Browse produces one graphic, a kit produces several, and
+a surface that promises a single pick must not deliver something else. The taxonomy and the
+config are ready for it; only the surface is unbuilt.
 
 ## The twelve packs
 
 | Pack | Family | Types (curated order) | Extras |
 |---|---|---|---|
-| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen | vs01, cr03 |
-| Esports | sport | scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card | vs02 |
-| Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll | — |
-| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug | — |
-| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown | — |
-| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown | — |
-| Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen | — |
-| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard | — |
-| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda | cr01 |
-| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker | cr02 |
-| Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug | — |
-| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug | — |
+| Match Day | sport | scoreboard, countdown, lower-third, ticker, sponsor-bug, title-card, holding-screen, now-next, notice-card, event-bug, live-bug, sponsor-strip, status-chip, roster, standings, winner-card | vs01, cr03 |
+| Esports | sport | esports-score, map-round, matchup, head-to-head, player-card, bracket, standings, winner-card, scoreboard, lower-third, countdown, agenda, social-bug, sponsor-bug, holding-screen, title-card, now-next, station-bug, live-bug, sponsor-rotator | vs02 |
+| Creator | noacg | holding-screen, lower-third, topic-card, social-bug, sponsor-bug, countdown, poll, now-next, process-steps, station-bug, live-bug, logo-bug | — |
+| Newsroom | minimal | lower-third, ticker, topic-card, title-card, agenda, sponsor-bug, headline-card, key-facts, notice-card, station-bug, live-bug, status-chip | — |
+| Election | minimal | poll, lower-third, ticker, title-card, agenda, countdown, headline-card, key-facts, status-chip, live-bug | — |
+| Talk Show | glass | lower-third, topic-card, poll, agenda, social-bug, sponsor-bug, countdown, key-facts, recap-card, station-bug, sponsor-rotator | — |
+| Corporate Events | minimal | agenda, lower-third, countdown, title-card, topic-card, poll, holding-screen, now-next, process-steps, recap-card, key-facts, event-bug, sponsor-strip | — |
+| Classroom | noacg | quiz-board, countdown, lower-third, topic-card, agenda, scoreboard, process-steps, key-facts, recap-card, logo-bug, verdict-card, standings | — |
+| Church & Ceremony | minimal | title-card, lower-third, topic-card, holding-screen, countdown, agenda, statement-card, logo-bug, event-bug | cr01 |
+| Stage & Music | glass | title-card, lower-third, holding-screen, countdown, social-bug, agenda, ticker, now-next, statement-card, notice-card, award-bug, event-bug | cr02 |
+| Shopping | noacg | topic-card, countdown, lower-third, ticker, title-card, sponsor-bug, key-facts, sponsor-strip, sponsor-rotator | — |
+| Wellness | minimal | countdown, holding-screen, topic-card, lower-third, social-bug, process-steps, logo-bug | — |
+
+The title/topic/information pack's seven types, the identity family's eight and the competition
+pack's twelve (docs/GRAPHIC_TYPES.md §6) all joined the kits that were standing in for them: the
+newsroom gets a real headline card and a public notice instead of a topic card carrying a
+paragraph, corporate and classroom get the process/checklist and the recap, church and stage get
+the bilingual statement, now/next lands wherever a programme runs to a schedule, match day and
+esports get real rosters, standings, brackets and winner cards, and every pack picks up the
+persistent marks it actually leaves on screen. No format's mapping moved — the packs describe
+the same 60 formats with graphics that fit them better.
 
 **Extras** are catalog variants outside the type registry that belong in the kit: the versus
 card (vs01/vs02) for match-up reveals, end credits (cr01–cr03) where a program rolls them.
@@ -122,41 +133,115 @@ Format names verbatim from the sheet. Notes only where the assignment was a judg
 ## What the sheet asks for that no type covers (the gap list)
 
 Recorded so the next type is chosen by evidence, not vibes — the same way the first twelve
-were. Roughly by how many formats ask:
+were. Roughly by how many formats ask.
 
-- **Goal / progress bar** (donation total, inventory, challenge progress) — the poll type's
-  bars are close; a dedicated single-bar goal type would serve ~8 formats.
+### Closed
+
+Eight of the gaps below now ship, as eight types and two new categories (25 designs). Each
+kept the rule the first twelve were built on — *persist a machine only when the derived one is
+wrong* — so only the transition declares one.
+
+- **Goal / progress bar** → the **goal-meter** type (`ig22` House Goal, `ig23` Frost Goal).
+  Two numbers and everything else derived: the share, the grouped figures, the caption. The
+  bar and the ring are one type because they differ only in where the derived share is drawn.
+  A second measured builder (`infographicGoalRing`) and its `goal-ring` preset exist because a
+  goal ring's angle and its counted figure are DIFFERENT numbers — reusing the poll board's
+  `ring-fill` would draw a full ring at 3 % raised. `ig05` Rising Total stays a hand-written
+  variant: it predates the type and has no unit field.
+- **Milestones / tiers** → the **milestone-track** type (`ig24`, `ig25`), the goal meter's
+  sibling question ("which tiers have we passed"). Nodes are spaced EVENLY and the line is
+  interpolated between them, never plotted at current/max — see `infographics/dataRuntimes.ts`.
+- **Frames** → a new **`frame` category** (`fr01`–`fr04`: webcam, two-up interview, split
+  screen, screen-share + presenter inset). Chrome around a HOLE rather than a box holding its
+  own content, so the interiors stay transparent and every design states its window rectangles
+  in design pixels in its own header. It is a category and **not** a type: a frame's field
+  count follows its camera count (2, 3 or 4 lines), and `GraphicType` declares one field list —
+  see "Known limitations" below.
+- **Replay wipes / stingers** → a new **`transition` category** (`tr01`–`tr04`) and the
+  **transition** type, the first graphic whose whole content is its LIFECYCLE. Its entrance
+  COVERS the frame and holds there (that hold is the cut point); a `timer` arrow from the
+  entrance waypoint straight to the exit clears it, with `next` as the manual version. Nothing
+  in it uses `setTimeout` — a timer inside a template is motion the timeline cannot see, the
+  control page cannot pause and the render clock cannot drive.
+- **QR code** → the **qr-card** type (`card44`, `card45`). Honest field model, NOT generation:
+  NoaCG bundles no encoder and generated templates take no runtime dependency, so the code is
+  an SPX image field the operator points at their own PNG, and the address beside it is real
+  text (which is also what makes the card work for a viewer who cannot scan). The white tile
+  and its padding are a scannability requirement, not styling. A bundled encoder remains a real
+  option and is recorded as open below.
+- **CTAs** (follow / donate / register / buy) → the **call-to-action** type (`lt55`–`lt57`).
+  The verb is a FIELD, which is what stops this being four near-identical designs.
+- **Commerce cards** → the **product-card** (`card38`, `card39`), **offer-card** (`card40`,
+  `card41`) and **listing-card** (`card42`, `card43`) types. The listing card is one graphic
+  for the auction lot, the property walk-through and the stock counter, because the only thing
+  that differs is the value's LABEL — so the label is a field.
+- **Sponsor / logo strips** → `card48` House Sponsors and `card49` Clean Partners
+  (hand-written; see below for why they are not a type). Neither ROTATES, deliberately: the
+  ticker type is the one that cycles and it earns it with a real machine, a timer armed at the
+  end of a finite entrance, and a pause/resume an operator can reach. A CSS keyframe loop
+  swapping slot opacity would be none of those.
+- **Location / travel cards** → `card46` Frost Location and `card47` Volt Location
+  (hand-written). The pin is a DRAWN MARKER: there is no map surface, no tiles and no
+  projection anywhere in the product, so nothing here plots a coordinate — the picture is an
+  image field the operator chooses and the coordinates are text they type.
+
+### Still open
+
 - **Data charts / maps** (weather, election maps, finance charts, heatmaps) — a real data-viz
   surface, out of scope for the current model; revisit with external data feeds (master goals
-  §1.5).
+  §1.5). The location cards above deliberately do NOT approach this.
 - **Chat / alert overlays** — ~~show-chat territory more than template territory~~ **SHIPPED**
   as the `chat-highlight` type (src/templates/audience). The product decision it was waiting on
   turned out to be a false choice: the graphic never needed a chat integration, because the
   operator types the comment, the handle and the SOURCE (plain text, never a platform logo) into
   ordinary fields. It self-dismisses on a real timer and can be held on air. Follower/donation
   ALERTS are still open — they are event-driven, which is the feed problem below.
-- **Frames** (webcam frame, split-screen, reaction frame) — static surrounds, no data fields;
-  arguably a new category rather than a type.
-- **QR code** (7 formats: CTAs, donations, listings) — a small, high-value type candidate; an
-  image field renders one today but a dedicated type could generate it from a URL field.
-- **Reveal moments** (winner reveal, nominee cards, before/after) — the quiz board's reveal
-  machinery generalizes; a "reveal card" type is the natural next stateful type. Two instances
-  of it have since shipped — the `qa-card`'s answer and the `live-poll`'s winner call — so what
-  is left here is the GENERIC card, not the mechanism.
+- ~~**Reveal moments** (winner reveal, nominee cards, before/after)~~ — **CLOSED** by the
+  competition pack (docs/COMPETITION_PACK.md): `nominee-reveal`, `winner-card`, `award-reveal`
+  and `verdict-card` generalize the quiz board's reveal machinery, exactly as predicted here.
+  Two more instances shipped with the audience pack — the `qa-card`'s answer and the
+  `live-poll`'s winner call.
 - **Audience questions and votes** — **SHIPPED** as the audience pack: `viewer-question`,
   `qa-card`, `chat-highlight`, `question-queue`, `community-request`, `live-poll`, and the two-
   and three-answer boards beside the existing four-answer one. They joined the `creator`,
   `election`, `talk-show`, `corporate`, `classroom` and `church` packs, which is pure config —
   the matrix was already full for them the moment their designs landed.
-- **Lineups / brackets / leaderboards / stats panels** (sports & esports depth) — the agenda's
-  rows and the scoreboard cover the basics; the full versions are their own types.
+- ~~**Lineups / brackets / leaderboards / stats panels** (sports & esports depth)~~ — **CLOSED**
+  by the same pack: `roster`, `standings` (leaderboards and result tables are the same board
+  with different columns), `bracket`, `head-to-head` and `player-card`, plus `esports-score`
+  and `map-round` for the series itself.
 - **Lyrics / captions / surtitles** — timed-text playout is a different runtime problem; out
   of scope until external feeds exist.
-- **Replay wipes / stingers** — full-frame transition moments; the versus card's territory,
-  worth a dedicated "stinger" type if demand shows.
+- **A bundled QR encoder** — the qr-card type covers the FORMAT with an image field. Generating
+  the code from a URL field would need an encoder inlined into every export (non-negotiable 3
+  forbids a CDN call at playout), which is a real, self-contained piece of work and a real size
+  cost. Worth doing when the field model proves the demand.
 
 None of these block a pack: every format's CORE need is covered by the shipped types, which is
 what the mapping above records.
+
+## Known limitations this round surfaced
+
+- **A graphic type declares ONE field list, so a family whose field COUNT varies cannot be one
+  type.** Three families in this pack are affected and stay hand-written variants (which the
+  catalog has always allowed — `card04`, `vs01`, `ig01`–`ig07` are all in that class):
+  - **camera frames** — 2 fields for a single camera, 3 for a screen share, 4 for a two-up;
+  - **sponsor strips** — `card48` carries 4 slots, `card49` carries 6;
+  - **location cards** — `card46` has a picture slot, `card47` has no room for one.
+  Fixing it properly means letting a type declare OPTIONAL fields (and teaching the factory's
+  fields gate to compare against a range), which is a change to the type contract and belongs
+  in its own round rather than being bent around here.
+- **An individual camera window is not a registry part.** A split design carries several
+  `.frame-window` elements under one class so a single preset drives one camera or four, and
+  `model/structure.ts` requires single-match selectors for identity. The root, the stage and
+  every text line ARE parts, which is what the timeline and canvas need; addressing one window
+  of four would need numbered selectors the way the quiz's answer rows have them.
+- **The runtime bench measures little of a self-clearing graphic.** Its layout checks run at
+  the settled state, and a transition has cleared itself by then (the bench accelerates GSAP
+  20×, and the timer with it), so a transition passes the entrance, exit, replay and binding
+  checks but its covered pose is measured only by the catalog render baseline. The entrance
+  check itself was moved to poll BEFORE the settle wait so it asks the question while the
+  entrance is playing — otherwise every self-clearing graphic reads as "never appeared".
 
 ## Keeping this true
 

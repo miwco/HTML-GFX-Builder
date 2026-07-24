@@ -19,7 +19,12 @@ Values below are for a **1920×1080 canvas**; scale linearly for other resolutio
   - **Kicker / label** (small caps line like "LIVE" or a category): 16–22 px, weight 600–700,
     `text-transform: uppercase`, letter-spacing **0.08–0.2em** (small caps breathe).
 - Size ratio between name and title ≈ **1.8–2.2 : 1**. Closer than 1.5:1 looks indecisive.
-- Never center-align a lower third's text; left-align (or right for right-anchored variants).
+- **Align toward the anchor.** A left-anchored graphic left-aligns, a right-anchored one
+  right-aligns. Centering is allowed for a **centre-anchored** graphic only (`bottom-center`), and
+  only where the composition is genuinely symmetric — a centred rule, a centred kicker over a
+  centred name, the title-card grammar. A centred ragged block sitting at the left safe margin is
+  the failure this rule exists to prevent; centring a two-line strap "because it looks balanced"
+  is still wrong.
 - `text-wrap: balance` on lines that may wrap (with the auto-fit pattern below).
 
 ## 2. Color
@@ -49,6 +54,14 @@ Values below are for a **1920×1080 canvas**; scale linearly for other resolutio
   - **glass** — 12–24 px radius, `backdrop-filter: blur(12–24px)` over a translucent panel
     (`rgba(255,255,255,0.08–0.14)` on dark), 1 px inner keyline `rgba(255,255,255,0.18)`,
     soft wide shadow `0 20px 60px rgba(0,0,0,0.35)`.
+  - **editorial** — structure by RULES, not panels: a 2 px hairline above or beside the block, a
+    wide-tracked small-caps kicker, 0 radius, generous whitespace between the rule and the name.
+    A panel, where one is used at all, is a flat printed surface (ink or paper), never a chip.
+  - **cinematic** — no panel edge at all. Text sits on a soft scrim
+    (`linear-gradient(transparent, rgba(0,0,0,0.55))`, or a left-to-right one for a side-anchored
+    design); the only drawn element is a 1 px hairline. Light weights, wide positive tracking.
+    Readability comes from the scrim, and extra separation from `filter: drop-shadow(…)` **on the
+    box** — never a `text-shadow` on a line, which the line's own overflow-hidden mask would clip.
 - Shadows lift, never smear: prefer one soft large shadow over multiple small ones.
 
 ## 4. Motion (GSAP)
@@ -151,15 +164,23 @@ ships at least one variant per style family, and that variant must look like the
 lower-third counterpart. The shared `:root` contract + brand mechanism carry palette and font;
 these family tokens carry the *shape and motion*:
 
-| Token | minimal | sport | glass | noacg (house) |
-|---|---|---|---|---|
-| Accent geometry | hairlines 2–4 px, short underlines | slabs 8–12 px, fused to panel edges | dots, rings, gradient edges | one 8 px amber bar fused to the panel's left edge; solid amber label chips (dark ink) |
-| Panel | none or keyline `rgba(255,255,255,0.14)` | solid slab, **skewX(−8°)** where skewed | translucent white 0.08–0.14 + `blur(18px)` + keyline 0.18 | void `rgba(10,12,16,0.86–0.92)` + `blur(8px)`; strips add a `rgba(246,166,35,0.5)` top edge |
-| Radius | 0–2 px | 0 | 14–18 px | 0 on panels; 6 px on chips/badges |
-| Shadow | none/subtle | hard offset (sticker-slab) | soft wide `0 20px 60px rgba(0,0,0,0.35)` | `0 16px 50px rgba(0,0,0,0.5)`; restrained amber glow `0 0 22–26px rgba(246,166,35,0.4–0.6)` on accent elements ONLY |
-| Type | normal width, weights 400–700 | condensed/heavy caps, 0.02–0.1 em tracking on labels | soft rounded families, weights 500–800 | display 700, −0.01/−0.02 em; labels ALWAYS JetBrains Mono caps, 0.14–0.28 em tracking, accent or dark-on-accent |
-| Motion feel | expo/power3 reveals, masked lines | ≤0.5 s snap-stingers, x-slides with skew | back.out pops, blur-ins | expo/power3 reveals like minimal — controlled, newsroomy; the glow never animates on its own |
-| Continuous motion (tickers/credits/loops) | `ease: 'none'` (Linear) for the travel itself; entrances/exits still eased | same | same | same |
+| Token | minimal | editorial | cinematic | sport | glass | noacg (house) |
+|---|---|---|---|---|---|---|
+| Accent geometry | hairlines 2–4 px, short underlines | 2 px printed rules — above the block, beside it, or under the kicker | one 1 px hairline, nothing else drawn | slabs 8–12 px, fused to panel edges | dots, rings, gradient edges | one 8 px amber bar fused to the panel's left edge; solid amber label chips (dark ink) |
+| Panel | none or keyline `rgba(255,255,255,0.14)` | none, or a flat printed surface (ink `rgba(16,15,14,0.9)` / paper `rgba(245,243,238,0.96)`) — never a chip | NONE. A soft scrim `linear-gradient(transparent → rgba(0,0,0,0.55))` + `text-shadow` on the type | solid slab, **skewX(−8°)** where skewed | translucent white 0.08–0.14 + `blur(18px)` + keyline 0.18 | void `rgba(10,12,16,0.86–0.92)` + `blur(8px)`; strips add a `rgba(246,166,35,0.5)` top edge |
+| Radius | 0–2 px | 0 | 0 | 0 | 14–18 px | 0 on panels; 6 px on chips/badges |
+| Shadow | none/subtle | `0 12px 36px rgba(0,0,0,0.28)` when a panel is used at all | no box shadow; separation is the scrim, plus `filter: drop-shadow(0 2px 14px rgba(0,0,0,0.5))` on the box where needed | hard offset (sticker-slab) | soft wide `0 20px 60px rgba(0,0,0,0.35)` | `0 16px 50px rgba(0,0,0,0.5)`; restrained amber glow `0 0 22–26px rgba(246,166,35,0.4–0.6)` on accent elements ONLY |
+| Type | normal width, weights 400–700 | display 600, −0.015 em; kickers 0.24 em tracked caps in the ACCENT colour | display **400 and +0.06 em** — the one family whose big type OPENS UP; labels 0.34 em, dimmed, never accented | condensed/heavy caps, 0.02–0.1 em tracking on labels | soft rounded families, weights 500–800 | display 700, −0.01/−0.02 em; labels ALWAYS JetBrains Mono caps, 0.14–0.28 em tracking, accent or dark-on-accent |
+| Motion feel | expo/power3 reveals, masked lines | expo reveals with the rule drawing first — the rule is the entrance | slow sine fades, 0.7–0.9 s; nothing travels far, nothing overshoots | ≤0.5 s snap-stingers, x-slides with skew | back.out pops, blur-ins | expo/power3 reveals like minimal — controlled, newsroomy; the glow never animates on its own |
+| Continuous motion (tickers/credits/loops) | `ease: 'none'` (Linear) for the travel itself; entrances/exits still eased | same | same | same | same | same |
+
+**editorial** and **cinematic** are the two newest families. They exist because the first four had
+no voice for the two commonest premium references outside sport and streaming: the magazine /
+newsroom strap (rules, kickers, printed hierarchy) and the documentary name super (a scrim, wide
+light caps, no panel at all). Today they are filled in the LOWER-THIRD category only — the type ×
+family matrix (`scripts/factory.mjs matrix`) shows their other cells empty, and a template pack
+(`src/templates/packs.ts`) cannot name either as its family until those cells are filled. An empty
+cell is work not yet done, not a defect.
 
 The **noacg** family is the product's own on-air look (BRAND-MANUAL §3: void `#0a0c10`, amber
 `#f6a623`, paper `#e8edf2`; markets up/down `#4ac47a`/`#e57a7d`), derived from the seven

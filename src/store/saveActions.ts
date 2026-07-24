@@ -24,7 +24,7 @@ import { useDocKindStore } from './docKindStore';
  *  template change, and a Save that changes nothing else must still survive a reload. */
 function persistLink(): void {
   const s = useTemplateStore.getState();
-  saveProject(s.template, s.baseline, { graphicId: s.saved.graphicId, dirty: s.saved.dirty });
+  saveProject(s.template, s.baseline, { graphicId: s.saved.graphicId, dirty: s.saved.dirty }, s.aiSpec);
 }
 
 /** Where a first save / Save As puts the graphic. */
@@ -47,7 +47,7 @@ export function saveCurrentGraphic(): 'saved' | 'needs-name' | 'failed' {
   const s = useTemplateStore.getState();
   if (!s.saved.graphicId) return 'needs-name';
   s.setSaved({ ...s.saved, status: 'saving' });
-  const { doc, error } = updateGraphic(s.saved.graphicId, { template: s.template, baseline: s.baseline });
+  const { doc, error } = updateGraphic(s.saved.graphicId, { template: s.template, baseline: s.baseline, aiSpec: s.aiSpec });
   if (!doc || error) {
     // The record vanished (deleted on another device): fall back to naming it fresh.
     if (!doc) {
@@ -69,6 +69,7 @@ export function saveGraphicAs(name: string, dest: SaveDestination): { ok: boolea
     name,
     packageId: destPackageId(dest),
     baseline: s.baseline,
+    aiSpec: s.aiSpec,
   });
   if (error) {
     s.setSaved({ ...s.saved, status: 'failed' });
@@ -93,6 +94,8 @@ export function openGraphicDoc(doc: GraphicDoc): void {
   store.applyTemplate(doc.template, { resetSampleData: true });
   useDocKindStore.getState().setKind('spx');
   if (doc.baseline) useTemplateStore.setState({ baseline: doc.baseline });
+  // The swap cleared the working spec; a saved AI creation brings its own back.
+  useTemplateStore.setState({ aiSpec: doc.aiSpec ?? null });
   const entry = doc.activeEntryId ? doc.entries.find((e) => e.id === doc.activeEntryId) : null;
   if (entry) {
     for (const [field, value] of Object.entries(entry.values)) {

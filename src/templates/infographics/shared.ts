@@ -27,6 +27,8 @@ import {
 import {
   baseSettings,
   computeScale,
+  DATA_SOURCE_CLASS,
+  dataSourceCss,
   documentHtml,
   maxTextWidthCss,
   resetCanvasCss,
@@ -180,7 +182,7 @@ ${zoneCssText(o.zone, o.nudge, o.resolution)}
 
 /* ── Design ── */
 ${design.css}
-`;
+${design.html.includes(DATA_SOURCE_CLASS) ? `\n${dataSourceCss}\n` : ''}`;
 
   const preset = igPresetById(o.animation.presetId);
   // 'auto' uses the preset's hand-tuned ease pair; a named easing preset overrides both phases.

@@ -10,7 +10,17 @@ import type { TemplateCategory, TemplateVariant } from '../../model/wizard';
 import { variantsFromType, type GraphicType } from './graphicType';
 import { lowerThirdType } from './lowerThird';
 import { socialBugType, sponsorBugType } from './bugs';
+import {
+  headlineCardType,
+  noticeCardType,
+  nowNextType,
+  processStepsType,
+  statementCardType,
+} from './briefings';
 import { titleCardType, topicCardType } from './cards';
+import { keyFactsType, recapType } from './lists';
+import { listingCardType, offerCardType, productCardType, qrCardType } from './commerce';
+import { callToActionType, goalMeterType, milestoneTrackType } from './goals';
 import { agendaType, pollType } from './dataBoards';
 import { livePollType } from './livePoll';
 import {
@@ -21,15 +31,23 @@ import {
   viewerQuestionType,
 } from './audience';
 import { countdownType, holdingScreenType } from './clocks';
+import { esportsScoreType, mapRoundType } from './esports';
+import { headToHeadType, matchupType, playerCardType } from './matchups';
+import { bracketType, rosterType, standingsType } from './competitionBoards';
+import { awardRevealType, nomineeRevealType, verdictCardType, winnerCardType } from './reveals';
 import { quizBoardType } from './quizBoard';
 import { threeAnswerBoardType, twoAnswerBoardType } from './answerBoard';
 import { scoreboardType } from './scoreboard';
 import { tickerType } from './ticker';
+import { IDENTITY_BUG_TYPES } from './identityBugs';
+import { transitionType } from './transitions';
 
 /** Every registered type, in the reference data's frequency order (the count is how many of
- *  the 60 reference formats ask for that graphic). The last three earn their place by what
- *  they prove rather than by frequency: a scoreboard for parallel groups, a ticker for
- *  timer-driven motion, a quiz board for the far end of the model. */
+ *  the 60 reference formats ask for that graphic). The last three of the original twelve earn
+ *  their place by what they prove rather than by frequency: a scoreboard for parallel groups,
+ *  a ticker for timer-driven motion, a quiz board for the far end of the model. The IDENTITY
+ *  family (identityBugs.ts) follows: the small persistent marks — idents, live status, logo
+ *  marks, sponsor strips and rotations, event and award marks, location chips. */
 export const TYPES: GraphicType[] = [
   lowerThirdType,     // 52/60
   sponsorBugType,     // 37/60
@@ -43,6 +61,51 @@ export const TYPES: GraphicType[] = [
   tickerType,         //  8/60
   scoreboardType,     //  5/60 — but the type that proves parallel groups
   quizBoardType,      // the flagship
+  // ── The title / topic / information pack ──
+  // These have no frequency count: the reference sheet asked "which graphics does this
+  // format need", and it named the OPENER and the TOPIC card, which the two types above
+  // already cover. Everything below is a shape those two were being made to stand in for —
+  // a now/next card is not a title card with different words, and a process shown all at once
+  // is not a process. They earn their place by being a different graphic, not by frequency.
+  nowNextType,        // now playing / coming up
+  headlineCardType,   // headline + body
+  processStepsType,   // steps, processes, checklists — the pack's stepped type
+  noticeCardType,     // public information + safety — the pack's state machine
+  statementCardType,  // long text, and a second language
+  keyFactsType,       // key facts / explainers — a list board, like the agenda
+  recapType,          // recap / action items — a list board, like the agenda
+  // The identity family: station ident, live status, logo mark, sponsor strip, sponsor
+  // rotation, event ident, award mark, location chip — four looks each.
+  ...IDENTITY_BUG_TYPES,
+  // Not in the reference data's frequency list — it earns its place the way the last three
+  // above do, by what it proves: a graphic whose whole content is its lifecycle. A stinger
+  // covers the frame, holds for the cut, and clears ITSELF on a timer.
+  transitionType,
+  // The gap-list types (docs/PACK_TAXONOMY.md, "what the sheet asks for that no type covers").
+  // Each is one field contract several looks share, which is the other half of what a type is
+  // for — none of them needs a machine, and none of them declares one.
+  callToActionType,   // the ask: follow · donate · register · buy, as one graphic
+  productCardType,    // live commerce: the thing, its price, what it was
+  offerCardType,      // the discount announced on its own
+  listingCardType,    // an auction lot / property / resource and its live value
+  goalMeterType,      // the gap list's most-asked-for: two numbers, everything else derived
+  milestoneTrackType, // the tier rail — a different question from the goal meter
+  qrCardType,         // a scannable code the operator supplies, beside the address in words
+  // The COMPETITION PACK (docs/COMPETITION_PACK.md) — esports, competition, result and
+  // reveal graphics. They come after the reference-frequency list because they answer a
+  // different question: not "what does every show need" but "what does a competition need".
+  esportsScoreType,
+  mapRoundType,
+  matchupType,
+  headToHeadType,
+  playerCardType,
+  rosterType,
+  standingsType,
+  bracketType,
+  nomineeRevealType,
+  verdictCardType,
+  winnerCardType,
+  awardRevealType,
   threeAnswerBoardType, // the same arc at three rows…
   twoAnswerBoardType,   // …and at two: the pick is data, so the machine never changed
   livePollType,       // the vote WHILE it happens — the type that closes itself on a timer

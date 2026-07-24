@@ -43,7 +43,7 @@ sweeps and every spec already speak.
 no branches, no parallel groups and no event overrides compiles to **no `machine` key**, and
 its template comes out byte-identical to what it emitted before.
 
-Seven of the twelve shipped types are in that class. That is the design working, not a
+Nineteen of the twenty-seven shipped types are in that class. That is the design working, not a
 shortcut — and it is what makes promoting an existing variant safe.
 
 ---
@@ -264,6 +264,13 @@ family a cell is in.
 | Ticker | 8 | tk07 House Rotator | timer cycle + pause/resume/skip |
 | Scoreboard | 5 | sb03 House Score | parallel `flag` / `clock` / `result` |
 | Quiz board | — | qz02 House Quiz | branches `selected` / `locked` |
+| Now / Next | — | card21 House Now Next | – |
+| Headline card | — | card25 House Headline | – |
+| Process / checklist | — | card29 House Runbook | – (stepped by default) |
+| Public notice | — | card33 House Notice | parallel `level` (escalate / stand down) |
+| Statement | — | card37 House Statement | – |
+| Key facts | — | ig17 House Facts | – |
+| Recap / actions | — | ig21 House Actions | – |
 | Three-answer board | — | qz10 House Triple | the quiz board's machine, unchanged |
 | Two-answer board | — | qz06 House Split | the quiz board's machine, unchanged |
 | Live vote | — | pl01 House Vote | timer voting window + branches `closed` / `called` |
@@ -273,13 +280,13 @@ family a cell is in.
 | Question queue | — | qq01 House Queue | branches `forward` / `back` |
 | Community request | — | rq01 House Request | – |
 
-The last three of the original twelve earn their place by what they prove rather than by
-frequency: parallel groups, timer-driven motion, and the far end of the model.
+Scoreboard, ticker and quiz board earn their place by what they prove rather than by frequency:
+parallel groups, timer-driven motion, and the far end of the model.
 
-The AUDIENCE PACK's eight types (everything from "Three-answer board" down) are the audience-
-interaction set — the graphics a talk show, livestream, podcast, webinar, church, conference,
-quiz show or election programme uses to put what the audience sent on screen. Three things in
-that block are worth reading as claims rather than as entries:
+The AUDIENCE PACK's eight types (the last eight rows) are the audience-interaction set — the
+graphics a talk show, livestream, podcast, webinar, church, conference, quiz show or election
+programme uses to put what the audience sent on screen. Three things in that block are worth
+reading as claims rather than as entries:
 
 - **Two, three and four answers are one machine.** The row count changes the fields and nothing
   else, because the pick is DATA (`types/answerBoard.ts` holds the shared arc). If a smaller
@@ -294,9 +301,95 @@ that block are worth reading as claims rather than as entries:
   never arms one. Their KNOWN LIMIT is stated in the type files: the delay is authored on the
   arrow, not a per-play operator field, and both graphics carry a manual button beside it.
 
-### The matrix is full — and how it filled
+The seven below them are the TITLE / TOPIC / INFORMATION pack (`src/templates/pack4/`). They
+carry no frequency count because the reference sheet asked which graphics a format needs and
+answered "an opener" and "a topic card" — the two types already above. Each of these is a shape
+those two were being made to stand in for: a now/next card is not a title card with different
+words, a process shown all at once is not a process, and a bilingual reading is not a quote.
+Six of the seven add no machine, which is the rule holding at scale. The notice adds one
+parallel group, because a notice's LEVEL changes while the graphic is on air and re-taking the
+card to change it would blank the screen at the worst possible moment.
 
-All 80 cells (20 types × noacg / glass / sport / minimal) are filled. The route there is worth
+The pack also added the fourth wizard-facing capability, `defaultSteps`: whether a design starts
+in multi-step mode. It is a capability rather than a preference for the same reason
+`animationPresets[0]` is — it decides what an untouched `create({})` produces, and a process
+card created single-step shows its last step on the first frame. The wizard's steps flag became
+tri-state (`null` = the design decides) to make room for it, matching `zone` and `logoEnabled`,
+and `scripts/factory.mjs` gates the drift the same way it gates motion and position.
+
+### The identity family (templates/types/identityBugs.ts)
+
+The persistent marks — everything that stays on screen while other graphics come and go. They
+came in as one pack rather than one at a time because they share a structure (the corner-bug
+contract), and splitting them by frequency would have shipped a station ident with no live bug
+to sit beside it. Eight types, four families each, so the matrix stays full.
+
+| Type | Flagship design | Machine |
+|---|---|---|
+| Station ident | bug05 House Ident | – |
+| Live status | bug09 House Live | branches `live` / `replay` / `standby` |
+| Logo mark | bug13 House Mark | – |
+| Sponsor strip | bug17 House Sponsor Strip | – |
+| Sponsor rotation | bug21 House Sponsor Rotation | timer cycle + hold/resume/skip |
+| Event ident | bug25 House Event Bug | – |
+| Award mark | bug29 House Award Bug | – |
+| Location chip | bug33 House Location Chip | – |
+
+Six of the eight declare no machine — the derived linear one already says "it arrives, it
+persists, stop() removes it". The two that do are the two where the state is the graphic's
+POINT: a live bug that could not actually switch between live, replay and standby would be
+claiming a status it does not track, and a sponsor rotation that did not advance by itself
+would be a sponsor bug with extra fields. Both were verified running, not just compiled — the
+status swap through `noacgDispatch`, the rotation through its own armed timer.
+
+### The gap-list types (templates/types/commerce.ts, goals.ts, transitions.ts)
+
+Eight more types shipped with the gap-list round (docs/PACK_TAXONOMY.md): **call-to-action,
+product-card, offer-card, listing-card, goal-meter, milestone-track, qr-card** and **transition**.
+They are not in the frequency table because the sheet does not name them as formats — they are what
+the sheet's formats kept ASKING for, which is the gap list's whole job. All eight follow the
+founding rule: only `transition` declares a machine.
+
+`transition` is worth singling out as the one type whose entire content is its LIFECYCLE — its
+entrance covers the frame, and a `timer` arrow from the entrance waypoint straight to the exit
+clears it again. That arrow is what `TypeMachine.main.edges` exists for: a branch's edges always
+have the branch at one end, and modelling a self-clear as a branch would have meant inventing an
+off-path state that duplicates the exit.
+
+### The competition pack's twelve (docs/COMPETITION_PACK.md)
+
+Esports, competition, result and reveal graphics — 38 designs over four categories. They are
+NOT frequency-driven: they answer "what does a competition need", which the reference sheet's
+gap list had already named as the next two type families (PACK_TAXONOMY §gaps).
+
+| Type | Flagship design | Machine |
+|---|---|---|
+| Esports scorebug | es02 House Series | parallel `phase` (pre/live/final) + `pause` |
+| Map / round indicator | mr02 House Maps | branches `advanced` (cursor) / `decided` |
+| Match-up | mu02 House Match-up | branches `selected` ⟳ / `neutral` / `locked` |
+| Head-to-head | h202 House Compare | branches `highlighted` ⟳ / `level` |
+| Player card | pc02 House Player | walk press `stats` + branches `mvp` / `plain` |
+| Roster | rs02 House Roster | branches `spotlight` ⟳ / `level` |
+| Standings / result table | st02 House Standings | branches `highlighted` ⟳ / `plain` / `final` |
+| Bracket | br02 House Bracket | branches `advanced` ⟳ / `crowned` |
+| Nominee reveal | nm01 House Nominees | walk press `reveal` + branch `suspense` |
+| Verdict card | vd02 House Verdict | branches `judged` ⟳ / `unjudged` |
+| Winner card | wn02 House Champion | walk press `result` + branches `celebrating` / `plain` |
+| Award / launch reveal | aw01 House Award | walk press `open` + branches `celebrating` / `settled` |
+
+Every ⟳ is the same argument the quiz board makes about answers, applied to sides, rows and
+nominees: **one state plus a field**, the value riding in as the event's payload. Their matrix
+is deliberately partial (3-4 families each rather than all four) — an unfilled cell is a
+missing design, which the factory reports and does not fail on.
+
+### The matrix is full for the founding twelve — and how it filled
+
+All cells (× noacg / glass / sport / minimal) are filled: 48 of the original twelve types, 28 of
+the title/topic/information pack's seven, and 32 of the identity family's eight. The gap-list,
+competition and audience packs (sections below) each add their own types and fill the cells their
+designs cover; an empty cell is work not yet done and the factory deliberately does not fail on
+one (`scripts/factory.mjs`), so leaving a cell empty costs nothing while shipping a wrong design
+costs a lot. The route there is worth
 recording, because it was not the one the first pass predicted:
 
 - **The promotion well ran dry fast.** 24 cells looked promotable on parts alone; 8 actually were

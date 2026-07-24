@@ -21,6 +21,16 @@ export type TemplateType =
   | 'starting-soon'
   | 'infographic'
   | 'quiz'
+  /** Chrome AROUND the picture — a webcam surround, a two-up interview, a split screen. */
+  | 'frame'
+  /** A full-frame moment that covers the picture so a cut can happen underneath. */
+  | 'transition'
+  /** The competition pack (src/templates/competition — docs/COMPETITION_PACK.md): the
+   *  esports scorebug, the match-up / competitor card, the results board, and the reveal. */
+  | 'esports-score'
+  | 'matchup'
+  | 'results-board'
+  | 'reveal'
   /** A live vote board — the poll while it is happening (templates/poll). */
   | 'poll'
   /** An audience message on screen — question, Q&A, chat, queue, request (templates/audience). */

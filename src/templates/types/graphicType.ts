@@ -193,10 +193,17 @@ export interface TypeMachine {
      *  false = exact parity with a graphic that has no machine at all. */
     exitOnNext?: boolean;
     /**
-     * Arrows that belong to the GRAPHIC rather than to any one branch state — a self-dismiss
-     * timer from the entrance to the exit, say. Declaring them here rather than smuggling them
-     * into some branch's `edges` array keeps a branch's list meaning "the ways in and out of
-     * THIS state", which is what makes the declarations readable.
+     * Extra arrows BETWEEN waypoints of the default path — the one thing `branches` cannot
+     * express, because a branch's edges always have the branch at one end.
+     *
+     * The case that needed it is the transition type: a stinger covers the frame, holds, and
+     * clears ITSELF after a beat, which is a `timer` arrow from waypoint 0 straight to the
+     * exit. Modelling that as a branch would have meant inventing an off-path "cleared" state
+     * that duplicates the exit — a second way to be off air, which the schema's "reset is two
+     * operations, never conflated" instinct is exactly against.
+     *
+     * Endpoints are the ordinary WaypointRef/id pair, so `{ waypoint: 0 } → { waypoint: -1 }`
+     * reads as "from the entrance to the exit" whatever the step count resolves to.
      */
     edges?: TypeEdge[];
     branches?: TypeBranch[];
@@ -228,6 +235,10 @@ export interface TypeCapabilities {
   logo: LogoSupport;
   animationPresets: AnimPresetId[];
   defaultZone: Zone9;
+  /** Whether this graphic is STEPPED by construction — a numbered process, a checklist, a
+   *  reveal that only makes sense one press at a time (TemplateVariant.defaultSteps). Absent
+   *  = off, so every existing type compiles exactly what it compiled before. */
+  defaultSteps?: boolean;
 }
 
 /** One look. Phase 2 ships one per type (the house theme); Phase 3 makes this array the
@@ -278,6 +289,13 @@ export interface TypeDesign {
    * authored for the top-right safe area, and the type was moving it to the top-left.
    */
   defaultZone?: Zone9;
+  /**
+   * Whether this design starts stepped, when it differs from the type's answer. The fourth
+   * capability that is really a property of the design: a notice card and a checklist can be
+   * the same TYPE of graphic — words in a panel — while only one of them is meaningless
+   * without its presses.
+   */
+  defaultSteps?: boolean;
   /**
    * Why this design belongs to THIS type, when a mechanical signal says it might not.
    *
@@ -357,10 +375,13 @@ export function compileMachine(
 ): AnimData['machine'] | null {
   const spec = type.machine;
   const branches = spec.main?.branches ?? [];
+  const pathEdges = spec.main?.edges ?? [];
   const parallel = spec.parallel ?? [];
-  const mainEdges = spec.main?.edges ?? [];
   const wantsMain =
-    !!spec.main?.pathEvents?.length || !!spec.main?.exitOnNext || branches.length > 0 || mainEdges.length > 0;
+    !!spec.main?.pathEvents?.length ||
+    !!spec.main?.exitOnNext ||
+    branches.length > 0 ||
+    pathEdges.length > 0;
   if (!wantsMain && parallel.length === 0) return null;
 
   const derived = deriveMachine(data);
@@ -393,8 +414,9 @@ export function compileMachine(
     }
   }
 
-  // The graphic's own arrows first, so they sort ahead of the branches that follow them.
-  for (const edge of mainEdges) main.transitions.push(toTransition(edge, path));
+  // Arrows between waypoints (see TypeMachine.main.edges) — added before the branches so a
+  // path edge is never shadowed by a branch that happens to name the same pair.
+  for (const edge of pathEdges) main.transitions.push(toTransition(edge, path));
 
   for (const branch of branches) {
     const state: AnimState = { id: branch.id };
@@ -527,6 +549,7 @@ export function variantsFromType(type: GraphicType): TemplateVariant[] {
       defaultPalette: design.palette,
       defaultFontId: design.fontId,
       defaultZone: design.defaultZone ?? type.capabilities.defaultZone,
+      defaultSteps: design.defaultSteps ?? type.capabilities.defaultSteps,
       create(options) {
         const template = attachMachine(type, design.create(type, options));
         const missing = missingParts(type, template);

@@ -481,8 +481,6 @@ export async function benchTemplateRuntime(
 
     // ── Entrance + settled measurement with the field defaults ──────────────────────
     phase = 'play';
-    call('play');
-    await wait(SETTLE_MS);
 
     const exempt = dynamicsRoots(template, win);
     const parsedData = parseAnimData(template.js);
@@ -494,11 +492,21 @@ export async function benchTemplateRuntime(
     const onAir = () =>
       collectLeaves(win).some((el) => intersection(el.getBoundingClientRect(), canvasRect) > 0);
 
-    // Sampling ONCE after a fixed wait makes this a race, not a check: an entrance that fades
-    // in reads as invisible until enough of it has played, and a hidden benching iframe can
-    // have its rAF starved for a stretch under a loaded parallel run - so the assertion could
-    // fail for a graphic that is perfectly fine. Poll instead: the moment the graphic is on
-    // air we move on, and only a graphic that NEVER appears within the budget is an error.
+    call('play');
+
+    // THE ENTRANCE CHECK LOOKS WHILE THE ENTRANCE IS PLAYING, not after everything settles.
+    //
+    // Sampling once after a fixed wait would make this a race, not a check: an entrance that
+    // fades in reads as invisible until enough of it has played, and a starved rAF in a hidden
+    // iframe can stretch that out. So it polls, and the moment the graphic is up we move on.
+    //
+    // It polls BEFORE the settle wait because a graphic is not obliged to stay. A transition
+    // covers the frame, holds for its cut, and clears ITSELF on a timer (docs/STATE_MACHINE_
+    // SCHEMA.md; the transition type is the one that does it) - and the bench accelerates GSAP
+    // 20x, which accelerates that timer too, so by the end of a 300 ms settle the stinger is
+    // long gone. Checking afterwards would report "never appeared" for a graphic that appeared
+    // exactly as designed. Asking the question at the right moment costs nothing for every
+    // other template: they are on air by then and stay there.
     if (!(await waitFor(onAir, ON_AIR_BUDGET_MS))) {
       errors.push(
         issue(
@@ -508,6 +516,7 @@ export async function benchTemplateRuntime(
         ),
       );
     }
+    await wait(SETTLE_MS);
 
     const presses = Math.max(0, (parseInt(template.settings.steps, 10) || 1) - 1);
     phase = 'next';

@@ -18,5 +18,11 @@ export async function showCode(page: Page): Promise<void> {
   await expect(toggle).toBeVisible();
   if ((await toggle.innerText()).includes('Show code')) await toggle.click();
   await expect(page.getByTestId('dock-tab-code')).toBeVisible();
-  await expect(page.locator('.editor-host .monaco-editor').first()).toBeVisible();
+  // Monaco is LAZY (React.lazy + a dynamic import): opening the pane starts a chunk fetch that
+  // the dev server transforms on demand, so the wait here is a module load, not a render. The
+  // default expect budget is tuned for renders and has no business bounding a download — under
+  // worker contention this helper was the suite's most reliable false red. Same reasoning, and
+  // the same number, as awaitPreviewRebuild's REBUILT budget: a mount that never happens is
+  // still caught, just by the test timeout instead of by a tighter one that lies.
+  await expect(page.locator('.editor-host .monaco-editor').first()).toBeVisible({ timeout: 20_000 });
 }

@@ -242,7 +242,7 @@ export default function AnimationStep({ variant, draft, onDraft, onReplay }: Pro
             <input
               type="checkbox"
               style={{ width: 'auto' }}
-              checked={draft.animation.steps}
+              checked={draft.animation.steps ?? variant.defaultSteps ?? false}
               onChange={(e) => onDraft({ animation: { steps: e.target.checked } })}
             />
             <span>

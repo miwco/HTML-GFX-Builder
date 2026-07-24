@@ -13,6 +13,12 @@ import { CORNER_BUGS } from './cornerBug';
 import { INFOGRAPHICS } from './infographics';
 import { VERSUS } from './versus';
 import { QUIZ } from './quiz';
+import { FRAMES } from './frames';
+import { TRANSITIONS } from './transitions';
+import { ESPORTS_SCORES } from './competition/esports';
+import { MATCHUPS } from './competition/matchup';
+import { RESULTS_BOARDS } from './competition/results';
+import { REVEALS } from './competition/reveal';
 import { POLLS } from './poll';
 import { AUDIENCE } from './audience';
 import { IMPORTED_DESIGNS } from './importedDesign/shared';
@@ -38,6 +44,13 @@ export const HAND_WRITTEN: Partial<Record<TemplateCategory, TemplateVariant[]>> 
   'infographic': INFOGRAPHICS,
   'versus': VERSUS,
   'quiz': QUIZ,
+  'frame': FRAMES,
+  'transition': TRANSITIONS,
+  // The competition pack (docs/COMPETITION_PACK.md).
+  'esports-score': ESPORTS_SCORES,
+  'matchup': MATCHUPS,
+  'results-board': RESULTS_BOARDS,
+  'reveal': REVEALS,
   'poll': POLLS,
   'audience': AUDIENCE,
   // Not browsable in the category grid — the Import Graphic entry is its only way in.
